@@ -34,18 +34,22 @@ FILES IN THIS FOLDER:
         - Earliest open due is auto-targeted (no more picking which
           due from a list -- one less decision for a member on a
           phone at the door)
-        - Monthly / Quarterly (etc) quick-pick chips using the
-          member's REAL rate card, not a hardcoded guess
-        - Free amount input, always editable, pre-filled by whichever
-          chip is tapped, capped at what's actually still owed on the
-          targeted event (prevents a lump sum from silently exceeding
-          what gets recorded -- if someone wants to pay several
-          periods at once, that's a chair-side Record Payment action,
-          same as before)
+        - SELECTION ONLY, no free-typed amount: the payment options
+          shown are the member's own enabled cadence rates (Monthly /
+          Quarterly / etc), filtered to only the ones that fit within
+          what's currently due -- plus the due's own remaining amount
+          as a fallback if none of the cadence rates match exactly
+          (e.g. an already-partially-settled event). Every selectable
+          amount is therefore a real billing-event number, so every
+          resulting receipt reconciles cleanly against an event in
+          Finance -- nothing a member can type that doesn't map to
+          the billing schedule. (If someone wants to pay several
+          periods at once, that's still a chair-side Record Payment
+          action, same as before.)
         - UPI pay button / QR / reference field: unchanged mechanics,
-          now driven by the editable amount instead of a fixed due
-        - Submit button + the post-submit confirmation screen now
-          both show the actual amount being recorded
+          now driven by the selected amount
+        - Submit button + the post-submit confirmation screen both
+          show the actual amount being recorded
 
 SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
 (edge already deployed live -- only ui needs your local test + merge)
@@ -53,11 +57,10 @@ SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
 TESTING CHECKLIST:
 - [ ] Open a check-in link for a member with an open due, scan/identify
 - [ ] "Total Paid" / "Balance" show correct numbers matching Financials tab
-- [ ] Tap a cadence chip -> amount field fills with that rate
-- [ ] Type an amount above what's due -> field clamps down + shows the note
-- [ ] Type an amount at/below what's due -> no clamp note, "Pay X now" /
-      QR update to match
-- [ ] Submit -> declaration recorded with the entered amount; confirmation
+- [ ] Payment options shown are only cadence rates that fit within what's
+      due -- no free-text amount field anywhere
+- [ ] Tap an option -> it highlights, "Pay X now" / QR update to match
+- [ ] Submit -> declaration recorded with the selected amount; confirmation
       screen shows that amount
 - [ ] Member with zero open dues -> "All dues are settled" message, no
       picker shown

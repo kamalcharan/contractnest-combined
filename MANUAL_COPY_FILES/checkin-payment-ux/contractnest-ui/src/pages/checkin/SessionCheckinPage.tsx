@@ -300,27 +300,29 @@ const SessionCheckinPage: React.FC = () => {
   );
   // Earliest open due is the only thing a payment can settle against right
   // now — matches how the seller-side ledger applies money (oldest first).
-  // Members don't pick "which due"; they pick "how much", and it lands here.
   const targetDue = openDues[0] || null;
   const payCap = targetDue ? (targetDue.remaining ?? targetDue.amount) : 0;
-  const cadenceOptions = (history?.cadence_rates?.rates || []).filter((r) => r.enabled && r.amount > 0);
-  const [amountClampNote, setAmountClampNote] = useState('');
+  // Selectable amounts are billing-event-derived only — the member's own
+  // cadence rates, and only the ones that fit within what's actually due —
+  // never a typed number. A typed amount has no billing event behind it and
+  // can't be reconciled against a receipt in Finance; a selected one always
+  // maps to a real amount the event was priced at.
+  type PayOption = { cycle: string; label: string; amount: number };
+  const cadenceOptions: PayOption[] = (history?.cadence_rates?.rates || [])
+    .filter((r) => r.enabled && r.amount > 0 && r.amount <= payCap)
+    .map((r) => ({ cycle: r.cycle, label: CADENCE_LABEL[r.cycle] || r.cycle, amount: r.amount }));
+  // If none of the cadence rates line up exactly with what's due (e.g. this
+  // event is already partially settled), the due's own remaining amount is
+  // still a real billing-event number — offer it as the fallback option.
+  const payOptions: PayOption[] = cadenceOptions.some((o) => o.amount === payCap)
+    ? cadenceOptions
+    : targetDue ? [...cadenceOptions, { cycle: '__due__', label: targetDue.label, amount: payCap }] : cadenceOptions;
 
-  const applyPayAmount = (raw: string, cadence: string | null) => {
-    const n = Math.max(0, Math.floor(Number(raw) || 0));
-    if (n <= 0) {
-      setPayAmount(''); setSelectedCadence(null); setPayEventId(''); setAmountClampNote('');
-      return;
-    }
-    if (n > payCap) {
-      setPayAmount(String(payCap));
-      setAmountClampNote(`Only ${money(payCap, targetDue?.currency)} is due right now — capped to that.`);
-    } else {
-      setPayAmount(String(n));
-      setAmountClampNote('');
-    }
-    setSelectedCadence(cadence);
-    if (targetDue) setPayEventId(targetDue.event_id);
+  const selectPayOption = (opt: PayOption) => {
+    if (!targetDue) return;
+    setPayAmount(String(opt.amount));
+    setSelectedCadence(opt.cycle);
+    setPayEventId(targetDue.event_id);
   };
 
   // Flattened, condition-filtered form fields (minus the attendance control we
@@ -424,7 +426,7 @@ const SessionCheckinPage: React.FC = () => {
     setMember(null); setAlreadyChecked(false); setNotFound(false); setNotFoundKind('choose'); setGuestConfirmed(false);
     setHistory(null); setSubForMember(null); setSubName(''); setPmNum(''); setPoNum('');
     setFirstTimerName(''); setGuestCompany(''); setGuestEmail(''); setErr(null);
-    setP1Num(''); setPayEventId(''); setUpiRef(''); setStatus('present');
+    setP1Num(''); setPayEventId(''); setPayAmount(''); setSelectedCadence(null); setUpiRef(''); setStatus('present');
     // Forget this browser too — "not you" means the next scan should ask again.
     setDeviceMatch(null); setDeviceDismissed(true); setDeviceConfirming(false);
     setRecognizedMemberPhone(''); setRecognizedSubPhone(''); setRecognizedGuestPhone('');
@@ -964,38 +966,25 @@ const SessionCheckinPage: React.FC = () => {
                     Next due: <strong style={{ color: BRAND.ink }}>{targetDue.label}</strong> · {fmtDate(targetDue.date)}
                   </div>
 
-                  {/* Cadence quick-picks — real per-member rates, not a guess */}
-                  {cadenceOptions.length > 0 && (
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                      {cadenceOptions.map((r) => {
-                        const active = selectedCadence === r.cycle;
-                        return (
-                          <button key={r.cycle} type="button"
-                            onClick={() => applyPayAmount(String(r.amount), r.cycle)}
-                            style={{ padding: '9px 14px', borderRadius: 10, border: `1.5px solid ${active ? BRAND.accent : BRAND.field}`,
-                              background: active ? BRAND.accentSoft : '#fff', color: active ? BRAND.accentInk : BRAND.ink,
-                              fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 120ms' }}>
-                            {CADENCE_LABEL[r.cycle] || r.cycle} · {money(r.amount)}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Free amount — pre-filled by a quick-pick, always editable, capped at what's due */}
-                  <label style={labelStyle}>Amount to pay</label>
-                  <div style={{ position: 'relative', marginTop: 6 }}>
-                    <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: BRAND.sub, fontWeight: 700, fontSize: 15 }}>₹</span>
-                    <input
-                      type="number" inputMode="numeric" min={0} max={payCap} value={payAmount}
-                      onChange={(e) => applyPayAmount(e.target.value, null)}
-                      placeholder="0"
-                      style={{ ...inputStyle, marginTop: 0, paddingLeft: 28, fontSize: 18, fontWeight: 800 }}
-                    />
+                  {/* Selectable amounts only — each option is a real billing-event
+                      amount (the member's own cadence rate, or the due itself),
+                      never a typed number, so every receipt reconciles cleanly
+                      against an event in Finance. */}
+                  <label style={labelStyle}>How much are you paying?</label>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                    {payOptions.map((opt) => {
+                      const active = selectedCadence === opt.cycle;
+                      return (
+                        <button key={opt.cycle} type="button"
+                          onClick={() => selectPayOption(opt)}
+                          style={{ padding: '10px 16px', borderRadius: 10, border: `1.5px solid ${active ? BRAND.accent : BRAND.field}`,
+                            background: active ? BRAND.accentSoft : '#fff', color: active ? BRAND.accentInk : BRAND.ink,
+                            fontWeight: 700, fontSize: 13.5, cursor: 'pointer', transition: 'all 120ms' }}>
+                          {opt.label} · {money(opt.amount, targetDue.currency)}
+                        </button>
+                      );
+                    })}
                   </div>
-                  {amountClampNote && (
-                    <p style={{ fontSize: 11.5, color: BRAND.accentInk, marginTop: 5, marginBottom: 0 }}>{amountClampNote}</p>
-                  )}
                 </>
               )}
 
