@@ -559,10 +559,10 @@ Services do NOT have KT equivalent yet. Future work if needed:
 **Current state**: only the contract-level discount (Billing View step, `discount_type`/`discount_value`/`discount_total`) exists and is fully stitched end-to-end (mapper, billing event derivation, backend parity, Events Preview, contract document).
 **When to revisit**: owner's call — flagged here so it isn't mistaken for a missed Sprint 1 item. If picked back up, an interactive mock already exists from the design discussion (single-page "Add Service Blocks" with a compact discount-mode toggle + collapsed-by-default per-block discount row) to start from.
 
-### Contact detail — Overview tab hidden (2026-07-24)
-`/contacts/:id` (`contractnest-ui/src/pages/contacts/view.tsx`) had a Profile | Overview | Contracts | Assets | Financials | Timeline tab layout. The **Overview** tab is now hidden — commented out in the `TABS` array (and its now-unused `LayoutDashboard` icon import removed) — per explicit owner request, no reason given.
+### Contact detail — Overview tab staged to be hidden (2026-07-24)
+`/contacts/:id` (`contractnest-ui/src/pages/contacts/view.tsx`) has a Profile | Overview | Contracts | Assets | Financials | Timeline tab layout. Per explicit owner request (no reason given), the **Overview** tab is being hidden — commented out in the `TABS` array (and its now-unused `LayoutDashboard` icon import removed). Staged in `MANUAL_COPY_FILES/hide-contact-overview-tab/` — not yet copied into the local checkout or merged to `main`; owner will copy, test, and merge per usual flow.
 
-**Current state**: `OverviewTab` component (`components/contacts/dashboard/OverviewTab.tsx`) and its import are untouched, just unwired — nothing deleted. Tab bar now shows Profile | Contracts | Assets | Financials | Timeline.
+**Current state**: `OverviewTab` component (`components/contacts/dashboard/OverviewTab.tsx`) and its import are untouched, just unwired — nothing deleted. Once merged, tab bar will show Profile | Contracts | Assets | Financials | Timeline.
 **When to revisit**: owner's call — pending review next session. Un-hide by uncommenting the `{ key: 'overview', ... }` entry and restoring the `LayoutDashboard` import.
 
 ---
