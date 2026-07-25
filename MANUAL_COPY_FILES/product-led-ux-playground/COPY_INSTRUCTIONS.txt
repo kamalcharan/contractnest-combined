@@ -71,3 +71,28 @@ Purpose:
 
 How to open: double-click — single self-contained HTML.
 ═══════════════════════════════════════════════════
+
+───────────────────────────────────────────────────
+FILE 3 of 3  (added 2026-07-25, round 3)
+───────────────────────────────────────────────────
+Source:      MANUAL_COPY_FILES\product-led-ux-playground\SPRINT_REFERENCES\12-product-led-shell.html
+Destination: SPRINT_REFERENCES\12-product-led-shell.html
+
+Purpose:
+  THE SINGLE CONVERSION SPEC — ref 11 (real product shell, pixel
+  target) with ref 10's PLG mechanisms threaded into the real
+  screens:
+  - Landing page (pre-signup industry sandbox, browser-framed)
+  - Customer portal page (referral surface, "manage my vendors free")
+  - JIT GST modal (fires from dashboard invoice-preview row and
+    contract Billing tab; saving bumps setup meter 65% -> 80%)
+  - Coach marks on Contract View (3 tips, fire once, dismissible)
+  - Earned NPS -> fast-lane referral card (appears only after a win
+    moment: contract created or GST saved; 9-10 reveals share card)
+  - Empty states as CTAs (Contacts > Prospects, Sessions > Past)
+  - Instrumentation event names fired in toasts on every key action
+  Supersedes ref 11 as the conversion target for contractnest-ui
+  (ref 11 kept for shell-only comparison).
+
+How to open: double-click — single self-contained HTML.
+═══════════════════════════════════════════════════
