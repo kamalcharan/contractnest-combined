@@ -42,3 +42,32 @@ NOTE: The destination file is ALREADY present on the feature branch
 after "git checkout claude/bbb-product-led-ux-53a7ue" the copy step
 is a no-op safety net — running it anyway is harmless.
 ═══════════════════════════════════════════════════
+
+───────────────────────────────────────────────────
+FILE 2 of 2  (added 2026-07-25, round 2)
+───────────────────────────────────────────────────
+Source (in this folder):
+  MANUAL_COPY_FILES\product-led-ux-playground\SPRINT_REFERENCES\11-product-shell-design.html
+
+Destination (parent repo):
+  SPRINT_REFERENCES\11-product-shell-design.html
+
+Purpose:
+  REAL product design — pixel-conversion target (unlike ref 10 which
+  is the concept playground). Full app shell in the ref-3 design
+  system (paper light + dark, teal accent, Charter serif):
+  - Sidebar menu with Revenue/Expense perspective toggle
+  - Dashboard (KPIs, week board, billing chart, renewals, attention)
+  - Get Started (2-question onboarding + furnishing, replaces 13-step)
+  - Contracts list + 4-step create wizard (single-column, ref 9)
+  - Contract View (fleet-logbook pattern, ref 8: year strip, logbook,
+    blocks, billing, document/portal tabs)
+  - Contacts list + detail (Profile|Contracts|Assets|Financials|
+    Timeline — Overview hidden per current product state)
+  - AR/AP mirrored screen with aging buckets + "Let VaNi chase"
+  - Group Sessions (capacity, attendance chips, per-head billing)
+  Perspective toggle flips every number between Revenue and Expense.
+  Topbar: Test/Live environment badge, theme toggle (light/dark).
+
+How to open: double-click — single self-contained HTML.
+═══════════════════════════════════════════════════

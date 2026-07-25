@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Product Shell Design (Pixel Target)</title>
+<style>
+  /* ═══ Design tokens — same system as ref 3 (WizardShell) ═══ */
+  :root {
+    --bg: #F4F5F1; --surface: #FFFFFF; --surface-2: #ECEEE7;
+    --ink: #1C2420; --muted: #5B655F; --faint: #8A938D; --line: #DDE0D7;
+    --accent: #0B6B63; --accent-ink: #FFFFFF; --accent-soft: #E0EEEB;
+    --crit: #B3402F; --crit-soft: #F9ECE9;
+    --good: #3E7C4F; --good-soft: #E6F0E8;
+    --warn: #8F6B0C; --warn-soft: #F6EFDB;
+    --info: #2E5E8F; --info-soft: #E4EDF5;
+    --shadow: 0 8px 28px rgba(28,36,32,0.12);
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --serif: 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101412; --surface: #1B211E; --surface-2: #232A26;
+      --ink: #E7EAE5; --muted: #A0AAA3; --faint: #79837C; --line: #2C342F;
+      --accent: #4FB3A6; --accent-ink: #0E1513; --accent-soft: #1B2E2B;
+      --crit: #E28170; --crit-soft: #33211D;
+      --good: #84BE8F; --good-soft: #1D2B20;
+      --warn: #D9AC45; --warn-soft: #322A16;
+      --info: #7FAAD4; --info-soft: #1C2732;
+      --shadow: 0 8px 28px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F5F1; --surface: #FFFFFF; --surface-2: #ECEEE7;
+    --ink: #1C2420; --muted: #5B655F; --faint: #8A938D; --line: #DDE0D7;
+    --accent: #0B6B63; --accent-ink: #FFFFFF; --accent-soft: #E0EEEB;
+    --crit: #B3402F; --crit-soft: #F9ECE9;
+    --good: #3E7C4F; --good-soft: #E6F0E8;
+    --warn: #8F6B0C; --warn-soft: #F6EFDB;
+    --info: #2E5E8F; --info-soft: #E4EDF5;
+    --shadow: 0 8px 28px rgba(28,36,32,0.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #101412; --surface: #1B211E; --surface-2: #232A26;
+    --ink: #E7EAE5; --muted: #A0AAA3; --faint: #79837C; --line: #2C342F;
+    --accent: #4FB3A6; --accent-ink: #0E1513; --accent-soft: #1B2E2B;
+    --crit: #E28170; --crit-soft: #33211D;
+    --good: #84BE8F; --good-soft: #1D2B20;
+    --warn: #D9AC45; --warn-soft: #322A16;
+    --info: #7FAAD4; --info-soft: #1C2732;
+    --shadow: 0 8px 28px rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14.5px; line-height: 1.5; }
+  button { font: inherit; cursor: pointer; }
+  input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mono { font-family: var(--mono); }
+
+  /* ═══ App frame ═══ */
+  .app { display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar { width: 232px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .side-brand { padding: 18px 18px 12px; }
+  .side-brand .b-name { font-family: var(--serif); font-weight: 700; font-size: 1.12rem; }
+  .side-brand .b-name span { color: var(--accent); }
+  .side-brand small { display: block; font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); margin-top: 1px; }
+
+  .persp { margin: 6px 14px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; display: flex; }
+  .persp button { flex: 1; border: none; background: transparent; color: var(--muted); font-size: 0.74rem; font-weight: 700; padding: 6px 4px; border-radius: 8px; }
+  .persp button.active { background: var(--accent); color: var(--accent-ink); }
+  .persp-hint { margin: -6px 18px 10px; font-size: 0.64rem; color: var(--faint); }
+
+  nav.side-nav { flex: 1; padding: 4px 10px; }
+  .nav-group { font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); padding: 12px 10px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; border: none; background: none; color: var(--muted); padding: 8px 10px; border-radius: 8px; font-weight: 600; font-size: 0.86rem; text-align: left; margin-bottom: 1px; }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); }
+  .nav-item .n-ico { width: 20px; text-align: center; flex: none; }
+  .nav-item .n-badge { margin-left: auto; font-size: 0.66rem; font-weight: 700; background: var(--crit-soft); color: var(--crit); border-radius: 99px; padding: 1px 7px; }
+  .nav-item .n-badge.soft { background: var(--surface-2); color: var(--faint); }
+
+  .side-foot { padding: 12px 14px 16px; border-top: 1px solid var(--line); }
+  .vani-pill { display: flex; align-items: center; gap: 10px; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin-bottom: 10px; }
+  .vani-pill .v-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex: none; }
+  .vani-pill .v-t { font-size: 0.74rem; line-height: 1.3; }
+  .vani-pill .v-t b { display: block; font-size: 0.78rem; }
+  .user-row { display: flex; align-items: center; gap: 9px; }
+  .user-row .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--muted); }
+  .user-row .u-name { font-size: 0.78rem; font-weight: 600; }
+  .user-row .u-org { font-size: 0.66rem; color: var(--faint); }
+
+  /* ── Main / topbar ── */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 22px; background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40; }
+  .search { flex: 1; max-width: 380px; display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; padding: 7px 12px; color: var(--faint); font-size: 0.84rem; }
+  .search input { border: none; background: none; outline: none; flex: 1; font-size: 0.84rem; }
+  .env-badge { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 99px; padding: 4px 12px; border: 1px solid var(--line); background: var(--warn-soft); color: var(--warn); }
+  .env-badge.live { background: var(--good-soft); color: var(--good); }
+  .icon-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); position: relative; }
+  .icon-btn .n-dot { position: absolute; top: 5px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--crit); }
+  .spacer { flex: 1; }
+
+  .content { padding: 22px 24px 80px; max-width: 1180px; width: 100%; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn .18s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .page-head { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .page-head h1 { font-family: var(--serif); font-size: 1.55rem; font-weight: 700; margin: 0; line-height: 1.15; }
+  .page-head .ph-sub { color: var(--muted); font-size: 0.84rem; }
+  .page-head .ph-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ── shared components ── */
+  .btn { background: var(--accent); color: var(--accent-ink); border: none; font-weight: 700; font-size: 0.84rem; padding: 9px 18px; border-radius: 9px; }
+  .btn:hover { filter: brightness(1.06); }
+  .btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: var(--surface-2); }
+  .btn.sm { padding: 6px 12px; font-size: 0.78rem; }
+  .btn.danger { background: var(--crit-soft); color: var(--crit); }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  .card-pad { padding: 16px 18px; }
+  .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
+
+  .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 0.7rem; font-weight: 700; border-radius: 99px; padding: 2px 10px; }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.crit { background: var(--crit-soft); color: var(--crit); }
+  .tag.info { background: var(--info-soft); color: var(--info); }
+  .tag.neutral { background: var(--surface-2); color: var(--muted); }
+  .tag.accent { background: var(--accent-soft); color: var(--accent); }
+
+  table.grid { width: 100%; border-collapse: collapse; }
+  table.grid th { text-align: left; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--faint); padding: 10px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.grid td { padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 0.85rem; vertical-align: middle; }
+  table.grid tr:last-child td { border-bottom: none; }
+  table.grid tr.rowlink { cursor: pointer; }
+  table.grid tr.rowlink:hover td { background: var(--surface-2); }
+  .cell-main { font-weight: 600; }
+  .cell-sub { font-size: 0.72rem; color: var(--faint); }
+  .num { font-family: var(--mono); font-size: 0.8rem; text-align: right; white-space: nowrap; }
+
+  .filter-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .chip { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 99px; padding: 5px 14px; font-size: 0.78rem; font-weight: 600; }
+  .chip:hover { color: var(--ink); }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+  .tab { border: none; background: none; color: var(--muted); font-weight: 600; font-size: 0.85rem; padding: 9px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .tab:hover { color: var(--ink); }
+  .tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Dashboard ── */
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+  @media (max-width: 1000px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .kpi .k-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+  .kpi .k-value { font-family: var(--serif); font-size: 1.5rem; font-weight: 700; margin: 4px 0 2px; }
+  .kpi .k-delta { font-size: 0.72rem; font-weight: 600; }
+  .kpi .k-delta.up { color: var(--good); }
+  .kpi .k-delta.down { color: var(--crit); }
+  .dash-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
+  @media (max-width: 980px) { .dash-grid { grid-template-columns: 1fr; } }
+  .week-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 0.84rem; }
+  .week-row:last-child { border-bottom: none; }
+  .week-row .w-day { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); width: 58px; flex: none; }
+  .week-row .w-title { font-weight: 600; }
+  .week-row .w-sub { font-size: 0.72rem; color: var(--faint); }
+  .week-row .w-right { margin-left: auto; }
+  .bars { display: flex; align-items: flex-end; gap: 9px; height: 110px; padding: 6px 2px 0; }
+  .bar-g { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; max-width: 34px; border-radius: 6px 6px 2px 2px; background: var(--accent); opacity: 0.85; }
+  .bar.exp { background: var(--warn); }
+  .bar-g small { font-size: 0.62rem; color: var(--faint); font-family: var(--mono); }
+  .mini-list { list-style: none; margin: 0; padding: 0; }
+  .mini-list li { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 0.82rem; }
+  .mini-list li:last-child { border-bottom: none; }
+  .mini-list .m-right { margin-left: auto; }
+  .setup-meter { display: flex; align-items: center; gap: 12px; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+  .setup-meter .s-ring { width: 42px; height: 42px; border-radius: 50%; background: conic-gradient(var(--accent) 0 65%, var(--line) 65% 100%); display: flex; align-items: center; justify-content: center; flex: none; }
+  .setup-meter .s-ring span { width: 32px; height: 32px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 0.66rem; font-weight: 700; }
+  .setup-meter .s-txt b { font-size: 0.86rem; }
+  .setup-meter .s-txt div { font-size: 0.74rem; color: var(--muted); }
+
+  /* ── Onboarding page ── */
+  .ob-wrap { max-width: 620px; margin: 0 auto; }
+  .ob-step-rail { display: flex; gap: 6px; margin-bottom: 20px; }
+  .ob-dot { flex: 1; height: 4px; border-radius: 99px; background: var(--line); }
+  .ob-dot.on { background: var(--accent); }
+  .ob-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 26px; box-shadow: var(--shadow); }
+  .ob-card h2 { font-family: var(--serif); font-size: 1.35rem; margin: 0 0 6px; }
+  .ob-card .ob-sub { color: var(--muted); font-size: 0.86rem; margin: 0 0 18px; }
+  .persona-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 640px) { .persona-grid { grid-template-columns: 1fr; } }
+  .persona-opt { background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 16px 14px; text-align: left; transition: all .12s; color: var(--ink); }
+  .persona-opt:hover { border-color: var(--faint); }
+  .persona-opt.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .persona-opt .po-emoji { font-size: 1.4rem; display: block; margin-bottom: 6px; }
+  .persona-opt .po-name { font-weight: 700; font-size: 0.9rem; }
+  .persona-opt .po-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .furnish { list-style: none; margin: 0; padding: 0; }
+  .furnish li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 0.86rem; color: var(--faint); }
+  .furnish li:last-child { border-bottom: none; }
+  .furnish li .f-ic { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 0.62rem; color: transparent; flex: none; }
+  .furnish li.on { color: var(--ink); }
+  .furnish li.on .f-ic { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+  .furnish li .f-r { margin-left: auto; font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+
+  /* ── Contract wizard ── */
+  .wiz { display: grid; grid-template-columns: 210px 1fr; gap: 18px; }
+  @media (max-width: 860px) { .wiz { grid-template-columns: 1fr; } }
+  .wiz-rail { border-right: 1px solid var(--line); padding-right: 14px; }
+  @media (max-width: 860px) { .wiz-rail { border-right: none; display: flex; overflow-x: auto; gap: 6px; padding-right: 0; } }
+  .wstep { display: flex; gap: 10px; padding: 9px 10px; border-radius: 9px; border: none; background: none; width: 100%; text-align: left; color: var(--muted); }
+  .wstep .ws-n { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); font-size: 0.68rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .wstep.done .ws-n { background: var(--good); border-color: var(--good); color: #fff; }
+  .wstep.now { background: var(--accent-soft); color: var(--accent); }
+  .wstep.now .ws-n { border-color: var(--accent); color: var(--accent); }
+  .wstep .ws-t b { display: block; font-size: 0.82rem; }
+  .wstep .ws-t small { font-size: 0.66rem; }
+  .blk { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--line); border-radius: 11px; padding: 11px 14px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
+  .blk:hover { border-color: var(--faint); }
+  .blk.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .blk .b-chk { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--line); flex: none; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: transparent; }
+  .blk.sel .b-chk { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .blk .b-name { font-weight: 600; font-size: 0.86rem; }
+  .blk .b-meta { font-size: 0.7rem; color: var(--faint); }
+  .blk .b-price { margin-left: auto; font-family: var(--mono); font-size: 0.8rem; border: none; background: none; width: 84px; text-align: right; border-bottom: 1px dashed transparent; color: var(--ink); }
+  .blk .b-price:focus { outline: none; border-bottom-color: var(--accent); color: var(--accent); }
+
+  /* ── Contract view ── */
+  .cv-head { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+  .cv-head .cv-id { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+  .cv-head h1 { font-family: var(--serif); font-size: 1.45rem; margin: 2px 0 4px; }
+  .cv-stats { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+  .cv-stat .s-l { font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .cv-stat .s-v { font-family: var(--serif); font-size: 1.15rem; font-weight: 700; }
+  .yearstrip { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; }
+  .ys-m { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 3px 5px; text-align: center; }
+  .ys-m .ys-n { font-family: var(--mono); font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--faint); margin-bottom: 4px; }
+  .ys-dots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 16px; }
+  .ys-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .ys-dot.visit { background: var(--info); }
+  .ys-dot.bill { background: var(--warn); }
+  .ys-dot.done { background: var(--good); }
+  .log-row { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px dashed var(--line); font-size: 0.84rem; align-items: flex-start; }
+  .log-row:last-child { border-bottom: none; }
+  .log-row .l-date { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); width: 64px; flex: none; padding-top: 2px; }
+  .log-row .l-body b { font-weight: 600; }
+  .log-row .l-body .l-sub { font-size: 0.72rem; color: var(--faint); }
+  .log-row .l-right { margin-left: auto; flex: none; }
+
+  /* ── Contacts ── */
+  .contact-ava { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 0.76rem; display: inline-flex; align-items: center; justify-content: center; }
+  .cd-head { display: flex; gap: 14px; align-items: center; margin-bottom: 4px; }
+  .cd-head .contact-ava { width: 46px; height: 46px; font-size: 0.95rem; }
+  .cd-head h1 { font-family: var(--serif); font-size: 1.4rem; margin: 0; }
+  .cd-head .cd-sub { font-size: 0.78rem; color: var(--muted); }
+  .fin-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 860px) { .fin-tiles { grid-template-columns: 1fr 1fr; } }
+  .fin-tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 11px 13px; }
+  .fin-tile .f-l { font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .fin-tile .f-v { font-family: var(--serif); font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+
+  /* ── AR/AP ── */
+  .aging { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 760px) { .aging { grid-template-columns: 1fr 1fr; } }
+  .age-b { border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; background: var(--surface); }
+  .age-b .a-l { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .age-b .a-v { font-family: var(--serif); font-size: 1.25rem; font-weight: 700; margin: 3px 0; }
+  .age-b .a-n { font-size: 0.7rem; color: var(--muted); }
+  .age-b.hot { border-color: var(--crit); background: var(--crit-soft); }
+  .age-b.hot .a-v { color: var(--crit); }
+
+  /* ── Group sessions ── */
+  .sess-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 860px) { .sess-grid { grid-template-columns: 1fr; } }
+  .sess { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; }
+  .sess .se-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .sess .se-when { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+  .sess h3 { margin: 1px 0 2px; font-size: 0.96rem; }
+  .sess .se-sub { font-size: 0.74rem; color: var(--muted); }
+  .cap-bar { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 10px 0 5px; }
+  .cap-bar div { height: 100%; background: var(--accent); border-radius: 99px; }
+  .cap-txt { font-size: 0.7rem; color: var(--faint); display: flex; justify-content: space-between; }
+  .att-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .att { font-size: 0.7rem; font-weight: 600; background: var(--surface-2); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; color: var(--muted); cursor: pointer; }
+  .att.here { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+
+  /* toasts */
+  .toast-zone { position: fixed; bottom: 18px; right: 18px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--good); border-radius: 10px; padding: 10px 16px; font-size: 0.8rem; max-width: 320px; box-shadow: var(--shadow); }
+
+  .design-note { border: 1px dashed var(--faint); border-radius: 10px; padding: 10px 14px; font-size: 0.72rem; color: var(--muted); margin-top: 16px; }
+  .design-note b { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sidebar">
+    <div class="side-brand">
+      <div class="b-name">Contract<span>Nest</span></div>
+      <small>Service contracts, run on autopilot</small>
+    </div>
+
+    <div class="persp" id="persp">
+      <button class="active" data-p="revenue" onclick="setPersp('revenue')">₹ Revenue</button>
+      <button data-p="expense" onclick="setPersp('expense')">Expense</button>
+    </div>
+    <div class="persp-hint" id="perspHint">Contracts you deliver &amp; bill</div>
+
+    <nav class="side-nav">
+      <div class="nav-group">Work</div>
+      <button class="nav-item active" data-page="dashboard" onclick="go('dashboard')"><span class="n-ico">◫</span>Dashboard</button>
+      <button class="nav-item" data-page="contracts" onclick="go('contracts')"><span class="n-ico">▤</span>Contracts<span class="n-badge soft">14</span></button>
+      <button class="nav-item" data-page="sessions" onclick="go('sessions')"><span class="n-ico">◔</span>Group Sessions<span class="n-badge soft">3</span></button>
+      <div class="nav-group">People</div>
+      <button class="nav-item" data-page="contacts" onclick="go('contacts')"><span class="n-ico">◉</span>Contacts</button>
+      <div class="nav-group">Money</div>
+      <button class="nav-item" data-page="arap" onclick="go('arap')"><span class="n-ico">₹</span><span id="arapNav">Receivables</span><span class="n-badge">3</span></button>
+      <div class="nav-group">Build</div>
+      <button class="nav-item" data-page="onboarding" onclick="go('onboarding')"><span class="n-ico">✦</span>Get Started</button>
+      <button class="nav-item" onclick="toast('Catalog Studio — existing screen, unchanged in this design')"><span class="n-ico">▦</span>Catalog Studio</button>
+      <button class="nav-item" onclick="toast('Settings — existing screen group (incl. Seed Data)')"><span class="n-ico">⚙</span>Settings</button>
+    </nav>
+
+    <div class="side-foot">
+      <div class="vani-pill">
+        <div class="v-dot">V</div>
+        <div class="v-t"><b>VaNi</b>9 visits need scheduling — want me to handle it?</div>
+      </div>
+      <div class="user-row">
+        <div class="avatar">CK</div>
+        <div><div class="u-name">Charan K</div><div class="u-org">CoolAir Services</div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN ═══════════ -->
+  <div class="main">
+    <div class="topbar">
+      <div class="search">⌕ <input placeholder="Search contracts, contacts, invoices…  ( / )"></div>
+      <div class="spacer"></div>
+      <button class="env-badge" id="envBadge" onclick="toggleEnv()">● Test</button>
+      <button class="icon-btn" title="Notifications">🔔<span class="n-dot"></span></button>
+      <button class="icon-btn" onclick="toggleTheme()" title="Theme">◐</button>
+    </div>
+
+    <div class="content">
+
+    <!-- ════ DASHBOARD ════ -->
+    <section class="page active" id="page-dashboard">
+      <div class="setup-meter">
+        <div class="s-ring"><span>65%</span></div>
+        <div class="s-txt"><b>Your workspace is 65% strong.</b><div>Next: confirm GST details — we'll ask when you preview your first invoice.</div></div>
+        <div style="margin-left:auto;"><button class="btn sm ghost" onclick="go('onboarding')">View checklist</button></div>
+      </div>
+
+      <div class="page-head">
+        <h1 id="dashTitle">Good morning, Charan</h1>
+        <div class="ph-sub" id="dashSub">Tuesday · 6 visits this week · ₹1,48,000 billable</div>
+        <div class="ph-actions"><button class="btn" onclick="go('contracts');setTimeout(()=>showContractsView('wizard'),80)">+ New contract</button></div>
+      </div>
+
+      <div class="kpis" id="kpiRow"></div>
+
+      <div class="dash-grid">
+        <div>
+          <div class="card card-pad" style="margin-bottom:14px;">
+            <div class="card-title" id="weekTitle">This week — service board</div>
+            <div id="weekBoard"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="card-title" id="chartTitle">Billing — last 6 months (₹ lakh)</div>
+            <div class="bars" id="dashBars"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card card-pad" style="margin-bottom:14px;">
+            <div class="card-title">Renewals radar</div>
+            <ul class="mini-list">
+              <li><div><div class="cell-main">Marina Bay Apartments</div><div class="cell-sub">₹2.4L / yr · renews in 21 days</div></div><span class="m-right"><button class="btn sm">Prepare</button></span></li>
+              <li><div><div class="cell-main">TechPark Block C</div><div class="cell-sub">₹6.1L / yr · renews in 48 days</div></div><span class="m-right tag neutral">watching</span></li>
+              <li><div><div class="cell-main">SmileCare Clinic</div><div class="cell-sub">₹80K / yr · renews in 63 days</div></div><span class="m-right tag neutral">watching</span></li>
+            </ul>
+          </div>
+          <div class="card card-pad">
+            <div class="card-title">Needs attention</div>
+            <ul class="mini-list">
+              <li><span class="tag crit">SLA</span><div class="cell-main" style="font-size:0.82rem;">Visit #4 Orion Towers is 2 days overdue</div></li>
+              <li><span class="tag warn">AR</span><div class="cell-main" style="font-size:0.82rem;">₹98,000 receivable past 30 days</div><span class="m-right"><button class="btn sm ghost" onclick="go('arap')">Open</button></span></li>
+              <li><span class="tag info">New</span><div class="cell-main" style="font-size:0.82rem;">2 unassigned visits tomorrow</div></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="design-note"><b>Design intent:</b> dashboard = "what needs me today", never a report. Perspective toggle (sidebar) flips every number from Revenue (you bill) to Expense (you pay). Setup meter is the PLG checklist surfaced natively.</div>
+    </section>
+
+    <!-- ════ ONBOARDING ════ -->
+    <section class="page" id="page-onboarding">
+      <div class="page-head"><h1>Get started</h1><div class="ph-sub">Two questions, then your first contract. ~12 minutes.</div></div>
+      <div class="ob-wrap">
+        <div class="ob-step-rail"><div class="ob-dot on"></div><div class="ob-dot" id="obd1"></div><div class="ob-dot" id="obd2"></div></div>
+
+        <div class="ob-card" id="ob0">
+          <h2>What describes you best?</h2>
+          <p class="ob-sub">This sets your whole workspace — you can be both, many businesses are.</p>
+          <div class="persona-grid">
+            <button class="persona-opt" onclick="obPersona(this)"><span class="po-emoji">🛠️</span><span class="po-name">I provide services</span><span class="po-sub">AMCs &amp; maintenance for customers — the revenue side</span></button>
+            <button class="persona-opt" onclick="obPersona(this)"><span class="po-emoji">🏢</span><span class="po-name">I own equipment</span><span class="po-sub">I hire providers to maintain my assets — the expense side</span></button>
+            <button class="persona-opt" onclick="obPersona(this)"><span class="po-emoji">🔁</span><span class="po-name">Both</span><span class="po-sub">I service others and maintain my own facilities</span></button>
+          </div>
+        </div>
+
+        <div class="ob-card" id="ob1" style="display:none;">
+          <h2>Your line of work?</h2>
+          <p class="ob-sub">We'll pre-build your catalog with real services and market-reference prices.</p>
+          <div class="filter-row">
+            <button class="chip" onclick="obIndustry(this)">HVAC / AMC</button>
+            <button class="chip" onclick="obIndustry(this)">Dental clinics</button>
+            <button class="chip" onclick="obIndustry(this)">STP / WTP</button>
+            <button class="chip" onclick="obIndustry(this)">Facility mgmt</button>
+            <button class="chip" onclick="obIndustry(this)">Something else…</button>
+          </div>
+        </div>
+
+        <div class="ob-card" id="ob2" style="display:none;">
+          <h2>Setting up your workspace…</h2>
+          <p class="ob-sub">Each line is a real step — no fake progress.</p>
+          <ul class="furnish" id="obFurnish">
+            <li><span class="f-ic">✓</span>Reading knowledge tree — HVAC<span class="f-r">29 services · 77 checkpoints</span></li>
+            <li><span class="f-ic">✓</span>Building your catalog<span class="f-r">68 blocks</span></li>
+            <li><span class="f-ic">✓</span>Applying market prices<span class="f-r">58 priced</span></li>
+            <li><span class="f-ic">✓</span>Wiring service cadences<span class="f-r">auto</span></li>
+            <li><span class="f-ic">✓</span>Tax defaults<span class="f-r">18% GST · editable</span></li>
+          </ul>
+          <div style="margin-top:18px;text-align:center;" id="obDone" hidden>
+            <button class="btn" onclick="go('contracts');setTimeout(()=>showContractsView('wizard'),80)">Create your first contract →</button>
+          </div>
+        </div>
+      </div>
+      <div class="design-note" style="max-width:620px;margin:16px auto 0;"><b>Design intent:</b> replaces the 13-step wizard. Persona → <span class="mono">t_tenant_profiles.persona</span>, industry → seeder intent. Everything else is defaulted or asked at point-of-need. This page later becomes the activation checklist home.</div>
+    </section>
+
+    <!-- ════ CONTRACTS (list + wizard) ════ -->
+    <section class="page" id="page-contracts">
+      <div id="contractsList">
+        <div class="page-head">
+          <h1 id="contractsTitle">Contracts</h1>
+          <div class="ph-sub" id="contractsSub">14 active · ₹18.6L annual value you bill</div>
+          <div class="ph-actions"><button class="btn ghost sm" onclick="toast('Export CSV — stub')">Export</button><button class="btn" onclick="showContractsView('wizard')">+ New contract</button></div>
+        </div>
+        <div class="filter-row">
+          <button class="chip on">All</button><button class="chip">Active</button><button class="chip">Draft</button><button class="chip">Expiring 60d</button><button class="chip">Paused</button>
+          <span style="margin-left:auto;font-size:0.72rem;color:var(--faint);">sorted by next event ↓</span>
+        </div>
+        <div class="card"><table class="grid" id="contractsTable">
+          <thead><tr><th>Contract</th><th id="thParty">Customer</th><th>Value / yr</th><th>Next event</th><th>SLA</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="design-note"><b>Design intent:</b> a contract row answers "what happens next on this contract" without opening it. Row click → Contract View. Party column flips Customer/Vendor with perspective.</div>
+      </div>
+
+      <div id="contractsWizard" style="display:none;">
+        <div class="page-head">
+          <h1>New contract</h1><div class="ph-sub">Single-column flow · draft auto-saves</div>
+          <div class="ph-actions"><button class="btn ghost sm" onclick="showContractsView('list')">✕ Close</button></div>
+        </div>
+        <div class="card card-pad">
+          <div class="wiz">
+            <div class="wiz-rail" id="wizRail">
+              <button class="wstep done" onclick="wizGo(0)"><span class="ws-n">✓</span><span class="ws-t"><b>Customer</b><small>Orion Towers Pvt Ltd</small></span></button>
+              <button class="wstep now" onclick="wizGo(1)"><span class="ws-n">2</span><span class="ws-t"><b>Service blocks</b><small>from your catalog</small></span></button>
+              <button class="wstep" onclick="wizGo(2)"><span class="ws-n">3</span><span class="ws-t"><b>Billing view</b><small>cadence &amp; discount</small></span></button>
+              <button class="wstep" onclick="wizGo(3)"><span class="ws-n">4</span><span class="ws-t"><b>Review &amp; send</b><small>document + events</small></span></button>
+            </div>
+            <div>
+              <div id="wiz1">
+                <div style="font-size:0.85rem;margin-bottom:10px;">Pick services — prices pre-filled from your seeded catalog, tap to adjust:</div>
+                <div id="wizBlocks"></div>
+                <div style="font-size:0.72rem;color:var(--faint);margin-top:8px;">Each selected block carries <span class="mono">source_type='catalog'</span> + <span class="mono">source_block_id</span> — full lineage to KT median.</div>
+                <div style="margin-top:14px;display:flex;gap:8px;"><button class="btn" onclick="wizGo(2)">Continue →</button><button class="btn ghost sm" onclick="toast('Flyby block — free-typed line item, kept as-is')">+ Ad-hoc line</button></div>
+              </div>
+              <div id="wiz2" style="display:none;">
+                <div style="font-size:0.85rem;margin-bottom:12px;">Billing cadence</div>
+                <div class="filter-row"><button class="chip on">Quarterly</button><button class="chip">Monthly</button><button class="chip">Half-yearly</button><button class="chip">Annual upfront</button></div>
+                <div style="font-size:0.85rem;margin:14px 0 8px;">Contract-level discount</div>
+                <div class="filter-row"><button class="chip on">None</button><button class="chip">% percent</button><button class="chip">₹ flat</button></div>
+                <div class="fin-tiles" style="margin-top:16px;">
+                  <div class="fin-tile"><div class="f-l">Annual value</div><div class="f-v">₹1,48,000</div></div>
+                  <div class="fin-tile"><div class="f-l">Per invoice</div><div class="f-v">₹37,000</div></div>
+                  <div class="fin-tile"><div class="f-l">GST 18% excl.</div><div class="f-v">+₹6,660</div></div>
+                  <div class="fin-tile"><div class="f-l">Billing events</div><div class="f-v">4 / yr</div></div>
+                </div>
+                <div style="margin-top:14px;"><button class="btn" onclick="wizGo(3)">Continue →</button></div>
+              </div>
+              <div id="wiz3" style="display:none;">
+                <div style="font-size:0.85rem;margin-bottom:10px;">Everything this contract will generate:</div>
+                <div class="yearstrip" id="wizYear"></div>
+                <div style="display:flex;gap:16px;margin-top:8px;font-size:0.7rem;color:var(--muted);"><span><span class="ys-dot visit" style="display:inline-block;margin-right:4px;"></span>service visit</span><span><span class="ys-dot bill" style="display:inline-block;margin-right:4px;"></span>billing event</span></div>
+                <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn" onclick="finishWizard()">Create &amp; send to customer</button>
+                  <button class="btn ghost" onclick="finishWizard()">Create as draft</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ CONTRACT VIEW ════ -->
+    <section class="page" id="page-contractview">
+      <button class="btn ghost sm" style="margin-bottom:12px;" onclick="go('contracts')">← Contracts</button>
+      <div class="cv-head">
+        <div>
+          <div class="cv-id">CN-2026-0031 · <span id="cvPartyLabel">sold to</span></div>
+          <h1>Annual AMC — Orion Towers</h1>
+          <div><span class="tag good">Active</span> <span class="tag neutral">Apr 2026 – Mar 2027</span> <span class="tag accent">SLA 48h</span></div>
+        </div>
+        <div class="cv-stats">
+          <div class="cv-stat"><div class="s-l">Annual value</div><div class="s-v">₹1,48,000</div></div>
+          <div class="cv-stat"><div class="s-l">Visits done</div><div class="s-v">3 / 24</div></div>
+          <div class="cv-stat"><div class="s-l">On-time SLA</div><div class="s-v" style="color:var(--good);">100%</div></div>
+          <div class="cv-stat"><div class="s-l">Billed / collected</div><div class="s-v">₹37K / ₹37K</div></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab on" onclick="cvTab(this,'cvt-log')">Logbook</button>
+        <button class="tab" onclick="cvTab(this,'cvt-blocks')">Service blocks</button>
+        <button class="tab" onclick="cvTab(this,'cvt-billing')">Billing</button>
+        <button class="tab" onclick="cvTab(this,'cvt-doc')">Document</button>
+      </div>
+
+      <div id="cvt-log">
+        <div class="card card-pad" style="margin-bottom:14px;">
+          <div class="card-title">The year at a glance</div>
+          <div class="yearstrip" id="cvYear"></div>
+        </div>
+        <div class="card card-pad">
+          <div class="card-title">Logbook — every event, newest first</div>
+          <div class="log-row"><span class="l-date">Jul 18</span><div class="l-body"><b>Visit #3 · Compressor performance check</b><div class="l-sub">Tech: Ravi · 6 checkpoints passed · customer signed</div></div><span class="l-right tag good">done · on time</span></div>
+          <div class="log-row"><span class="l-date">Jul 01</span><div class="l-body"><b>Invoice Q2 raised — ₹37,000</b><div class="l-sub">auto-generated from billing event · paid Jul 09</div></div><span class="l-right tag good">paid</span></div>
+          <div class="log-row"><span class="l-date">Jun 30</span><div class="l-body"><b>Visit #4 scheduled → slipped</b><div class="l-sub">customer requested move · SLA clock adjusted</div></div><span class="l-right tag warn">rescheduled</span></div>
+          <div class="log-row"><span class="l-date">May 12</span><div class="l-body"><b>Visit #2 · Refrigerant &amp; electrical check</b><div class="l-sub">Tech: Sunil · refrigerant top-up logged as extra</div></div><span class="l-right tag good">done</span></div>
+        </div>
+      </div>
+      <div id="cvt-blocks" style="display:none;">
+        <div class="card"><table class="grid">
+          <thead><tr><th>Block</th><th>Cadence</th><th>Source</th><th style="text-align:right;">Price</th></tr></thead>
+          <tbody>
+            <tr><td><div class="cell-main">Compressor Performance Check</div><div class="cell-sub">6 checkpoints</div></td><td>Quarterly</td><td><span class="tag accent">catalog · seeded</span></td><td class="num">₹1,200</td></tr>
+            <tr><td><div class="cell-main">Refrigerant &amp; Electrical Check</div><div class="cell-sub">8 checkpoints</div></td><td>Quarterly</td><td><span class="tag accent">catalog · seeded</span></td><td class="num">₹1,400</td></tr>
+            <tr><td><div class="cell-main">Condenser Coil Deep Clean</div><div class="cell-sub">wet service</div></td><td>Half-yearly</td><td><span class="tag accent">catalog</span></td><td class="num">₹2,800</td></tr>
+            <tr><td><div class="cell-main">Emergency Breakdown Cover</div><div class="cell-sub">SLA 48h response</div></td><td>On demand</td><td><span class="tag neutral">flyby</span></td><td class="num">₹9,000</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div id="cvt-billing" style="display:none;">
+        <div class="card"><table class="grid">
+          <thead><tr><th>Event</th><th>Due</th><th>Invoice</th><th style="text-align:right;">Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Q1 billing event</td><td class="mono" style="font-size:0.76rem;">Apr 01</td><td>INV-114</td><td class="num">₹43,660</td><td><span class="tag good">paid</span></td></tr>
+            <tr><td>Q2 billing event</td><td class="mono" style="font-size:0.76rem;">Jul 01</td><td>INV-131</td><td class="num">₹43,660</td><td><span class="tag good">paid</span></td></tr>
+            <tr><td>Q3 billing event</td><td class="mono" style="font-size:0.76rem;">Oct 01</td><td>—</td><td class="num">₹43,660</td><td><span class="tag neutral">upcoming</span></td></tr>
+            <tr><td>Q4 billing event</td><td class="mono" style="font-size:0.76rem;">Jan 01</td><td>—</td><td class="num">₹43,660</td><td><span class="tag neutral">upcoming</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div id="cvt-doc" style="display:none;">
+        <div class="card card-pad" style="text-align:center;padding:36px;">
+          <div style="font-family:var(--serif);font-size:1.1rem;margin-bottom:6px;">Contract document (ref 7 design)</div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">Branded PDF + live portal link for the customer — the referral surface.</div>
+          <button class="btn ghost sm" onclick="toast('Opens ref 7 — contract document design')">Preview document</button>
+          <button class="btn sm" onclick="toast('Portal link copied — no-login customer view')">Copy portal link</button>
+        </div>
+      </div>
+      <div class="design-note"><b>Design intent:</b> contract view = fleet-logbook pattern (ref 8). The logbook is the source of truth a customer dispute can be settled from. Portal link on the Document tab is the growth loop.</div>
+    </section>
+
+    <!-- ════ CONTACTS ════ -->
+    <section class="page" id="page-contacts">
+      <div id="contactsList">
+        <div class="page-head">
+          <h1>Contacts</h1><div class="ph-sub">Customers, vendors and sites — one book</div>
+          <div class="ph-actions"><button class="btn ghost sm" onclick="toast('Paste list / CSV import — tidies itself')">Import</button><button class="btn">+ New contact</button></div>
+        </div>
+        <div class="filter-row">
+          <button class="chip on">All</button><button class="chip">Customers</button><button class="chip">Vendors</button><button class="chip">Prospects</button>
+        </div>
+        <div class="card"><table class="grid">
+          <thead><tr><th>Contact</th><th>Type</th><th>Contracts</th><th style="text-align:right;">You bill / yr</th><th style="text-align:right;">You pay / yr</th><th>Health</th></tr></thead>
+          <tbody>
+            <tr class="rowlink" onclick="go('contactview')"><td><div style="display:flex;gap:10px;align-items:center;"><span class="contact-ava">OT</span><div><div class="cell-main">Orion Towers Pvt Ltd</div><div class="cell-sub">Facility · Chennai · 3 sites</div></div></div></td><td><span class="tag info">Customer</span></td><td>2 active</td><td class="num">₹2,08,000</td><td class="num">—</td><td><span class="tag good">100% SLA</span></td></tr>
+            <tr class="rowlink" onclick="toast('Same detail pattern as Orion Towers')"><td><div style="display:flex;gap:10px;align-items:center;"><span class="contact-ava">TP</span><div><div class="cell-main">TechPark Block C</div><div class="cell-sub">IFM · Bengaluru</div></div></div></td><td><span class="tag info">Customer</span></td><td>1 active</td><td class="num">₹6,10,000</td><td class="num">—</td><td><span class="tag warn">1 overdue visit</span></td></tr>
+            <tr class="rowlink" onclick="toast('Vendor contact — expense side of the same book')"><td><div style="display:flex;gap:10px;align-items:center;"><span class="contact-ava">SL</span><div><div class="cell-main">SafeLift Elevators</div><div class="cell-sub">Vendor · lift AMC on our office</div></div></div></td><td><span class="tag warn">Vendor</span></td><td>1 active</td><td class="num">—</td><td class="num">₹36,000</td><td><span class="tag good">on track</span></td></tr>
+            <tr class="rowlink" onclick="toast('Both-sided contact: customer AND vendor')"><td><div style="display:flex;gap:10px;align-items:center;"><span class="contact-ava">GG</span><div><div class="cell-main">GreenGuard Pest Control</div><div class="cell-sub">Vendor + referral partner</div></div></div></td><td><span class="tag warn">Vendor</span> <span class="tag info">Customer</span></td><td>2 active</td><td class="num">₹45,000</td><td class="num">₹60,000</td><td><span class="tag good">on track</span></td></tr>
+          </tbody>
+        </table></div>
+        <div class="design-note"><b>Design intent:</b> one contact book for both sides of the product — the You bill / You pay columns make Revenue+Expense visible on every row. A contact can be customer AND vendor.</div>
+      </div>
+    </section>
+
+    <!-- ════ CONTACT VIEW ════ -->
+    <section class="page" id="page-contactview">
+      <button class="btn ghost sm" style="margin-bottom:12px;" onclick="go('contacts')">← Contacts</button>
+      <div class="cd-head">
+        <span class="contact-ava">OT</span>
+        <div><h1>Orion Towers Pvt Ltd</h1><div class="cd-sub">Customer · Facility · Chennai · GSTIN 33AAACO1234F1Z5 · since Apr 2026</div></div>
+        <div style="margin-left:auto;display:flex;gap:8px;"><button class="btn ghost sm" onclick="toast('Send portal link')">Portal link</button><button class="btn sm" onclick="go('contracts');setTimeout(()=>showContractsView('wizard'),80)">+ Contract</button></div>
+      </div>
+      <div class="tabs">
+        <button class="tab on" onclick="cdTab(this,'cdt-profile')">Profile</button>
+        <button class="tab" onclick="cdTab(this,'cdt-contracts')">Contracts</button>
+        <button class="tab" onclick="cdTab(this,'cdt-assets')">Assets</button>
+        <button class="tab" onclick="cdTab(this,'cdt-fin')">Financials</button>
+        <button class="tab" onclick="cdTab(this,'cdt-timeline')">Timeline</button>
+      </div>
+      <div id="cdt-profile">
+        <div class="dash-grid">
+          <div class="card card-pad">
+            <div class="card-title">Details</div>
+            <table class="grid">
+              <tr><td class="cell-sub" style="width:140px;">Primary contact</td><td>Meera Iyer · Facilities Head</td></tr>
+              <tr><td class="cell-sub">Phone / email</td><td>+91 98400 12345 · meera@oriontowers.in</td></tr>
+              <tr><td class="cell-sub">Sites</td><td>Tower A, Tower B, Clubhouse (3)</td></tr>
+              <tr><td class="cell-sub">Billing terms</td><td>Net 15 · GST 18% exclusive</td></tr>
+            </table>
+          </div>
+          <div class="card card-pad">
+            <div class="card-title">Relationship</div>
+            <div class="fin-tiles" style="grid-template-columns:1fr 1fr;">
+              <div class="fin-tile"><div class="f-l">Annual value</div><div class="f-v">₹2,08,000</div></div>
+              <div class="fin-tile"><div class="f-l">SLA on-time</div><div class="f-v" style="color:var(--good);">100%</div></div>
+              <div class="fin-tile"><div class="f-l">Open AR</div><div class="f-v">₹0</div></div>
+              <div class="fin-tile"><div class="f-l">Portal opens</div><div class="f-v">14 / mo</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="cdt-contracts" style="display:none;">
+        <div class="card"><table class="grid">
+          <thead><tr><th>Contract</th><th>Value / yr</th><th>Next event</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="rowlink" onclick="go('contractview')"><td><div class="cell-main">Annual AMC — HVAC</div><div class="cell-sub">CN-2026-0031</div></td><td class="num" style="text-align:left;">₹1,48,000</td><td>Visit · Aug 12</td><td><span class="tag good">Active</span></td></tr>
+            <tr class="rowlink" onclick="toast('Second contract — same view pattern')"><td><div class="cell-main">Clubhouse STP O&amp;M</div><div class="cell-sub">CN-2026-0044</div></td><td class="num" style="text-align:left;">₹60,000</td><td>Invoice · Aug 01</td><td><span class="tag good">Active</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div id="cdt-assets" style="display:none;">
+        <div class="card"><table class="grid">
+          <thead><tr><th>Asset</th><th>Location</th><th>Under contract</th><th>Last service</th></tr></thead>
+          <tbody>
+            <tr><td><div class="cell-main">Chiller — 120TR Carrier</div><div class="cell-sub">from equipment registry</div></td><td>Tower A basement</td><td><span class="tag accent">CN-0031</span></td><td class="mono" style="font-size:0.76rem;">Jul 18</td></tr>
+            <tr><td><div class="cell-main">AHU ×6</div><div class="cell-sub">floor units</div></td><td>Towers A/B</td><td><span class="tag accent">CN-0031</span></td><td class="mono" style="font-size:0.76rem;">Jul 18</td></tr>
+            <tr><td><div class="cell-main">STP 50 KLD</div><div class="cell-sub">membrane type</div></td><td>Clubhouse</td><td><span class="tag accent">CN-0044</span></td><td class="mono" style="font-size:0.76rem;">Jul 02</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div id="cdt-fin" style="display:none;">
+        <div class="fin-tiles">
+          <div class="fin-tile"><div class="f-l">Billed YTD</div><div class="f-v">₹87,320</div></div>
+          <div class="fin-tile"><div class="f-l">Collected</div><div class="f-v">₹87,320</div></div>
+          <div class="fin-tile"><div class="f-l">Open AR</div><div class="f-v">₹0</div></div>
+          <div class="fin-tile"><div class="f-l">Avg days to pay</div><div class="f-v">8</div></div>
+        </div>
+        <div class="card"><table class="grid">
+          <thead><tr><th>Invoice</th><th>Date</th><th style="text-align:right;">Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>INV-131 · Q2 AMC</td><td class="mono" style="font-size:0.76rem;">Jul 01</td><td class="num">₹43,660</td><td><span class="tag good">paid · 8d</span></td></tr>
+            <tr><td>INV-114 · Q1 AMC</td><td class="mono" style="font-size:0.76rem;">Apr 01</td><td class="num">₹43,660</td><td><span class="tag good">paid · 7d</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div id="cdt-timeline" style="display:none;">
+        <div class="card card-pad">
+          <div class="log-row"><span class="l-date">Jul 18</span><div class="l-body"><b>Visit #3 completed</b><div class="l-sub">CN-0031 · signed by Meera Iyer</div></div></div>
+          <div class="log-row"><span class="l-date">Jul 09</span><div class="l-body"><b>INV-131 paid — ₹43,660</b><div class="l-sub">UTR ending 4821</div></div></div>
+          <div class="log-row"><span class="l-date">Jun 30</span><div class="l-body"><b>Visit #4 rescheduled by customer</b><div class="l-sub">via portal · SLA clock adjusted</div></div></div>
+          <div class="log-row"><span class="l-date">Apr 02</span><div class="l-body"><b>Contract CN-0031 accepted via portal</b><div class="l-sub">viewed 3× before accepting</div></div></div>
+        </div>
+      </div>
+      <div class="design-note"><b>Design intent:</b> tab order matches the live product (Profile | Contracts | Assets | Financials | Timeline — Overview stays hidden per current decision). Timeline merges service + money + portal events into one story.</div>
+    </section>
+
+    <!-- ════ AR / AP ════ -->
+    <section class="page" id="page-arap">
+      <div class="page-head">
+        <h1 id="arapTitle">Receivables</h1>
+        <div class="ph-sub" id="arapSub">What customers owe you — auto-raised from billing events</div>
+        <div class="ph-actions"><button class="btn ghost sm" onclick="toast('Statement export — stub')">Statements</button><button class="btn sm" onclick="toast('VaNi: I will send polite reminders on all 3 overdue invoices and escalate Friday.')">Let VaNi chase ⚡</button></div>
+      </div>
+      <div class="tabs">
+        <button class="tab on" id="tabAR" onclick="arapMode('ar',this)">Receivables (AR)</button>
+        <button class="tab" id="tabAP" onclick="arapMode('ap',this)">Payables (AP)</button>
+      </div>
+      <div class="aging" id="agingRow"></div>
+      <div class="card"><table class="grid" id="arapTable">
+        <thead><tr><th>Invoice</th><th id="arapParty">Customer</th><th>Contract</th><th>Due</th><th style="text-align:right;">Amount</th><th>Age</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <div class="design-note"><b>Design intent:</b> AR and AP are the same screen, mirrored — the product runs both sides of the money. Every invoice traces to a billing event on a contract; nothing is hand-typed. "Let VaNi chase" is the expansion hook placed exactly at the pain.</div>
+    </section>
+
+    <!-- ════ GROUP SESSIONS ════ -->
+    <section class="page" id="page-sessions">
+      <div class="page-head">
+        <h1>Group Sessions</h1>
+        <div class="ph-sub">One service event, many attendees — batches, camps &amp; workshops billed per head or per session</div>
+        <div class="ph-actions"><button class="btn">+ New session</button></div>
+      </div>
+      <div class="filter-row">
+        <button class="chip on">Upcoming</button><button class="chip">Past</button><button class="chip">Recurring series</button>
+      </div>
+      <div class="sess-grid">
+        <div class="sess">
+          <div class="se-top"><div><div class="se-when">TUE JUL 28 · 7:00–8:00 AM · Clubhouse Lawn</div><h3>Physio &amp; Mobility Batch — Morning</h3><div class="se-sub">Series: Mon/Wed/Fri · billed monthly per head · ₹1,200/attendee</div></div><span class="tag good" style="margin-left:auto;">confirmed</span></div>
+          <div class="cap-bar"><div style="width:75%"></div></div>
+          <div class="cap-txt"><span>15 / 20 enrolled</span><span>₹18,000 / mo</span></div>
+          <div class="att-chips" id="attend1">
+            <button class="att here" onclick="toggleAtt(this)">Meera I.</button><button class="att here" onclick="toggleAtt(this)">Rajan S.</button><button class="att" onclick="toggleAtt(this)">Priya V.</button><button class="att here" onclick="toggleAtt(this)">Arun K.</button><button class="att" onclick="toggleAtt(this)">+11 more</button>
+          </div>
+          <div style="font-size:0.68rem;color:var(--faint);margin-top:8px;">tap a chip to mark attendance · attendance feeds the per-head billing event</div>
+        </div>
+        <div class="sess">
+          <div class="se-top"><div><div class="se-when">SAT AUG 02 · 10:00 AM · TechPark Block C</div><h3>Fire Safety Drill &amp; Training</h3><div class="se-sub">One-off · billed per session · ₹15,000 · under CN-2026-0044</div></div><span class="tag warn" style="margin-left:auto;">12 RSVPs pending</span></div>
+          <div class="cap-bar"><div style="width:36%"></div></div>
+          <div class="cap-txt"><span>18 / 50 confirmed</span><span>₹15,000 flat</span></div>
+          <div class="att-chips"><button class="att" onclick="toast('Send reminder via portal + WhatsApp — stub')">Send RSVP reminder</button></div>
+        </div>
+        <div class="sess">
+          <div class="se-top"><div><div class="se-when">EVERY 1ST MON · 9:00 AM · Orion Towers</div><h3>Facility Staff Toolbox Talk</h3><div class="se-sub">Recurring series · included in AMC (no extra billing)</div></div><span class="tag neutral" style="margin-left:auto;">series</span></div>
+          <div class="cap-bar"><div style="width:90%"></div></div>
+          <div class="cap-txt"><span>avg 9 / 10 attend</span><span>included</span></div>
+        </div>
+        <div class="sess" style="border-style:dashed;display:flex;align-items:center;justify-content:center;min-height:150px;color:var(--faint);font-size:0.84rem;text-align:center;">
+          Group sessions turn one calendar slot into<br>many attendees — wellness batches, drills,<br>training camps, review meetings.
+        </div>
+      </div>
+      <div class="design-note"><b>Design intent (assumption — confirm):</b> a session = one service event with an attendee list and a capacity; billing is per-head (attendance-driven) or per-session (flat), and can attach to an existing contract. Attendance chips are the mobile-first tap surface.</div>
+    </section>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<div class="toast-zone" id="toastZone"></div>
+
+<script>
+/* ── router ── */
+const PAGES = ['dashboard','onboarding','contracts','contractview','contacts','contactview','arap','sessions'];
+function go(p) {
+  PAGES.forEach(x => document.getElementById('page-' + x).classList.toggle('active', x === p));
+  document.querySelectorAll('.nav-item[data-page]').forEach(n => {
+    const owns = n.dataset.page === p || (n.dataset.page === 'contracts' && p === 'contractview') || (n.dataset.page === 'contacts' && p === 'contactview');
+    n.classList.toggle('active', owns);
+  });
+  window.scrollTo({ top: 0 });
+}
+function toast(msg) {
+  const z = document.getElementById('toastZone');
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; z.appendChild(t);
+  setTimeout(() => t.remove(), 3400);
+}
+function toggleTheme() {
+  const r = document.documentElement;
+  r.dataset.theme = (r.dataset.theme === 'dark') ? 'light' : 'dark';
+}
+let envLive = false;
+function toggleEnv() {
+  envLive = !envLive;
+  const b = document.getElementById('envBadge');
+  b.textContent = envLive ? '● Live' : '● Test';
+  b.classList.toggle('live', envLive);
+  toast(envLive ? 'Switched to LIVE environment' : 'Switched to TEST environment');
+}
+
+/* ── perspective (Revenue / Expense) ── */
+let persp = 'revenue';
+const KPI = {
+  revenue: [
+    ['Active contracts','14','+2 this month','up'],
+    ['Billable this month','₹1.48L','on plan','up'],
+    ['Open receivables','₹98K','3 overdue','down'],
+    ['Visits this week','6','2 unassigned','down'],
+    ['SLA on-time','96%','30-day rolling','up'],
+  ],
+  expense: [
+    ['Vendor contracts','5','across 3 vendors','up'],
+    ['Payable this month','₹52K','2 invoices','up'],
+    ['Open payables','₹36K','1 due Friday','down'],
+    ['Vendor visits due','3','on our assets','up'],
+    ['Vendor SLA held','89%','SafeLift slipping','down'],
+  ]
+};
+const WEEK = {
+  revenue: [
+    ['MON 27','Visit · Orion Towers — Condenser deep clean','Tech: Ravi · 10:00','good','assigned'],
+    ['TUE 28','Group session · Physio batch (15 enrolled)','Clubhouse · 7:00','good','confirmed'],
+    ['WED 29','Visit · TechPark — DG set service','UNASSIGNED','crit','assign →'],
+    ['THU 30','Invoice run · 2 billing events fall due','₹80,660 total','warn','preview'],
+    ['FRI 31','Visit · SmileCare — Dental chair service','Tech: Sunil · 14:00','good','assigned'],
+  ],
+  expense: [
+    ['MON 27','SafeLift — lift AMC visit on our office','their tech · 11:00','good','confirmed'],
+    ['WED 29','GreenGuard — pest control quarterly','our clubhouse','good','confirmed'],
+    ['THU 30','Pay run · SafeLift INV-88 ₹9,000 due','Net-15 expires','warn','approve'],
+  ]
+};
+const CONTRACTS = {
+  revenue: [
+    ['Annual AMC — HVAC','CN-2026-0031','Orion Towers Pvt Ltd','₹1,48,000','Visit · Aug 12','100%','good','Active'],
+    ['IFM Contract','CN-2026-0018','TechPark Block C','₹6,10,000','Visit · Jul 29 ⚠ unassigned','92%','warn','Active'],
+    ['Clubhouse STP O&M','CN-2026-0044','Orion Towers Pvt Ltd','₹60,000','Invoice · Aug 01','100%','good','Active'],
+    ['Equipment AMC','CN-2026-0037','SmileCare Clinic','₹80,000','Visit · Jul 31','100%','good','Active'],
+    ['Physio batch (per-head)','CN-2026-0051','Marina Bay Apartments','₹2,16,000','Session · Jul 28','—','neutral','Active'],
+  ],
+  expense: [
+    ['Lift AMC — our office','VN-2026-0007','SafeLift Elevators','₹36,000','Their visit · Jul 27','89%','warn','Active'],
+    ['Pest control — clubhouse','VN-2026-0011','GreenGuard Pest Control','₹60,000','Their visit · Jul 29','100%','good','Active'],
+    ['Genset AMC — warehouse','VN-2026-0004','PowerServe Ltd','₹48,000','Invoice due · Jul 30','95%','good','Active'],
+  ]
+};
+function setPersp(p) {
+  persp = p;
+  document.querySelectorAll('.persp button').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+  document.getElementById('perspHint').textContent = p === 'revenue' ? 'Contracts you deliver & bill' : 'Contracts you’ve hired & pay';
+  document.getElementById('arapNav').textContent = p === 'revenue' ? 'Receivables' : 'Payables';
+  renderKpis(); renderWeek(); renderBars(); renderContracts();
+  document.getElementById('dashSub').textContent = p === 'revenue'
+    ? 'Tuesday · 6 visits this week · ₹1,48,000 billable'
+    : 'Tuesday · 3 vendor visits · ₹52,000 payable this month';
+  document.getElementById('contractsTitle').textContent = p === 'revenue' ? 'Contracts' : 'Vendor contracts';
+  document.getElementById('contractsSub').textContent = p === 'revenue' ? '14 active · ₹18.6L annual value you bill' : '5 active · ₹1.44L annual value you pay';
+  document.getElementById('thParty').textContent = p === 'revenue' ? 'Customer' : 'Vendor';
+  document.getElementById('cvPartyLabel').textContent = p === 'revenue' ? 'sold to' : 'hired from';
+  document.getElementById('weekTitle').textContent = p === 'revenue' ? 'This week — service board' : 'This week — vendor board';
+  document.getElementById('chartTitle').textContent = p === 'revenue' ? 'Billing — last 6 months (₹ lakh)' : 'Vendor spend — last 6 months (₹ thousand)';
+  arapMode(p === 'revenue' ? 'ar' : 'ap', document.getElementById(p === 'revenue' ? 'tabAR' : 'tabAP'));
+  toast(p === 'revenue' ? 'Perspective: Revenue — what you bill' : 'Perspective: Expense — what you pay');
+}
+function renderKpis() {
+  document.getElementById('kpiRow').innerHTML = KPI[persp].map(k =>
+    `<div class="kpi"><div class="k-label">${k[0]}</div><div class="k-value">${k[1]}</div><div class="k-delta ${k[3]}">${k[2]}</div></div>`).join('');
+}
+function renderWeek() {
+  document.getElementById('weekBoard').innerHTML = WEEK[persp].map(w =>
+    `<div class="week-row"><span class="w-day">${w[0]}</span><div><div class="w-title">${w[1]}</div><div class="w-sub">${w[2]}</div></div><span class="w-right tag ${w[3]}">${w[4]}</span></div>`).join('');
+}
+function renderBars() {
+  const vals = persp === 'revenue' ? [1.1,1.3,1.2,1.5,1.4,1.48] : [0.4,0.4,0.5,0.45,0.5,0.52];
+  const max = Math.max(...vals);
+  document.getElementById('dashBars').innerHTML = ['Feb','Mar','Apr','May','Jun','Jul'].map((m,i) =>
+    `<div class="bar-g"><div class="bar ${persp==='expense'?'exp':''}" style="height:${vals[i]/max*100}%"></div><small>${m}</small></div>`).join('');
+}
+function renderContracts() {
+  document.querySelector('#contractsTable tbody').innerHTML = CONTRACTS[persp].map(c => `
+    <tr class="rowlink" onclick="go('contractview')">
+      <td><div class="cell-main">${c[0]}</div><div class="cell-sub">${c[1]}</div></td>
+      <td>${c[2]}</td><td class="num" style="text-align:left;">${c[3]}</td>
+      <td style="font-size:0.8rem;">${c[4]}</td>
+      <td><span class="tag ${c[6]}">${c[5]}</span></td>
+      <td><span class="tag good">${c[7]}</span></td>
+    </tr>`).join('');
+}
+
+/* ── contracts list/wizard toggle ── */
+function showContractsView(v) {
+  document.getElementById('contractsList').style.display = v === 'list' ? '' : 'none';
+  document.getElementById('contractsWizard').style.display = v === 'wizard' ? '' : 'none';
+  if (v === 'wizard') { wizGo(1); buildWizBlocks(); }
+}
+const WIZ_BLOCKS = [
+  ['Compressor Performance Check','quarterly · seeded from KT','₹1,200', true],
+  ['Refrigerant & Electrical Check','quarterly · seeded from KT','₹1,400', true],
+  ['Condenser Coil Deep Clean','half-yearly','₹2,800', true],
+  ['Emergency Breakdown Cover','SLA 48h · your price','₹9,000', false],
+  ['Filter Replacement Set','per visit · spare','₹450', false],
+];
+function buildWizBlocks() {
+  document.getElementById('wizBlocks').innerHTML = WIZ_BLOCKS.map((b,i) => `
+    <div class="blk ${b[3]?'sel':''}" onclick="this.classList.toggle('sel')">
+      <span class="b-chk">✓</span>
+      <div><div class="b-name">${b[0]}</div><div class="b-meta">${b[1]}</div></div>
+      <input class="b-price" value="${b[2]}" onclick="event.stopPropagation()" onchange="toast('Price updated — delta-only PATCH')">
+    </div>`).join('');
+}
+function wizGo(n) {
+  ['wiz1','wiz2','wiz3'].forEach((id,i) => document.getElementById(id).style.display = (i === n-1 ? '' : 'none'));
+  document.querySelectorAll('#wizRail .wstep').forEach((s,i) => {
+    s.classList.toggle('done', i < n); s.classList.toggle('now', i === n);
+  });
+  if (n === 3) buildYear('wizYear', false);
+}
+function finishWizard() {
+  toast('🎉 Contract created — 24 visits + 4 billing events generated');
+  showContractsView('list');
+  setTimeout(() => go('contractview'), 600);
+  buildYear('cvYear', true);
+}
+function buildYear(elId, withDone) {
+  const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  document.getElementById(elId).innerHTML = months.map((m,i) => {
+    let dots = '';
+    const past = withDone && i < 4;
+    dots += `<span class="ys-dot ${past?'done':'visit'}"></span><span class="ys-dot ${past?'done':'visit'}"></span>`;
+    if (i % 3 === 0) dots += '<span class="ys-dot bill"></span>';
+    return `<div class="ys-m"><div class="ys-n">${m}</div><div class="ys-dots">${dots}</div></div>`;
+  }).join('');
+}
+
+/* ── contract view tabs ── */
+function cvTab(btn, id) {
+  btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  ['cvt-log','cvt-blocks','cvt-billing','cvt-doc'].forEach(x => document.getElementById(x).style.display = (x === id ? '' : 'none'));
+}
+function cdTab(btn, id) {
+  btn.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  btn.classList.add('on');
+  ['cdt-profile','cdt-contracts','cdt-assets','cdt-fin','cdt-timeline'].forEach(x => document.getElementById(x).style.display = (x === id ? '' : 'none'));
+}
+
+/* ── AR / AP ── */
+const AGING = {
+  ar: [['Current','₹43,660','2 invoices',''],['1–30 days','₹37,000','1 invoice',''],['31–60 days','₹61,000','2 invoices','hot'],['60+ days','₹37,000','1 invoice · escalated','hot']],
+  ap: [['Current','₹16,000','2 bills',''],['1–30 days','₹20,000','1 bill',''],['31–60 days','₹0','clear',''],['60+ days','₹0','clear','']]
+};
+const ARAP_ROWS = {
+  ar: [
+    ['INV-131 · Q2 AMC','Orion Towers','CN-0031','Jul 16','₹43,660','current','good','remind'],
+    ['INV-127 · IFM monthly','TechPark Block C','CN-0018','Jul 10','₹37,000','15 days','warn','remind'],
+    ['INV-119 · Dental AMC','SmileCare Clinic','CN-0037','Jun 12','₹23,600','43 days','crit','call'],
+    ['INV-108 · STP O&M','Lakeview Residency','CN-0022','May 28','₹37,400','58 days','crit','escalate'],
+  ],
+  ap: [
+    ['SL-INV-88 · Lift AMC','SafeLift Elevators','VN-0007','Jul 30','₹9,000','due in 5d','good','approve'],
+    ['GG-204 · Pest control','GreenGuard','VN-0011','Aug 02','₹7,000','due in 8d','good','approve'],
+    ['PS-77 · Genset AMC','PowerServe Ltd','VN-0004','Jul 21','₹20,000','4 days late','warn','pay now'],
+  ]
+};
+function arapMode(mode, btn) {
+  if (btn) { document.getElementById('tabAR').classList.toggle('on', mode==='ar'); document.getElementById('tabAP').classList.toggle('on', mode==='ap'); }
+  document.getElementById('arapTitle').textContent = mode === 'ar' ? 'Receivables' : 'Payables';
+  document.getElementById('arapSub').textContent = mode === 'ar' ? 'What customers owe you — auto-raised from billing events' : 'What you owe vendors — captured from their contracts with you';
+  document.getElementById('arapParty').textContent = mode === 'ar' ? 'Customer' : 'Vendor';
+  document.getElementById('agingRow').innerHTML = AGING[mode].map(a =>
+    `<div class="age-b ${a[3]}"><div class="a-l">${a[0]}</div><div class="a-v">${a[1]}</div><div class="a-n">${a[2]}</div></div>`).join('');
+  document.querySelector('#arapTable tbody').innerHTML = ARAP_ROWS[mode].map(r => `
+    <tr><td><div class="cell-main">${r[0]}</div></td><td>${r[1]}</td><td class="mono" style="font-size:0.74rem;">${r[2]}</td>
+    <td class="mono" style="font-size:0.76rem;">${r[3]}</td><td class="num">${r[4]}</td>
+    <td><span class="tag ${r[6]}">${r[5]}</span></td>
+    <td><button class="btn sm ghost" onclick="toast('${r[7]} — action stub')">${r[7]}</button></td></tr>`).join('');
+}
+
+/* ── onboarding flow ── */
+function obPersona(el) {
+  document.querySelectorAll('.persona-opt').forEach(p => p.classList.remove('sel'));
+  el.classList.add('sel');
+  setTimeout(() => { document.getElementById('ob0').style.display = 'none'; document.getElementById('ob1').style.display = ''; document.getElementById('obd1').classList.add('on'); }, 400);
+}
+function obIndustry(el) {
+  el.classList.add('on');
+  setTimeout(() => {
+    document.getElementById('ob1').style.display = 'none';
+    document.getElementById('ob2').style.display = '';
+    document.getElementById('obd2').classList.add('on');
+    const lis = document.querySelectorAll('#obFurnish li');
+    lis.forEach((li,i) => setTimeout(() => {
+      li.classList.add('on');
+      if (i === lis.length - 1) document.getElementById('obDone').hidden = false;
+    }, 500 * (i+1)));
+  }, 400);
+}
+
+/* ── group sessions ── */
+function toggleAtt(el) {
+  if (el.textContent.startsWith('+')) { toast('Full attendee sheet — stub'); return; }
+  el.classList.toggle('here');
+  toast(el.classList.contains('here') ? el.textContent + ' marked present — feeds per-head billing' : el.textContent + ' marked absent');
+}
+
+/* init */
+renderKpis(); renderWeek(); renderBars(); renderContracts(); arapMode('ar'); buildYear('cvYear', true);
+</script>
+</body>
+</html>
