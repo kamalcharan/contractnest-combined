@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — product-led-ux-playground
+═══════════════════════════════════════════════════
+Feature branch : claude/bbb-product-led-ux-53a7ue
+Date           : 2026-07-25
+Author         : Claude (session: BBB product-led UX)
+
+SUBMODULES AFFECTED: NONE
+This feature touches ONLY the parent repo (contractnest-combined).
+The deliverable is a design-reference HTML playground that lives in
+SPRINT_REFERENCES/ alongside refs 1-9. No API, UI, Edge, Mobile,
+FamilyKnows, or Documentation submodule files are modified.
+
+───────────────────────────────────────────────────
+FILE 1 of 1
+───────────────────────────────────────────────────
+Source (in this folder):
+  MANUAL_COPY_FILES\product-led-ux-playground\SPRINT_REFERENCES\10-product-led-playground.html
+
+Destination (parent repo):
+  SPRINT_REFERENCES\10-product-led-playground.html
+
+Purpose:
+  End-to-end interactive product-led UX playground ("ContractNest
+  sells itself"). Six stages: Land (no-login industry sandbox),
+  Start (2-question signup -> furnished workspace -> 15-min first
+  contract with live timer + aha calendar), Engage (self-ticking
+  activation checklist, just-in-time GST modal, weekly digest),
+  Learn (one-time coach marks + data-triggered lessons), Expand
+  (VaNi virtual-employee upsell, salary-anchored pricing, AMC-import
+  as locked later-bet skill), Refer (buyer portal growth loop,
+  earned NPS -> referral ask). Footer: PLG metrics scorecard +
+  instrumentation event list. Includes the 13-step VaNi wizard
+  delete/default/defer sorting table (Stage 2 side panel).
+
+How to open:
+  Double-click the file, or drag into any browser. Single
+  self-contained HTML — no server, no dependencies, no network.
+
+NOTE: The destination file is ALREADY present on the feature branch
+(committed at SPRINT_REFERENCES\10-product-led-playground.html), so
+after "git checkout claude/bbb-product-led-ux-53a7ue" the copy step
+is a no-op safety net — running it anyway is harmless.
+═══════════════════════════════════════════════════

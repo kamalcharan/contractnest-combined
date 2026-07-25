@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Product-Led UX Playground</title>
+<style>
+  /* Single-theme by design: V3 Vikuna Black. */
+  :root {
+    --bg: #0D0F14;
+    --surface: #14171E;
+    --surface-2: #1B1F28;
+    --surface-3: #232837;
+    --ink: #F2F3F5;
+    --muted: #9AA1AD;
+    --faint: #5E6672;
+    --line: rgba(255,255,255,0.09);
+    --amber: #F5A623;
+    --amber-hi: #FFB733;
+    --amber-soft: rgba(245,166,35,0.12);
+    --green: #3DD68C;
+    --green-soft: rgba(61,214,140,0.12);
+    --red: #F06A55;
+    --red-soft: rgba(240,106,85,0.12);
+    --blue: #5CA8FF;
+    --blue-soft: rgba(92,168,255,0.12);
+    --violet: #A78BFA;
+    --violet-soft: rgba(167,139,250,0.12);
+    --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'DM Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+  button { font: inherit; cursor: pointer; }
+  input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .mono { font-family: var(--mono); }
+  .amber { color: var(--amber); }
+  .green { color: var(--green); }
+  .muted { color: var(--muted); }
+
+  /* ── top nav ── */
+  nav.top { position: sticky; top: 0; z-index: 90; background: rgba(13,15,20,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .nav-in { max-width: 1240px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .logo { font-weight: 800; letter-spacing: 0.04em; font-size: 1rem; white-space: nowrap; }
+  .logo span { color: var(--amber); }
+  .nav-tag { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; }
+  .nav-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* ── journey rail ── */
+  .rail-wrap { border-bottom: 1px solid var(--line); background: var(--surface); overflow-x: auto; }
+  .rail { max-width: 1240px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: stretch; gap: 0; min-width: 760px; }
+  .stage-btn { flex: 1; background: none; border: none; border-radius: 10px; padding: 10px 12px; text-align: left; color: var(--muted); position: relative; transition: background .15s, color .15s; min-width: 118px; }
+  .stage-btn:hover { background: var(--surface-2); color: var(--ink); }
+  .stage-btn .s-num { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); display: block; }
+  .stage-btn .s-name { font-weight: 700; font-size: 0.92rem; display: block; margin: 1px 0; }
+  .stage-btn .s-sub { font-size: 0.7rem; color: var(--faint); display: block; line-height: 1.3; }
+  .stage-btn.active { background: var(--amber-soft); color: var(--ink); }
+  .stage-btn.active .s-num { color: var(--amber); }
+  .stage-btn.active::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -15px; height: 2px; background: var(--amber); }
+  .rail-arrow { align-self: center; color: var(--faint); padding: 0 2px; font-size: 0.8rem; user-select: none; }
+
+  /* ── layout ── */
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 80px; }
+  .stage-panel { display: none; }
+  .stage-panel.active { display: block; animation: fadeUp .25s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .stage-head { margin-bottom: 22px; }
+  .eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); margin-bottom: 10px; }
+  .eyebrow::before { content: ''; width: 30px; height: 1px; background: var(--amber); }
+  .stage-head h2 { font-weight: 800; text-transform: uppercase; letter-spacing: 0.015em; line-height: 1; font-size: clamp(1.5rem, 3vw, 2.2rem); margin: 0 0 8px; }
+  .stage-head p { color: var(--muted); max-width: 72ch; margin: 0; }
+  .cols { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .cols { grid-template-columns: 1fr; } }
+
+  /* ── cards ── */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card-h { padding: 12px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .card-h .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+  .card-h h3 { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0; color: var(--muted); }
+  .card-b { padding: 18px; }
+
+  .why { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .why h4 { margin: 0 0 10px; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--amber); font-family: var(--mono); font-weight: 500; }
+  .why ul { margin: 0 0 16px; padding-left: 18px; color: var(--muted); font-size: 0.86rem; }
+  .why li { margin-bottom: 7px; }
+  .why li strong { color: var(--ink); font-weight: 600; }
+  .why .code-map { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); line-height: 1.8; }
+  .why .code-map b { color: var(--green); font-weight: 500; }
+  .why .code-map i { color: var(--amber); font-style: normal; }
+
+  .btn { background: var(--amber); color: #14130E; border: none; font-weight: 700; font-size: 0.88rem; padding: 11px 22px; border-radius: 9px; transition: background .15s, transform .15s; }
+  .btn:hover { background: var(--amber-hi); transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .btn.ghost { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: var(--surface-3); }
+  .btn.sm { padding: 7px 14px; font-size: 0.8rem; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 99px; padding: 3px 10px; border: 1px solid var(--line); color: var(--muted); }
+  .pill.green { color: var(--green); border-color: rgba(61,214,140,0.35); background: var(--green-soft); }
+  .pill.amber { color: var(--amber); border-color: rgba(245,166,35,0.35); background: var(--amber-soft); }
+  .pill.red { color: var(--red); border-color: rgba(240,106,85,0.35); background: var(--red-soft); }
+  .pill.blue { color: var(--blue); border-color: rgba(92,168,255,0.35); background: var(--blue-soft); }
+  .pill.violet { color: var(--violet); border-color: rgba(167,139,250,0.35); background: var(--violet-soft); }
+
+  /* ══ STAGE 1: LAND ══ */
+  .ind-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .ind-chip { background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); border-radius: 99px; padding: 8px 16px; font-size: 0.84rem; font-weight: 600; transition: all .15s; }
+  .ind-chip:hover { color: var(--ink); border-color: var(--faint); }
+  .ind-chip.active { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+  .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .preview-grid { grid-template-columns: 1fr; } }
+  .p-tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .p-tile .t-label { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+  .p-tile .t-big { font-size: 1.5rem; font-weight: 800; }
+  .p-tile .t-sub { font-size: 0.76rem; color: var(--muted); }
+  .block-rows { margin-top: 8px; }
+  .block-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.8rem; }
+  .block-row:last-child { border-bottom: none; }
+  .block-row .b-price { font-family: var(--mono); color: var(--green); font-size: 0.76rem; }
+  .land-cta-row { margin-top: 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .land-note { font-size: 0.78rem; color: var(--faint); }
+
+  /* ══ STAGE 2: START ══ */
+  .timer-strip { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; }
+  .timer-clock { font-family: var(--mono); font-size: 1.3rem; font-weight: 500; color: var(--green); min-width: 76px; }
+  .timer-clock.warn { color: var(--amber); }
+  .timer-bar { flex: 1; height: 6px; background: var(--surface-3); border-radius: 99px; overflow: hidden; }
+  .timer-fill { height: 100%; width: 0%; background: var(--green); border-radius: 99px; transition: width .4s ease; }
+  .timer-cap { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); white-space: nowrap; }
+
+  .start-steps { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .ss { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--faint); }
+  .ss.done { color: var(--green); border-color: rgba(61,214,140,0.4); }
+  .ss.now { color: var(--amber); border-color: var(--amber); background: var(--amber-soft); }
+
+  .persona-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 640px) { .persona-cards { grid-template-columns: 1fr; } }
+  .persona-card { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: left; color: var(--ink); transition: all .15s; }
+  .persona-card:hover { border-color: var(--faint); transform: translateY(-2px); }
+  .persona-card.sel { border-color: var(--amber); background: var(--amber-soft); }
+  .persona-card .pc-emoji { font-size: 1.5rem; display: block; margin-bottom: 8px; }
+  .persona-card .pc-name { font-weight: 700; font-size: 0.92rem; }
+  .persona-card .pc-sub { font-size: 0.74rem; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+
+  .furnish-list { list-style: none; margin: 0; padding: 0; }
+  .furnish-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 0.88rem; color: var(--faint); transition: color .3s; }
+  .furnish-list li:last-child { border-bottom: none; }
+  .furnish-list li .f-ico { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--faint); display: inline-flex; align-items: center; justify-content: center; font-size: 0.66rem; flex-shrink: 0; transition: all .3s; }
+  .furnish-list li.on { color: var(--ink); }
+  .furnish-list li.on .f-ico { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+  .furnish-list li .f-detail { margin-left: auto; font-family: var(--mono); font-size: 0.68rem; color: var(--faint); }
+  .furnish-list li.on .f-detail { color: var(--green); }
+
+  .svc-pick { display: grid; gap: 8px; }
+  .svc-item { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; cursor: pointer; transition: all .12s; }
+  .svc-item:hover { border-color: var(--faint); }
+  .svc-item.sel { border-color: var(--green); background: var(--green-soft); }
+  .svc-check { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--faint); flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.62rem; color: transparent; }
+  .svc-item.sel .svc-check { border-color: var(--green); background: var(--green); color: #0D0F14; }
+  .svc-name { font-weight: 600; font-size: 0.88rem; }
+  .svc-meta { font-size: 0.7rem; color: var(--muted); }
+  .svc-price { margin-left: auto; font-family: var(--mono); font-size: 0.8rem; color: var(--green); background: none; border: none; border-bottom: 1px dashed transparent; padding: 2px 4px; text-align: right; width: 90px; }
+  .svc-price:hover, .svc-price:focus { border-bottom-color: var(--amber); outline: none; color: var(--amber); }
+  .prefill-note { font-size: 0.72rem; color: var(--faint); margin-top: 10px; }
+  .prefill-note b { color: var(--green); font-weight: 500; }
+
+  /* aha */
+  .aha-banner { background: linear-gradient(135deg, var(--green-soft), var(--amber-soft)); border: 1px solid rgba(61,214,140,0.4); border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .aha-banner h3 { margin: 0 0 4px; font-size: 1.25rem; font-weight: 800; }
+  .aha-banner p { margin: 0; color: var(--muted); font-size: 0.85rem; }
+  .aha-banner .aha-time { font-family: var(--mono); color: var(--green); font-weight: 500; }
+  .cal-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; margin-top: 10px; }
+  .cal-month { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 4px 6px; text-align: center; }
+  .cal-month .m-name { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin-bottom: 5px; }
+  .cal-dots { display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; min-height: 18px; }
+  .cal-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .cal-dot.visit { background: var(--blue); }
+  .cal-dot.bill { background: var(--amber); }
+  .cal-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 0.7rem; color: var(--muted); }
+  .cal-legend .cal-dot { display: inline-block; margin-right: 5px; vertical-align: middle; }
+  .bill-rows { margin-top: 6px; }
+  .bill-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 0.8rem; }
+  .bill-row:last-child { border-bottom: none; }
+  .bill-row .b-date { font-family: var(--mono); font-size: 0.7rem; color: var(--faint); width: 70px; flex-shrink: 0; }
+  .bill-row .b-amt { margin-left: auto; font-family: var(--mono); color: var(--amber); }
+
+  @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+  .confetti { position: absolute; width: 8px; height: 8px; top: -10px; opacity: 0.9; animation: fall 1.6s ease-in forwards; }
+  @keyframes fall { to { transform: translateY(130px) rotate(320deg); opacity: 0; } }
+
+  /* sort table */
+  .sort-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  .sort-table th { text-align: left; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .sort-table td { padding: 6px 8px; border-bottom: 1px dashed var(--line); color: var(--muted); vertical-align: top; }
+  .sort-table tr:last-child td { border-bottom: none; }
+  .sort-table td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+  /* ══ STAGE 3: ENGAGE ══ */
+  .check-list { list-style: none; margin: 0; padding: 0; }
+  .check-list li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .check-list li:last-child { border-bottom: none; }
+  .ck { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--faint); flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.64rem; color: transparent; margin-top: 1px; }
+  li.ckd .ck { border-color: var(--green); background: var(--green); color: #0D0F14; }
+  .ck-body { flex: 1; }
+  .ck-name { font-weight: 600; font-size: 0.88rem; }
+  li.ckd .ck-name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--faint); }
+  .ck-sub { font-size: 0.72rem; color: var(--faint); line-height: 1.4; }
+  .ck-tag { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; flex-shrink: 0; margin-top: 3px; }
+  .ck-tag.auto { color: var(--green); background: var(--green-soft); }
+  .ck-tag.jit { color: var(--blue); background: var(--blue-soft); }
+  .progress-line { height: 6px; background: var(--surface-3); border-radius: 99px; overflow: hidden; margin: 4px 0 14px; }
+  .progress-line div { height: 100%; background: var(--green); border-radius: 99px; transition: width .4s; }
+
+  /* jit modal */
+  .jit-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .jit-overlay.open { display: flex; }
+  .jit-modal { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; max-width: 440px; width: 100%; padding: 24px; animation: pop .25s ease; }
+  .jit-modal h3 { margin: 0 0 6px; font-size: 1.05rem; }
+  .jit-modal p { margin: 0 0 16px; color: var(--muted); font-size: 0.85rem; }
+  .jit-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .jit-opt { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; text-align: left; color: var(--ink); }
+  .jit-opt.sel { border-color: var(--amber); background: var(--amber-soft); }
+  .jit-opt .jo-name { font-weight: 700; font-size: 0.86rem; }
+  .jit-opt .jo-sub { font-size: 0.7rem; color: var(--muted); }
+  .jit-context { font-family: var(--mono); font-size: 0.66rem; color: var(--faint); border-left: 2px solid var(--amber); padding-left: 10px; margin-bottom: 14px; line-height: 1.6; }
+
+  .digest { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; font-size: 0.82rem; }
+  .digest .d-from { font-family: var(--mono); font-size: 0.64rem; color: var(--faint); margin-bottom: 8px; }
+  .digest .d-subject { font-weight: 700; margin-bottom: 10px; }
+  .digest ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 0.8rem; }
+  .digest li { margin-bottom: 5px; }
+  .digest li b { color: var(--ink); font-weight: 600; }
+  .digest .d-cta { display: inline-block; margin-top: 10px; color: var(--amber); font-weight: 600; font-size: 0.78rem; }
+
+  .empty-demo { border: 1px dashed var(--faint); border-radius: 10px; padding: 18px; text-align: center; }
+  .empty-demo .e-emoji { font-size: 1.6rem; }
+  .empty-demo p { color: var(--muted); font-size: 0.82rem; margin: 6px 0 10px; }
+
+  /* ══ STAGE 4: LEARN ══ */
+  .coach-stage { position: relative; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-height: 240px; }
+  .mock-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px; font-size: 0.82rem; color: var(--muted); background: var(--surface); }
+  .mock-row.hi { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); color: var(--ink); }
+  .coach-tip { position: relative; background: var(--surface-3); border: 1px solid var(--amber); border-radius: 10px; padding: 12px 14px; margin-top: 14px; animation: pop .25s ease; }
+  .coach-tip .ct-step { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; color: var(--amber); text-transform: uppercase; margin-bottom: 4px; }
+  .coach-tip p { margin: 0 0 10px; font-size: 0.84rem; }
+  .lesson-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 640px) { .lesson-cards { grid-template-columns: 1fr; } }
+  .lesson { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 13px; }
+  .lesson .l-when { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue); margin-bottom: 5px; }
+  .lesson .l-name { font-weight: 700; font-size: 0.86rem; margin-bottom: 3px; }
+  .lesson .l-sub { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
+
+  /* ══ STAGE 5: EXPAND ══ */
+  .pain-card { background: var(--surface-2); border: 1px solid var(--red); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .pain-card .p-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .pain-stats { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pain-stat .ps-n { font-size: 1.4rem; font-weight: 800; color: var(--red); font-family: var(--mono); }
+  .pain-stat .ps-l { font-size: 0.7rem; color: var(--muted); }
+  .vani-chat { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-height: 180px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 85%; padding: 9px 13px; border-radius: 12px; font-size: 0.82rem; line-height: 1.45; opacity: 0; transform: translateY(6px); transition: all .35s ease; }
+  .msg.show { opacity: 1; transform: none; }
+  .msg.vani { background: var(--violet-soft); border: 1px solid rgba(167,139,250,0.3); align-self: flex-start; border-bottom-left-radius: 3px; }
+  .msg.user { background: var(--surface-3); align-self: flex-end; border-bottom-right-radius: 3px; }
+  .msg .m-who { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--violet); display: block; margin-bottom: 3px; }
+  .msg.user .m-who { color: var(--faint); }
+  .price-anchor { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .pa-col { border: 1px solid var(--line); border-radius: 10px; padding: 14px; text-align: center; }
+  .pa-col.win { border-color: var(--green); background: var(--green-soft); }
+  .pa-col .pa-l { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+  .pa-col .pa-n { font-size: 1.3rem; font-weight: 800; font-family: var(--mono); }
+  .pa-col.win .pa-n { color: var(--green); }
+  .skill-locked { border: 1px dashed var(--faint); border-radius: 10px; padding: 14px; margin-top: 12px; display: flex; gap: 12px; align-items: flex-start; opacity: 0.85; }
+  .skill-locked .sl-ico { font-size: 1.2rem; }
+  .skill-locked .sl-name { font-weight: 700; font-size: 0.86rem; }
+  .skill-locked .sl-sub { font-size: 0.72rem; color: var(--muted); line-height: 1.45; }
+
+  /* ══ STAGE 6: REFER ══ */
+  .loop-diagram { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 8px; align-items: center; margin-bottom: 18px; }
+  @media (max-width: 760px) { .loop-diagram { grid-template-columns: 1fr; } .loop-arrow { transform: rotate(90deg); justify-self: center; } }
+  .loop-node { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; text-align: center; }
+  .loop-node.hot { border-color: var(--amber); background: var(--amber-soft); }
+  .loop-node .ln-emoji { font-size: 1.4rem; display: block; margin-bottom: 5px; }
+  .loop-node .ln-name { font-weight: 700; font-size: 0.86rem; }
+  .loop-node .ln-sub { font-size: 0.7rem; color: var(--muted); line-height: 1.4; }
+  .loop-arrow { color: var(--amber); font-size: 1.2rem; text-align: center; }
+  .portal-mock { background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .portal-top { background: var(--surface-3); padding: 10px 16px; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; border-bottom: 1px solid var(--line); }
+  .portal-body { padding: 16px; }
+  .portal-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 0.82rem; }
+  .portal-row:last-child { border-bottom: none; }
+  .powered { text-align: center; padding: 10px; font-size: 0.72rem; color: var(--faint); border-top: 1px solid var(--line); background: var(--surface); }
+  .powered b { color: var(--amber); font-weight: 600; }
+  .nps-row { display: flex; gap: 5px; margin: 10px 0 14px; flex-wrap: wrap; }
+  .nps-n { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); font-family: var(--mono); font-size: 0.78rem; }
+  .nps-n:hover { border-color: var(--faint); color: var(--ink); }
+  .nps-n.sel { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+
+  /* ── scorecard footer ── */
+  .scorecard { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 860px) { .score-grid { grid-template-columns: 1fr 1fr; } }
+  .score-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .score-tile .sc-stage { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
+  .score-tile .sc-metric { font-weight: 800; font-size: 1.02rem; line-height: 1.25; }
+  .score-tile .sc-target { font-family: var(--mono); font-size: 0.72rem; color: var(--green); margin-top: 5px; }
+  .events-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ev { font-family: var(--mono); font-size: 0.64rem; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; }
+
+  .toast-zone { position: fixed; bottom: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--surface-3); border: 1px solid var(--green); border-left-width: 3px; border-radius: 10px; padding: 11px 16px; font-size: 0.82rem; max-width: 320px; animation: pop .25s ease; box-shadow: 0 8px 30px rgba(0,0,0,0.45); }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="nav-in">
+    <div class="logo">Contract<span>Nest</span></div>
+    <div class="nav-tag">Product-Led UX Playground · Ref 10</div>
+    <div class="nav-right">
+      <span class="pill amber">North star: first contract live &lt; 15 min, unassisted</span>
+    </div>
+  </div>
+</nav>
+
+<div class="rail-wrap">
+  <div class="rail" id="rail">
+    <button class="stage-btn active" data-stage="land"><span class="s-num">01 · Sell itself</span><span class="s-name">Land</span><span class="s-sub">Try before signup</span></button>
+    <span class="rail-arrow">→</span>
+    <button class="stage-btn" data-stage="start"><span class="s-num">02 · Onboard</span><span class="s-name">Start</span><span class="s-sub">15-min first contract</span></button>
+    <span class="rail-arrow">→</span>
+    <button class="stage-btn" data-stage="engage"><span class="s-num">03 · Handhold</span><span class="s-name">Engage</span><span class="s-sub">Setup as exhaust</span></button>
+    <span class="rail-arrow">→</span>
+    <button class="stage-btn" data-stage="learn"><span class="s-num">04 · Teach</span><span class="s-name">Learn</span><span class="s-sub">In context, not docs</span></button>
+    <span class="rail-arrow">→</span>
+    <button class="stage-btn" data-stage="expand"><span class="s-num">05 · Monetize</span><span class="s-name">Expand</span><span class="s-sub">VaNi virtual employee</span></button>
+    <span class="rail-arrow">→</span>
+    <button class="stage-btn" data-stage="refer"><span class="s-num">06 · Grow</span><span class="s-name">Refer</span><span class="s-sub">Contracts recruit tenants</span></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════════ STAGE 1 · LAND ═══════════════ -->
+<section class="stage-panel active" id="panel-land">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 01 — The product sells itself</div>
+    <h2>Try it before you <span class="amber">sign up</span></h2>
+    <p>No demo call, no sales deck. The landing page IS a working workspace. A visitor picks their industry and instantly sees ContractNest populated for <em>their</em> business — real service names, market-reference prices, a live contract calendar. The signup CTA only appears after they've already seen value.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="card-h"><span class="dot"></span><h3>Interactive mock — public sandbox (no login)</h3></div>
+      <div class="card-b">
+        <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px;">What kind of business do you run?</div>
+        <div class="ind-chips" id="indChips">
+          <button class="ind-chip active" data-ind="hvac">HVAC / AMC Services</button>
+          <button class="ind-chip" data-ind="dental">Dental Clinics</button>
+          <button class="ind-chip" data-ind="stp">STP / WTP Operators</button>
+          <button class="ind-chip" data-ind="facility">Facility Management</button>
+        </div>
+        <div class="preview-grid">
+          <div class="p-tile">
+            <div class="t-label">Your catalog, ready-made</div>
+            <div class="t-big" id="pvBlocks">68</div>
+            <div class="t-sub" id="pvBlocksSub">service blocks · 29 services + 39 spares</div>
+            <div class="block-rows" id="pvRows"></div>
+          </div>
+          <div class="p-tile">
+            <div class="t-label">A contract like yours</div>
+            <div class="t-big" style="font-size:1.05rem;" id="pvContract">Annual AMC — Orion Towers</div>
+            <div class="t-sub">auto-generates every visit &amp; invoice</div>
+            <div style="margin-top:10px;">
+              <div class="block-row"><span>🔧 Service visits / yr</span><span class="b-price" id="pvVisits">24</span></div>
+              <div class="block-row"><span>🧾 Billing events / yr</span><span class="b-price" id="pvBills">4</span></div>
+              <div class="block-row"><span>⏱ SLA response</span><span class="b-price">48 hrs</span></div>
+              <div class="block-row"><span>📅 Next visit reminder</span><span class="b-price">auto</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="land-cta-row">
+          <button class="btn" onclick="goStage('start')">This is my business → Start free</button>
+          <span class="land-note">No card. No call. You are <b class="mono" style="color:var(--green)">~12 min</b> from your first live contract.</span>
+        </div>
+      </div>
+    </div>
+    <aside class="why">
+      <h4>Why this is product-led</h4>
+      <ul>
+        <li><strong>Value before identity.</strong> The visitor experiences a furnished workspace before giving an email. The demo is self-serve — nobody from Vikuna is on a call.</li>
+        <li><strong>Industry picker = qualification.</strong> The same choice that powers the demo becomes onboarding Q2. Nothing asked twice.</li>
+        <li><strong>The countdown promise</strong> ("12 min from your first contract") is a testable claim — and the activation metric, stated as marketing.</li>
+      </ul>
+      <h4>Maps to codebase</h4>
+      <div class="code-map">
+        <b>exists:</b> <i>resolve_industry_resource_templates()</i> + KT seeder<br>
+        <b>exists:</b> master-data seeding skill (demo tenants)<br>
+        <b>build:</b> anonymous read-only sandbox tenant per industry<br>
+        <b>build:</b> landing → signup handoff carrying industry choice
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 2 · START ═══════════════ -->
+<section class="stage-panel" id="panel-start">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 02 — Onboard in one sitting</div>
+    <h2>Two questions. Then a <span class="amber">furnished house</span>.</h2>
+    <p>The 13-step wizard becomes 2 questions + 1 job. Everything else ships as a smart default or waits for its point-of-need moment. The user's "onboarding" is simply creating their first real contract — setup happens as exhaust. Press play below to run the whole journey.</p>
+  </div>
+
+  <div class="timer-strip">
+    <div class="timer-clock" id="clock">00:00</div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="timer-cap">budget 15:00 · simulated elapsed time</div>
+    <button class="btn sm ghost" id="resetStart" onclick="resetStart()">↺ Reset</button>
+  </div>
+
+  <div class="start-steps" id="startSteps">
+    <span class="ss now" data-ss="0">1 · Who are you</span>
+    <span class="ss" data-ss="1">2 · Your industry</span>
+    <span class="ss" data-ss="2">Furnishing…</span>
+    <span class="ss" data-ss="3">First contract</span>
+    <span class="ss" data-ss="4">✦ Aha</span>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <div class="card-h"><span class="dot"></span><h3 id="startTitle">Interactive mock — question 1 of 2</h3></div>
+      <div class="card-b" id="startBody">
+
+        <!-- step 0: persona -->
+        <div class="start-view" id="sv0">
+          <div style="font-size:0.9rem;margin-bottom:12px;">What describes you best?</div>
+          <div class="persona-cards">
+            <button class="persona-card" onclick="pickPersona(this,'seller')"><span class="pc-emoji">🛠️</span><span class="pc-name">I provide services</span><span class="pc-sub">AMCs, maintenance, servicing for customers</span></button>
+            <button class="persona-card" onclick="pickPersona(this,'buyer')"><span class="pc-emoji">🏢</span><span class="pc-name">I own equipment</span><span class="pc-sub">I hire providers to maintain my assets</span></button>
+            <button class="persona-card" onclick="pickPersona(this,'both')"><span class="pc-emoji">🔁</span><span class="pc-name">Both</span><span class="pc-sub">I service others and maintain my own</span></button>
+          </div>
+        </div>
+
+        <!-- step 1: industry -->
+        <div class="start-view" id="sv1" style="display:none;">
+          <div style="font-size:0.9rem;margin-bottom:12px;">And your line of work? <span class="muted" style="font-size:0.76rem;">(same list the landing sandbox used — carried over if they came from there)</span></div>
+          <div class="ind-chips">
+            <button class="ind-chip" onclick="pickIndustry(this)">HVAC / AMC Services</button>
+            <button class="ind-chip" onclick="pickIndustry(this)">Dental Clinics</button>
+            <button class="ind-chip" onclick="pickIndustry(this)">STP / WTP Operators</button>
+            <button class="ind-chip" onclick="pickIndustry(this)">Facility Management</button>
+            <button class="ind-chip" onclick="pickIndustry(this)">Something else…</button>
+          </div>
+          <div class="prefill-note">That's it. That's the whole form. Persona → <span class="mono">t_tenant_profiles.persona</span>, industry → seeding intent. Company name, GST, logo, tax mode — all deferred to point-of-need.</div>
+        </div>
+
+        <!-- step 2: furnishing -->
+        <div class="start-view" id="sv2" style="display:none;">
+          <div style="font-size:0.9rem;margin-bottom:4px;">Setting up your workspace…</div>
+          <div style="font-size:0.76rem;color:var(--faint);margin-bottom:12px;">Honest progress — each line is a real seed leg, not a <span class="mono">setTimeout</span>.</div>
+          <ul class="furnish-list" id="furnishList">
+            <li><span class="f-ico">✓</span>Reading the knowledge tree for HVAC<span class="f-detail">29 services · 77 checkpoints</span></li>
+            <li><span class="f-ico">✓</span>Building your service catalog<span class="f-detail">68 blocks seeded</span></li>
+            <li><span class="f-ico">✓</span>Applying market-reference prices<span class="f-detail">58 priced from KT medians</span></li>
+            <li><span class="f-ico">✓</span>Wiring service cadences<span class="f-detail">frequency → serviceCycles</span></li>
+            <li><span class="f-ico">✓</span>Tax defaults applied<span class="f-detail">18% GST · exclusive · editable later</span></li>
+            <li><span class="f-ico">✓</span>Workspace ready<span class="f-detail">0 forms filled by you</span></li>
+          </ul>
+        </div>
+
+        <!-- step 3: first contract -->
+        <div class="start-view" id="sv3" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+            <span style="font-size:0.9rem;">Your first contract for</span>
+            <input id="custName" value="Orion Towers Pvt Ltd" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font-size:0.86rem;min-width:200px;">
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px;">Pick the services you'll deliver — prices already filled from your seeded catalog. Tap a price to change it <em>right here</em> (this is the pricing review, relocated).</div>
+          <div class="svc-pick" id="svcPick"></div>
+          <div class="prefill-note">Selected blocks carry <b>source_type='catalog'</b> + <b>source_block_id</b> → full lineage from KT median to contract line. Editing a price here PATCHes only the delta.</div>
+          <div style="margin-top:14px;"><button class="btn" id="genBtn" onclick="generateContract()" disabled>Generate contract →</button></div>
+        </div>
+
+        <!-- step 4: aha -->
+        <div class="start-view" id="sv4" style="display:none;">
+          <div class="aha-banner" id="ahaBanner">
+            <h3>🎉 Your contract is live</h3>
+            <p><span id="ahaCust">Orion Towers Pvt Ltd</span> · 12-month AMC · created in <span class="aha-time" id="ahaTime">11:42</span> — no sales call, no implementation.</p>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;">ContractNest generated your entire year — this is the moment the product proves itself:</div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend"><span><span class="cal-dot visit"></span>service visit</span><span><span class="cal-dot bill"></span>billing event</span></div>
+          <div style="margin-top:14px;">
+            <div style="font-family:var(--mono);font-size:0.64rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin-bottom:2px;">Billing schedule — derived, not typed</div>
+            <div class="bill-rows" id="billRows"></div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn" onclick="goStage('engage')">Continue to Day 1–30 →</button>
+            <button class="btn ghost sm" onclick="resetStart()">Run the flow again</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <aside class="why">
+      <h4>Why this is product-led</h4>
+      <ul>
+        <li><strong>Time-to-aha is the design constraint.</strong> Every screen must justify its seconds against the 15:00 budget.</li>
+        <li><strong>The first contract IS onboarding.</strong> No abstract setup — the user does their actual job and the system configures itself underneath.</li>
+        <li><strong>Defaults are real values</strong> (KT medians, 18% GST, cadences) — never nulls. VaNi inherits a clean desk later.</li>
+      </ul>
+      <h4>The 13 VaNi wizard steps — sorted</h4>
+      <table class="sort-table">
+        <tr><th>Step</th><th>Fate</th><th>Where it goes</th></tr>
+        <tr><td>persona-selection</td><td><span class="pill green">keep</span></td><td>Question 1 (3 cards)</td></tr>
+        <tr><td>industry-select</td><td><span class="pill green">keep</span></td><td>Question 2 (or carried from landing)</td></tr>
+        <tr><td>vani-working</td><td><span class="pill blue">auto</span></td><td>"Furnishing" — honest seed progress</td></tr>
+        <tr><td>resource-pick</td><td><span class="pill amber">default</span></td><td>Seed ALL covered templates; prune later in Studio</td></tr>
+        <tr><td>pricing-review (58 rows)</td><td><span class="pill red">defer</span></td><td>Inline price edit at first contract + Studio</td></tr>
+        <tr><td>equipment-confirm</td><td><span class="pill red">defer</span></td><td>First time a contract references an asset</td></tr>
+        <tr><td>user-profile</td><td><span class="pill amber">default</span></td><td>From auth signup; edit in Settings</td></tr>
+        <tr><td>business-profile / GST</td><td><span class="pill red">defer</span></td><td>First invoice preview (JIT modal — Stage 3)</td></tr>
+        <tr><td>tax-setup</td><td><span class="pill amber">default</span></td><td>18% exclusive; re-stamp on first save</td></tr>
+        <tr><td>team-invite</td><td><span class="pill red">defer</span></td><td>First assignment to "someone else"</td></tr>
+        <tr><td>branding/logo</td><td><span class="pill red">defer</span></td><td>First "Send to customer" moment</td></tr>
+        <tr><td>tour/education</td><td><span class="pill red">delete</span></td><td>Replaced by Stage 4 in-context coach</td></tr>
+        <tr><td>done/summary</td><td><span class="pill red">delete</span></td><td>Replaced by the Aha screen itself</td></tr>
+      </table>
+      <div class="code-map" style="margin-top:12px;">
+        <b>exists:</b> seeder, S7 persona, S8 intent, S13 step_data<br>
+        <b>exists:</b> KT medians as defaults (§10 rebuild)<br>
+        <b>build:</b> collapse wizard shell to Q1+Q2+furnish<br>
+        <b>build:</b> inline price-edit in ServiceBlocksStep
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 3 · ENGAGE ═══════════════ -->
+<section class="stage-panel" id="panel-engage">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 03 — Handhold without humans</div>
+    <h2>Setup as <span class="amber">exhaust</span>, asks at point-of-need</h2>
+    <p>Days 1–30. The product finishes its own configuration by watching the user work. The checklist ticks itself; questions appear only at the exact moment their answer pays off; empty screens are invitations, not dead ends; and a weekly digest pulls the user back with <em>their own numbers</em>.</p>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-h"><span class="dot"></span><h3>Interactive mock — the self-ticking checklist</h3></div>
+        <div class="card-b">
+          <div style="display:flex;justify-content:space-between;font-size:0.76rem;color:var(--muted);"><span>Workspace strength</span><span class="mono" id="pctLabel">45%</span></div>
+          <div class="progress-line"><div id="pctBar" style="width:45%"></div></div>
+          <ul class="check-list" id="checkList">
+            <li class="ckd"><span class="ck">✓</span><div class="ck-body"><div class="ck-name">Create your first contract</div><div class="ck-sub">Done during onboarding — this WAS onboarding.</div></div><span class="ck-tag auto">auto</span></li>
+            <li class="ckd"><span class="ck">✓</span><div class="ck-body"><div class="ck-name">Catalog seeded &amp; priced</div><div class="ck-sub">68 blocks; 58 KT-priced. You never saw a form.</div></div><span class="ck-tag auto">auto</span></li>
+            <li id="ckTax"><span class="ck">✓</span><div class="ck-body"><div class="ck-name">Confirm GST details</div><div class="ck-sub">We'll ask when you preview your first invoice — try it below.</div></div><span class="ck-tag jit">point-of-need</span></li>
+            <li id="ckVisit"><span class="ck">✓</span><div class="ck-body"><div class="ck-name">Complete your first service visit</div><div class="ck-sub">Ticks itself when a technician closes visit #1.</div></div><span class="ck-tag auto">auto</span></li>
+            <li><span class="ck">✓</span><div class="ck-body"><div class="ck-name">Send a contract to a customer</div><div class="ck-sub">Unlocks the customer portal — and Stage 6's referral loop.</div></div><span class="ck-tag jit">point-of-need</span></li>
+          </ul>
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn sm" onclick="openJit()">▶ Preview first invoice (triggers JIT ask)</button>
+            <button class="btn sm ghost" onclick="tickVisit()">▶ Simulate visit completed</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="dot"></span><h3>Empty states are CTAs, never dead ends</h3></div>
+        <div class="card-b">
+          <div class="preview-grid">
+            <div class="empty-demo"><div class="e-emoji">👥</div><p><b>No customers yet.</b> Your contracts will add them automatically — or paste a list and we'll tidy it.</p><button class="btn sm ghost">Paste customer list</button></div>
+            <div class="empty-demo"><div class="e-emoji">🧾</div><p><b>No invoices yet.</b> Your Orion Towers contract generates its first one on Apr 1. Want it earlier?</p><button class="btn sm ghost">Preview invoice</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-h"><span class="dot"></span><h3>The Monday pull — weekly digest</h3></div>
+        <div class="card-b">
+          <div class="digest">
+            <div class="d-from">from: ContractNest &lt;pulse@contractnest.app&gt;</div>
+            <div class="d-subject">Your week: 6 visits due, ₹1,48,000 billable</div>
+            <ul>
+              <li><b>6 service visits</b> scheduled this week (2 unassigned ⚠️)</li>
+              <li><b>₹1,48,000</b> in billing events falling due</li>
+              <li><b>Orion Towers</b> SLA: 100% on-time so far 🎯</li>
+              <li>1 contract renews in 30 days — <b>renewal nudge ready</b></li>
+            </ul>
+            <span class="d-cta">Open this week's board →</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--faint);margin-top:10px;">Every number links back into the product. The digest is the retention loop — their own operations, not our news.</div>
+        </div>
+      </div>
+      <aside class="why">
+        <h4>Why this is product-led</h4>
+        <ul>
+          <li><strong>No task says "configure".</strong> Every checklist item is a business outcome; config ticks as its side-effect.</li>
+          <li><strong>JIT asks convert ~5×</strong> better than wizard forms — the payoff is visible on the same screen.</li>
+          <li><strong>The digest is generated</strong> from t_contract_blocks + billing events — data the 15-min flow guaranteed exists.</li>
+        </ul>
+        <h4>Maps to codebase</h4>
+        <div class="code-map">
+          <b>exists:</b> billing-event derivation, serviceCycles<br>
+          <b>exists:</b> t_tax_settings re-stamp path (§10.4)<br>
+          <b>build:</b> activation checklist service + events<br>
+          <b>build:</b> digest worker (edge cron)
+        </div>
+      </aside>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 4 · LEARN ═══════════════ -->
+<section class="stage-panel" id="panel-learn">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 04 — Teach inside the work</div>
+    <h2>No manuals. The UI <span class="amber">coaches</span> at the moment of doubt.</h2>
+    <p>Users learn ContractNest the way they learned WhatsApp — by doing, with the product whispering at exactly the right moment. Coach marks fire once, on first encounter, and never again. Deeper lessons unlock only when the user's own data makes them relevant.</p>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <div class="card-h"><span class="dot"></span><h3>Interactive mock — first-encounter coach marks</h3></div>
+      <div class="card-b">
+        <div class="coach-stage">
+          <div class="mock-row" id="cm0">📄 Annual AMC — Orion Towers <span class="pill green" style="margin-left:auto;">Active</span></div>
+          <div class="mock-row" id="cm1">🔧 Visit #3 · Compressor Performance Check <span class="pill amber" style="margin-left:auto;">Tomorrow</span></div>
+          <div class="mock-row" id="cm2">🧾 Invoice Q2 · ₹37,000 <span class="pill" style="margin-left:auto;">Draft</span></div>
+          <div class="coach-tip" id="coachTip">
+            <div class="ct-step" id="ctStep">Tip 1 of 3 · fires once, first time you see this screen</div>
+            <p id="ctText">This contract generated its whole year automatically. Tap any visit to reschedule — the calendar and invoices reshuffle themselves.</p>
+            <button class="btn sm" onclick="nextTip()">Got it →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-h"><span class="dot"></span><h3>Lessons unlock from THEIR data</h3></div>
+        <div class="card-b">
+          <div class="lesson-cards">
+            <div class="lesson"><div class="l-when">unlocks: 2nd contract created</div><div class="l-name">Templates: clone in 30 sec</div><div class="l-sub">"You built this once — next time, duplicate Orion Towers and change 2 fields."</div></div>
+            <div class="lesson"><div class="l-when">unlocks: first overdue visit</div><div class="l-name">SLA timers &amp; escalation</div><div class="l-sub">"Visit #4 slipped. Here's how the SLA clock works and who gets pinged."</div></div>
+            <div class="lesson"><div class="l-when">unlocks: 5+ customers</div><div class="l-name">The renewals radar</div><div class="l-sub">"3 contracts renew next quarter. This view is where AMC businesses make their margin."</div></div>
+            <div class="lesson"><div class="l-when">unlocks: first price edit</div><div class="l-name">Market range intelligence</div><div class="l-sub">"You priced above the KT median — here's the market band for this service."</div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="why">
+        <h4>Why this is product-led</h4>
+        <ul>
+          <li><strong>Education is triggered, not scheduled.</strong> A lesson about renewals lands when renewals exist — relevance does the teaching.</li>
+          <li><strong>One tip per moment, ever.</strong> Coach marks are stamped seen in step_data-style storage; returning users are never re-toured.</li>
+          <li><strong>This replaces the deleted wizard "tour" step</strong> — teaching moves from before the work to inside it.</li>
+        </ul>
+        <h4>Maps to codebase</h4>
+        <div class="code-map">
+          <b>exists:</b> vaniToast pattern for non-blocking nudges<br>
+          <b>build:</b> coach-mark registry (seen-flags per user)<br>
+          <b>build:</b> data-triggered lesson conditions
+        </div>
+      </aside>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 5 · EXPAND ═══════════════ -->
+<section class="stage-panel" id="panel-expand">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 05 — Monetize the pain the product can see</div>
+    <h2>VaNi: the <span class="amber">virtual employee</span> upsell</h2>
+    <p>The free/core product built the structured desk — contracts, visits, billing events, SLAs. VaNi is the paid employee who sits at it. The upsell never interrupts; it appears exactly when the tenant's own data shows coordination pain, priced against a salary, not a software tier.</p>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="pain-card">
+        <div class="p-head"><span class="pill red">detected in your workspace</span></div>
+        <div class="pain-stats">
+          <div class="pain-stat"><div class="ps-n">9</div><div class="ps-l">visits unscheduled</div></div>
+          <div class="pain-stat"><div class="ps-n">3</div><div class="ps-l">invoices overdue</div></div>
+          <div class="pain-stat"><div class="ps-n">2</div><div class="ps-l">SLA breaches this month</div></div>
+          <div class="pain-stat"><div class="ps-n">4.5h</div><div class="ps-l">your weekly chase time</div></div>
+        </div>
+        <div style="font-size:0.86rem;margin-bottom:12px;">This is coordination work. <b>VaNi can take it off your desk today</b> — she schedules, chases, escalates and reports back.</div>
+        <button class="btn" onclick="playVani()">▶ Watch VaNi handle it</button>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="dot" style="background:var(--violet)"></span><h3>Interactive mock — VaNi at work</h3></div>
+        <div class="card-b">
+          <div class="vani-chat" id="vaniChat">
+            <div class="msg vani"><span class="m-who">VaNi · virtual employee</span>Good morning! I've scheduled all 9 pending visits around your technicians' routes. Two customers asked to shift to next week — I've adjusted the SLA clocks accordingly. OK to confirm?</div>
+            <div class="msg user"><span class="m-who">You</span>Confirm. What about the overdue invoices?</div>
+            <div class="msg vani"><span class="m-who">VaNi</span>Sent polite reminders on all 3 — Orion Towers has already paid ✓ (₹37,000). I'll escalate the other two on Friday if unpaid. Also: your Marina Bay contract renews in 21 days — shall I prepare the renewal at +6% as per your usual uplift?</div>
+          </div>
+          <div class="price-anchor">
+            <div class="pa-col"><div class="pa-l">An ops coordinator</div><div class="pa-n">₹25,000/mo</div><div class="pa-l">plus hiring, training, leave</div></div>
+            <div class="pa-col win"><div class="pa-l">VaNi, on top of your plan</div><div class="pa-n">₹4,999/mo</div><div class="pa-l">works nights &amp; Sundays</div></div>
+          </div>
+          <div class="skill-locked">
+            <div class="sl-ico">🔒</div>
+            <div>
+              <div class="sl-name">VaNi skill: "Read my old AMCs" <span class="pill violet" style="margin-left:6px;">the later bet</span></div>
+              <div class="sl-sub">Drop a PDF → VaNi drafts it as a contract in the flow you already know. One document, one draft, you confirm — never bulk auto-migration. Ships once real tenants have shown us their real paperwork.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside class="why">
+      <h4>Why this is product-led</h4>
+      <ul>
+        <li><strong>The upsell is evidence-based.</strong> "9 unscheduled, 3 overdue" is the tenant's own data — the product detects the pain it then offers to solve.</li>
+        <li><strong>Salary anchoring</strong> prices VaNi against a hire, not against software. SMBs understand ₹25k vs ₹5k instantly.</li>
+        <li><strong>The 15-min flow made this possible:</strong> VaNi acts on structured cycles &amp; events. Loose data = no agent = no top-up cream.</li>
+        <li><strong>AMC-import arrives as a VaNi skill</strong>, reframed from scary migration to "your employee reads your paperwork".</li>
+      </ul>
+      <h4>Maps to codebase</h4>
+      <div class="code-map">
+        <b>exists:</b> service cycles, billing events, SLA fields (S9 later)<br>
+        <b>exists:</b> t_seed_logs-style observability pattern<br>
+        <b>build:</b> pain-detection queries → upsell surface<br>
+        <b>build:</b> VaNi agent runtime + skills registry
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 6 · REFER ═══════════════ -->
+<section class="stage-panel" id="panel-refer">
+  <div class="stage-head">
+    <div class="eyebrow">Stage 06 — Every contract recruits the next tenant</div>
+    <h2>The contract itself is the <span class="amber">growth loop</span></h2>
+    <p>An AMC always has two sides. Every contract a seller sends invites their customer into a live portal — service history, SLA scorecards, invoices. That buyer is a facility owner with ten <em>other</em> vendors on WhatsApp and Excel… and one on ContractNest. The product's best salesperson is a contract doing its job in front of the right audience.</p>
+  </div>
+  <div class="cols">
+    <div>
+      <div class="loop-diagram">
+        <div class="loop-node"><span class="ln-emoji">🛠️</span><div class="ln-name">Seller sends contract</div><div class="ln-sub">branded doc + portal link</div></div>
+        <div class="loop-arrow">→</div>
+        <div class="loop-node hot"><span class="ln-emoji">🏢</span><div class="ln-name">Buyer lives in the portal</div><div class="ln-sub">approvals, visit log, SLA scorecard</div></div>
+        <div class="loop-arrow">→</div>
+        <div class="loop-node"><span class="ln-emoji">✨</span><div class="ln-name">Buyer becomes tenant</div><div class="ln-sub">"Manage your other 10 vendors here" — persona: buyer, seeded from the landing flow</div></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="dot"></span><h3>Interactive mock — what the buyer sees</h3></div>
+        <div class="card-b" style="padding:0;">
+          <div class="portal-mock" style="border:none;border-radius:0;">
+            <div class="portal-top">🔗 portal.contractnest.app/c/orion-towers <span class="pill green" style="margin-left:auto;">no login needed</span></div>
+            <div class="portal-body">
+              <div style="font-weight:700;margin-bottom:2px;">Your AMC with CoolAir Services</div>
+              <div style="font-size:0.74rem;color:var(--muted);margin-bottom:10px;">Annual HVAC maintenance · Apr 2026 – Mar 2027</div>
+              <div class="portal-row"><span>✅ Visit #3 — Compressor check</span><span class="mono" style="color:var(--green);font-size:0.74rem;">done · on time</span></div>
+              <div class="portal-row"><span>📅 Visit #4 — Refrigerant &amp; electrical</span><span class="mono" style="color:var(--muted);font-size:0.74rem;">Aug 12</span></div>
+              <div class="portal-row"><span>🧾 Invoice Q2 · ₹37,000</span><span class="mono" style="color:var(--amber);font-size:0.74rem;">approve →</span></div>
+              <div class="portal-row"><span>🎯 SLA scorecard</span><span class="mono" style="color:var(--green);font-size:0.74rem;">100% on-time</span></div>
+            </div>
+            <div class="powered">⚡ This contract runs on <b>ContractNest</b> — Manage all your vendors like this, free →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-h"><span class="dot"></span><h3>Earned asks — NPS → referral</h3></div>
+        <div class="card-b">
+          <div style="font-size:0.84rem;">Fired only after a <b>win moment</b> (SLA month at 100%, renewal signed) — never on a timer.</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:8px;">How likely are you to recommend ContractNest to another service business?</div>
+          <div class="nps-row" id="npsRow"></div>
+          <div id="npsFollow" style="display:none;" >
+            <div style="font-size:0.84rem;background:var(--green-soft);border:1px solid rgba(61,214,140,0.35);border-radius:10px;padding:12px;">🙌 Glad it's working! Know another AMC business drowning in Excel? <b>Gift them a fast lane</b> — they skip straight to a furnished workspace, you both get a free month of VaNi.<div style="margin-top:10px;"><button class="btn sm">Share your fast-lane link</button></div></div>
+          </div>
+        </div>
+      </div>
+      <aside class="why">
+        <h4>Why this is product-led</h4>
+        <ul>
+          <li><strong>The loop is native to the domain.</strong> Contracts are bilateral — distribution is built into the artifact, not bolted on.</li>
+          <li><strong>The portal converts on proof</strong>, not promises: the buyer watches SLAs being met before ever seeing a pitch.</li>
+          <li><strong>Buyer persona already exists</strong> (S7 seller|buyer|both; registry seeding) — the second side of the market is pre-built.</li>
+          <li><strong>Referral asks are earned</strong> — only after win moments, so the K-factor rides on delight, not spam.</li>
+        </ul>
+        <h4>Maps to codebase</h4>
+        <div class="code-map">
+          <b>exists:</b> contract document (ref 7), buyer persona + registry<br>
+          <b>build:</b> tokenized read-only portal (no-login)<br>
+          <b>build:</b> portal→signup attribution + fast-lane link
+        </div>
+      </aside>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════ SCORECARD ═══════════════ -->
+<div class="scorecard">
+  <div class="eyebrow">The PLG scorecard — one metric per stage, instrumented from day one</div>
+  <div class="score-grid">
+    <div class="score-tile"><div class="sc-stage">01+02 · Activation</div><div class="sc-metric">First contract w/ ≥1 billing event</div><div class="sc-target">&lt; 15 min · &gt;60% of signups in 7 days</div></div>
+    <div class="score-tile"><div class="sc-stage">03+04 · Engagement</div><div class="sc-metric">Weekly returning tenants (digest CTR)</div><div class="sc-target">&gt;50% WAU/MAU · checklist ≥80%</div></div>
+    <div class="score-tile"><div class="sc-stage">05 · Expansion</div><div class="sc-metric">VaNi attach rate on active tenants</div><div class="sc-target">&gt;25% by month 3 of VaNi launch</div></div>
+    <div class="score-tile"><div class="sc-stage">06 · Referral</div><div class="sc-metric">Portal-viewer → tenant conversion</div><div class="sc-target">K &gt; 0.3 · every seller invites ≥2 buyers</div></div>
+  </div>
+  <div class="events-strip">
+    <span class="ev">signup_started</span><span class="ev">persona_selected</span><span class="ev">industry_selected</span><span class="ev">workspace_furnished</span><span class="ev">first_contract_created</span><span class="ev">aha_calendar_viewed</span><span class="ev">ttfc_minutes</span><span class="ev">jit_ask_shown</span><span class="ev">jit_ask_completed</span><span class="ev">checklist_pct</span><span class="ev">digest_opened</span><span class="ev">coach_tip_seen</span><span class="ev">lesson_unlocked</span><span class="ev">pain_card_shown</span><span class="ev">vani_trial_started</span><span class="ev">portal_viewed</span><span class="ev">portal_signup</span><span class="ev">nps_score</span><span class="ev">fastlane_shared</span>
+  </div>
+  <div style="margin-top:16px;font-size:0.74rem;color:var(--faint);">Playground ref 10 · pairs with refs 3 (wizard shell), 5 (landing), 7 (contract document) · Vikuna Technologies</div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- JIT modal -->
+<div class="jit-overlay" id="jitOverlay">
+  <div class="jit-modal">
+    <div class="jit-context">context: user clicked "Preview invoice" · first time<br>we need GST mode ONLY now — this is why we didn't ask at signup</div>
+    <h3>One quick thing for your invoice</h3>
+    <p>Should we show prices with GST included, or add it on top? (Your seeded prices assumed 18% exclusive — change anything later in Settings.)</p>
+    <div class="jit-opts">
+      <button class="jit-opt sel" onclick="selJit(this)"><div class="jo-name">Add GST on top</div><div class="jo-sub">₹37,000 + 18% = ₹43,660</div></button>
+      <button class="jit-opt" onclick="selJit(this)"><div class="jo-name">Prices include GST</div><div class="jo-sub">₹37,000 all-in</div></button>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" onclick="closeJit(true)">Save &amp; show my invoice</button>
+      <button class="btn ghost sm" onclick="closeJit(false)">Later</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-zone" id="toastZone"></div>
+
+<script>
+/* ── stage navigation ── */
+const stages = ['land','start','engage','learn','expand','refer'];
+function goStage(s) {
+  document.querySelectorAll('.stage-btn').forEach(b => b.classList.toggle('active', b.dataset.stage === s));
+  stages.forEach(x => document.getElementById('panel-' + x).classList.toggle('active', x === s));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (s === 'expand') setTimeout(playVani, 400);
+}
+document.querySelectorAll('.stage-btn').forEach(b => b.addEventListener('click', () => goStage(b.dataset.stage)));
+
+/* ── toasts (existing vaniToast pattern) ── */
+function toast(msg) {
+  const z = document.getElementById('toastZone');
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  z.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(() => t.remove(), 400); }, 3200);
+}
+
+/* ── STAGE 1: industry sandbox ── */
+const INDUSTRIES = {
+  hvac:    { blocks: 68, sub: 'service blocks · 29 services + 39 spares', contract: 'Annual AMC — Orion Towers', visits: 24, bills: 4,
+             rows: [['Compressor Performance Check','₹1,200'],['Refrigerant & Electrical Check','₹1,400'],['Condenser Coil Deep Clean','₹2,800'],['Filter Set (spare)','₹450']] },
+  dental:  { blocks: 37, sub: 'templates · 22 equipment + 5 facility', contract: 'Equipment AMC — SmileCare Clinic', visits: 12, bills: 4,
+             rows: [['Dental Chair Full Service','₹3,500'],['Autoclave Calibration','₹2,200'],['Compressor & Suction Check','₹1,800'],['X-ray Arm Alignment','₹2,600']] },
+  stp:     { blocks: 26, sub: 'service blocks · 6 services + 20 spares', contract: 'O&M Contract — Lakeview Residency STP', visits: 52, bills: 12,
+             rows: [['Blower Overhaul','₹6,500'],['MBBR Media Inspection','₹3,200'],['Sludge Pump Service','₹2,400'],['Dosing Pump (spare)','₹5,800']] },
+  facility:{ blocks: 41, sub: 'blocks across housekeeping, MEP, safety', contract: 'IFM Contract — TechPark Block C', visits: 260, bills: 12,
+             rows: [['Daily Housekeeping Crew','₹85,000/mo'],['DG Set Quarterly Service','₹7,500'],['Fire System Inspection','₹4,200'],['Lift AMC (per unit)','₹18,000/yr']] }
+};
+function renderPreview(key) {
+  const d = INDUSTRIES[key];
+  document.getElementById('pvBlocks').textContent = d.blocks;
+  document.getElementById('pvBlocksSub').textContent = d.sub;
+  document.getElementById('pvContract').textContent = d.contract;
+  document.getElementById('pvVisits').textContent = d.visits;
+  document.getElementById('pvBills').textContent = d.bills;
+  document.getElementById('pvRows').innerHTML = d.rows.map(r =>
+    `<div class="block-row"><span>${r[0]}</span><span class="b-price">${r[1]}</span></div>`).join('');
+}
+document.querySelectorAll('#indChips .ind-chip').forEach(c => c.addEventListener('click', () => {
+  document.querySelectorAll('#indChips .ind-chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active'); renderPreview(c.dataset.ind);
+}));
+renderPreview('hvac');
+
+/* ── STAGE 2: the 15-min flow ── */
+let simSeconds = 0, timerHandle = null, startStep = 0;
+function fmtClock(s) { return String(Math.floor(s / 60)).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0'); }
+function setClock() {
+  const c = document.getElementById('clock');
+  c.textContent = fmtClock(simSeconds);
+  c.classList.toggle('warn', simSeconds > 720);
+  document.getElementById('timerFill').style.width = Math.min(100, simSeconds / 900 * 100) + '%';
+}
+function runTimer() { if (timerHandle) return; timerHandle = setInterval(() => { simSeconds += 7; setClock(); }, 250); }
+function stopTimer() { clearInterval(timerHandle); timerHandle = null; }
+function showStartStep(n) {
+  startStep = n;
+  for (let i = 0; i <= 4; i++) document.getElementById('sv' + i).style.display = (i === n ? '' : 'none');
+  document.querySelectorAll('#startSteps .ss').forEach((el, i) => {
+    el.classList.toggle('done', i < n); el.classList.toggle('now', i === n);
+  });
+  const titles = ['Interactive mock — question 1 of 2','Interactive mock — question 2 of 2','Interactive mock — furnishing (honest seed progress)','Interactive mock — the only "wizard": a real contract','Interactive mock — the aha moment'];
+  document.getElementById('startTitle').textContent = titles[n];
+}
+function pickPersona(el) {
+  document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel'); runTimer();
+  setTimeout(() => showStartStep(1), 500);
+}
+function pickIndustry(el) {
+  el.classList.add('active');
+  setTimeout(() => { showStartStep(2); furnish(); }, 400);
+}
+function furnish() {
+  const items = document.querySelectorAll('#furnishList li');
+  items.forEach(li => li.classList.remove('on'));
+  items.forEach((li, i) => setTimeout(() => {
+    li.classList.add('on');
+    if (i === items.length - 1) setTimeout(() => { showStartStep(3); buildSvcPick(); }, 700);
+  }, 550 * (i + 1)));
+}
+const SVC = [
+  ['Compressor Performance Check','quarterly · from your seeded catalog','₹1,200'],
+  ['Refrigerant & Electrical Check','quarterly · KT median price','₹1,400'],
+  ['Condenser Coil Deep Clean','half-yearly · KT median price','₹2,800'],
+  ['Emergency Breakdown Cover','SLA 48h · you set this price','₹9,000'],
+  ['Filter Replacement Set','per visit · spare part','₹450']
+];
+function buildSvcPick() {
+  const wrap = document.getElementById('svcPick');
+  wrap.innerHTML = SVC.map((s, i) => `
+    <div class="svc-item" data-i="${i}" onclick="toggleSvc(event, this)">
+      <span class="svc-check">✓</span>
+      <div><div class="svc-name">${s[0]}</div><div class="svc-meta">${s[1]}</div></div>
+      <input class="svc-price" value="${s[2]}" onclick="event.stopPropagation()" onchange="toast('Price updated — only the delta is PATCHed')">
+    </div>`).join('');
+}
+function toggleSvc(ev, el) {
+  el.classList.toggle('sel');
+  document.getElementById('genBtn').disabled = document.querySelectorAll('.svc-item.sel').length === 0;
+}
+function generateContract() {
+  stopTimer();
+  document.getElementById('ahaTime').textContent = fmtClock(simSeconds);
+  document.getElementById('ahaCust').textContent = document.getElementById('custName').value || 'Your customer';
+  showStartStep(4);
+  buildCalendar(); buildBills(); confettiBurst();
+  toast('🎉 aha_calendar_viewed · ttfc_minutes=' + (simSeconds / 60).toFixed(1));
+}
+function buildCalendar() {
+  const months = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  const nSel = document.querySelectorAll('.svc-item.sel').length;
+  document.getElementById('calGrid').innerHTML = months.map((m, i) => {
+    let dots = '';
+    for (let v = 0; v < Math.min(3, Math.max(1, Math.round(nSel * 0.6))); v++) dots += '<span class="cal-dot visit"></span>';
+    if (i % 3 === 0) dots += '<span class="cal-dot bill"></span>';
+    return `<div class="cal-month"><div class="m-name">${m}</div><div class="cal-dots">${dots}</div></div>`;
+  }).join('');
+}
+function buildBills() {
+  const rows = [['Apr 01','Q1 invoice — Annual AMC','₹37,000'],['Jul 01','Q2 invoice — Annual AMC','₹37,000'],['Oct 01','Q3 invoice — Annual AMC','₹37,000'],['Jan 01','Q4 invoice — Annual AMC','₹37,000']];
+  document.getElementById('billRows').innerHTML = rows.map(r =>
+    `<div class="bill-row"><span class="b-date">${r[0]}</span><span>${r[1]}</span><span class="b-amt">${r[2]}</span></div>`).join('');
+}
+function confettiBurst() {
+  const banner = document.getElementById('ahaBanner');
+  const colors = ['#F5A623','#3DD68C','#5CA8FF','#A78BFA','#F06A55'];
+  for (let i = 0; i < 26; i++) {
+    const c = document.createElement('span');
+    c.className = 'confetti';
+    c.style.left = (Math.random() * 100) + '%';
+    c.style.background = colors[i % colors.length];
+    c.style.animationDelay = (Math.random() * 0.5) + 's';
+    banner.appendChild(c);
+    setTimeout(() => c.remove(), 2400);
+  }
+}
+function resetStart() {
+  stopTimer(); simSeconds = 0; setClock();
+  document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('#sv1 .ind-chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('genBtn').disabled = true;
+  showStartStep(0);
+}
+setClock();
+
+/* ── STAGE 3: checklist + JIT ── */
+let pct = 45;
+function setPct(p) { pct = p; document.getElementById('pctBar').style.width = p + '%'; document.getElementById('pctLabel').textContent = p + '%'; }
+function openJit() { document.getElementById('jitOverlay').classList.add('open'); toast('event: jit_ask_shown · trigger=first_invoice_preview'); }
+function selJit(el) { document.querySelectorAll('.jit-opt').forEach(o => o.classList.remove('sel')); el.classList.add('sel'); }
+function closeJit(saved) {
+  document.getElementById('jitOverlay').classList.remove('open');
+  if (saved) {
+    const li = document.getElementById('ckTax');
+    if (!li.classList.contains('ckd')) { li.classList.add('ckd'); setPct(pct + 20); }
+    toast('✓ GST saved — checklist ticked itself. Seeded prices re-stamped.');
+  }
+}
+function tickVisit() {
+  const li = document.getElementById('ckVisit');
+  if (!li.classList.contains('ckd')) { li.classList.add('ckd'); setPct(pct + 15); toast('✓ Visit #1 closed by technician — "first visit" ticked automatically'); }
+}
+
+/* ── STAGE 4: coach marks ── */
+const TIPS = [
+  { row: 'cm0', text: 'This contract generated its whole year automatically. Tap any visit to reschedule — the calendar and invoices reshuffle themselves.' },
+  { row: 'cm1', text: 'Visits carry their checkpoint list from your catalog. Your technician sees exactly what "Compressor Performance Check" includes — no calls back to you.' },
+  { row: 'cm2', text: 'Invoices raise themselves from billing events. You only ever approve — or let VaNi do even that (Stage 5 😉).' }
+];
+let tipIdx = 0;
+function renderTip() {
+  ['cm0','cm1','cm2'].forEach((id, i) => document.getElementById(id).classList.toggle('hi', i === tipIdx));
+  document.getElementById('ctStep').textContent = `Tip ${tipIdx + 1} of 3 · fires once, first time you see this screen`;
+  document.getElementById('ctText').textContent = TIPS[tipIdx].text;
+}
+function nextTip() {
+  tipIdx = (tipIdx + 1) % 3; renderTip();
+  if (tipIdx === 0) toast('event: coach_tip_seen ×3 — never shown again for this user');
+}
+renderTip();
+
+/* ── STAGE 5: VaNi chat ── */
+let vaniPlayed = false;
+function playVani() {
+  if (vaniPlayed) return; vaniPlayed = true;
+  document.querySelectorAll('#vaniChat .msg').forEach((m, i) => setTimeout(() => m.classList.add('show'), 700 * (i + 1)));
+}
+
+/* ── STAGE 6: NPS ── */
+const npsRow = document.getElementById('npsRow');
+for (let i = 0; i <= 10; i++) {
+  const b = document.createElement('button');
+  b.className = 'nps-n'; b.textContent = i;
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.nps-n').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    document.getElementById('npsFollow').style.display = i >= 9 ? '' : 'none';
+    if (i >= 9) toast('Promoter detected → earned referral ask fires'); else toast('Score ' + i + ' → feedback ask, NOT a referral ask');
+  });
+  npsRow.appendChild(b);
+}
+</script>
+</body>
+</html>
