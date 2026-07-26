@@ -348,6 +348,36 @@
   .growth-nav { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px; }
   .growth-nav .nav-item { font-size: 0.8rem; }
   .growth-nav .n-note { font-size: 0.6rem; color: var(--faint); padding: 0 10px 4px; }
+
+  /* ═══ Mobile shell — bottom tab bar + More sheet ═══ */
+  .bottombar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 120; background: var(--surface); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); justify-content: space-around; }
+  .bb-item { border: none; background: none; color: var(--muted); font-size: 0.6rem; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 10px; border-radius: 10px; }
+  .bb-item .bb-ico { font-size: 1.1rem; line-height: 1; }
+  .bb-item.active { color: var(--accent); }
+  .sheet-overlay { position: fixed; inset: 0; background: rgba(16,20,18,0.5); z-index: 150; display: none; }
+  .sheet-overlay.open { display: block; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 160; background: var(--surface); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 12px 16px calc(22px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .22s ease; box-shadow: var(--shadow); }
+  .sheet.open { transform: none; }
+  .sheet .sh-grab { width: 36px; height: 4px; border-radius: 99px; background: var(--line); margin: 0 auto 12px; }
+  .sheet .nav-item { padding: 11px 10px; }
+
+  @media (max-width: 880px) {
+    .sidebar { display: none; }
+    .bottombar { display: flex; }
+    .content { padding: 16px 14px 110px; }
+    .topbar { padding: 10px 14px; }
+    .search { max-width: none; }
+    .page-head h1 { font-size: 1.3rem; }
+    /* tables scroll inside their card instead of crushing */
+    .card { overflow-x: auto; }
+    .card table.grid { min-width: 640px; }
+    .yearstrip { grid-template-columns: repeat(6, 1fr); }
+    .cv-stats { margin-left: 0; width: 100%; justify-content: space-between; gap: 12px; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .jit-opts { grid-template-columns: 1fr; }
+    .setup-meter { flex-wrap: wrap; }
+    .browser-body { padding: 14px; }
+  }
 </style>
 </head>
 <body>
@@ -905,6 +935,32 @@
   </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- ════ Mobile bottom tab bar + More sheet ════ -->
+<nav class="bottombar">
+  <button class="bb-item active" data-bb="dashboard" onclick="bbGo('dashboard')"><span class="bb-ico">◫</span>Home</button>
+  <button class="bb-item" data-bb="contracts" onclick="bbGo('contracts')"><span class="bb-ico">▤</span>Contracts</button>
+  <button class="bb-item" data-bb="contacts" onclick="bbGo('contacts')"><span class="bb-ico">◉</span>Contacts</button>
+  <button class="bb-item" data-bb="arap" onclick="bbGo('arap')"><span class="bb-ico">₹</span>Money</button>
+  <button class="bb-item" data-bb="more" onclick="openSheet()"><span class="bb-ico">☰</span>More</button>
+</nav>
+<div class="sheet-overlay" id="sheetOverlay" onclick="closeSheet()"></div>
+<div class="sheet" id="moreSheet">
+  <div class="sh-grab"></div>
+  <div class="persp" style="margin:0 0 10px;">
+    <button class="active" data-p="revenue" onclick="setPersp('revenue')">₹ Revenue</button>
+    <button data-p="expense" onclick="setPersp('expense')">Expense</button>
+  </div>
+  <button class="nav-item" onclick="bbGo('sessions')"><span class="n-ico">◔</span>Group Sessions<span class="n-badge soft">3</span></button>
+  <button class="nav-item" onclick="bbGo('onboarding')"><span class="n-ico">✦</span>Get Started</button>
+  <button class="nav-item" onclick="closeSheet();toast('Catalog Studio — existing screen, unchanged')"><span class="n-ico">▦</span>Catalog Studio</button>
+  <button class="nav-item" onclick="closeSheet();toast('Settings — existing screen group')"><span class="n-ico">⚙</span>Settings</button>
+  <div class="growth-nav">
+    <div class="n-note">growth surfaces — playground nav only</div>
+    <button class="nav-item" onclick="bbGo('landing')"><span class="n-ico">🌐</span>Landing (pre-signup)</button>
+    <button class="nav-item" onclick="bbGo('portal')"><span class="n-ico">🔗</span>Customer portal</button>
+  </div>
+</div>
+
 <!-- ════ JIT modal — GST at first invoice preview ════ -->
 <div class="jit-overlay" id="jitOverlay">
   <div class="jit-modal">
@@ -934,9 +990,15 @@ function go(p) {
     n.classList.toggle('active', owns);
   });
   window.scrollTo({ top: 0 });
+  const bbMap = { dashboard:'dashboard', contracts:'contracts', contractview:'contracts', contacts:'contacts', contactview:'contacts', arap:'arap' };
+  document.querySelectorAll('.bb-item').forEach(b => b.classList.toggle('active', b.dataset.bb === bbMap[p]));
   if (p === 'contractview' && !coachDone) document.getElementById('coachBox').style.display = '';
   if (p === 'portal') toast('event: portal_viewed · viewer becomes a Prospect in Contacts');
 }
+/* mobile shell */
+function bbGo(p) { closeSheet(); go(p); }
+function openSheet() { document.getElementById('moreSheet').classList.add('open'); document.getElementById('sheetOverlay').classList.add('open'); }
+function closeSheet() { document.getElementById('moreSheet').classList.remove('open'); document.getElementById('sheetOverlay').classList.remove('open'); }
 function toast(msg) {
   const z = document.getElementById('toastZone');
   const t = document.createElement('div');
