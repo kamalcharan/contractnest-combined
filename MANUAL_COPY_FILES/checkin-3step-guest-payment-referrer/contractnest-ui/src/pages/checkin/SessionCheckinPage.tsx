@@ -20,7 +20,6 @@ import {
   type CheckinForm, type CheckinField, type CheckinFormSchema, type CheckinPaymentConfig,
   type CheckinDeviceLookup, type CheckinGuestService, type CheckinMemberSearchResult,
 } from './useSessionCheckin';
-import { QrCode } from '@/utils/qrcodegen';
 import { countries } from '@/utils/constants/countries';
 import { validatePhoneByCountry, getFullPhoneNumber, getPhonePlaceholder } from '@/utils/validation/contactValidation';
 
@@ -47,23 +46,6 @@ const money = (n?: number, c = 'INR') =>
   `${c === 'INR' ? '₹' : c + ' '}${Number(n || 0).toLocaleString()}`;
 const isOpen = (s: string) => ['scheduled', 'due', 'overdue'].includes(s);
 const initialOf = (s?: string) => (s || '?').trim().charAt(0).toUpperCase() || '?';
-
-// Build a UPI intent URL (upi://pay?…). On a phone this opens the UPI app
-// chooser (GPay / PhonePe / Paytm) pre-filled with payee + amount.
-// mc (merchant category code) is mandatory per the NPCI UPI Linking Spec —
-// every real QR (personal or merchant) carries it, defaulting to 0000 for a
-// non-merchant payee. Omitting it made GPay reject the link outright with
-// "Payments to this receiver are not allowed by UPI network", even to a
-// valid VPA, while scanning that same payee's own QR worked fine.
-const upiPayUrl = (vpa: string, payee?: string, amount?: number, note?: string) => {
-  const parts = [`pa=${encodeURIComponent(vpa)}`];
-  if (payee) parts.push(`pn=${encodeURIComponent(payee)}`);
-  parts.push('mc=0000');
-  if (amount) parts.push(`am=${amount}`);
-  parts.push('cu=INR');
-  if (note) parts.push(`tn=${encodeURIComponent(note)}`);
-  return `upi://pay?${parts.join('&')}`;
-};
 
 // Fields the shell renders itself (the prominent Present/Apologies control),
 // so we don't double them up inside the Smart Form body.
@@ -301,16 +283,13 @@ const SessionCheckinPage: React.FC = () => {
   // on the very first click.
   const submitLockRef = useRef(false);
   const [done, setDone] = useState(false);
-  // UPI deep links have no callback — the browser tab just sits there
-  // untouched while the user pays in GPay/PhonePe. Without this, a user can
-  // easily assume the system detected the payment automatically and never
-  // come back to enter the reference + tap Record payment. A confirm modal
-  // sets that expectation before they leave, and a visibility-change nudge
-  // catches them again if they forget once they're back on the tab.
-  const [payConfirmOpen, setPayConfirmOpen] = useState(false);
-  const [pendingPayUrl, setPendingPayUrl] = useState('');
+  // The member pays manually in their own UPI app (see renderPayBlock) --
+  // there's no callback telling this page a payment succeeded, so a
+  // visibility-change nudge reminds them to come back and enter the
+  // reference once they switch back to this tab.
   const [paymentAttempted, setPaymentAttempted] = useState(false);
   const [showReturnNudge, setShowReturnNudge] = useState(false);
+  const [copiedVpa, setCopiedVpa] = useState(false);
 
   // Resolve the token + load the check-in form on mount
   useEffect(() => {
@@ -760,35 +739,49 @@ const SessionCheckinPage: React.FC = () => {
   // Shared UPI pay button + QR + reference field -- used by both the
   // member-dues Payment step and the guest-service Payment step, so the
   // deep-link/QR/return-nudge logic only lives in one place.
-  const renderPayBlock = (amount: number, currency: string | undefined, label: string) => {
-    const note = `${chapterName} - ${label}`;
+  // A hand-built upi://pay link/QR is unsigned -- GPay (and likely other UPI
+  // apps) rejects payments to this tenant's VPA with "Payments to this
+  // receiver are not allowed by UPI network" when it arrives that way, even
+  // though the exact same VPA works fine via the bank's own signed QR poster.
+  // Only the bank/PSP holds the signing key, so we can't reproduce that here.
+  // The reliable path is the member's own UPI app's built-in "Pay to UPI ID"
+  // entry -- that's the app itself constructing a first-party request, not
+  // an external deep link, so the same rejection doesn't apply.
+  const renderPayBlock = (amount: number, currency: string | undefined) => {
     const canPay = !!payCfg?.configured && !!payCfg.upi_id;
-    const url = canPay ? upiPayUrl(payCfg!.upi_id!, payCfg!.payee_name, amount, note) : '';
-    let qrSvg = '';
-    if (canPay) { try { qrSvg = QrCode.encodeText(url, 'MEDIUM').toSvgString(1, '#111827', '#ffffff'); } catch { qrSvg = ''; } }
+    const copyVpa = () => {
+      if (!payCfg?.upi_id) return;
+      navigator.clipboard?.writeText(payCfg.upi_id).catch(() => { /* clipboard unavailable -- VPA is still shown for manual copy */ });
+      setCopiedVpa(true);
+      setPaymentAttempted(true);
+      window.setTimeout(() => setCopiedVpa(false), 2000);
+    };
     return (
       <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
         {canPay && (
           <>
-            <button
-              type="button"
-              onClick={() => { setPendingPayUrl(url); setPayConfirmOpen(true); }}
-              style={{ display: 'block', width: '100%', textAlign: 'center', textDecoration: 'none', padding: 13, borderRadius: 12,
-                background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15.5, border: 'none', cursor: 'pointer' }}>
-              Pay {money(amount, currency)} now
-            </button>
-            <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
-              Opens your UPI app (GPay / PhonePe / Paytm).
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12,
-              background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
-              {qrSvg && <div style={{ width: 84, height: 84, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: qrSvg }} />}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: BRAND.sub }}>Or scan to pay</div>
-                <div style={{ fontWeight: 700, color: BRAND.ink, fontSize: 13.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
-                {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub }}>{payCfg!.payee_name}</div>}
-              </div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink, marginBottom: 8 }}>
+              Pay {money(amount, currency)} via your UPI app
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10,
+              background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>UPI ID</div>
+                <div style={{ fontWeight: 800, color: BRAND.ink, fontSize: 14.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
+                {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 1 }}>{payCfg!.payee_name}</div>}
+              </div>
+              <button type="button" onClick={copyVpa}
+                style={{ flex: 'none', padding: '9px 14px', borderRadius: 10, border: `1.5px solid ${BRAND.accent}`,
+                  background: copiedVpa ? BRAND.accent : '#fff', color: copiedVpa ? '#fff' : BRAND.accentInk,
+                  fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+                {copiedVpa ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <ol style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12.5, color: BRAND.sub, lineHeight: 1.7 }}>
+              <li>Open Google Pay, PhonePe, or any UPI app</li>
+              <li>Choose "Pay to UPI ID" (or "Pay phone number")</li>
+              <li>Enter the UPI ID above and the amount, then pay</li>
+            </ol>
           </>
         )}
         {showReturnNudge && (
@@ -1181,7 +1174,7 @@ const SessionCheckinPage: React.FC = () => {
                     </div>
                   )}
 
-                  {payEventId && Number(payAmount) > 0 && renderPayBlock(Number(payAmount), targetDue?.currency, targetDue?.label || 'dues')}
+                  {payEventId && Number(payAmount) > 0 && renderPayBlock(Number(payAmount), targetDue?.currency)}
                 </Card>
               )}
 
@@ -1213,7 +1206,7 @@ const SessionCheckinPage: React.FC = () => {
                       );
                     })}
                   </div>
-                  {selectedService && renderPayBlock(selectedService.price, selectedService.currency, selectedService.name)}
+                  {selectedService && renderPayBlock(selectedService.price, selectedService.currency)}
                 </Card>
               )}
 
@@ -1300,33 +1293,6 @@ const SessionCheckinPage: React.FC = () => {
             </>
           )}
 
-          {/* Sets expectations before the user leaves for their UPI app —
-              there's no callback that tells this page a payment succeeded,
-              so without this a user can easily assume it's automatic and
-              never come back to declare it. */}
-          {payConfirmOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 100 }}
-              onClick={() => setPayConfirmOpen(false)}>
-              <div style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 360, width: '100%' }}
-                onClick={(e) => e.stopPropagation()}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: BRAND.ink, marginBottom: 8 }}>Before you pay</div>
-                <p style={{ fontSize: 13.5, color: BRAND.sub, marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>
-                  This opens your UPI app to pay. <strong style={{ color: BRAND.ink }}>The payment isn't recorded automatically</strong> —
-                  once you've paid, come back here, enter the UPI reference number, and tap <strong style={{ color: BRAND.ink }}>Record payment</strong> so the chair knows.
-                </p>
-                <a href={pendingPayUrl}
-                  onClick={() => { setPaymentAttempted(true); setPayConfirmOpen(false); }}
-                  style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: 13, borderRadius: 12,
-                    background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15 }}>
-                  Continue to pay
-                </a>
-                <button onClick={() => setPayConfirmOpen(false)}
-                  style={{ marginTop: 10, width: '100%', background: 'none', border: 'none', color: BRAND.sub, fontWeight: 600, cursor: 'pointer', fontSize: 13, padding: 8 }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </Shell>

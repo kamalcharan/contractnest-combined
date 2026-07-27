@@ -2,6 +2,33 @@
 MANUAL COPY INSTRUCTIONS - checkin-3step-guest-payment-referrer
 ===============================================================
 
+UPDATE -- UPI "Pay now" fix (same batch, updated in place)
+---------------------------------------------------------------
+Finally root-caused the GPay "Payments to this receiver are not allowed
+by UPI network" error from way back. The Karnataka Bank poster QR you
+shared confirmed it: that's a real bank-signed merchant QR (BHIM/KBL,
+signed by the bank's PSP with a private key). Our own "Pay now" button
+and its "Or scan to pay" QR were both built from a hand-constructed,
+UNSIGNED upi://pay link -- only the bank/PSP can produce a valid
+signature, so GPay was rejecting ours outright while the real bank
+poster (properly signed) scans fine. No URL parameter fixes this --
+mc=0000 never could have.
+
+Removed both the broken "Pay now" button and the broken self-generated
+QR entirely (a QR encoding the same unsigned link would have failed
+the same way). Replaced with: the UPI ID shown plainly with a Copy
+button, plus 3-step instructions to open GPay/PhonePe/any UPI app,
+choose "Pay to UPI ID," and pay manually. This works because the
+member's own UPI app is now the one constructing and signing the
+request as a first-party participant -- not us handing it an external
+unsigned link. Same mechanism as scanning the bank's real QR, just
+typed instead of scanned. The UPI-reference entry field (already
+built) is unchanged -- still how the chair finds out you paid.
+
+Also cleaned up now-dead code that only existed to support the broken
+flow: the "Before you pay" confirm modal, the QrCode import, and the
+upiPayUrl() builder. tsc/eslint re-checked clean after removal.
+
 UPDATE -- garbled character fix (same batch, updated in place)
 ---------------------------------------------------------------
 You reported seeing "strange characters" on the live page -- real bug,
@@ -177,6 +204,11 @@ VERIFICATION ALREADY DONE
 
 TESTING CHECKLIST
 ---------------------------------------------------------------
+- [ ] On the Payment step, confirm the "Pay now" button and QR are gone
+      -- replaced by the UPI ID + Copy button + 3-step instructions.
+      Tap Copy, confirm it copies and shows "Copied" briefly.
+      Real test: actually pay via GPay's "Pay to UPI ID" using the
+      copied ID -- confirm it goes through (this is the actual fix).
 - [ ] Double-tap "Check in" / "Record payment" fast (or rapid double
       click on desktop) -> confirm only ONE row is ever created in
       t_session_payment_declarations / t_session_attendance for that
