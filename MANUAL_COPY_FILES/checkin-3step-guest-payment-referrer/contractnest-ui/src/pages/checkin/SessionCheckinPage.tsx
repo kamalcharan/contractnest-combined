@@ -12,7 +12,7 @@
 // renderer below ΓÇö deliberately dependency-light (no ThemeContext / admin
 // components) because this page renders for logged-out members on a phone.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   sessionCheckinApi, getOrCreateDeviceToken, forgetDeviceToken,
@@ -295,6 +295,11 @@ const SessionCheckinPage: React.FC = () => {
   const [selectedCadence, setSelectedCadence] = useState<string | null>(null);
   const [upiRef, setUpiRef] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // React state updates aren't synchronous -- a fast double-tap can invoke
+  // submit() twice before the "submitting" state re-render disables the
+  // button. A ref is read/written synchronously, so it closes that gap even
+  // on the very first click.
+  const submitLockRef = useRef(false);
   const [done, setDone] = useState(false);
   // UPI deep links have no callback ΓÇö the browser tab just sits there
   // untouched while the user pays in GPay/PhonePe. Without this, a user can
@@ -563,15 +568,17 @@ const SessionCheckinPage: React.FC = () => {
   };
 
   const submit = async () => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setErr(null);
     const hasSession = !!resolve?.occurrence;
     // Already checked in: nothing to record unless they're paying.
-    if (member && alreadyChecked && !hasMemberPaymentIntent) { setDone(true); return; }
+    if (member && alreadyChecked && !hasMemberPaymentIntent) { submitLockRef.current = false; setDone(true); return; }
     // Dues-only mode (no session today): only a payment declaration can be
     // submitted -- the backend records it without touching attendance.
-    if (!hasSession && !hasAnyPaymentIntent) { setErr('There is no session today -- tap "Pay now" or enter your UPI reference to record a payment.'); return; }
+    if (!hasSession && !hasAnyPaymentIntent) { submitLockRef.current = false; setErr('There is no session today -- tap "Pay now" or enter your UPI reference to record a payment.'); return; }
     // Smart-form questions only apply to a fresh check-in on a session day.
-    if (hasSession && !alreadyChecked && !validateForm()) { setErr('Please answer the required questions.'); return; }
+    if (hasSession && !alreadyChecked && !validateForm()) { submitLockRef.current = false; setErr('Please answer the required questions.'); return; }
     setSubmitting(true);
     try {
       const payment = hasMemberPaymentIntent
@@ -626,7 +633,7 @@ const SessionCheckinPage: React.FC = () => {
     } catch (e: any) {
       const reason = e?.response?.data?.message;
       setErr(reason === 'no_session_today' ? 'There is no session scheduled for today.' : (reason || 'Check-in failed.'));
-    } finally { setSubmitting(false); }
+    } finally { submitLockRef.current = false; setSubmitting(false); }
   };
 
   // ΓöÇΓöÇ shared UI atoms ΓöÇΓöÇ

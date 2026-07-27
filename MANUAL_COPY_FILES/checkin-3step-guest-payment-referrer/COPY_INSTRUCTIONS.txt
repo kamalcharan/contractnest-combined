@@ -2,7 +2,35 @@
 MANUAL COPY INSTRUCTIONS - checkin-3step-guest-payment-referrer
 ===============================================================
 
-WHAT THIS IS
+UPDATE -- race-condition fix added (same batch, updated in place)
+---------------------------------------------------------------
+You asked directly: "i hope there are no race conditions on this
+form...... previously we got 2-3 entries at a time recorded
+(Especially payments)". Checked, and you were right to ask -- found
+it's still a real gap:
+
+- There was NO unique constraint on t_session_payment_declarations at
+  all. Confirmed live: right now there are 3 pending declarations for
+  the same due for one member, and 2 for another -- pre-existing, not
+  caused by anything in this batch. Per your call, these are left
+  alone (chair rejects the extras manually next time they're on
+  Payments to confirm).
+- Added migration 052_checkin_payment_declaration_dedup.sql: two
+  partial unique indexes (one pending declaration per member+due, one
+  per guest+service+session) plus ON CONFLICT DO NOTHING on every
+  payment-declaration insert (gs_submit_checkin x3, gs_checkin_guest
+  x2). A resubmit or double-tap can no longer create a second row --
+  the DB silently no-ops the duplicate insert. Already applied live.
+- Added a client-side guard too (SessionCheckinPage.tsx, submitLockRef):
+  React state updates aren't synchronous, so a fast double-tap could
+  fire submit() twice before the "submitting" state disables the
+  button on screen. A ref is checked/set synchronously, closing that
+  gap on the very first click, not just the re-render after it.
+- SessionCheckinPage.tsx in this folder already has both fixes baked
+  in -- it's the same file as before, just updated in place. If you
+  already copied the pre-race-fix version, copy it again to get this.
+
+WHAT THIS IS (original batch)
 ---------------------------------------------------------------
 Implements the 3-step check-in redesign we mocked up and agreed on
 (Identify -> Payment -> Check-in), plus everything that came out of
@@ -105,7 +133,12 @@ FILES IN THIS FOLDER
    -> Reference only -- already applied live, this just keeps your
       local migration history in sync.
 
-SUBMODULES AFFECTED: contractnest-ui, contractnest-api, contractnest-edge (migration file only, DB already live)
+7. contractnest-edge/supabase/migrations/bbb-foundation/052_checkin_payment_declaration_dedup.sql
+   -> Copy to: contractnest-edge\supabase\migrations\bbb-foundation\052_checkin_payment_declaration_dedup.sql
+   -> Reference only -- already applied live. The race-condition fix
+      (see UPDATE section at the top of this file).
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api, contractnest-edge (migration files only, DB already live)
 
 VERIFICATION ALREADY DONE
 ---------------------------------------------------------------
@@ -115,9 +148,14 @@ VERIFICATION ALREADY DONE
 - Migration applied live and spot-checked (column nullability, the
   Guest Participation Fee block's config, new RPCs all confirmed via
   direct SQL queries after applying).
+- Both unique indexes confirmed present after the dedup migration.
 
 TESTING CHECKLIST
 ---------------------------------------------------------------
+- [ ] Double-tap "Check in" / "Record payment" fast (or rapid double
+      click on desktop) -> confirm only ONE row is ever created in
+      t_session_payment_declarations / t_session_attendance for that
+      submission, not two.
 - [ ] Open a check-in link, enter a known member's number -> lands on
       Payment step (if they have an open due) showing "Welcome, X" and
       the real dues card, same as before.
