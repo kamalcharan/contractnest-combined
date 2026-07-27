@@ -1,0 +1,71 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - catalog-studio-anchor-date
+===============================================================
+
+FEATURE: Catalog Studio block wizard gains an optional "First
+occurrence date" field for cyclical/Group Session blocks. When set,
+gs_generate_schedule uses that exact date as the series' first
+occurrence instead of always computing "next occurrence of the
+weekday anchor on/after the earliest contract start date" — which is
+what produced BBB's Saturday Cadence mismatch (the real chapter's
+first meeting didn't land on the auto-computed date).
+
+Also fixes a pre-existing gap found while building this: the
+"Repeat on a fixed weekday?" dropdown set a wizard field
+(cycleAnchorWeekday) that buildConfig() never actually read — so
+picking a weekday when creating a NEW block silently didn't save it.
+Only blocks whose serviceCycles config already existed (e.g. from a
+template import) carried an anchorWeekday through. Fixed alongside
+the new date field since both go through the same wiring.
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-edge/supabase/migrations/bbb-foundation/050_generate_schedule_anchor_date.sql
+   -> Copy to: contractnest-edge\supabase\migrations\bbb-foundation\050_generate_schedule_anchor_date.sql
+   -> ALREADY LIVE on Supabase (applied directly this session) --
+      copy purely so your local migration history matches what's
+      running, no redeploy needed for this file.
+   -> gs_generate_schedule now reads config.serviceCycles.anchorDate;
+      when present, uses it directly as the first occurrence.
+      Falls back to the existing anchorWeekday/day-count logic when
+      anchorDate isn't set -- fully backward compatible, no existing
+      block's behavior changes unless you explicitly set the new field.
+
+2. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+   -> Copy to: contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts
+   -> buildConfig() now reads cycleAnchorWeekday AND the new
+      cycleAnchorDate from the wizard's flat fields into
+      config.serviceCycles (previously only anchorWeekday from an
+      EXISTING config survived edits; a brand-new block's weekday
+      pick was silently dropped).
+
+3. contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx
+   -> Copy to: contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\DeliveryStep.tsx
+   -> New "First occurrence date (optional)" date input directly
+      under the existing "Repeat on a fixed weekday?" dropdown, same
+      hydration pattern (wizard field with meta fallback for edit mode).
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
+(edge migration already deployed live -- only ui needs your local
+test + merge)
+
+TESTING CHECKLIST:
+- [ ] Open Catalog Studio -> create or edit a cyclical/Group Session
+      block -> Delivery step shows the new "First occurrence date"
+      field under the weekday dropdown
+- [ ] Set a date, save the block
+- [ ] Run "Generate schedule" for that block (from the Group Sessions
+      dashboard or wherever schedule generation is triggered) ->
+      first occurrence lands exactly on the date you set, not the
+      auto-computed weekday guess
+- [ ] Existing blocks with NO anchorDate set: generate schedule as
+      before -> behavior unchanged (auto-computed weekday anchor
+      still applies)
+- [ ] Existing blocks with an anchorWeekday already saved (e.g. BBB's
+      Saturday Cadence): still respected when anchorDate is blank
+- [ ] Create a brand-new cyclical block, pick a weekday (no anchor
+      date), save -> reload/edit it -> weekday selection persisted
+      (this was the pre-existing dead-dropdown bug, now fixed)
+
+===============================================================
