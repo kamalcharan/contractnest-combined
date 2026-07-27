@@ -460,16 +460,24 @@ const SessionCheckinPage: React.FC = () => {
   const submit = async () => {
     setErr(null);
     const hasSession = !!resolve?.occurrence;
-    // Already checked in: nothing to record unless they're paying a due.
-    if (member && alreadyChecked && !payEventId) { setDone(true); return; }
+    // payEventId is auto-targeted the moment there's an open due (so the
+    // "current due" card can render) — it is NOT itself a signal that the
+    // member wants to pay. Without gating on an actual payment action
+    // (tapped "Pay now", or typed a reference), simply checking in for
+    // attendance with any open due silently created a payment declaration
+    // for every such check-in, whether the member touched the payment
+    // section or not — that's what was flooding "Payments to confirm".
+    const hasPaymentIntent = !!payEventId && (paymentAttempted || !!upiRef);
+    // Already checked in: nothing to record unless they're actually paying a due.
+    if (member && alreadyChecked && !hasPaymentIntent) { setDone(true); return; }
     // Dues-only mode (no session today): only a payment declaration can be
     // submitted — the backend records it without touching attendance.
-    if (!hasSession && !payEventId) { setErr('There is no session today — enter an amount to record a payment.'); return; }
+    if (!hasSession && !hasPaymentIntent) { setErr('There is no session today — tap "Pay now" or enter your UPI reference to record a payment.'); return; }
     // Smart-form questions only apply to a fresh check-in on a session day.
     if (hasSession && !alreadyChecked && !validateForm()) { setErr('Please answer the required questions.'); return; }
     setSubmitting(true);
     try {
-      const payment = payEventId
+      const payment = hasPaymentIntent
         ? { billing_event_id: payEventId, upi_reference: upiRef || undefined,
             amount: Number(payAmount) || openDues.find((d) => d.event_id === payEventId)?.amount }
         : null;
