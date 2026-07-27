@@ -1,0 +1,64 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - checkin-payment-declaration-fix
+===============================================================
+
+BUG FOUND (from your "31 payments to confirm" audit):
+Of the 31 pending payment declarations, only 3 had a real UPI
+reference filled in -- the other 28 had upi_reference = null. Root
+cause confirmed in code, not a one-off: in SessionCheckinPage.tsx,
+`payEventId` auto-populates the instant a member has ANY open due
+(so the "current due" card can render) -- it was never actually a
+signal that the member wants to pay. The submit() function gated
+creating a payment declaration purely on `payEventId` being non-empty,
+so simply checking in for attendance (with any open due, which is
+most members) silently created a phantom pending declaration every
+time, whether the member ever touched the payment section, tapped
+"Pay now", or typed a reference. This also explains why some members
+(e.g. Bharat Kumar Mangipudi) show TWO pending declarations for the
+same due -- re-opening/resubmitting created a second one, since there
+was never a real gate.
+
+FIX: a payment declaration is now only created when there's an actual
+signal of payment intent -- the member tapped "Pay now" (opens their
+UPI app) OR typed a UPI reference. Just having an open due sitting
+there (payEventId auto-set) no longer triggers a declaration on its
+own. Also fixes the same gap in "dues-only mode" (no session today).
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+   -> Copy to: contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx
+   -> This is the FULL current file (redesign + mc=0000 UPI fix +
+      this declaration-gating fix, all three already merged in) --
+      not a diff. Safe to overwrite whatever you currently have.
+
+SUBMODULES AFFECTED: contractnest-ui only
+
+NOT INCLUDED -- YOUR CALL: the 28 existing phantom pending
+declarations already in the database (created before this fix) are
+untouched. They're harmless as-is (each one just needs a "Reject" tap
+from the chair on the Payments to confirm screen, and the earlier
+Cancel-Receipt/audit tooling doesn't touch them), but if you'd rather
+I bulk-clean the ones with no UPI reference and no chair confirmation
+yet, say so and I'll write that as a one-off data correction --
+separate from this code fix so nothing gets removed without your
+go-ahead.
+
+TESTING CHECKLIST:
+- [ ] Open a check-in link for a member with an open due
+- [ ] Mark present WITHOUT touching the payment section at all ->
+      submit -> confirm NO new row appears in Payments to confirm
+      for that member (this is the actual regression test for the bug)
+- [ ] Same member, this time tap "Pay now" (UPI app opens), come back,
+      leave reference blank, submit -> a declaration IS created (no
+      reference, but payment was attempted -- correct, matches
+      existing "no reference" chair-side warning pill)
+- [ ] Same member, type a UPI reference without tapping "Pay now",
+      submit -> a declaration IS created (reference present)
+- [ ] Dues-only mode (no session today) -> same gating applies
+- [ ] Already-checked-in member reopening the link with no new
+      payment action -> "You're all set" screen, no duplicate
+      submission fired
+
+===============================================================
