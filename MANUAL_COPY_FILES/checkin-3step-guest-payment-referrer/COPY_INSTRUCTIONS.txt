@@ -1,0 +1,148 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - checkin-3step-guest-payment-referrer
+===============================================================
+
+WHAT THIS IS
+---------------------------------------------------------------
+Implements the 3-step check-in redesign we mocked up and agreed on
+(Identify -> Payment -> Check-in), plus everything that came out of
+the audit thread:
+
+1) Identify is now its own step -- no more auto-populated identity
+   bleeding into payment/attendance. Uses the exact same phone-entry /
+   not-found guest-or-substitute / device-recognition flow as before,
+   just laid out as step 1 instead of interleaved with attendance.
+
+2) Payment is its own step, and now branches correctly by identity:
+   - Member (or a substitute standing in for one): the real "Your
+     dues" card, same as before.
+   - Guest: NO LONGER shows the member dues card (that was a bug you
+     caught -- a guest with no contract was seeing a fake dues
+     screen). Guests now pick from standalone catalog services the
+     tenant flags guestPayable -- nothing hardcoded. Your existing
+     "Guest Participation Fee" (Rs.600) shows up here automatically;
+     add more anytime by setting config.guestPayable: true on any
+     other service-category catalog block.
+   - Substitute: no payment step at all (matches gs_checkin_substitute
+     today -- it only ever recorded attendance, never a payment; that
+     wasn't changed here).
+   - A ContractNest platform brand card sits above the tenant's own
+     branding on every screen (blue, "Secure session check-in", a
+     Verified badge) -- the "brand propagation" card you asked for.
+
+3) Guest "Referred by" -- a required search-and-select field (typing
+   filters real roster members, tenant + membership scoped) in the
+   guest quick-details form. Tags which member brought the guest.
+
+4) "Payments to confirm" fix -- solved going forward. Root cause was
+   confirmed from your own audit: payEventId/selectedServiceId
+   auto-populate just so the "current due" / "pick a service" card can
+   render -- they were never a signal that the member/guest actually
+   wants to pay. submit() now only creates a payment declaration when
+   there's a real signal: tapping "Pay now" (opens UPI) or typing a
+   UPI reference. Simply checking in with an open due sitting there no
+   longer creates a phantom pending declaration. This supersedes the
+   earlier checkin-payment-declaration-fix batch (still sitting
+   uncopied in that older folder) -- that fix is now folded into this
+   file; you can ignore/delete that older batch, nothing further
+   needed from it.
+
+DATABASE -- ALREADY APPLIED LIVE, NOTHING FOR YOU TO RUN
+---------------------------------------------------------------
+Migration 051_checkin_guest_payment_referrer.sql (included in this
+folder for your local migration history) was already applied directly
+to the live BBB Supabase project via MCP. It:
+  - Makes membership_contract_id / billing_event_id nullable on
+    t_session_payment_declarations, and adds cat_block_id + description
+    columns -- a guest fee has neither a contract nor a billing event.
+  - Adds referred_by_contact_id to t_session_attendance.
+  - Fixes the "Guest Participation Fee" block: complimentary was
+    wrongly true (meant NO billing events ever generate) -- now false,
+    plus guestPayable:true so it shows up in the picker.
+  - New RPCs: gs_checkin_guest_services (list guestPayable catalog
+    services for a tenant) and gs_checkin_search_members (name search
+    for the referrer picker).
+  - Extends gs_checkin_guest with optional p_referred_by / p_payment.
+  - Extends gs_pending_declarations so a guest fee's service name and
+    an is_guest_fee flag show up for the chair's confirm screen.
+
+IMPORTANT -- guest fees are TRACKED-ONLY, not in the ledger yet
+---------------------------------------------------------------
+This was a deliberate scope call (asked you, you picked "track-only
+for now"): confirming a guest-fee declaration marks it confirmed, same
+as any other declaration, but does NOT create an invoice or revenue
+entry -- there's no real contract for it to settle against. It's
+recorded as check-in data, not accounting data. If/when you want real
+ledger integration for guest fees (a lightweight walk-in-sale/invoice
+path), that's separate follow-up work, flagged for later.
+
+FILES IN THIS FOLDER
+---------------------------------------------------------------
+1. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+   -> Copy to: contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx
+   -> Full file, not a diff.
+
+2. contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+   -> Copy to: contractnest-ui\src\pages\checkin\useSessionCheckin.ts
+   -> Full file. Adds guestServices()/searchMembers() API calls and
+      extends guest()'s payload type.
+
+3. contractnest-api/src/controllers/sessionCheckinController.ts
+   -> Copy to: contractnest-api\src\controllers\sessionCheckinController.ts
+   -> Full file. Adds guestServices/searchMembers controller actions;
+      guest() now passes through referred_by/payment.
+
+4. contractnest-api/src/services/sessionCheckinService.ts
+   -> Copy to: contractnest-api\src\services\sessionCheckinService.ts
+   -> Full file. Adds guestServices()/searchMembers() RPC wrappers.
+
+5. contractnest-api/src/routes/sessionCheckinPublicRoutes.ts
+   -> Copy to: contractnest-api\src\routes\sessionCheckinPublicRoutes.ts
+   -> Full file. Adds GET /guest-services and GET /members?q= routes.
+
+6. contractnest-edge/supabase/migrations/bbb-foundation/051_checkin_guest_payment_referrer.sql
+   -> Copy to: contractnest-edge\supabase\migrations\bbb-foundation\051_checkin_guest_payment_referrer.sql
+   -> Reference only -- already applied live, this just keeps your
+      local migration history in sync.
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api, contractnest-edge (migration file only, DB already live)
+
+VERIFICATION ALREADY DONE
+---------------------------------------------------------------
+- contractnest-ui: `npx tsc --noEmit` -- zero errors in the checkin
+  files (repo has pre-existing unrelated errors elsewhere, untouched).
+- contractnest-api: `npx tsc --noEmit` -- zero errors, whole project.
+- Migration applied live and spot-checked (column nullability, the
+  Guest Participation Fee block's config, new RPCs all confirmed via
+  direct SQL queries after applying).
+
+TESTING CHECKLIST
+---------------------------------------------------------------
+- [ ] Open a check-in link, enter a known member's number -> lands on
+      Payment step (if they have an open due) showing "Welcome, X" and
+      the real dues card, same as before.
+- [ ] Same member, tap "Continue to check-in" without touching payment
+      -> Check-in step, mark present, submit -> confirm NO new pending
+      declaration shows up (the phantom-declaration regression test).
+- [ ] Same flow, this time tap "Pay now" (or type a UPI reference) ->
+      submit -> a declaration IS created.
+- [ ] Enter an unrecognised number -> choose "I'm a guest" -> fill
+      name + Referred by (type 2+ letters of a real member's name,
+      confirm the dropdown filters and selecting it works) -> Continue
+      as guest -> should land on Payment step showing "Guest
+      Participation Fee - Rs.600" (and any other guestPayable
+      services) as selectable cards, NOT a dues screen.
+  - [ ] Select a service, tap Pay now / enter a UPI reference, submit
+        -> check t_session_payment_declarations has a new row with
+        cat_block_id set, billing_event_id/membership_contract_id
+        null, description = the service name.
+  - [ ] Chair's "Payments to confirm" screen shows this guest
+        declaration with a sensible label (not blank).
+- [ ] Substitute path (stand in for a member) -> should skip straight
+      from Identify to Check-in (no Payment step shown at all).
+- [ ] Recognised-device "Welcome back" cards (substitute/guest) still
+      work and still route into the right step.
+- [ ] ContractNest platform card renders above the tenant's own
+      "BBB Bhagyanagar" branding on every screen.
+
+===============================================================
