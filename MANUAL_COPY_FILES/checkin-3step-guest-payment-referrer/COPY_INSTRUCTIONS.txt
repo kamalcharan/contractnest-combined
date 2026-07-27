@@ -2,6 +2,31 @@
 MANUAL COPY INSTRUCTIONS - checkin-3step-guest-payment-referrer
 ===============================================================
 
+UPDATE -- garbled character fix (same batch, updated in place)
+---------------------------------------------------------------
+You reported seeing "strange characters" on the live page -- real bug,
+not a screenshot artifact. Root cause: this file has had CP437 mojibake
+baked into it for a while (predates this batch entirely) -- somewhere
+along the way, UTF-8 bytes for things like em dashes, checkmarks, and
+emoji got misread one byte at a time as the old DOS/Windows-console
+"OEM" codepage (437) and re-saved that way -- each real character
+(an em dash, a checkmark, an emoji) turned into 2-4 garbled letters in
+its place, exactly what you circled in the screenshot.
+
+Confirmed and fixed every instance in SessionCheckinPage.tsx (25 em
+dashes, 42 decorative separator characters, checkmarks, arrows, the
+rupee sign, the guest/substitute emoji, all restored to real UTF-8).
+Verified: file now has zero remaining garbled sequences, tsc still
+shows zero errors, eslint shows the same (pre-existing, unrelated)
+warnings as before. useSessionCheckin.ts checked too -- it was clean,
+no corruption there.
+
+Not touched: this same corruption pattern may exist in OTHER files
+across the codebase (it's a save/tooling issue, not specific to this
+page) -- flagging that as a separate thing worth a broader sweep if
+you want one; out of scope for this batch, which only covers the
+check-in files already being changed here.
+
 UPDATE -- race-condition fix added (same batch, updated in place)
 ---------------------------------------------------------------
 You asked directly: "i hope there are no race conditions on this
