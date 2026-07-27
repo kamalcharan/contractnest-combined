@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — retire-legacy-catalog
+═══════════════════════════════════════════════════
+Feature branch : claude/bbb-product-led-ux-53a7ue
+Date           : 2026-07-27
+Scope          : Bloat-reduction step 1 — remove the OLD service-catalog
+                 system (superseded by Catalog Studio).
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api, contractnest-edge
+                     (ClaudeDocumentation, ContractNest-Mobile, FamilyKnows: untouched)
+
+VERIFIED BEFORE PACKAGING
+  * contractnest-ui  : `npm run build`  → PASSED
+  * contractnest-api : `npx tsc --noEmit` → PASSED (exit 0)
+  * DB               : all 6 t_catalog_* tables = 0 rows; no inbound FKs;
+                       no dependent views; function patch simulated read-only
+                       against the live DB → 0 leftover references.
+  * The legacy "Service Catalog" sidebar entry was ALREADY commented out,
+    so /catalog was reachable only by typing the URL. No user-facing menu
+    item disappears.
+
+───────────────────────────────────────────────────
+ORDER OF OPERATIONS — IMPORTANT
+───────────────────────────────────────────────────
+  STEP A  delete retired files          (DELETE_FILES.ps1)
+  STEP B  copy modified files           (below)
+  STEP C  build + test locally
+  STEP D  commit & push submodules
+  STEP E  DEPLOY api + edge
+  STEP F  ONLY THEN run the SQL migration
+
+  Do NOT run the migration before the code is deployed — the still-running
+  old code would 500 against dropped tables. Code first, tables last.
+
+───────────────────────────────────────────────────
+STEP A — DELETE (22 paths)
+───────────────────────────────────────────────────
+  powershell -ExecutionPolicy Bypass -File MANUAL_COPY_FILES\retire-legacy-catalog\DELETE_FILES.ps1
+
+contractnest-ui (9 paths, incl. 2 directories)
+  src/pages/catalog/                              (3 files: index, view, catalogService-form)
+  src/components/catalog/                         (7 files: ServiceCard, ServiceForm/*, shared/*)
+  src/utils/catalog/                              (ServiceHelpers, ValidationSchemas)
+  src/hooks/queries/useServiceCatalogQueries.ts
+  src/hooks/queries/useServiceCatalogQueries1.ts  (already-dead duplicate)
+  src/hooks/queries/useServices.ts                (already dead)
+  src/hooks/mutations/useServiceCatalogMutations.ts
+  src/hooks/mutations/useBulkServiceCatalogMutations.ts  (already dead)
+  src/services/graphql/serviceCatalogGraphQLUrls.ts
+
+contractnest-api (10 files)
+  src/routes/serviceCatalogRoutes.ts
+  src/controllers/serviceCatalogController.ts
+  src/middleware/serviceCatalogAuth.ts
+  src/services/serviceCatalogService.ts
+  src/services/serviceCatalogGraphQLService.ts
+  src/services/resourceService.ts          <-- NOTE: singular. Dead file that
+                                               queried t_catalog_resources. The
+                                               LIVE Resources feature uses
+                                               resourcesService.ts (plural),
+                                               which is UNTOUCHED.
+  src/services/catalogValidationService.ts (dead; queried t_catalog_items)
+  src/types/serviceCatalogTypes.ts
+  src/types/serviceCatalogGraphQL.ts
+  src/validators/serviceCatalogValidator.ts
+
+contractnest-edge (1 directory)
+  supabase/functions/service-catalog/      (index, serviceCatalogDatabase,
+                                            serviceCatalogValidation)
+
+───────────────────────────────────────────────────
+STEP B — COPY MODIFIED FILES (6 files)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-ui\src\services\graphql\index.ts" -Destination "contractnest-ui\src\services\graphql\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\cleanup" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\retire-legacy-catalog\contractnest-edge\supabase\migrations\cleanup\20260727000001_retire_legacy_service_catalog.sql" -Destination "contractnest-edge\supabase\migrations\cleanup\" -Force
+
+What each modified file changes
+  contractnest-ui/src/App.tsx
+      - removed 3 legacy catalog imports (CatalogPage, ServiceViewPage,
+        CatalogServiceFormPage)
+      - removed the entire /catalog <Route> block
+  contractnest-ui/src/services/serviceURLs.ts
+      - removed the SERVICE_CATALOG endpoint block (49 lines)
+      - removed `ServiceCatalogEndpoints` type + `buildServiceCatalogListURL()`
+  contractnest-ui/src/services/graphql/index.ts
+      - removed serviceCatalogGraphQLUrls re-exports
+      - OPERATIONS now exposes RESOURCES only (SERVICE_CATALOG/MASTER_DATA/
+        AVAILABLE_RESOURCES entries removed; OPERATIONS had no consumers)
+  contractnest-ui/src/utils/constants/industryMenus.ts
+      - removed the already-commented-out "Service Catalog" menu block
+  contractnest-api/src/index.ts
+      - removed the serviceCatalogRoutes import, the /api/service-catalog
+        mount block, the health-check block, and 3 status/endpoint entries
+  contractnest-edge/.../20260727000001_retire_legacy_service_catalog.sql
+      - NEW migration (see STEP F)
+
+───────────────────────────────────────────────────
+STEP F — THE SQL MIGRATION (run LAST, after deploy)
+───────────────────────────────────────────────────
+File: contractnest-edge/supabase/migrations/cleanup/
+      20260727000001_retire_legacy_service_catalog.sql
+
+What it does, in one transaction:
+  §1 PATCHES  get_tenant_data_summary  — its t_catalog_items and
+     t_catalog_categories counts were NOT exception-guarded and WOULD THROW
+     once the tables are dropped. (admin_reset_all_data needs no patch: all
+     its catalog DELETEs are already wrapped in EXCEPTION WHEN OTHERS.)
+  §2 DROPS 20 legacy-catalog-only RPCs
+  §3 SAFETY GATE — aborts the whole migration if ANY of the 6 tables has
+     gained even one row since this was written
+  §4 DROPS the 6 tables:
+       t_catalog_items, t_catalog_categories, t_catalog_resources,
+       t_catalog_service_resources, t_catalog_resource_pricing,
+       t_catalog_industries
+  §5 POST-CHECK — raises (rolling back everything) if any table or function
+     reference survives
+
+It is transactional and fails closed: if anything is unexpected, nothing is
+dropped.
+
+Apply via Supabase SQL editor, or:
+  supabase db push
+(Do NOT apply before api + edge are deployed.)
+
+───────────────────────────────────────────────────
+NOT INCLUDED (deliberately deferred)
+───────────────────────────────────────────────────
+  * The lov-setup route bug and the S13 edge deploy (both P0, reported
+    separately) — untouched here to keep this diff single-purpose.
+  * The remaining ~170 unreferenced files from the audit — that is the
+    next clean-up step, not this one.
+═══════════════════════════════════════════════════
