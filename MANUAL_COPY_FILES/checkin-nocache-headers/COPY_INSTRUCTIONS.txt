@@ -1,0 +1,39 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - checkin-nocache-headers
+===============================================================
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-api/src/routes/sessionCheckinPublicRoutes.ts
+   -> Copy to: contractnest-api\src\routes\sessionCheckinPublicRoutes.ts
+   -> Purpose: the public check-in router (/api/checkin/:token/...,
+      no auth) had no Cache-Control headers at all. The same QR/link
+      is scanned by many different members on many different phones,
+      and a mobile browser or carrier proxy can cache a GET response
+      (resolve/history/form/payment-config) with no explicit
+      directive -- showing a stale or wrong member's attendance/dues
+      state. Added a router-level middleware setting:
+        Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate
+        Pragma: no-cache
+        Expires: 0
+      on every response from this router.
+
+SUBMODULES AFFECTED: contractnest-api only
+
+NOTE: The frontend SPA shell (contractnest-ui) was already safe --
+nginx.conf serves index.html with no-cache/no-store/must-revalidate
+and hashed JS/CSS with immutable caching (the standard safe pattern),
+so this closes the one real gap: the API responses.
+
+TESTING CHECKLIST:
+- [ ] curl -I the deployed /api/checkin/:token endpoint (or check
+      Network tab on a phone) -> Cache-Control: no-store, no-cache,
+      must-revalidate, proxy-revalidate present on the response
+- [ ] Scan the same check-in QR on two different phones back to back
+      -> each sees correct, independent state (no bleed-through)
+- [ ] Existing check-in flow (identify, form, dues, submit) still
+      works end-to-end -- this only adds response headers, no logic
+      changes
+
+===============================================================

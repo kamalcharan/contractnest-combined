@@ -1,0 +1,21 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - hide-contact-overview-tab
+===============================================================
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-ui/src/pages/contacts/view.tsx
+   -> Copy to: contractnest-ui\src\pages\contacts\view.tsx
+   -> Purpose: Hide the "Overview" tab on /contacts/:id (Contact
+      Detail page). Tab bar goes from Profile | Overview | Contracts
+      | Assets | Financials | Timeline to Profile | Contracts |
+      Assets | Financials | Timeline. The tab entry is commented
+      out (not deleted) in the TABS array, and the now-unused
+      LayoutDashboard icon import is removed. OverviewTab component
+      itself (components/contacts/dashboard/OverviewTab.tsx) is
+      untouched -- just unwired.
+
+SUBMODULES AFFECTED: contractnest-ui only
+
+===============================================================

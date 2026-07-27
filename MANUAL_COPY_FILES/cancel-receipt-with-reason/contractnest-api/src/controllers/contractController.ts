@@ -1,0 +1,1132 @@
+// ============================================================================
+// Contract Controller
+// ============================================================================
+// Purpose: Handle HTTP requests for contract & RFQ operations
+// Pattern: Validate → Extract context → Call service → Map response
+// No business logic — just request/response handling
+// ============================================================================
+
+import { Response } from 'express';
+import { validationResult } from 'express-validator';
+import { AuthRequest } from '../middleware/auth';
+import ContractService from '../services/contractService';
+import {
+  sendSuccess,
+  sendError,
+  internalError,
+  ERROR_CODES
+} from '../utils/apiResponseHelpers';
+
+class ContractController {
+  private contractService: ContractService;
+
+  constructor() {
+    this.contractService = new ContractService();
+  }
+
+  /**
+   * GET /api/contracts
+   * List contracts with filtering and pagination
+   */
+  listContracts = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const filters = {
+        record_type: req.query.record_type as string,
+        contract_type: req.query.contract_type as string,
+        status: req.query.status as string,
+        search: req.query.search as string,
+        page: parseInt(req.query.page as string || '1', 10),
+        per_page: Math.min(parseInt(req.query.per_page as string || req.query.limit as string || '20', 10), 100),
+        sort_by: req.query.sort_by as string || 'created_at',
+        sort_order: req.query.sort_order as string || req.query.sort_direction as string || 'desc',
+        group_by: req.query.group_by as string || undefined,
+      };
+
+      const result = await this.contractService.listContracts(filters, userJWT, tenantId, environment);
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      // Transform RPC response to match UI response shape
+      // DB stores 'name' but UI Contract type expects 'title'
+      const pagination = result.pagination || {} as any;
+      const pageInfo = {
+        has_next_page: (pagination.page || 1) < (pagination.total_pages || 1),
+        has_prev_page: (pagination.page || 1) > 1,
+        current_page: pagination.page || 1,
+        total_pages: pagination.total_pages || 0,
+      };
+
+      // Grouped mode: RPC returns { groups: [...] } instead of { data: [...] }
+      if (filters.group_by && Array.isArray(result.groups)) {
+        const groups = result.groups.map((group: any) => ({
+          ...group,
+          contracts: (group.contracts || []).map((item: any) => ({
+            ...item,
+            title: item.title || item.name || '',
+          })),
+        }));
+        res.status(200).json({
+          success: true,
+          data: {
+            groups,
+            total_count: pagination.total || 0,
+            page_info: pageInfo,
+            filters_applied: filters,
+          }
+        });
+        return;
+      }
+
+      // Flat mode (default)
+      const items = Array.isArray(result.data)
+        ? result.data.map((item: any) => ({
+            ...item,
+            title: item.title || item.name || '',
+          }))
+        : [];
+      const transformedResult = {
+        success: true,
+        data: {
+          items,
+          total_count: pagination.total || 0,
+          page_info: pageInfo,
+          filters_applied: filters,
+        }
+      };
+
+      res.status(200).json(transformedResult);
+    } catch (error) {
+      console.error('[ContractController] Error in listContracts:', error);
+      internalError(res, 'Failed to list contracts');
+    }
+  };
+
+  /**
+   * GET /api/contracts/stats
+   * Get contract dashboard statistics
+   */
+  getContractStats = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const contractType = req.query.contract_type as string | undefined;
+
+      const result = await this.contractService.getContractStats(userJWT, tenantId, environment, contractType);
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      // Transform RPC response to match UI ContractStatsResponse shape
+          // Transform RPC response to match UI ContractStatsResponse shape
+      // Edge function returns RPC data at root level (not wrapped in .data)
+      const statsData = result.data || result || {} as any;
+      const portfolio = statsData.portfolio || {} as any;
+      const transformedResult = {
+        success: true,
+        data: {
+          total: statsData.total || statsData.total_count || 0,
+          by_status: statsData.by_status || {},
+          by_record_type: statsData.by_record_type || {},
+          by_contract_type: statsData.by_contract_type || {},
+          total_value: statsData.total_value || statsData.financials?.total_value || 0,
+          currency_breakdown: [],
+          // Portfolio aggregates (from enriched get_contract_stats)
+          portfolio: {
+            total_overdue_events: portfolio.total_overdue_events || 0,
+            total_invoiced: portfolio.total_invoiced || 0,
+            total_collected: portfolio.total_collected || 0,
+            outstanding: portfolio.outstanding || 0,
+            avg_health_score: portfolio.avg_health_score || 0,
+            needs_attention_count: portfolio.needs_attention_count || 0,
+          },
+        }
+      };
+
+
+      res.status(200).json(transformedResult);
+    } catch (error) {
+      console.error('[ContractController] Error in getContractStats:', error);
+      internalError(res, 'Failed to get contract stats');
+    }
+  };
+
+  /**
+   * GET /api/contracts/:id
+   * Get single contract by ID
+   */
+  getContract = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const result = await this.contractService.getContractById(id, userJWT, tenantId, environment);
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in getContract:', error);
+      internalError(res, 'Failed to get contract');
+    }
+  };
+
+  /**
+   * POST /api/contracts
+   * Create new contract or RFQ
+   */
+  createContract = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+      const idempotencyKey = req.headers['x-idempotency-key'] as string;
+
+      const result = await this.contractService.createContract(
+        req.body,
+        userJWT,
+        tenantId,
+        userId,
+        environment,
+        idempotencyKey
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in createContract:', error);
+      internalError(res, 'Failed to create contract');
+    }
+  };
+
+  /**
+   * POST /api/contracts/bulk-create
+   * Bulk template assignment (Phase 3): create — and optionally activate — many
+   * contracts in a single request. Each item is created independently (one
+   * failure never rolls back the others). Reuses the SAME createContract /
+   * updateContractStatus service path as the single flow (no mapper duplication;
+   * the client maps each draft → request via mapWizardToRequest and posts them
+   * here). Idempotent: members who already hold a live contract from the given
+   * template are skipped.
+   *
+   * Body: { template_id?: string, activate?: boolean,
+   *         items: Array<{ buyer_id: string, request: CreateContractRequest }> }
+   * Returns: { results: [...], summary: { total, created, skipped, failed } }
+   */
+  bulkCreateContracts = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const body = req.body || {};
+      const templateId: string | undefined = body.template_id;
+      const activate: boolean = body.activate !== false; // default true
+      const items: Array<{ buyer_id?: string; request?: any }> = Array.isArray(body.items) ? body.items : [];
+
+      if (items.length === 0) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'items is required and must be a non-empty array', 400);
+        return;
+      }
+      if (items.length > 200) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'items exceeds the 200-per-request limit', 400);
+        return;
+      }
+      if (items.some((i) => !i || typeof i.request !== 'object' || i.request === null)) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'each item must include a request object', 400);
+        return;
+      }
+
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = (req.headers['x-environment'] as string) || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      // Idempotency: which selected members already hold a live contract from
+      // this template? Skip them so a re-run never double-creates.
+      let alreadyAssigned = new Set<string>();
+      if (templateId) {
+        const buyerIds = items.map((i) => i.buyer_id || '').filter(Boolean);
+        alreadyAssigned = await this.contractService.findAssignedBuyerIds(tenantId, templateId, buyerIds);
+      }
+
+      const results: Array<Record<string, any>> = [];
+      let created = 0, skipped = 0, failed = 0;
+
+      for (const item of items) {
+        const buyerId = item.buyer_id || null;
+
+        if (buyerId && alreadyAssigned.has(buyerId)) {
+          skipped += 1;
+          results.push({ buyer_id: buyerId, status: 'skipped', reason: 'already has a contract from this template' });
+          continue;
+        }
+
+        try {
+          const createRes = await this.contractService.createContract(
+            item.request, userJWT, tenantId, userId, environment
+          );
+          if (!createRes.success) {
+            failed += 1;
+            results.push({ buyer_id: buyerId, status: 'failed', error: createRes.error || 'Create failed' });
+            continue;
+          }
+
+          const contract: any = createRes.data || {};
+          let status: string = contract.status || 'created';
+          let globalAccessId: string | undefined = contract.global_access_id;
+
+          if (activate && contract.id && contract.status === 'draft') {
+            const st = await this.contractService.updateContractStatus(
+              contract.id, { status: 'active' }, userJWT, tenantId, userId, environment
+            );
+            if (st.success) {
+              status = 'active';
+              if ((st.data as any)?.global_access_id) globalAccessId = (st.data as any).global_access_id;
+            }
+            // A failed activation is non-fatal: the contract exists as a draft
+            // and can be activated later.
+          }
+
+          created += 1;
+          results.push({
+            buyer_id: buyerId,
+            status,
+            contract_id: contract.id,
+            contract_number: contract.contract_number,
+            ...(globalAccessId ? { global_access_id: globalAccessId } : {}),
+          });
+        } catch (err: any) {
+          failed += 1;
+          results.push({ buyer_id: buyerId, status: 'failed', error: err?.message || 'Create failed' });
+        }
+      }
+
+      sendSuccess(res, {
+        results,
+        summary: { total: items.length, created, skipped, failed },
+      });
+    } catch (error) {
+      console.error('[ContractController] Error in bulkCreateContracts:', error);
+      internalError(res, 'Bulk contract creation failed');
+    }
+  };
+
+  /**
+   * PUT /api/contracts/:id
+   * Update existing contract
+   */
+  updateContract = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+      const idempotencyKey = req.headers['x-idempotency-key'] as string;
+
+      const result = await this.contractService.updateContract(
+        id,
+        req.body,
+        userJWT,
+        tenantId,
+        userId,
+        environment,
+        idempotencyKey
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in updateContract:', error);
+      internalError(res, 'Failed to update contract');
+    }
+  };
+
+  /**
+   * PATCH /api/contracts/:id/status
+   * Update contract status
+   */
+  updateContractStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const { status, note, version } = req.body;
+
+      const result = await this.contractService.updateContractStatus(
+        id,
+        { status, note, version },
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in updateContractStatus:', error);
+      internalError(res, 'Failed to update contract status');
+    }
+  };
+
+  /**
+   * DELETE /api/contracts/:id
+   * Soft delete contract
+   */
+  deleteContract = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR,
+          `Validation failed with ${errors.array().length} error(s)`, 400,
+          { details: errors.array() });
+        return;
+      }
+
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const { version, note } = req.body || {};
+
+      const result = await this.contractService.deleteContract(
+        id,
+        { version, note },
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in deleteContract:', error);
+      internalError(res, 'Failed to delete contract');
+    }
+  };
+
+  // ==========================================================
+  // PRIVATE HELPERS
+  // ==========================================================
+
+  /**
+   * Map Edge function error codes to HTTP status codes
+   * Edge returns { success: false, error: string, code: string }
+   * We map the code to the appropriate HTTP status
+   */
+  // =================================================================
+  // NOTIFICATION ENDPOINTS
+  // =================================================================
+
+  /**
+   * POST /api/contracts/:id/notify
+   * Send sign-off notification to buyer via email/WhatsApp
+   */
+  sendNotification = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const result = await this.contractService.sendNotification(
+        id,
+        req.body,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in sendNotification:', error);
+      internalError(res, 'Failed to send notification');
+    }
+  };
+
+  // =================================================================
+  // INVOICE & PAYMENT ENDPOINTS
+  // =================================================================
+
+  getContractInvoices = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const result = await this.contractService.getContractInvoices(
+        contractId,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in getContractInvoices:', error);
+      internalError(res, 'Failed to fetch invoices');
+    }
+  };
+
+  recordPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const result = await this.contractService.recordPayment(
+        contractId,
+        req.body,
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in recordPayment:', error);
+      internalError(res, 'Failed to record payment');
+    }
+  };
+
+  cancelInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const { invoice_id, action, reason } = req.body;
+
+      if (!invoice_id || !action) {
+        res.status(400).json({ success: false, error: 'invoice_id and action are required' });
+        return;
+      }
+
+      const result = await this.contractService.cancelInvoice(
+        contractId,
+        { invoice_id, action, reason },
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in cancelInvoice:', error);
+      internalError(res, 'Failed to process invoice action');
+    }
+  };
+
+  cancelReceipt = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const { receipt_id, reason } = req.body;
+
+      if (!receipt_id) {
+        res.status(400).json({ success: false, error: 'receipt_id is required' });
+        return;
+      }
+
+      const result = await this.contractService.cancelReceipt(
+        contractId,
+        { receipt_id, reason },
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in cancelReceipt:', error);
+      internalError(res, 'Failed to cancel receipt');
+    }
+  };
+
+  // =================================================================
+  // CONTRACT CREDIT / DEPOSIT ENDPOINTS
+  // =================================================================
+
+  setContractCredit = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+      const userName = req.user?.name || req.user?.email || null;
+
+      const { amount, reason } = req.body;
+
+      if (amount === undefined || amount === null || !reason) {
+        res.status(400).json({ success: false, error: 'amount and reason are required' });
+        return;
+      }
+
+      const result = await this.contractService.setContractCredit(
+        contractId,
+        { amount, reason },
+        userJWT,
+        tenantId,
+        userId,
+        userName,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in setContractCredit:', error);
+      internalError(res, 'Failed to set contract credit');
+    }
+  };
+
+  findBuyerPendingCredits = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const buyerId = req.query.buyer_id as string;
+      const excludeContractId = req.query.exclude_contract_id as string | undefined;
+
+      if (!buyerId) {
+        res.status(400).json({ success: false, error: 'buyer_id is required' });
+        return;
+      }
+
+      const result = await this.contractService.findBuyerPendingCredits(
+        buyerId,
+        excludeContractId,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in findBuyerPendingCredits:', error);
+      internalError(res, 'Failed to fetch pending credits');
+    }
+  };
+
+  applyBuyerCredit = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+      const userName = req.user?.name || req.user?.email || null;
+
+      const { source_contract_id } = req.body;
+
+      if (!source_contract_id) {
+        res.status(400).json({ success: false, error: 'source_contract_id is required' });
+        return;
+      }
+
+      const result = await this.contractService.applyBuyerCredit(
+        contractId,
+        source_contract_id,
+        userJWT,
+        tenantId,
+        userId,
+        userName,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in applyBuyerCredit:', error);
+      internalError(res, 'Failed to apply credit');
+    }
+  };
+
+  setContractDeposit = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+      const userName = req.user?.name || req.user?.email || null;
+
+      const { amount } = req.body;
+
+      if (amount === undefined || amount === null) {
+        res.status(400).json({ success: false, error: 'amount is required' });
+        return;
+      }
+
+      const result = await this.contractService.setContractDeposit(
+        contractId,
+        { amount },
+        userJWT,
+        tenantId,
+        userId,
+        userName,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in setContractDeposit:', error);
+      internalError(res, 'Failed to set contract deposit');
+    }
+  };
+
+  reclaimContractDeposit = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = req.params.id;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const result = await this.contractService.reclaimContractDeposit(
+        contractId,
+        userJWT,
+        tenantId,
+        userId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in reclaimContractDeposit:', error);
+      internalError(res, 'Failed to reclaim contract deposit');
+    }
+  };
+
+  // =================================================================
+  // BUYER EQUIPMENT ENDPOINTS
+  // =================================================================
+
+  /**
+   * POST /api/contracts/:id/buyer-equipment
+   * Add equipment from buyer's registry to the contract
+   */
+  buyerAddEquipment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const { equipment_item } = req.body;
+
+      if (!equipment_item) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'equipment_item is required', 400);
+        return;
+      }
+
+      const result = await this.contractService.buyerAddEquipment(
+        id,
+        equipment_item,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in buyerAddEquipment:', error);
+      internalError(res, 'Failed to add equipment');
+    }
+  };
+
+  /**
+   * DELETE /api/contracts/:id/buyer-equipment
+   * Remove buyer-added equipment from the contract
+   */
+  buyerRemoveEquipment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const { item_id } = req.body;
+
+      if (!item_id) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'item_id is required', 400);
+        return;
+      }
+
+      const result = await this.contractService.buyerRemoveEquipment(
+        id,
+        item_id,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in buyerRemoveEquipment:', error);
+      internalError(res, 'Failed to remove equipment');
+    }
+  };
+
+  // =================================================================
+  // SELLER EQUIPMENT ENDPOINTS
+  // =================================================================
+
+  /**
+   * POST /api/contracts/:id/seller-equipment
+   * Add equipment from seller's registry to the contract
+   */
+  sellerAddEquipment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const { equipment_item } = req.body;
+
+      if (!equipment_item) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'equipment_item is required', 400);
+        return;
+      }
+
+      const result = await this.contractService.sellerAddEquipment(
+        id,
+        equipment_item,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in sellerAddEquipment:', error);
+      internalError(res, 'Failed to add equipment');
+    }
+  };
+
+  /**
+   * DELETE /api/contracts/:id/seller-equipment
+   * Remove seller-added equipment from the contract
+   */
+  sellerRemoveEquipment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = req.headers['x-environment'] as string || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const { item_id } = req.body;
+
+      if (!item_id) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'item_id is required', 400);
+        return;
+      }
+
+      const result = await this.contractService.sellerRemoveEquipment(
+        id,
+        item_id,
+        userJWT,
+        tenantId,
+        environment
+      );
+
+      if (!result.success) {
+        this.mapEdgeErrorToResponse(res, result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in sellerRemoveEquipment:', error);
+      internalError(res, 'Failed to remove equipment');
+    }
+  };
+
+  // =================================================================
+  // PUBLIC ENDPOINTS (no auth required)
+  // =================================================================
+
+  /**
+   * POST /api/contracts/public/validate
+   * Validate contract access via CNAK + secret_code
+   */
+  validateContractAccess = async (req: any, res: Response): Promise<void> => {
+    try {
+      const { cnak, secret_code } = req.body;
+
+      if (!cnak || !secret_code) {
+        res.status(400).json({ valid: false, error: 'CNAK and secret code are required' });
+        return;
+      }
+
+      const result = await this.contractService.validateContractAccess(cnak, secret_code);
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in validateContractAccess:', error);
+      internalError(res, 'Failed to validate contract access');
+    }
+  };
+
+  /**
+   * POST /api/contracts/public/respond
+   * Accept or reject a contract via CNAK + secret_code
+   */
+  respondToContract = async (req: any, res: Response): Promise<void> => {
+    try {
+      const { cnak, secret_code, action, responded_by, responder_name, responder_email, rejection_reason, cadence_selections } = req.body;
+
+      if (!cnak || !secret_code || !action) {
+        res.status(400).json({ success: false, error: 'CNAK, secret code, and action are required' });
+        return;
+      }
+
+      if (!['accept', 'reject'].includes(action)) {
+        res.status(400).json({ success: false, error: 'Action must be accept or reject' });
+        return;
+      }
+
+      // Cadence pricing 2c: buyer payment-plan picks ({block_id, cycle} only —
+      // amounts are recomputed by the edge from the stored rate card)
+      if (cadence_selections !== undefined) {
+        const validSelections = Array.isArray(cadence_selections) &&
+          cadence_selections.every((s: any) => s && typeof s.block_id === 'string' && typeof s.cycle === 'string');
+        if (!validSelections) {
+          res.status(400).json({ success: false, error: 'cadence_selections must be an array of {block_id, cycle}' });
+          return;
+        }
+      }
+
+      const result = await this.contractService.respondToContract({
+        cnak,
+        secret_code,
+        action,
+        responded_by,
+        responder_name,
+        responder_email,
+        rejection_reason,
+        cadence_selections
+      });
+
+      res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in respondToContract:', error);
+      internalError(res, 'Failed to respond to contract');
+    }
+  };
+
+  /**
+   * POST /api/contracts/claim
+   * Claim a contract using CNAK code (authenticated)
+   */
+  claimContract = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { cnak } = req.body;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      if (!cnak) {
+        res.status(400).json({ success: false, error: 'CNAK is required' });
+        return;
+      }
+
+      if (!tenantId) {
+        res.status(400).json({ success: false, error: 'x-tenant-id header is required' });
+        return;
+      }
+
+      const result = await this.contractService.claimContract(
+        cnak,
+        userJWT,
+        tenantId,
+        userId
+      );
+
+      res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+      console.error('[ContractController] Error in claimContract:', error);
+      internalError(res, 'Failed to claim contract');
+    }
+  };
+
+  // ==========================================================
+  // PRIVATE HELPERS
+  // ==========================================================
+
+  private mapEdgeErrorToResponse(res: Response, result: any): void {
+    const codeToStatus: Record<string, number> = {
+      'NOT_FOUND': 404,
+      'VERSION_CONFLICT': 409,
+      'VALIDATION_ERROR': 400,
+      'INVALID_TRANSITION': 422,
+      'DELETE_NOT_ALLOWED': 422,
+      'DUPLICATE_FOUND': 409,
+      'FORBIDDEN': 403,
+      'UNAUTHORIZED': 401,
+      'EDGE_FUNCTION_ERROR': 502,
+      // Edge RPC failures are server-side faults — surface as 502, never as a
+      // client 400 (a 400 here masked the get_contract_by_id overload
+      // incident as a client error).
+      'RPC_ERROR': 502,
+      'NETWORK_ERROR': 503
+    };
+
+    const statusCode = codeToStatus[result.code] || 502;
+    res.status(statusCode).json(result);
+  }
+}
+
+export default ContractController;
