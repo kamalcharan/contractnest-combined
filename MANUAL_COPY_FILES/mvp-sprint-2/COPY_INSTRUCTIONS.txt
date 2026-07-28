@@ -9,164 +9,135 @@ SUBMODULES AFFECTED
   contractnest-ui  (branch: main)   <-- ONLY this one
   No API, edge, migration or table changes. UX-only.
 
-WHAT CHANGED IN THE PLAN, AND WHY
-─────────────────────────────────
-  Sprint 2 was written as "build persona -> industry -> furnished workspace".
-  It turned out that ALL of it already exists: the VaNi onboarding has 25 step
-  components and TOTAL_STEPS = 11. Tracing each step's forward navigation gives
-  the real chain, ~16 screens:
+WHY SPRINT 2 IS A CUT, NOT A BUILD
+──────────────────────────────────
+  The VaNi onboarding already exists: 25 step components, TOTAL_STEPS = 11.
+  Tracing each step's forward navigation gives the real chain, ~16 screens:
 
     vani-intro -> user-profile -> business-details -> persona-selection ->
     engagement-model -> theme-selection -> industry-selection -> resource-pick ->
     vani-consent -> vani-intelligence -> vani-working -> pricing-review ->
     terms-conditions -> equipment -> lov-setup -> done
 
-  So Sprint 2 became CUT THE PATH, not build it.
+  Express replaces the FIRST NINE with TWO, then hands back into the existing
+  chain at vani-working, which seeds the catalog and carries the tenant through
+  pricing -> terms -> equipment -> done completely unmodified.
 
-  Per your decision (keep pricing-review + equipment + terms; express path
-  BESIDE the existing flow), express replaces the first NINE screens with TWO,
-  then hands off into the existing chain at vani-working — which already seeds
-  the catalog and carries the tenant through pricing -> terms -> equipment ->
-  lov-setup -> done, completely untouched.
+    /start        business name + persona     (replaces 4 screens)
+    /start/trade  served industries           (replaces 5 screens)
+    -> /onboarding/vani-working  (existing, untouched, and everything after it)
 
-    /start        business name + persona          (replaces 4 screens)
-    /start/trade  served industries                (replaces 5 screens)
-    -> /onboarding/vani-working  (existing, unmodified, and everything after it)
+  Net: ~16 screens -> ~7.
 
-  Net: ~16 screens -> ~7. Nothing in the existing flow is edited, and it stays
-  fully reachable at /onboarding for anyone who wants the long form (there is a
-  link to it on the first express screen).
+ROUTING: TWO ONE-LINE CHANGES, NOT SIX
+──────────────────────────────────────
+  A first pass patched redirects in AuthContext, LoginPage, CreateTenantPage
+  and App.tsx — five scattered edits in the most sensitive files in the app.
+  That was the wrong approach and has been fully reverted.
 
-ROUTING GAP FOUND AND FIXED (added after the first pass)
-────────────────────────────────────────────────────────
-  /start was unreachable. Tracing the real new-user journey:
+  src/pages/onboarding/index.tsx is THE HUB. Its own comment says so:
+    "Both entry points land here: 1. Registration -> /onboarding
+     2. Login with incomplete onboarding -> /onboarding"
 
-    RegisterPage -> tenant creation -> CreateTenantPage -> /ops/cockpit
+  So every path already funnels through one file, and that file already knows
+  how to resume someone mid-onboarding. Two changes are enough:
 
-  A brand-new signup NEVER touched onboarding at all. /onboarding was only
-  reached by logging out and logging back in (LoginPage). So the express path
-  existed but nothing routed to it.
+  1. src/pages/onboarding/index.tsx   (1 line)
+     A tenant who has NOT started yet -> /start instead of /onboarding/vani-intro.
+     The resume branch is UNTOUCHED, so anyone already part-way through the long
+     form still lands on their exact step.
 
-  Three redirects now point at /start:
-    src/pages/auth/CreateTenantPage.tsx  /ops/cockpit -> /start   <-- the one
-                                          that actually matters for signups
-    src/pages/auth/LoginPage.tsx         /onboarding  -> /start
-    src/App.tsx (SmartHomePage)          /onboarding  -> /start
+  2. src/pages/auth/CreateTenantPage.tsx   (1 line)
+     A newly created workspace -> /onboarding (the hub) instead of /ops/cockpit.
+     Previously a brand-new workspace skipped onboarding altogether and only
+     ever reached it by logging out and back in. This is a pre-existing bug in
+     its own right.
 
-  The long form is untouched and still reachable at /onboarding, linked from
-  the first express screen. Re-entry is non-destructive: /start pre-fills the
-  business name and persona from the existing profile, so a tenant part-way
-  through the long form who lands here does not lose anything.
+  NOT TOUCHED:  src/context/AuthContext.tsx      (all redirects left alone)
+                src/pages/auth/LoginPage.tsx     (left alone)
+
+  Every existing navigate('/onboarding') anywhere in the app keeps working and
+  now simply funnels through the hub.
+
+  REVERT = restore '/onboarding/vani-intro' on ONE line in the hub. Everything
+  goes back to exactly today's behaviour.
+
+WHO IS AFFECTED, PRECISELY
+──────────────────────────
+  Fresh tenant, no onboarding started ....... /start   (express)   CHANGED
+  Tenant part-way through the long form ..... resumes at their step  UNCHANGED
+  Tenant with onboarding complete ........... /ops/cockpit           UNCHANGED
+  Non-owner invited user .................... /onboarding-pending    UNCHANGED
+  BBB and every existing chapter ............ UNCHANGED
 
 FILES  (5 new, 3 modified)
 ──────────────────────────
-  NEW  src/lite/onboarding/expressFlow.ts
-       The path definition, persona list, and the landing-trade -> industry
-       matcher. Persona ids are seller/buyer/both — the same values the existing
-       PersonaSelectionStep writes.
+  NEW  src/lite/onboarding/expressFlow.ts        path definition, personas,
+                                                 landing-trade -> industry matcher
+  NEW  src/lite/onboarding/ExpressShell.tsx      brand + 3-step rail + card
+  NEW  src/lite/onboarding/BusinessPersonaStep.tsx  screen 1
+  NEW  src/lite/onboarding/TradeStep.tsx            screen 2
+  NEW  src/lite/onboarding/express.css              cnx- namespaced styles
 
-  NEW  src/lite/onboarding/ExpressShell.tsx
-       Shared frame: brand, 3-step progress rail, card.
+  MOD  src/App.tsx                    2 imports + the /start and /start/trade
+                                      routes (ProtectedRoute requireTenant, the
+                                      same guard the existing onboarding uses).
+                                      NO redirect logic changed. Also carries
+                                      the Sprint 1 landing wiring, so it
+                                      supersedes the Sprint 1 copy of this file.
+  MOD  src/pages/onboarding/index.tsx           1 line (the hub decision)
+  MOD  src/pages/auth/CreateTenantPage.tsx      1 line
 
-  NEW  src/lite/onboarding/BusinessPersonaStep.tsx
-       Screen 1. Business name + persona. Writes via the SAME call the existing
-       step uses: POST /api/tenant-profile with business_name + persona +
-       business_type_id (the dual-write /settings/business-profile and
-       AuthContext.initializePerspective depend on), then completeVaniStep.
-
-  NEW  src/lite/onboarding/TradeStep.tsx
-       Screen 2. Served industries via useIndustries + useServedIndustriesManager,
-       then completeVaniStep and handoff. If the visitor picked a trade on the
-       public landing page it is PRE-SELECTED here — that is what the landing's
-       localStorage handoff was for, so the question is confirmed not answered.
-
-  NEW  src/lite/onboarding/express.css
-       Namespaced cnx-, tokenised on .cnx-root, resets via :where() so component
-       classes always win. Same containment rules as the landing.
-
-  MOD  src/App.tsx
-       Two imports, two routes (/start, /start/trade) both wrapped in
-       ProtectedRoute requireTenant — the same guard the existing onboarding
-       uses — and the SmartHomePage redirect. Also carries the Sprint 1 landing
-       wiring, so it supersedes the Sprint 1 copy of this file.
-
-  MOD  src/pages/auth/CreateTenantPage.tsx
-       One line: a newly created workspace goes to /start instead of
-       /ops/cockpit. This is the redirect that makes express reachable at all.
-
-  MOD  src/pages/auth/LoginPage.tsx
-       One line: a returning user who has not finished onboarding goes to
-       /start instead of /onboarding.
+  Screen 1 writes via the SAME call the existing PersonaSelectionStep uses:
+  POST /api/tenant-profile with business_name + persona + business_type_id (the
+  dual-write /settings/business-profile and AuthContext.initializePerspective
+  depend on), then completeVaniStep. Screen 2 uses useIndustries +
+  useServedIndustriesManager. Nothing new was invented.
 
 VERIFIED BEFORE HANDOVER
 ────────────────────────
-  * Rendered BOTH express screens in the running app and screenshotted them
-    (via temporary unprotected preview routes, since /start is behind
-    ProtectedRoute; the preview routes were removed before packaging — confirm
-    with: grep -c PREVIEW src/App.tsx  -> 0).
-  * Every import verified to exist before use: components/common/toast,
-    utils/onboarding/completeVaniStep, hooks/queries/useProductMasterdata,
-    hooks/queries/useServedIndustries, context/AuthContext, hooks/useTenantProfile,
-    and API_ENDPOINTS.TENANTS.PROFILE ('/api/tenant-profile').
-  * tsc app-wide (tsconfig.app.json) -> 1188 errors, IDENTICAL to the
-    pre-Sprint-1 baseline, 0 from src/lite.
-  * eslint on src/lite and src/App.tsx -> no new problems.
+  * Both express screens rendered in the running app and screenshotted.
+  * Every import checked to exist before use.
+  * tsc app-wide -> 1188 errors, IDENTICAL to the pre-Sprint-1 baseline,
+    0 from src/lite.
+  * eslint on the three modified files -> 11 problems both WITH and WITHOUT the
+    changes (compared against a stashed pristine tree). No new problems.
+  * The long-form entry is intact: /onboarding/vani-intro route and the hub's
+    resume map both still present.
   * contractnest-ui working tree left pristine.
 
 POWERSHELL — copy
 ─────────────────
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\lite\onboarding" -Destination "contractnest-ui\src\lite\" -Recurse -Force
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
-  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\pages\auth\LoginPage.tsx" -Destination "contractnest-ui\src\pages\auth\LoginPage.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\pages\onboarding\index.tsx" -Destination "contractnest-ui\src\pages\onboarding\index.tsx" -Force
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\pages\auth\CreateTenantPage.tsx" -Destination "contractnest-ui\src\pages\auth\CreateTenantPage.tsx" -Force
 
-  NOTE: this App.tsx already contains the Sprint 1 landing wiring, so it
-  supersedes the Sprint 1 copy of the same file.
+  If you copied the earlier version of this batch, it also wrote
+  src\pages\auth\LoginPage.tsx. Restore it:
+      git -C contractnest-ui checkout -- src/pages/auth/LoginPage.tsx
+  And confirm AuthContext was never modified:
+      git -C contractnest-ui status --short    # AuthContext.tsx must NOT appear
 
-TEST — START FROM SIGNUP, NOT FROM /start
-─────────────────────────────────────────
-  The first version of this checklist said "open /start", which hid the routing
-  gap above. Test the real journey instead.
-
+RESTART THE DEV SERVER — VITE WILL NOT HOT-RELOAD NEW ROUTES
+────────────────────────────────────────────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
   cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
   npm run dev
-  # incognito window -> http://localhost:5173
+  # use the EXACT url the banner prints, then Ctrl+F5 in the browser
 
-  TESTING CHECKLIST — the whole journey
-  [ ] Landing loads; pick a trade; "Start free with this setup" -> /signup
-  [ ] Register a NEW account with a NEW workspace
-  [ ] After the workspace is created you land on /start  (NOT /ops/cockpit)
-  [ ] The trade you picked on the landing is pre-selected on /start/trade
-  [ ] Log out, log back in before finishing -> you return to /start, and the
-      business name and persona you already entered are still filled in
-  [ ] EXISTING tenant with onboarding complete: login still goes to /ops/cockpit
-  [ ] BBB: log in as an existing chapter — nothing about their journey changed
-
-  TESTING CHECKLIST — the express screens
-  [ ] /start shows business name + 3 persona cards; Continue disabled until both set
-  [ ] Continue saves and moves to /start/trade
-  [ ] Industries load; multi-select works; Build my workspace disabled until one picked
-  [ ] It hands off to /onboarding/vani-working and the seeding runs as it always did
-  [ ] After seeding, the existing pricing -> terms -> equipment -> done chain is unchanged
-  [ ] STOPWATCH from the moment you click "Start free" on the landing to a
-      furnished workspace. Target <= 6 minutes. This is the real number —
-      the earlier one started too late.
-  [ ] The long form still works end to end at /onboarding
-  [ ] Landing carry-over: pick a trade on the landing page, sign up, and confirm
-      the matching industry is pre-selected on /start/trade
-  [ ] An industry with no KT data still completes and lands in a usable workspace
-  [ ] BBB tenant: /onboarding unchanged, no surprises
-
-KNOWN GAP
-─────────
-  The landing -> industry match is heuristic (name contains 'pest', 'hvac',
-  'housekeeping', ...). If your industry master names differ, the pre-selection
-  simply does not fire and the tenant picks manually — it never blocks. Tell me
-  the real industry names and I will map them exactly.
-
-NOT YET DONE
-────────────
-  * Paste-import of the client list (was Sprint 3)
-  * Express contract lane (Sprint 3)
-  * Mount <RevealProvider> + wrap the 9 surfaces (tail of Sprint 1)
+TESTING CHECKLIST — start from the landing, not from /start
+───────────────────────────────────────────────────────────
+  [ ] Incognito -> landing loads; pick a trade; "Start free" -> /signup
+  [ ] Register a NEW account + NEW workspace -> you land on /start
+  [ ] The trade picked on the landing is pre-selected on /start/trade
+  [ ] "Build my workspace" -> /onboarding/vani-working, seeding runs as always
+  [ ] After seeding, pricing -> terms -> equipment -> done unchanged
+  [ ] STOPWATCH from "Start free" to a furnished workspace. Target <= 6 min.
+  [ ] Log out mid-flow, log back in -> you RESUME, fields still filled
+  [ ] Existing completed tenant -> login still goes to /ops/cockpit
+  [ ] BBB chapter login -> completely unchanged
+  [ ] A tenant part-way through the LONG form -> still resumes on their step
+  [ ] /onboarding/vani-intro still reachable directly (long form intact)
 ═══════════════════════════════════════════════════

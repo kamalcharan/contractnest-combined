@@ -203,11 +203,11 @@ const CreateTenantPage: React.FC = () => {
       // Reset retry count on success
       setRetryCount(0);
       
-      // MVP: a brand-new workspace goes to express onboarding, not the cockpit.
-      // Before this, first-time signups skipped onboarding altogether and only
-      // ever reached it by logging out and back in.
+      // A newly created workspace has not onboarded, so send it to the
+      // onboarding hub rather than straight to the cockpit. The hub decides
+      // express vs resume. Previously this skipped onboarding entirely.
       setTimeout(() => {
-        navigate('/start', { replace: true });
+        navigate('/onboarding', { replace: true });
       }, 100);
       
     } catch (error: any) {
