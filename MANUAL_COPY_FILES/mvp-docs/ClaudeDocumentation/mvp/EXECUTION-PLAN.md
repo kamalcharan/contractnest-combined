@@ -35,6 +35,7 @@ contractnest-ui/src/
 │   │   ├── LandingPage.tsx
 │   │   ├── TradePicker.tsx             ← carries choice into signup
 │   │   ├── WorkspaceSlab.tsx           ← the live preview that rebuilds per trade
+│   │   ├── HeroDemo.tsx                ← 3-scene loop; swap for <video> later
 │   │   ├── previewData.ts              ← per-trade catalog/contract seed shown pre-signup
 │   │   └── sections/                   ← Clock · Value · Portal · Proof · Faq · FinalCta
 │   │
@@ -104,8 +105,13 @@ existing product look small.*
 
 **Build**
 - **Landing page** (`src/lite/landing/`) — public, unauthenticated, at `/`:
-  hero → trade picker → **live workspace slab that rebuilds per trade** → 15-minute
-  strip → client-portal proof → proof band → FAQ → final CTA.
+  hero (copy left, **looping 3-scene demo right**: write the contract → CNAK on
+  WhatsApp → client accepts, clock landing on 3:00) → trade picker → **live
+  workspace slab that rebuilds per trade** → 15-minute strip → client-portal
+  proof → proof band → FAQ → final CTA.
+  The demo is a **swappable slot**: when the screen recording exists, replace the
+  inner `.demostage` with a muted autoplay `<video>` and keep the frame, clock
+  chip and caption.
   The picked trade carries into signup so onboarding never re-asks it.
   Reference: `landing-page.html` in this folder.
 - `src/lite/` scaffold: route mount at `/start/*`, layout shell, tokens.
@@ -116,6 +122,8 @@ existing product look small.*
 - ESLint import rules committed.
 
 **Verify (you)**
+- [ ] Hero demo loops cleanly on repeat, starts on scroll-into-view, and shows the
+      final signed state (no motion) under `prefers-reduced-motion`.
 - [ ] Landing loads logged-out; all four trades rebuild the slab with correct
       catalog counts, contract and year-strip — no flicker, no layout shift.
 - [ ] Landing is fast on a mid-range Android over mobile data (target LCP < 2.5s).

@@ -73,6 +73,71 @@
   .microproof{font-size:13.5px;color:var(--faint);display:flex;gap:16px;flex-wrap:wrap}
   .microproof b{color:var(--soft)}
 
+  /* ── hero grid + demo ── */
+  .herogrid{display:grid;grid-template-columns:1.02fr .98fr;gap:52px;align-items:center}
+  @media(max-width:980px){.herogrid{grid-template-columns:1fr;gap:36px}}
+  .herogrid .hl{min-width:0}
+
+  /* the demo slot — swap inner content for a <video> later, keep the frame */
+  .demo{background:var(--slab);border:1px solid var(--line);border-radius:15px;box-shadow:var(--lift);overflow:hidden}
+  .demohead{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--paper) 55%,var(--slab))}
+  .demohead .dt{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .demohead .clock{margin-left:auto;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--deep);background:var(--wash);border-radius:99px;padding:4px 12px;font-variant-numeric:tabular-nums}
+  .demostage{position:relative;height:352px}
+  @media(max-width:980px){.demostage{height:330px}}
+  .scene{position:absolute;inset:0;padding:20px 22px;opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s ease;pointer-events:none;display:flex;flex-direction:column}
+  .scene.on{opacity:1;transform:none;pointer-events:auto}
+  .scenelab{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--ember);margin-bottom:14px;flex:none}
+
+  .fld{border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:9px;font-size:14px;background:var(--paper)}
+  .fld .fl{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:700;margin-bottom:2px}
+  .fld .fv{font-weight:600}
+  .caret{display:inline-block;width:1.5px;height:1em;background:var(--deep);margin-left:1px;vertical-align:-.14em;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .blks{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .bk{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;opacity:0;transform:translateX(-8px);transition:opacity .3s ease,transform .3s ease}
+  .bk.in{opacity:1;transform:none}
+  .bk b{font-family:var(--serif)}
+  .totrow{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--line);padding-top:11px}
+  .totrow .tl{font-size:13px;color:var(--soft)}
+  .totrow .tv{font-family:var(--serif);font-size:23px;font-weight:700}
+
+  .keybox{text-align:center;padding:14px 0 6px}
+  .keybox .kk{font-family:var(--serif);font-size:31px;font-weight:700;letter-spacing:.06em;opacity:0;transform:scale(.94);transition:opacity .4s ease,transform .4s ease}
+  .keybox .kk.in{opacity:1;transform:none}
+  .keybox .ks{font-size:12.5px;color:var(--soft);margin-top:4px}
+  .wabub{background:var(--wash);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:13px;line-height:1.5;margin-top:16px;opacity:0;transform:translateY(9px);transition:opacity .4s ease,transform .4s ease}
+  .wabub.in{opacity:1;transform:none}
+  .wabub .wf{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--deep);font-weight:700;margin-bottom:5px}
+  .wabub a{color:var(--deep);font-weight:650}
+  .sentmark{display:flex;align-items:center;gap:8px;margin-top:auto;font-size:13px;color:var(--good);font-weight:650;opacity:0;transition:opacity .4s ease}
+  .sentmark.in{opacity:1}
+  .sentmark i{width:18px;height:18px;border-radius:50%;background:var(--good);color:var(--slab);display:flex;align-items:center;justify-content:center;font-size:10px;font-style:normal;font-weight:800}
+
+  .cliview{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .cliview .ch{background:var(--deep);color:var(--deep-ink);padding:11px 14px}
+  .cliview .ch b{font-family:var(--serif);font-size:14.5px;display:block}
+  .cliview .ch span{font-size:11.5px;opacity:.85}
+  .cliview .cb{padding:12px 14px}
+  .acceptbtn{width:100%;text-align:center;background:var(--deep);color:var(--deep-ink);border-radius:8px;padding:10px;font-size:13.5px;font-weight:700;transition:transform .18s ease,opacity .3s ease}
+  .acceptbtn.tapped{transform:scale(.96);opacity:.75}
+  .accepted{display:none;align-items:center;justify-content:center;gap:8px;background:var(--wash);color:var(--good);border-radius:8px;padding:10px;font-size:13.5px;font-weight:700}
+  .accepted.in{display:flex}
+  .genrow{display:flex;gap:8px;margin-top:auto;padding-top:12px}
+  .gen{flex:1;border:1px solid var(--line);border-radius:9px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease}
+  .gen.in{opacity:1;transform:none}
+  .gen .gv{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--deep);line-height:1}
+  .gen .gl{font-size:11.5px;color:var(--soft);margin-top:3px}
+
+  .demofoot{border-top:1px solid var(--line);padding:11px 16px;display:flex;align-items:center;gap:12px}
+  .dots{display:flex;gap:6px}
+  .dots i{width:23px;height:4px;border-radius:99px;background:var(--edge);font-style:normal;transition:background .3s ease}
+  .dots i.on{background:var(--deep)}
+  .demofoot .dl{font-size:12.5px;color:var(--soft);flex:1}
+  .demofoot .dl b{color:var(--ink)}
+  .replay{font-size:12px;color:var(--faint);border:1px solid var(--line);border-radius:99px;padding:4px 11px}
+  .replay:hover{color:var(--ink);border-color:var(--edge)}
+
   /* ── picker ── */
   .picker{margin:44px 0 0}
   .picklabel{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
@@ -220,6 +285,8 @@
 
 <!-- ══ HERO ══ -->
 <header class="hero"><div class="wrap">
+ <div class="herogrid">
+  <div class="hl">
   <div class="kicker"><i></i>Live with a 39-chapter member organisation</div>
   <h1 class="head">Your service contracts, <em>running themselves</em>.</h1>
   <p class="dek">Every visit scheduled, every invoice raised, every renewal chased — generated the moment you write the contract. <b>Pick your trade below and watch your workspace build itself.</b> No signup, no card, no call.</p>
@@ -232,6 +299,68 @@
     <span><b>Free</b> under 10 contracts</span>
     <span>Works on <b>WhatsApp</b>, no app to install</span>
   </div>
+  </div>
+
+  <!-- ══ DEMO SLOT — replace inner .demostage with a <video> when the recording exists ══ -->
+  <div class="demo" aria-label="How a contract goes out in three minutes">
+    <div class="demohead">
+      <span class="dt">Contract → signed</span>
+      <span class="clock" id="clk">0:00</span>
+    </div>
+    <div class="demostage">
+
+      <!-- 1 · write -->
+      <section class="scene on" id="sc1">
+        <div class="scenelab">1 · Write it — five fields</div>
+        <div class="fld"><div class="fl">Client</div><div class="fv" id="typed">Orion Towers Pvt Ltd<span class="caret"></span></div></div>
+        <div class="blks">
+          <div class="bk" data-i="0"><span>Preventive maintenance · 12/yr</span><b>₹28,000</b></div>
+          <div class="bk" data-i="1"><span>Breakdown response 24×7</span><b>₹9,000</b></div>
+          <div class="bk" data-i="2"><span>Condenser deep clean · half-yearly</span><b>₹2,800</b></div>
+        </div>
+        <div class="totrow"><span class="tl">1-year term · quarterly billing</span><span class="tv" id="tot">₹0</span></div>
+      </section>
+
+      <!-- 2 · send -->
+      <section class="scene" id="sc2">
+        <div class="scenelab">2 · Send it — one key, no login for them</div>
+        <div class="keybox">
+          <div class="kk" id="keyk">CNAK-6QW4RT</div>
+          <div class="ks">secret code <b class="mono">8127</b></div>
+        </div>
+        <div class="wabub" id="bub">
+          <div class="wf">WhatsApp → Ramesh Kumar</div>
+          Here's the Lift AMC contract for Orion Towers — 12 visits a year, ₹37,000 quarterly.<br>
+          <a href="#" onclick="return false">contractnest.in/c/6QW4RT</a>
+        </div>
+        <div class="sentmark" id="sent"><i>✓</i>Delivered · seen 2 minutes later</div>
+      </section>
+
+      <!-- 3 · accepted -->
+      <section class="scene" id="sc3">
+        <div class="scenelab">3 · They accept — from their phone</div>
+        <div class="cliview">
+          <div class="ch"><b>Annual AMC — Orion Towers</b><span>Apr 2026 – Mar 2027 · ₹1,48,000 / yr</span></div>
+          <div class="cb">
+            <div class="acceptbtn" id="acc">Accept contract</div>
+            <div class="accepted" id="accd">✓ Accepted by Ramesh Kumar</div>
+          </div>
+        </div>
+        <div class="genrow">
+          <div class="gen" data-i="0"><div class="gv">24</div><div class="gl">visits scheduled</div></div>
+          <div class="gen" data-i="1"><div class="gv">4</div><div class="gl">invoices queued</div></div>
+          <div class="gen" data-i="2"><div class="gv">1</div><div class="gl">renewal watched</div></div>
+        </div>
+      </section>
+
+    </div>
+    <div class="demofoot">
+      <span class="dots" id="dots"><i class="on"></i><i></i><i></i></span>
+      <span class="dl" id="dlab">Writing the contract…</span>
+      <button class="replay" onclick="runDemo(true)">Replay</button>
+    </div>
+  </div>
+ </div>
 
   <!-- ══ THE LIVE SLAB ══ -->
   <div class="picker" id="picker">
@@ -456,4 +585,75 @@ function say(m){
 }
 document.querySelector('.slab').style.transition='opacity .16s ease';
 render('amc',false);
+
+/* ══ hero demo: write → send → accepted, clock lands on 3:00 ══ */
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $=id=>document.getElementById(id);
+const LABELS=['Writing the contract…','Sharing the key on WhatsApp…','Signed — the year is scheduled'];
+let timers=[],clockT=null;
+
+function scene(n){
+  [1,2,3].forEach(i=>$('sc'+i).classList.toggle('on',i===n));
+  [...$('dots').children].forEach((d,i)=>d.classList.toggle('on',i===n-1));
+  $('dlab').textContent=LABELS[n-1];
+}
+function clockTo(target,ms){
+  clearInterval(clockT);
+  const from=parseClock($('clk').textContent), steps=Math.max(1,Math.round(ms/60));
+  let i=0;
+  clockT=setInterval(()=>{
+    i++;
+    const v=from+(target-from)*(i/steps);
+    $('clk').textContent=fmtClock(v);
+    if(i>=steps){clearInterval(clockT);$('clk').textContent=fmtClock(target);}
+  },60);
+}
+const parseClock=s=>{const[a,b]=s.split(':');return (+a)*60+(+b);};
+const fmtClock=v=>Math.floor(v/60)+':'+String(Math.round(v%60)).padStart(2,'0');
+const at=(ms,fn)=>timers.push(setTimeout(fn,ms));
+
+function resetDemo(){
+  timers.forEach(clearTimeout); timers=[]; clearInterval(clockT);
+  $('clk').textContent='0:00';
+  document.querySelectorAll('.bk,.gen').forEach(e=>e.classList.remove('in'));
+  $('tot').textContent='₹0';
+  $('keyk').classList.remove('in'); $('bub').classList.remove('in'); $('sent').classList.remove('in');
+  $('acc').classList.remove('tapped'); $('acc').style.display=''; $('accd').classList.remove('in');
+}
+function countTo(el,target,ms){
+  const steps=Math.round(ms/45); let i=0;
+  const t=setInterval(()=>{i++;
+    el.textContent='₹'+Math.round(target*(i/steps)).toLocaleString('en-IN');
+    if(i>=steps){clearInterval(t);el.textContent='₹'+target.toLocaleString('en-IN');}
+  },45);
+  timers.push(t);
+}
+function runDemo(manual){
+  resetDemo();
+  if(RM){ scene(3); $('clk').textContent='3:00'; $('acc').style.display='none';
+    $('accd').classList.add('in'); document.querySelectorAll('.gen').forEach(g=>g.classList.add('in'));
+    $('dlab').textContent='Signed — the year is scheduled'; return; }
+
+  scene(1);
+  document.querySelectorAll('#sc1 .bk').forEach(b=>at(500+b.dataset.i*420,()=>b.classList.add('in')));
+  at(560,()=>clockTo(64,1600));
+  at(1750,()=>countTo($('tot'),148000,700));
+
+  at(4200,()=>{ scene(2); clockTo(128,1500); });
+  at(4600,()=>$('keyk').classList.add('in'));
+  at(5300,()=>$('bub').classList.add('in'));
+  at(6300,()=>$('sent').classList.add('in'));
+
+  at(8400,()=>{ scene(3); clockTo(180,1400); });
+  at(9100,()=>$('acc').classList.add('tapped'));
+  at(9500,()=>{ $('acc').style.display='none'; $('accd').classList.add('in'); });
+  at(9900,()=>document.querySelectorAll('#sc3 .gen').forEach(g=>at(g.dataset.i*260,()=>g.classList.add('in'))));
+
+  if(!manual) at(14200,()=>runDemo(false));
+  else at(14200,()=>runDemo(false));
+}
+if('IntersectionObserver' in window){
+  const io=new IntersectionObserver(e=>{ if(e[0].isIntersecting){ runDemo(false); io.disconnect(); } },{threshold:.25});
+  io.observe(document.querySelector('.demo'));
+} else runDemo(false);
 </script>
