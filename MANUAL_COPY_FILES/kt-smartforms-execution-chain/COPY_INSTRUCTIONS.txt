@@ -1,0 +1,127 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - kt-smartforms-execution-chain
+===============================================================
+
+WHAT THIS IS
+---------------------------------------------------------------
+You asked to trace how a Smart Form triggered/generated in KT
+(Knowledge Tree) ends up mapped against catalog-studio blocks so
+it can actually be invoked/executed from contract view. Investigation
+found 4 gaps in that chain; you said "yes, build the chain" for all 4.
+This batch delivers the 2 that needed code changes.
+
+ITEM-BY-ITEM STATUS
+---------------------------------------------------------------
+1. Auto-attach KT-generated form onto catalog blocks -- FIXED (this batch)
+   ktCatBlockMapperService.ts didn't carry the KT service-form-generator's
+   output (m_kt_service_form_map: service_name -> form_template_id) onto
+   the m_cat_blocks it builds/syncs. Blocks were created/synced with no
+   form_template_id, so ServiceExecutionDrawer had nothing to render.
+
+2. DB backfill for BBB -- NOT APPLICABLE, nothing done
+   Checked live: all 7 of BBB's catalog blocks have resource_template_id
+   = NULL (BBB has zero KT-seeded equipment/service blocks). There is
+   nothing to backfill for BBB specifically via m_kt_service_form_map
+   (a platform-wide table keyed by resource_template_id, not tenant-scoped).
+   This only matters for tenants that DO have KT-seeded blocks.
+
+3. create_contract_transaction dropping evidence_policy_type /
+   evidence_selected_forms at contract creation -- ALREADY FIXED, no
+   change needed. Checked the LIVE function definition (not just an old
+   migration comment) -- both fields are already correctly inserted, and
+   the UI's contract-creation payloads (both the regular wizard and VaNi
+   auto-accept) already send them. The migration comment describing this
+   as a known gap was accurate when written but superseded since.
+
+4. ServiceExecutionDrawer's "Open Form" button did nothing -- FIXED
+   (this batch). It rendered a card per form with a button that had no
+   onClick at all. Now wired to open a modal, fetch that form's schema,
+   render it with the existing FormRenderer component, and save the
+   answers as a real submission (same createSubmission/updateSubmission
+   pattern already used by TicketEvidencePanel.tsx elsewhere in the
+   codebase -- reused, not reinvented).
+
+FILES IN THIS FOLDER
+---------------------------------------------------------------
+1. contractnest-api/src/services/ktCatBlockMapperService.ts
+   -> Copy to: contractnest-api\src\services\ktCatBlockMapperService.ts
+   -> Full file. Adds a form_template_id field to CatBlockPayload, a new
+      fetchServiceFormMap() lookup against m_kt_service_form_map, and
+      wires it through buildServiceBlocks/buildBlocksForTemplate so every
+      newly created or synced block carries its matching KT-generated
+      form_template_id. syncBlocksForTemplate also now backfills
+      form_template_id onto already-existing blocks that are missing it,
+      and its return type gained a formsAttached count.
+
+2. contractnest-edge/supabase/functions/cat-blocks/index.ts
+   -> Copy to: contractnest-edge\supabase\functions\cat-blocks\index.ts
+   -> Full file. The bulk KT-insert path (used by the real seeding flow)
+      was missing form_template_id in its insertRows even though the
+      single-block manual-create path already had it -- added it so the
+      column set matches between both insert paths.
+
+3. contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx
+   -> Copy to: contractnest-ui\src\components\contracts\ServiceExecutionDrawer.tsx
+   -> Full file. "Open Form" button now opens a modal: fetches the
+      template schema by form_template_id, renders it with the existing
+      FormRenderer component, and on submit calls createSubmission (then
+      marks it submitted) via the existing useFormSubmission hook --
+      success/error toasts via the existing vaniToast component. No new
+      toast/loader components created; both reused from what already
+      exists in the codebase.
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-edge, contractnest-ui
+
+PRODUCTION CHECKLIST
+---------------------------------------------------------------
+Transaction Management: N/A -- no new multi-step DB writes; each write
+  (block sync, form submission create/update) is already a single atomic
+  call against existing, already-transactional endpoints.
+Race Condition Handling: useFormSubmission's createSubmission/
+  updateSubmission already guard against concurrent double-submit via
+  their own activeRequestRef lock (pre-existing, reused as-is).
+Error Handling: try/catch around the submit flow in ServiceExecutionDrawer
+  with a user-facing error toast; fetchServiceFormMap in the mapper logs
+  and falls back to an empty map on error rather than throwing.
+Toasts: vaniToast (existing component, @/components/common/toast) --
+  success on submit, error on failure. Same component TicketEvidencePanel
+  already uses.
+Loaders: existing Loader2 spinner pattern, shown while the form template
+  schema is loading and while a submission is saving.
+
+VERIFICATION ALREADY DONE
+---------------------------------------------------------------
+- contractnest-api: `npx tsc --noEmit` -- zero errors in
+  ktCatBlockMapperService.ts or contractEventsDerivationService.ts.
+- contractnest-ui: `npx tsc --noEmit` -- zero NEW errors from this change;
+  the 4 errors tsc reports in ServiceExecutionDrawer.tsx (Block.config,
+  EventStatusDefinition.status_key/color/icon) are pre-existing type gaps
+  confirmed present before this change too (verified via git stash) --
+  unrelated to this batch, not touched.
+- Confirmed via grep that the only two insertRows paths in cat-blocks/
+  index.ts (single manual-create vs bulk KT-insert) now both carry
+  form_template_id.
+- Live DB read-only check confirmed BBB has no KT-linked blocks (item 2
+  is genuinely not applicable to BBB, not skipped by mistake).
+
+TESTING CHECKLIST
+---------------------------------------------------------------
+- [ ] On a tenant that DOES have KT-seeded equipment/service blocks
+      (not BBB), re-run/trigger the KT service-form generator + catalog
+      sync, and confirm the resulting m_cat_blocks rows now carry a
+      form_template_id matching m_kt_service_form_map.
+- [ ] Open a contract's Service Execution drawer where the evidence
+      policy is "smart_form" with at least one form configured -- click
+      "Open Form" and confirm the modal opens with the real form schema
+      (not the old "Could not load" or blank state).
+- [ ] Fill the form and submit -- confirm a success toast appears, the
+      modal closes, and a new row appears in m_form_submissions with
+      status 'submitted' and the right contract_id/form_template_id.
+- [ ] Try opening a form whose template fails to load (e.g. bad/deleted
+      form_template_id) -- confirm the "Could not load the form
+      template" fallback message shows instead of a blank/broken modal.
+- [ ] Spot-check the "Upload Proof" evidence-policy branch and the
+      "Create Ticket" footer action still work exactly as before --
+      this change didn't touch either.
+
+===============================================================
