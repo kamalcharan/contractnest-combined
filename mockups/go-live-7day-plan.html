@@ -1,4 +1,4 @@
-<title>ContractNest — 7-Day Go-Live Plan</title>
+<title>ContractNest — 7-Day Go-Live Plan (AMC &amp; Manufacturing)</title>
 <style>
   :root{
     --paper:#F4F6F4; --card:#FFFFFF; --ink:#1B2420; --ink-soft:#4C5B54; --ink-faint:#7C8A83;
@@ -47,98 +47,112 @@
   .pricebox{font-family:var(--serif)}
   .pricebox .big{font-size:26px;font-weight:700}
   .footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-faint)}
-  .tag{display:inline-block;background:var(--warn-soft);color:var(--warn);font-size:11px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:middle}
   .metric{font-family:var(--serif);font-weight:700}
 </style>
 
 <div class="wrap">
 <header class="hero">
-  <div class="eyebrow">ContractNest · Express</div>
+  <div class="eyebrow">ContractNest · Express — AMC · Manufacturing · Pest Control · Housekeeping</div>
   <h1>7 days to a self-serve front door</h1>
-  <p class="lede">One production customer (BBB) stays exactly where it is. This week ships a thin, fast onboarding surface over the existing backend, signs 2–3 new founding tenants, and puts a price on the product. Nothing else.</p>
+  <p class="lede">The pipeline is recurring field-service businesses: AMC vendors, manufacturers, pest control, housekeeping. Different industries, one identical shape — recurring visits + recurring billing + renewals — so one express product serves all four with vocabulary as the only difference. BBB (fitness) stays untouched on the current surface as the only production tenant. This week ships a thin onboarding surface over the existing backend, converts 2–3 pipeline prospects into paying founding tenants, and prices the product. Nothing else.</p>
 </header>
 
 <div class="card rule">
   <b>The three rules of the week.</b>
   <b>1 · Platform freeze:</b> bugfix-only everywhere existing; every idea goes to the parking lot, not the codebase.
-  <b>2 · BBB is sacred:</b> zero schema changes that touch their flows; they never see the new surface until they ask.
-  <b>3 · Scope is the shell:</b> if a screen isn't in the approved mockup, it does not exist this week.
+  <b>2 · BBB is sacred:</b> zero schema changes that touch their flows; they never see the new surface.
+  <b>3 · Scope is this page:</b> if a screen isn’t listed here, it does not exist this week.
 </div>
 
-<h2><span class="n">01</span>What ships (and what it reuses)</h2>
+<h2><span class="n">01</span>The wedge, adjusted for B2B field-service contracts</h2>
+<p>Collections is still the money moment, but in this segment three things gate it that don’t exist in B2C: <b>renewals</b> (contracts lapse silently and the book quietly shrinks), <b>proof of service</b> (the visit log is what wins the payment argument — and in pest control it doubles as the compliance record a restaurant shows its FSSAI auditor), and <b>invoice-shaped payments</b> (NEFT/cheque with UTR, credit periods, an accountant on the other side). So the express MVP is: <b>contract → visit + payment schedules → visit check-off with photo → payment &amp; renewal chasing → CNAK page the client can see.</b> Fewer, larger contracts than fitness — which makes the client-side page more valuable, not less: a society secretary, plant manager, or restaurant owner who can see visits and dues stops calling you for statements.</p>
+<div class="tablewrap"><table>
+  <tr><th>Vertical</th><th>Same engine, different words</th><th>What they’ll pull for first (week 2+, earned)</th></tr>
+  <tr><td>AMC</td><td>equipment blocks · quarterly billing · annual renewal</td><td>visit-report PDF, renewal quotes</td></tr>
+  <tr><td>Manufacturing</td><td>machine/variant blocks, KT pre-fill · cycles per checkpoint</td><td>per-equipment history, spares at actuals</td></tr>
+  <tr><td>Pest control</td><td>site visits monthly/quarterly · chemicals noted</td><td>compliance/service certificate PDF</td></tr>
+  <tr><td>Housekeeping</td><td>manpower + supplies blocks · monthly billing</td><td>deployment/attendance summary on client page</td></tr>
+</table></div>
+
+<h2><span class="n">02</span>What ships (and what it reuses)</h2>
 <div class="tablewrap"><table>
   <tr><th>Surface</th><th>Screens</th><th>Backend it reuses</th></tr>
-  <tr><td>First-run</td><td>WhatsApp magic-link login · business + UPI ID · quick plans · paste-in customer import</td><td>existing auth, tenant tables; plans as simple cat-blocks with defaults</td></tr>
-  <tr><td>Owner app</td><td>Due list (landing) · customers · tap-to-send WhatsApp reminders · record payment · confirm member-reported payments · month summary card · settings</td><td>contract events / billing schedule engine, receipts</td></tr>
-  <tr><td>Express contract</td><td>buyer + service blocks + term → derived schedule → CNAK share card</td><td>existing contracts, t_contract_blocks, CNAK issue/claim/verify</td></tr>
-  <tr><td>Buyer link</td><td>contract review → accept (name + OTP) → living page: dues, UPI QR, self-report ref, history, powered-by footer</td><td>public token routes (with the no-cache + IST lessons already learned)</td></tr>
+  <tr><td>First-run</td><td>WhatsApp magic-link login · business + payment details (bank + UPI) · paste-import of the AMC book: client, site, equipment, value, term, billing cadence, visit frequency</td><td>existing auth + tenant tables; contracts created as express records with default blocks</td></tr>
+  <tr><td>Owner app</td><td><b>Due list = payments + renewals in one view</b> · contracts list · tap-to-send WhatsApp reminders (to owner/accountant) · record payment (mode + UTR) · confirm client-reported payments · month summary · settings</td><td>contract events / billing schedule engine; receipts</td></tr>
+  <tr><td>Express contract</td><td>client + equipment service blocks (visits/frequency, parts terms: included / at actuals) + term + renewal → derived visit &amp; payment schedules → CNAK share card. KT pre-fills blocks for known equipment (lift, HVAC, DG, compressor) — <b>optional, never gating</b></td><td>contracts, t_contract_blocks, CNAK issue/claim/verify, KT read-only</td></tr>
+  <tr><td>Visit check-off</td><td>One screen: today’s scheduled visits → done + photo + notes. No technician app — the owner or supervisor taps it</td><td>existing proof-of-work objects</td></tr>
+  <tr><td>Client link (CNAK)</td><td>contract review → accept (name + OTP) → living page: next visit, visit history with proof, dues, renewal date, powered-by footer. <b>Pay two ways per tenant setting:</b> UPI-offline (QR + bank details, client self-reports UTR, owner confirms) or a <b>Razorpay payment link</b> (tenant’s own account keys, webhook auto-confirms — no manual step)</td><td>public token routes — with the no-cache + IST + cheap-Android lessons already learned; Razorpay is the one new integration allowed this week</td></tr>
 </table></div>
-<p>This is a re-skin plus one new express-create endpoint path — not a rebuild. The 2,900-line wizard stays as “advanced mode,” reachable, untouched.</p>
+<p>A re-skin plus one express-create path — not a rebuild. The full wizard stays as “advanced mode.” We do <b>not</b> replace their invoicing: they bill from Tally/their CA as today; we track schedule, proof, collection status, and renewals against it.</p>
 
-<h2><span class="n">02</span>Business model — decided today, not debated all week</h2>
+<h2><span class="n">03</span>Business model — decided today, not debated all week</h2>
 <div class="cols">
   <div class="card pricebox">
     <div class="eyebrow">Founding tenant offer</div>
-    <div class="big">₹999<span style="font-size:14px;color:var(--ink-faint)">/month</span></div>
+    <div class="big">₹1,999<span style="font-size:14px;color:var(--ink-faint)">/month</span></div>
     <ul style="font-size:13.5px;padding-left:18px;margin:8px 0 0">
-      <li>First month free, price agreed on day one</li>
-      <li>Free forever under 20 customers</li>
-      <li>Optional ₹2,500 one-time “we set up your whole list” concierge</li>
-      <li>Cancel anytime · price locked for 12 months</li>
+      <li>First month free, price agreed in writing on day one</li>
+      <li>Free under 10 contracts</li>
+      <li>Optional ₹5,000 one-time “we set up your entire AMC book” concierge</li>
+      <li>Cancel anytime · price locked 12 months</li>
     </ul>
   </div>
   <div class="card">
     <div class="eyebrow">Why these numbers</div>
-    <p style="font-size:13.5px;margin:8px 0 0">Priced against recovered revenue: one saved late payment covers the month. The future ₹999 commitment is the validation signal — a tenant who won’t agree to it was never a customer. The concierge fee makes hand-holding a product, not a cost. Value metric = customers under management, so price scales with their business, not with features.</p>
+    <p style="font-size:13.5px;margin:8px 0 0">An AMC vendor with 80 contracts averaging ₹40k holds a ₹32L book. One un-lapsed renewal or one dispute won by a visit log pays for years of the product. Priced against renewals saved + collections recovered, with contracts-under-management as the value metric. The written ₹1,999 commitment is the validation signal; the concierge fee turns hand-holding into product.</p>
   </div>
 </div>
 
-<h2><span class="n">03</span>Onboarding spec — the 10-minute contract with yourself</h2>
+<h2><span class="n">04</span>Onboarding spec — the 10-minute contract with yourself</h2>
 <ul>
-  <li><b>Target:</b> signup → first reminder sent in <span class="metric">≤ 10 minutes</span>, with <span class="metric">≤ 30 minutes</span> of founder time per tenant (concierge import included).</li>
-  <li><b>Zero implementation:</b> no industry selection, no catalog setup, no KT dependency, no Test/Live choice. Defaults everywhere; correct later in Settings.</li>
-  <li><b>Import is the whole game:</b> paste-from-Excel → parsed rows → one confirm screen. Whatever mess arrives on WhatsApp, you (or an agent pass) turn into the paste format — that’s the concierge.</li>
-  <li><b>Activation metric:</b> tenant has ≥ 5 customers scheduled and ≥ 1 reminder delivered. That number is the only dashboard that matters this week.</li>
+  <li><b>Target:</b> signup → first reminder or renewal alert in <span class="metric">≤ 10 minutes</span>, with <span class="metric">≤ 30 minutes</span> of founder time per tenant (concierge import included).</li>
+  <li><b>Zero implementation:</b> no industry taxonomy setup, no KT curation, no catalog studio, no Test/Live choice. KT only pre-fills known equipment blocks; a vendor with unlisted equipment types their blocks by hand and loses nothing.</li>
+  <li><b>Import is the whole game:</b> their AMC register lives in Excel/Tally exports. Paste → parsed rows → one confirm screen. Whatever arrives on WhatsApp, you (or an agent pass) convert to the paste format — that’s the concierge.</li>
+  <li><b>Activation metric:</b> tenant has ≥ 5 contracts loaded with schedules and ≥ 1 reminder or renewal alert delivered. The only dashboard that matters this week.</li>
 </ul>
 
-<h2><span class="n">04</span>The seven days</h2>
+<h2><span class="n">05</span>The seven days</h2>
 <div class="tablewrap"><table>
   <tr><th>Day</th><th>Build</th><th>Business</th></tr>
-  <tr><td>Day 1</td><td>Repo/app scaffold for the thin front; magic-link auth against existing tenant model</td><td>Call 3 gym owners from BBB’s circle — get verbal “yes, Friday” from at least 2</td></tr>
-  <tr><td>Day 2</td><td>First-run flow: business + UPI, quick plans, paste-import → confirm</td><td>Send founding-offer one-pager to the yeses (price in writing)</td></tr>
-  <tr><td>Day 3</td><td>Due list + customers + record payment over existing schedule engine</td><td>Collect their real customer lists (any format)</td></tr>
-  <tr><td>Day 4</td><td>Reminders (tap-to-send wa.me) + member-reported payment confirm queue</td><td>Dry-run import of their actual lists — fix what breaks</td></tr>
-  <tr><td>Day 5</td><td>Express contract → CNAK card; buyer link accept state</td><td>Onboard tenant #2 yourself, stopwatch running</td></tr>
-  <tr><td>Day 6</td><td>Harden the public pages: no-store headers, IST dates, ₹8k-Android test, real-device UPI QR scan</td><td>Onboard tenant #3; fix the top 3 frictions observed</td></tr>
-  <tr><td>Day 7</td><td>Buffer — nothing new; only fixes</td><td><b>Launch = tenants’ members receive real reminders.</b> Screenshot the first collection.</td></tr>
+  <tr><td>Day 1</td><td>Thin-front scaffold; magic-link auth on existing tenant model</td><td>Pick the 3 warmest pipeline prospects — favour pest control / housekeeping for speed (high visit frequency, monthly billing, fast decision) with one AMC/manufacturing anchor; get “yes, this Friday” from 2</td></tr>
+  <tr><td>Day 2</td><td>First-run: business + payment details, paste-import → confirm (schedules derived)</td><td>Founding offer one-pager sent, price in writing; request their AMC register in any format</td></tr>
+  <tr><td>Day 3</td><td>Due list (payments + renewals) · contracts list · record payment with UTR</td><td>Dry-run import of a real register — fix what breaks; this is the day reality edits the parser</td></tr>
+  <tr><td>Day 4</td><td>Reminders (tap-to-send wa.me) · client-reported payment confirm queue · visit check-off screen</td><td>Walk prospect #1 through their own data on a call</td></tr>
+  <tr><td>Day 5</td><td>Express contract → CNAK card · client link accept state + living page · Razorpay payment-link + webhook confirm (tenant-keyed) for tenants who have an account</td><td>Onboard tenant #1 yourself, stopwatch running; ask each tenant: Razorpay or UPI-offline?</td></tr>
+  <tr><td>Day 6</td><td>Harden public pages: no-store headers, IST dates, cheap-Android test, QR/bank display + one real ₹1 Razorpay payment verified on real devices</td><td>Onboard tenant #2 (and #3 if ready); fix top 3 observed frictions</td></tr>
+  <tr><td>Day 7</td><td>Buffer — nothing new, only fixes</td><td><b>Launch = a real client receives a real reminder or renewal notice.</b> Screenshot the first collection/renewal saved</td></tr>
 </table></div>
 
-<h2><span class="n">05</span>Explicitly not this week</h2>
+<h2><span class="n">06</span>Explicitly not this week</h2>
 <div class="cols">
   <div class="card"><b class="no">Not in scope:</b>
     <ul style="font-size:13.5px;margin:8px 0 0">
-      <li>KnowledgeTree curation or new master data</li>
+      <li>Technician mobile app or ticketing — owner/supervisor checks off visits</li>
+      <li>GST e-invoicing / replacing Tally — record against their invoices, don’t issue them</li>
+      <li>SLA penalty math, response-time credits</li>
+      <li>New KT curation (read-only pre-fill of existing equipment data only)</li>
       <li>SmartForms anywhere</li>
-      <li>UPI intent links (QR + self-reported ref only — the GPay lesson)</li>
+      <li>UPI intent deep links (the GPay lesson) — QR/bank + UTR, or Razorpay link, only</li>
+      <li>Razorpay Route / marketplace splits / our-account collection — tenant’s own keys only</li>
       <li>Automated WhatsApp API sending</li>
-      <li>New industries beyond fitness/wellness</li>
-      <li>Mobile app, RFQ, group-session features, FamilyKnows</li>
+      <li>Fitness expansion, mobile app, RFQ, group sessions, FamilyKnows</li>
       <li>Migrating BBB to the new surface</li>
     </ul>
   </div>
   <div class="card"><b class="yes">Success on day 7:</b>
     <ul style="font-size:13.5px;margin:8px 0 0">
-      <li><span class="metric">2–3</span> new tenants live, activated (≥5 customers, ≥1 reminder)</li>
-      <li><span class="metric">₹999</span> commitment in writing from each</li>
+      <li><span class="metric">2–3</span> pipeline prospects live as tenants, activated (≥5 contracts, ≥1 reminder/alert)</li>
+      <li><span class="metric">₹1,999</span> commitment in writing from each</li>
       <li>Onboarding stopwatch <span class="metric">≤ 30 min</span> founder time</li>
-      <li>≥ 1 real member payment recorded through the new flow</li>
+      <li>≥ 1 real payment recorded (UTR) or renewal saved through the new flow</li>
+      <li>≥ 1 visit checked off with photo proof</li>
       <li>BBB: zero incidents, zero changes</li>
     </ul>
   </div>
 </div>
 
-<h2><span class="n">06</span>After the week (so it doesn’t creep back)</h2>
-<p>Week 2–4: watch the due-list opens on the 1st–3rd, ship only what the three tenants ask for twice, and start the month-end summary share loop. The parking lot reopens only when a request comes from a paying tenant’s mouth. Vertical #2 waits until a new fitness tenant can self-serve without you.</p>
+<h2><span class="n">07</span>After the week (so it doesn’t creep back)</h2>
+<p>Weeks 2–4: watch due-list opens at month-start and before renewal dates; ship only what the founding tenants ask for twice. Likely first earned features, in order of expected pull: visit-report / compliance-certificate PDF for the client (pest control will ask first), renewal quote generation (same contract, revised price, same CNAK lineage), technician check-off links. Manufacturing depth (equipment variants, cycle-based blocks from KT) comes when a manufacturer tenant is live and asking — the master data already exists; it waits for demand, not the other way around. The parking lot reopens only when a paying tenant’s request lands twice.</p>
 
-<div class="footer">ContractNest · Express go-live plan · drafted 28 Jul 2026 · BBB remains on the current production surface throughout.</div>
+<div class="footer">ContractNest · Express go-live plan — AMC &amp; Manufacturing · revised 28 Jul 2026 · BBB remains on the current production surface throughout.</div>
 </div>
