@@ -1,5 +1,18 @@
 # ContractNest Lite — folder structure & isolation rules
 
+> **Scope correction (after the product-led shell review).** Lite is **not** a parallel app.
+> The existing screens — Contracts Hub, Contacts, Receivables, Group Sessions — are kept and
+> used as-is; they work and BBB runs on them daily. Lite is only the part that cannot be
+> made fast by editing what exists, because it doesn't exist:
+>
+> 1. **First-run onboarding** (signup → seeded workspace → first send) — the 15-minute path.
+> 2. **Express contract create** — 5 fields, because the wizard structurally cannot be 3 minutes.
+> 3. **One landing screen** (due list) — where a tenant returns daily and sees what needs them.
+>
+> After those three, users **hand off into the existing UI**. Everything below still applies;
+> just build items 1–3 and stop. `pages/clients`, `pages/contracts` (list), `pages/visits`,
+> `pages/payments`, `pages/summary` are **deferred** — the existing screens already cover them.
+
 The 7-day express surface. Lives **inside the existing repos** as one self-contained,
 deletable folder tree per repo. No new repo, no new build pipeline, no new deploy.
 
