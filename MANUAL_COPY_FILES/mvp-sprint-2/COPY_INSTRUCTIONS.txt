@@ -19,15 +19,36 @@ WHY SPRINT 2 IS A CUT, NOT A BUILD
     vani-consent -> vani-intelligence -> vani-working -> pricing-review ->
     terms-conditions -> equipment -> lov-setup -> done
 
-  Express replaces the FIRST NINE with TWO, then hands back into the existing
-  chain at vani-working, which seeds the catalog and carries the tenant through
+  Express replaces the FIRST SIX with TWO, then hands back into the existing
+  chain at resource-pick, which carries the tenant through consent -> seeding ->
   pricing -> terms -> equipment -> done completely unmodified.
 
     /start        business name + persona     (replaces 4 screens)
-    /start/trade  served industries           (replaces 5 screens)
-    -> /onboarding/vani-working  (existing, untouched, and everything after it)
+    /start/trade  served industries           (replaces 2 screens)
+    -> /onboarding/resource-pick  (existing, untouched, and everything after it)
 
-  Net: ~16 screens -> ~7.
+  Net: ~16 screens -> ~11.
+
+  WHY resource-pick AND NOT vani-working  (bug found in live testing)
+  ------------------------------------------------------------------
+  The first version handed off at vani-working and produced two errors:
+  "no service blocks found", then a downstream LOV failure.
+
+  Root cause: resource-pick is where the equipment/facility/service TEMPLATES
+  are chosen. It passes them forward in route state, and VaniWorkingStep feeds
+  them directly into the seeding call:
+
+      equipmentTemplateIds: selectedEquipmentTemplates.map(t => t.id)
+      serviceTemplateIds:   selectedServiceTemplates.map(t => t.id)
+
+  Skipping resource-pick meant those arrays were empty, so the seeder created
+  nothing and every later step had no catalog to work with. ResourcePickStep's
+  own "Skip" branch documents the same thing — with no templates picked, the
+  consent/working/pricing steps have nothing to process.
+
+  resource-pick needs only formData.persona (express screen 1 writes it) and
+  auto-selects sensible templates, so it is a safe entry point. Four screens
+  came back, and the workspace is actually built. Correctness over screen count.
 
 ROUTING: TWO ONE-LINE CHANGES, NOT SIX
 ──────────────────────────────────────

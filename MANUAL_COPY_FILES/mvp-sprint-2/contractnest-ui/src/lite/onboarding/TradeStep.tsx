@@ -3,10 +3,12 @@
 // Express screen 2 of 2. Served industries — the input the seeder actually
 // needs to build a catalog.
 //
-// Replaces five screens of the long flow (engagement-model, theme-selection,
-// industry-selection, resource-pick, vani-consent). Theme and engagement model
-// keep their defaults; resource-pick and consent are folded into the one line
-// of copy under the grid.
+// Replaces two screens of the long flow (engagement-model, theme-selection,
+// industry-selection); theme and engagement model keep their defaults.
+//
+// It hands off to resource-pick rather than skipping it: that step picks the
+// equipment/service TEMPLATES the seeder consumes, so bypassing it made the
+// seeding run on empty arrays and produce no service blocks.
 //
 // If the visitor picked a trade on the public landing page, it is pre-selected
 // here — that is the whole point of carrying it across, and it means the
@@ -79,9 +81,9 @@ export const TradeStep: React.FC = () => {
         .map((i) => i.name)
         .filter(Boolean);
 
-      // Hand off to the existing chain. vani-working seeds the catalog and then
-      // carries the tenant through pricing → terms → equipment → done, all
-      // untouched. industryNames is what the pricing screen reads from state.
+      // Hand off to the existing chain at resource-pick, which chooses the
+      // templates the seeder needs and then carries the tenant through
+      // consent → seeding → pricing → terms → equipment → done, all untouched.
       navigate(EXPRESS_HANDOFF_PATH, { state: { industryNames, fromExpress: true } });
     } catch (err: unknown) {
       const message =
@@ -155,7 +157,7 @@ export const TradeStep: React.FC = () => {
         onClick={handleContinue}
       >
         {isAdding ? <Loader2 className="cnx-spin" size={16} /> : null}
-        {isAdding ? 'Saving…' : 'Build my workspace'}
+        {isAdding ? 'Saving…' : 'Continue'}
       </button>
     </ExpressShell>
   );

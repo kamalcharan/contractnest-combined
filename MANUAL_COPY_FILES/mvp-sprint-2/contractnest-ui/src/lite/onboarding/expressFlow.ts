@@ -8,25 +8,34 @@
 //   vani-consent → vani-intelligence → vani-working → pricing-review →
 //   terms-conditions → equipment → lov-setup → done
 //
-// Express replaces the first NINE of those with TWO screens and then hands off
-// into the existing chain at vani-working, which already runs the seeding and
-// carries the tenant through pricing → terms → equipment → done unchanged.
+// Express replaces the first SIX of those with TWO screens and then hands off
+// into the existing chain at resource-pick, which carries the tenant through
+// consent → seeding → pricing → terms → equipment → done unchanged.
 //
 //   /start        business name + persona
 //   /start/trade  served industries (pre-selected from the landing page)
-//   → /onboarding/vani-working  (existing, untouched, and everything after it)
+//   → /onboarding/resource-pick  (existing, untouched, and everything after it)
+//
+// WHY resource-pick AND NOT vani-working:
+// resource-pick is where the equipment/facility/service TEMPLATES are chosen.
+// It passes them forward in route state, and VaniWorkingStep feeds them
+// straight into the seeding POST as equipmentTemplateIds/serviceTemplateIds.
+// Handing off after it meant the seeder ran with empty arrays and created
+// nothing — which surfaced downstream as "no service blocks found".
+// resource-pick only needs formData.persona, which express screen 1 writes,
+// and it auto-selects sensible templates, so it is a safe entry point.
 //
 // Nothing in the existing flow is modified. It stays reachable at /onboarding
 // for anyone who needs the long form.
 
 /** Where express hands control back to the existing onboarding chain. */
-export const EXPRESS_HANDOFF_PATH = '/onboarding/vani-working';
+export const EXPRESS_HANDOFF_PATH = '/onboarding/resource-pick';
 
 /** Screens express owns, in order. Used by the progress rail. */
 export const EXPRESS_STEPS = [
   { id: 'business', label: 'Your business', path: '/start' },
   { id: 'trade', label: 'Your line of work', path: '/start/trade' },
-  { id: 'workspace', label: 'Building your workspace', path: EXPRESS_HANDOFF_PATH },
+  { id: 'workspace', label: 'Your services', path: EXPRESS_HANDOFF_PATH },
 ] as const;
 
 export type ExpressStepId = (typeof EXPRESS_STEPS)[number]['id'];
