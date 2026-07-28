@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 1 (part A: reveal module + isolation rules)
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   28 Jul 2026
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+
+  No API, edge, migration or table changes. UX-only, per EXECUTION-PLAN rule 1.
+
+WHAT THIS BATCH IS
+──────────────────
+  Sprint 1 items 2, 3 and 4 — the src/lite scaffold, the reveal (hide-until-
+  earned) module, and the one-way import rules that keep src/lite deletable.
+
+  Sprint 1 item 1 (landing page) is NOT in this batch. A live landing page
+  already exists at src/pages/public/LandingPage.tsx with 19 components —
+  building a second one would create the parallel-implementation problem the
+  audit already flagged. Decision needed before that item proceeds; see the
+  session notes.
+
+FILES IN THIS BATCH  (6 files: 5 new, 1 modified)
+─────────────────────────────────────────────────
+  NEW  src/lite/reveal/revealRules.ts
+       The reveal schedule as DATA. 9 rules, each with an unlock condition.
+       Every rule fails OPEN on unknown signals.
+
+  NEW  src/lite/reveal/revealContext.ts
+       Context + useRevealContext accessor. Split from the provider so the
+       provider file exports only a component (keeps Fast Refresh working).
+
+  NEW  src/lite/reveal/RevealProvider.tsx
+       Holds signals + overrides. Does NOT fetch anything — screens push in
+       numbers they already have, so no new queries and no added API load.
+       Pass revealAll={true} for any pre-MVP tenant to show everything.
+
+  NEW  src/lite/reveal/useReveal.ts
+       useReveal('perspective') -> boolean. Plus useReveals, useRevealSignals
+       and useRevealAudit (dev/QA table of every rule and its current outcome).
+
+  NEW  src/lite/reveal/RevealGate.tsx
+       <RevealGate id="charts" fallback={<EmptyCta/>}>...</RevealGate>
+       Wrapping is the ONLY way reveal touches existing screens.
+
+  MOD  eslint.config.js
+       Adds two no-restricted-imports blocks:
+         A) src/lite may not import ContractWizard, pages/contracts,
+            catalog-studio or group-sessions.
+         B) nothing outside src/lite may import from src/lite.
+       Both verified to fire on canary files, then the canaries were deleted.
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * tsc --strict on src/lite  -> 0 errors
+  * eslint on src/lite/reveal -> 0 errors, 0 warnings
+  * eslint canary test        -> both isolation rules fired correctly
+  * contractnest-ui working tree left pristine (git status clean)
+
+POWERSHELL — copy
+─────────────────
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\lite\reveal"
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\src\lite\reveal\*" -Destination "contractnest-ui\src\lite\reveal\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\eslint.config.js" -Destination "contractnest-ui\eslint.config.js" -Force
+
+  Write-Host "Copied. Now verify:" -ForegroundColor Green
+
+VERIFY LOCALLY
+──────────────
+  cd contractnest-ui
+  npx tsc --noEmit -p tsconfig.app.json   # expect NO NEW errors vs your baseline
+  npm run lint                            # expect no new errors from src/lite
+
+  Nothing is wired into any screen yet — this batch adds capability only, so
+  the running app must look and behave EXACTLY as it does today. That is the
+  main thing to confirm.
+
+NOT YET DONE (next batch, after your sign-off)
+──────────────────────────────────────────────
+  * Mount <RevealProvider> in App.tsx with revealAll for existing tenants
+  * Wrap the 9 surfaces with <RevealGate>
+  * Landing page decision + build
+═══════════════════════════════════════════════════
