@@ -306,7 +306,9 @@ const SmartHomePage: React.FC = () => {
   if (isAuthenticated && currentTenant) {
     // Send to onboarding if not yet complete, otherwise to the main app
     if (!hasCompletedOnboarding) {
-      return <Navigate to="/onboarding" replace />;
+      // MVP: express onboarding. The long form is still reachable at /onboarding
+      // and is linked from the first express screen.
+      return <Navigate to="/start" replace />;
     }
     return <Navigate to="/ops/cockpit" replace />;
   }

@@ -37,7 +37,28 @@ WHAT CHANGED IN THE PLAN, AND WHY
   fully reachable at /onboarding for anyone who wants the long form (there is a
   link to it on the first express screen).
 
-FILES  (5 new, 1 modified)
+ROUTING GAP FOUND AND FIXED (added after the first pass)
+────────────────────────────────────────────────────────
+  /start was unreachable. Tracing the real new-user journey:
+
+    RegisterPage -> tenant creation -> CreateTenantPage -> /ops/cockpit
+
+  A brand-new signup NEVER touched onboarding at all. /onboarding was only
+  reached by logging out and logging back in (LoginPage). So the express path
+  existed but nothing routed to it.
+
+  Three redirects now point at /start:
+    src/pages/auth/CreateTenantPage.tsx  /ops/cockpit -> /start   <-- the one
+                                          that actually matters for signups
+    src/pages/auth/LoginPage.tsx         /onboarding  -> /start
+    src/App.tsx (SmartHomePage)          /onboarding  -> /start
+
+  The long form is untouched and still reachable at /onboarding, linked from
+  the first express screen. Re-entry is non-destructive: /start pre-fills the
+  business name and persona from the existing profile, so a tenant part-way
+  through the long form who lands here does not lose anything.
+
+FILES  (5 new, 3 modified)
 ──────────────────────────
   NEW  src/lite/onboarding/expressFlow.ts
        The path definition, persona list, and the landing-trade -> industry
@@ -64,9 +85,18 @@ FILES  (5 new, 1 modified)
        classes always win. Same containment rules as the landing.
 
   MOD  src/App.tsx
-       Two imports and two routes (/start, /start/trade), both wrapped in
-       ProtectedRoute requireTenant — same guard the existing onboarding uses.
-       Nothing else touched.
+       Two imports, two routes (/start, /start/trade) both wrapped in
+       ProtectedRoute requireTenant — the same guard the existing onboarding
+       uses — and the SmartHomePage redirect. Also carries the Sprint 1 landing
+       wiring, so it supersedes the Sprint 1 copy of this file.
+
+  MOD  src/pages/auth/CreateTenantPage.tsx
+       One line: a newly created workspace goes to /start instead of
+       /ops/cockpit. This is the redirect that makes express reachable at all.
+
+  MOD  src/pages/auth/LoginPage.tsx
+       One line: a returning user who has not finished onboarding goes to
+       /start instead of /onboarding.
 
 VERIFIED BEFORE HANDOVER
 ────────────────────────
@@ -87,23 +117,40 @@ POWERSHELL — copy
 ─────────────────
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\lite\onboarding" -Destination "contractnest-ui\src\lite\" -Recurse -Force
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\pages\auth\LoginPage.tsx" -Destination "contractnest-ui\src\pages\auth\LoginPage.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\pages\auth\CreateTenantPage.tsx" -Destination "contractnest-ui\src\pages\auth\CreateTenantPage.tsx" -Force
 
   NOTE: this App.tsx already contains the Sprint 1 landing wiring, so it
   supersedes the Sprint 1 copy of the same file.
 
-TEST  (needs a LOGGED-IN tenant — /start is protected)
-──────────────────────────────────────────────────────
+TEST — START FROM SIGNUP, NOT FROM /start
+─────────────────────────────────────────
+  The first version of this checklist said "open /start", which hid the routing
+  gap above. Test the real journey instead.
+
   cd contractnest-ui
   npm run dev
-  # sign in, then open http://localhost:5173/start
+  # incognito window -> http://localhost:5173
 
-  TESTING CHECKLIST
+  TESTING CHECKLIST — the whole journey
+  [ ] Landing loads; pick a trade; "Start free with this setup" -> /signup
+  [ ] Register a NEW account with a NEW workspace
+  [ ] After the workspace is created you land on /start  (NOT /ops/cockpit)
+  [ ] The trade you picked on the landing is pre-selected on /start/trade
+  [ ] Log out, log back in before finishing -> you return to /start, and the
+      business name and persona you already entered are still filled in
+  [ ] EXISTING tenant with onboarding complete: login still goes to /ops/cockpit
+  [ ] BBB: log in as an existing chapter — nothing about their journey changed
+
+  TESTING CHECKLIST — the express screens
   [ ] /start shows business name + 3 persona cards; Continue disabled until both set
   [ ] Continue saves and moves to /start/trade
   [ ] Industries load; multi-select works; Build my workspace disabled until one picked
   [ ] It hands off to /onboarding/vani-working and the seeding runs as it always did
   [ ] After seeding, the existing pricing -> terms -> equipment -> done chain is unchanged
-  [ ] STOPWATCH: signup -> furnished workspace. Target <= 6 minutes.
+  [ ] STOPWATCH from the moment you click "Start free" on the landing to a
+      furnished workspace. Target <= 6 minutes. This is the real number —
+      the earlier one started too late.
   [ ] The long form still works end to end at /onboarding
   [ ] Landing carry-over: pick a trade on the landing page, sign up, and confirm
       the matching industry is pre-selected on /start/trade
