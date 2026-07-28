@@ -31,6 +31,13 @@ contractnest-ui/src/
 │   ├── LiteApp.tsx                     ← router + providers, mounted at /start/*
 │   ├── routes.tsx
 │   │
+│   ├── landing/                        ← SPRINT 1  (public, unauthenticated, at /)
+│   │   ├── LandingPage.tsx
+│   │   ├── TradePicker.tsx             ← carries choice into signup
+│   │   ├── WorkspaceSlab.tsx           ← the live preview that rebuilds per trade
+│   │   ├── previewData.ts              ← per-trade catalog/contract seed shown pre-signup
+│   │   └── sections/                   ← Clock · Value · Portal · Proof · Faq · FinalCta
+│   │
 │   ├── onboarding/                     ← SPRINT 2 + 3
 │   │   ├── index.tsx                   ← stepper container + progress rail
 │   │   ├── PersonaStep.tsx             ← provide / own / both
@@ -91,10 +98,16 @@ MANUAL_COPY_FILES/mvp-sprint-<n>/
 
 ## 2 · The five sprints
 
-### Sprint 1 — Reveal schedule + scaffold
-*Make the existing product look small. Lowest risk, highest immediate effect.*
+### Sprint 1 — Landing page + reveal schedule + scaffold
+*The front door comes first: nobody reaches onboarding without it. Then make the
+existing product look small.*
 
 **Build**
+- **Landing page** (`src/lite/landing/`) — public, unauthenticated, at `/`:
+  hero → trade picker → **live workspace slab that rebuilds per trade** → 15-minute
+  strip → client-portal proof → proof band → FAQ → final CTA.
+  The picked trade carries into signup so onboarding never re-asks it.
+  Reference: `landing-page.html` in this folder.
 - `src/lite/` scaffold: route mount at `/start/*`, layout shell, tokens.
 - `reveal/` module: rules table, `useReveal` hook, `RevealGate` wrapper.
 - Apply gates to the existing app **by wrapping only** — no logic edits:
@@ -103,6 +116,13 @@ MANUAL_COPY_FILES/mvp-sprint-<n>/
 - ESLint import rules committed.
 
 **Verify (you)**
+- [ ] Landing loads logged-out; all four trades rebuild the slab with correct
+      catalog counts, contract and year-strip — no flicker, no layout shift.
+- [ ] Landing is fast on a mid-range Android over mobile data (target LCP < 2.5s).
+- [ ] Trade picked on landing arrives in signup — onboarding does **not** ask again.
+- [ ] Every nav anchor resolves; both themes render; keyboard focus visible throughout.
+- [ ] Placeholder proof block replaced or removed — **no unapproved customer
+      names, logos or testimonials ship.**
 - [ ] A brand-new tenant sees: Dashboard · Contracts · Contacts · Receivables · Get Started. Nothing else.
 - [ ] BBB's login is visually **identical** to before — every gate open for them.
 - [ ] Toggling a rule in `revealRules.ts` shows/hides without any other change.

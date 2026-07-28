@@ -1,0 +1,459 @@
+<title>ContractNest — Landing (HyperVisual CRO)</title>
+<style>
+  :root{
+    --paper:#F6F4EE; --slab:#FFFFFF; --ink:#14201B; --soft:#4A5A52; --faint:#8A968F;
+    --line:#E0DDD3; --edge:#CBC7BA;
+    --deep:#0B5F4E; --deep-ink:#FFFFFF; --wash:#E4EEE9;
+    --ember:#B4632A; --ember-wash:#F6E9DD;
+    --good:#1F7A45;
+    --serif:"Iowan Old Style","Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --lift:0 1px 2px rgba(20,32,27,.05),0 18px 50px rgba(20,32,27,.13);
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --paper:#121815; --slab:#1A211D; --ink:#E9EDE9; --soft:#A6B2AB; --faint:#76837B;
+    --line:#28312C; --edge:#3A453E;
+    --deep:#3EAF92; --deep-ink:#08120F; --wash:#182B25;
+    --ember:#D9924F; --ember-wash:#2E2015; --good:#5BBE7C;
+    --lift:0 1px 2px rgba(0,0,0,.4),0 18px 50px rgba(0,0,0,.55);}}
+  :root[data-theme="dark"]{
+    --paper:#121815; --slab:#1A211D; --ink:#E9EDE9; --soft:#A6B2AB; --faint:#76837B;
+    --line:#28312C; --edge:#3A453E;
+    --deep:#3EAF92; --deep-ink:#08120F; --wash:#182B25;
+    --ember:#D9924F; --ember-wash:#2E2015; --good:#5BBE7C;
+    --lift:0 1px 2px rgba(0,0,0,.4),0 18px 50px rgba(0,0,0,.55);}
+  :root[data-theme="light"]{
+    --paper:#F6F4EE; --slab:#FFFFFF; --ink:#14201B; --soft:#4A5A52; --faint:#8A968F;
+    --line:#E0DDD3; --edge:#CBC7BA;
+    --deep:#0B5F4E; --deep-ink:#FFFFFF; --wash:#E4EEE9;
+    --ember:#B4632A; --ember-wash:#F6E9DD; --good:#1F7A45;
+    --lift:0 1px 2px rgba(20,32,27,.05),0 18px 50px rgba(20,32,27,.13);}
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--deep);outline-offset:3px;border-radius:3px}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 26px}
+  @media(max-width:620px){.wrap{padding:0 18px}}
+
+  /* ── nav ── */
+  .nav{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;gap:22px;height:62px}
+  .brand{font-family:var(--serif);font-size:21px;font-weight:700;letter-spacing:-.01em}
+  .brand span{color:var(--deep)}
+  .nav .links{display:flex;gap:20px;margin-left:14px}
+  .nav .links a{font-size:14px;color:var(--soft);font-weight:550;text-decoration:none}
+  .nav .links a:hover{color:var(--ink)}
+  @media(max-width:820px){.nav .links{display:none}}
+  .nav .sp{flex:1}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:650;border-radius:9px;border:1px solid transparent;white-space:nowrap}
+  .btn-cta{background:var(--deep);color:var(--deep-ink);padding:11px 20px;font-size:14.5px}
+  .btn-cta:hover{filter:brightness(1.09)}
+  .btn-cta.lg{padding:15px 30px;font-size:16.5px;border-radius:11px}
+  .btn-line{border-color:var(--edge);color:var(--ink);padding:10px 17px;font-size:14px}
+  .btn-line:hover{background:var(--slab)}
+  .btn-plain{color:var(--soft);font-size:14px;font-weight:550}
+
+  /* ── hero ── */
+  .hero{padding:58px 0 20px}
+  .kicker{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--deep);background:var(--wash);border-radius:99px;padding:6px 15px;margin-bottom:22px}
+  .kicker i{width:6px;height:6px;border-radius:50%;background:var(--good);font-style:normal;animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  h1.head{font-family:var(--serif);font-size:clamp(40px,6.4vw,74px);line-height:1.03;font-weight:700;letter-spacing:-.022em;margin:0 0 20px;max-width:16ch;text-wrap:balance}
+  h1.head em{font-style:normal;color:var(--deep);position:relative;white-space:nowrap}
+  h1.head em::after{content:"";position:absolute;left:0;right:0;bottom:.06em;height:.09em;background:var(--ember);opacity:.55;border-radius:2px}
+  .dek{font-size:clamp(17px,2vw,20px);color:var(--soft);max-width:52ch;margin:0 0 26px;line-height:1.55}
+  .dek b{color:var(--ink);font-weight:650}
+  .heroacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .microproof{font-size:13.5px;color:var(--faint);display:flex;gap:16px;flex-wrap:wrap}
+  .microproof b{color:var(--soft)}
+
+  /* ── picker ── */
+  .picker{margin:44px 0 0}
+  .picklabel{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+  .chips{display:flex;gap:9px;flex-wrap:wrap}
+  .chip{border:1.5px solid var(--edge);background:var(--slab);border-radius:99px;padding:10px 19px;font-size:14.5px;font-weight:620;color:var(--soft);transition:all .16s}
+  .chip:hover{border-color:var(--deep);color:var(--ink)}
+  .chip[aria-pressed="true"]{background:var(--deep);border-color:var(--deep);color:var(--deep-ink)}
+
+  /* ── the slab: live product ── */
+  .slabwrap{margin:26px 0 0;position:relative}
+  .slab{background:var(--slab);border:1px solid var(--line);border-radius:16px;box-shadow:var(--lift);overflow:hidden}
+  .slabbar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--paper) 60%,var(--slab))}
+  .slabbar .dots{display:flex;gap:5px}
+  .slabbar .dots i{width:9px;height:9px;border-radius:50%;background:var(--edge);font-style:normal}
+  .slabbar .url{flex:1;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .slabbar .badge{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent);border-radius:99px;padding:3px 10px}
+  .slabgrid{display:grid;grid-template-columns:1.05fr 1fr;gap:0}
+  @media(max-width:880px){.slabgrid{grid-template-columns:1fr}}
+  .pane{padding:22px 24px}
+  .pane+.pane{border-left:1px solid var(--line)}
+  @media(max-width:880px){.pane+.pane{border-left:none;border-top:1px solid var(--line)}}
+  .paneh{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:13px;display:flex;align-items:center;gap:8px}
+  .paneh .live{width:6px;height:6px;border-radius:50%;background:var(--good);animation:pulse 2.4s ease-in-out infinite}
+
+  .bignum{font-family:var(--serif);font-size:46px;font-weight:700;line-height:1;letter-spacing:-.02em}
+  .bignum small{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--faint);letter-spacing:0}
+  .subnum{font-size:13.5px;color:var(--soft);margin:6px 0 16px}
+
+  .catrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .catrow:last-child{border-bottom:none}
+  .catrow .cn{font-weight:580}
+  .catrow .cm{font-size:12px;color:var(--faint)}
+  .catrow .cp{font-family:var(--serif);font-weight:700;white-space:nowrap}
+
+  .ccard{border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:12px}
+  .ccard .ct{font-family:var(--serif);font-size:17px;font-weight:700;margin-bottom:2px}
+  .ccard .cs{font-size:12.5px;color:var(--soft)}
+  .yr{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-top:12px}
+  .yrm{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:5px 2px 4px;text-align:center}
+  .yrm .yn{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+  .yrd{display:flex;gap:2px;justify-content:center;min-height:12px;flex-wrap:wrap}
+  .yrd i{width:5px;height:5px;border-radius:50%;font-style:normal}
+  .yrd i.v{background:var(--deep);opacity:.75}
+  .yrd i.b{background:var(--ember)}
+  .lgd{display:flex;gap:15px;margin-top:9px;font-size:11.5px;color:var(--faint)}
+  .lgd span{display:flex;align-items:center;gap:5px}
+  .lgd i{width:6px;height:6px;border-radius:50%;font-style:normal}
+
+  .slabfoot{border-top:1px solid var(--line);padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:color-mix(in srgb,var(--wash) 40%,var(--slab))}
+  .slabfoot .t{font-size:14px;color:var(--soft);flex:1;min-width:200px}
+  .slabfoot .t b{color:var(--ink)}
+
+  /* ── sections ── */
+  section{padding:74px 0}
+  .sechead{max-width:60ch;margin-bottom:38px}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--ember);margin-bottom:11px}
+  h2{font-family:var(--serif);font-size:clamp(28px,3.9vw,42px);line-height:1.12;font-weight:700;letter-spacing:-.018em;margin:0 0 13px;text-wrap:balance}
+  .lede{font-size:17px;color:var(--soft);margin:0;line-height:1.55}
+
+  /* clock strip */
+  .clockstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--slab)}
+  @media(max-width:800px){.clockstrip{grid-template-columns:1fr 1fr}}
+  @media(max-width:460px){.clockstrip{grid-template-columns:1fr}}
+  .ct{padding:22px 20px;border-right:1px solid var(--line);position:relative}
+  .ct:last-child{border-right:none}
+  @media(max-width:800px){.ct:nth-child(2){border-right:none}.ct:nth-child(1),.ct:nth-child(2){border-bottom:1px solid var(--line)}}
+  .ct .tm{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--deep);letter-spacing:.04em;margin-bottom:9px}
+  .ct .tt{font-family:var(--serif);font-size:19px;font-weight:700;margin-bottom:5px;line-height:1.22}
+  .ct .td{font-size:13.5px;color:var(--soft);line-height:1.5}
+  .ct.fin{background:var(--wash)}
+  .ct.fin .tm{color:var(--ember)}
+
+  /* value grid */
+  .vgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:900px){.vgrid{grid-template-columns:1fr}}
+  .vcard{background:var(--slab);border:1px solid var(--line);border-radius:13px;padding:24px 22px}
+  .vcard h3{font-family:var(--serif);font-size:20px;margin:0 0 8px;font-weight:700}
+  .vcard p{margin:0;font-size:14.5px;color:var(--soft);line-height:1.55}
+  .vcard .vnum{font-family:var(--serif);font-size:32px;font-weight:700;color:var(--deep);line-height:1;margin-bottom:10px}
+
+  /* portal split */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+  @media(max-width:900px){.split{grid-template-columns:1fr;gap:30px}}
+  .phone{max-width:330px;margin:0 auto;background:var(--slab);border:1px solid var(--line);border-radius:26px;box-shadow:var(--lift);overflow:hidden}
+  .phone .ph{padding:15px 19px;background:var(--deep);color:var(--deep-ink)}
+  .phone .ph .pt{font-family:var(--serif);font-size:16px;font-weight:700}
+  .phone .ph .ps{font-size:12px;opacity:.86;margin-top:1px}
+  .phone .pb{padding:16px 18px 20px;display:flex;flex-direction:column;gap:11px}
+  .pline{display:flex;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .pline:last-of-type{border-bottom:none}
+  .pline .pd{font-family:var(--mono);font-size:10.5px;color:var(--faint);width:44px;flex:none;padding-top:2px}
+  .pline>span:nth-child(2){flex:1;min-width:0}
+  .pline .pn{display:block;font-weight:600;line-height:1.35}
+  .pline .pss{display:block;font-size:11.5px;color:var(--faint);margin-top:1px}
+  .ptag{margin-left:auto;font-size:10.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:color-mix(in srgb,var(--good) 14%,transparent);color:var(--good);white-space:nowrap;align-self:flex-start}
+  .pfoot{border-top:1px dashed var(--line);padding-top:12px;text-align:center;font-size:11.5px;color:var(--faint)}
+  .pfoot b{color:var(--deep);font-family:var(--serif)}
+  .checks{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:13px}
+  .checks li{display:flex;gap:11px;font-size:15px;color:var(--soft);line-height:1.5}
+  .checks li b{color:var(--ink)}
+  .checks .tick{width:21px;height:21px;border-radius:50%;background:var(--wash);color:var(--deep);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-top:2px}
+
+  /* proof */
+  .proofband{background:var(--slab);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .proofgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;padding:44px 0}
+  @media(max-width:820px){.proofgrid{grid-template-columns:1fr 1fr;gap:26px}}
+  .pf .pfn{font-family:var(--serif);font-size:36px;font-weight:700;line-height:1;letter-spacing:-.02em}
+  .pf .pfl{font-size:13px;color:var(--soft);margin-top:6px;line-height:1.4}
+  .placeholder{border:1.5px dashed var(--edge);border-radius:11px;padding:15px 17px;font-size:13px;color:var(--faint);margin-top:26px}
+  .placeholder b{color:var(--ember);display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+
+  /* faq */
+  .faq{max-width:760px}
+  details{border-bottom:1px solid var(--line);padding:17px 0}
+  details summary{cursor:pointer;font-weight:650;font-size:16.5px;list-style:none;display:flex;align-items:center;gap:12px}
+  details summary::-webkit-details-marker{display:none}
+  details summary::after{content:"+";margin-left:auto;color:var(--deep);font-size:21px;font-weight:400;line-height:1}
+  details[open] summary::after{content:"–"}
+  details p{margin:11px 0 0;color:var(--soft);font-size:14.5px;line-height:1.6;max-width:66ch}
+
+  /* final cta */
+  .final{background:var(--deep);color:var(--deep-ink);border-radius:18px;padding:52px 44px;text-align:center;margin:0 0 20px}
+  @media(max-width:620px){.final{padding:38px 22px}}
+  .final h2{color:var(--deep-ink);margin-bottom:12px}
+  .final p{color:color-mix(in srgb,var(--deep-ink) 82%,transparent);font-size:17px;max-width:48ch;margin:0 auto 26px}
+  .final .btn-cta{background:var(--deep-ink);color:var(--deep)}
+  .final .fine{font-size:13px;color:color-mix(in srgb,var(--deep-ink) 66%,transparent);margin-top:15px}
+
+  footer{padding:34px 0 60px;font-size:13.5px;color:var(--faint);display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  footer .sp{flex:1}
+  .tbtn{border:1px solid var(--edge);border-radius:99px;padding:6px 13px;font-size:13px;color:var(--soft)}
+
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:11px 20px;border-radius:99px;font-size:14px;font-weight:600;box-shadow:var(--lift);z-index:90}
+</style>
+
+<nav class="nav"><div class="wrap">
+  <div class="brand">Contract<span>Nest</span></div>
+  <div class="links">
+    <a href="#how">How it works</a><a href="#portal">Your client's view</a><a href="#proof">Proof</a><a href="#faq">Questions</a>
+  </div>
+  <div class="sp"></div>
+  <button class="btn btn-plain" onclick="say('Sign-in — existing magic-link auth')">Sign in</button>
+  <button class="btn btn-cta" onclick="jump()">Build my workspace</button>
+</div></nav>
+
+<!-- ══ HERO ══ -->
+<header class="hero"><div class="wrap">
+  <div class="kicker"><i></i>Live with a 39-chapter member organisation</div>
+  <h1 class="head">Your service contracts, <em>running themselves</em>.</h1>
+  <p class="dek">Every visit scheduled, every invoice raised, every renewal chased — generated the moment you write the contract. <b>Pick your trade below and watch your workspace build itself.</b> No signup, no card, no call.</p>
+  <div class="heroacts">
+    <button class="btn btn-cta lg" onclick="jump()">See my workspace →</button>
+    <button class="btn btn-line" onclick="say('2-minute product tour')">Watch 2-min tour</button>
+  </div>
+  <div class="microproof">
+    <span><b>15 minutes</b> to your first live contract</span>
+    <span><b>Free</b> under 10 contracts</span>
+    <span>Works on <b>WhatsApp</b>, no app to install</span>
+  </div>
+
+  <!-- ══ THE LIVE SLAB ══ -->
+  <div class="picker" id="picker">
+    <div class="picklabel">Choose your line of work</div>
+    <div class="chips" role="group" aria-label="Industry">
+      <button class="chip" aria-pressed="true"  data-k="amc"   onclick="pick('amc')">Equipment AMC</button>
+      <button class="chip" aria-pressed="false" data-k="pest"  onclick="pick('pest')">Pest control</button>
+      <button class="chip" aria-pressed="false" data-k="house" onclick="pick('house')">Housekeeping</button>
+      <button class="chip" aria-pressed="false" data-k="mfg"   onclick="pick('mfg')">Manufacturing support</button>
+    </div>
+  </div>
+
+  <div class="slabwrap">
+    <div class="slab">
+      <div class="slabbar">
+        <span class="dots"><i></i><i></i><i></i></span>
+        <span class="url">contractnest.app / your-workspace</span>
+        <span class="badge" id="badge">Built in 0.4s</span>
+      </div>
+      <div class="slabgrid">
+        <div class="pane">
+          <div class="paneh"><span class="live"></span>Your catalog — already priced</div>
+          <div class="bignum" id="nBlocks">68 <small>blocks</small></div>
+          <div class="subnum" id="nSub">29 services + 39 spares · market-reference prices</div>
+          <div id="catRows"></div>
+        </div>
+        <div class="pane">
+          <div class="paneh"><span class="live"></span>A contract like yours</div>
+          <div class="ccard">
+            <div class="ct" id="cTitle">Annual AMC — Orion Towers</div>
+            <div class="cs" id="cSub">₹1,48,000 / year · quarterly billing · 1-year term</div>
+            <div class="yr" id="cYear"></div>
+            <div class="lgd"><span><i style="background:var(--deep);opacity:.75"></i>service visit</span><span><i style="background:var(--ember)"></i>invoice raised</span></div>
+          </div>
+          <div class="catrow" style="padding-top:2px">
+            <span><span class="cn" id="genA">24 visits</span><span class="cm"> scheduled automatically</span></span>
+            <span><span class="cn" id="genB">4 invoices</span><span class="cm"> raise themselves</span></span>
+          </div>
+          <div class="catrow"><span><span class="cn">Renewal watched</span><div class="cm">chased before it lapses, not after</div></span><span class="cp" id="renewOn">Mar 2027</span></div>
+          <div class="catrow" style="border-bottom:none"><span><span class="cn">Client portal</span><div class="cm">no login — they see visits &amp; dues</div></span><span class="cp" style="color:var(--good);font-size:13px">included</span></div>
+        </div>
+      </div>
+      <div class="slabfoot">
+        <div class="t">That's <b>your</b> workspace — seeded, priced and scheduled. Nothing typed yet.</div>
+        <button class="btn btn-cta" onclick="say('Signup — your trade carries over, nothing re-asked')">Start free with this setup →</button>
+      </div>
+    </div>
+  </div>
+</div></header>
+
+<!-- ══ 15 MINUTES ══ -->
+<section id="how"><div class="wrap">
+  <div class="sechead">
+    <div class="eyebrow">Signup to sent</div>
+    <h2>Fifteen minutes. Then a real client has a real contract.</h2>
+    <p class="lede">Most software makes you build the product before it works for you. Yours arrives furnished — you spend the time on your customers instead.</p>
+  </div>
+  <div class="clockstrip">
+    <div class="ct"><div class="tm">00:00 — 04:00</div><div class="tt">Tell us your trade</div><div class="td">Two taps. We build your catalog with real services and market-reference prices.</div></div>
+    <div class="ct"><div class="tm">04:00 — 10:00</div><div class="tt">Paste your client list</div><div class="td">Straight out of Excel or Tally. Rows are read, checked and confirmed on one screen.</div></div>
+    <div class="ct"><div class="tm">10:00 — 13:00</div><div class="tt">Write one contract</div><div class="td">Five fields. Visits and invoices for the whole year generate themselves.</div></div>
+    <div class="ct fin"><div class="tm">13:00 — 15:00</div><div class="tt">Send it</div><div class="td">Your client opens it on WhatsApp and accepts from their phone. You're live.</div></div>
+  </div>
+</div></section>
+
+<!-- ══ VALUE ══ -->
+<section style="padding-top:0"><div class="wrap">
+  <div class="vgrid">
+    <div class="vcard"><div class="vnum">0</div><h3>Missed renewals</h3><p>Contracts don't lapse quietly any more. Every renewal date is watched and chased before it costs you the account.</p></div>
+    <div class="vcard"><div class="vnum">1 tap</div><h3>Proof of service</h3><p>Each visit closes with a photo and a note. When an invoice is questioned, the logbook answers it — not your memory.</p></div>
+    <div class="vcard"><div class="vnum">Auto</div><h3>Collections</h3><p>Invoices raise themselves from billing events. Reminders go out on WhatsApp. Payments land by UPI or Razorpay.</p></div>
+  </div>
+</div></section>
+
+<!-- ══ PORTAL ══ -->
+<section id="portal"><div class="wrap"><div class="split">
+  <div>
+    <div class="eyebrow">Your client's view</div>
+    <h2>The best thing you'll ever send a customer.</h2>
+    <p class="lede">One link, no app, no login. They see every visit you've completed, what's next, and what's due — so they stop calling you for statements.</p>
+    <ul class="checks">
+      <li><span class="tick">✓</span><span><b>Accepts the contract from their phone.</b> Name, one code, done — recorded and verifiable by both sides.</span></li>
+      <li><span class="tick">✓</span><span><b>Watches your SLA being met.</b> Every completed visit with its proof, in date order.</span></li>
+      <li><span class="tick">✓</span><span><b>Pays without being chased.</b> UPI or a payment link, straight from the same page.</span></li>
+    </ul>
+  </div>
+  <div>
+    <div class="phone">
+      <div class="ph"><div class="pt">Your AMC with CoolAir Services</div><div class="ps">Apr 2026 – Mar 2027 · ₹1,48,000 / yr</div></div>
+      <div class="pb">
+        <div class="pline"><span class="pd">JUL 18</span><span><span class="pn">Visit #3 — Compressor check</span><span class="pss">6 of 6 checkpoints passed</span></span><span class="ptag">done</span></div>
+        <div class="pline"><span class="pd">AUG 12</span><span><span class="pn">Visit #4 — Refrigerant check</span><span class="pss">technician assigned</span></span><span class="ptag" style="background:var(--wash);color:var(--deep)">next</span></div>
+        <div class="pline"><span class="pd">OCT 01</span><span><span class="pn">Invoice Q3 — ₹43,660</span><span class="pss">one tap to approve</span></span><span class="ptag" style="background:var(--ember-wash);color:var(--ember)">due</span></div>
+        <div class="pfoot">Runs on <b>ContractNest</b> — manage your own vendors free</div>
+      </div>
+    </div>
+  </div>
+</div></div></section>
+
+<!-- ══ PROOF ══ -->
+<section class="proofband" id="proof"><div class="wrap">
+  <div class="proofgrid">
+    <div class="pf"><div class="pfn">39</div><div class="pfl">chapters of one member organisation running live</div></div>
+    <div class="pf"><div class="pfn">4</div><div class="pfl">trades supported from day one — AMC, pest, housekeeping, manufacturing</div></div>
+    <div class="pf"><div class="pfn">15 min</div><div class="pfl">from signup to a contract in your client's hands</div></div>
+    <div class="pf"><div class="pfn">₹0</div><div class="pfl">until you pass 10 contracts</div></div>
+  </div>
+  <div class="placeholder"><b>Before launch — replace with real proof</b>Named customer quote + logo (with written permission), one measured outcome (“₹X recovered in 60 days”), and a 40-second screen recording of a real onboarding. Placeholder numbers above are the only claims currently supportable; do not add testimonials that haven't been given.</div>
+</div></section>
+
+<!-- ══ FAQ ══ -->
+<section id="faq"><div class="wrap">
+  <div class="sechead"><div class="eyebrow">Before you ask</div><h2>The questions everyone asks first.</h2></div>
+  <div class="faq">
+    <details open><summary>Do I have to change how I invoice?</summary><p>No. Keep billing from Tally or through your CA exactly as you do today. ContractNest tracks the schedule, the proof of service and what's been collected against it — it doesn't replace your books.</p></details>
+    <details><summary>My equipment list isn't standard. Will the catalog fit?</summary><p>The seeded catalog is a starting point, never a cage. Every block, price and cadence is editable, and you can type your own from scratch. Nothing blocks you if your trade isn't in our list.</p></details>
+    <details><summary>How do my clients pay?</summary><p>Either way you already work. Show your UPI QR and bank details and confirm the reference when it arrives, or connect your own Razorpay account for a payment link that confirms itself. Money goes directly to you — it never passes through us.</p></details>
+    <details><summary>Do my customers need to install anything?</summary><p>No. They get a link on WhatsApp that opens in any browser — no app, no login, no password. It works on an entry-level Android over mobile data.</p></details>
+    <details><summary>What happens to my data if I leave?</summary><p>Export your contracts, clients and payment history at any time. No lock-in, no exit fee, and cancelling takes one click.</p></details>
+  </div>
+</div></section>
+
+<!-- ══ FINAL ══ -->
+<section style="padding-top:10px"><div class="wrap">
+  <div class="final">
+    <h2>Build your workspace before you decide.</h2>
+    <p>Pick your trade, watch it fill with your services and prices, and only sign up if it looks like your business.</p>
+    <button class="btn btn-cta lg" onclick="jump()">See my workspace →</button>
+    <div class="fine">No card. No sales call. Free under 10 contracts.</div>
+  </div>
+  <footer>
+    <span>© 2026 ContractNest · Vikuna Technologies</span>
+    <span class="sp"></span>
+    <a href="#" onclick="say('Privacy');return false">Privacy</a>
+    <a href="#" onclick="say('Terms');return false">Terms</a>
+    <button class="tbtn" onclick="theme()">Theme</button>
+  </footer>
+</div></section>
+
+<script>
+const DATA={
+  amc:{blocks:68,sub:"29 services + 39 spares · market-reference prices",
+    rows:[["Preventive maintenance visit","12 per year · 6 checkpoints","₹28,000"],
+          ["Breakdown response 24×7","SLA 48h","₹9,000"],
+          ["Condenser coil deep clean","half-yearly","₹2,800"],
+          ["Rope &amp; controller","at actuals","excluded"]],
+    title:"Annual AMC — Orion Towers",sub2:"₹1,48,000 / year · quarterly billing · 1-year term",
+    visits:24,inv:4,vpm:2,renew:"Mar 2027"},
+  pest:{blocks:41,sub:"18 treatments + 23 chemicals · market-reference prices",
+    rows:[["General pest treatment","monthly · all zones","₹3,400"],
+          ["Termite pre-construction","one-time · 10-yr warranty","₹18,000"],
+          ["Rodent station servicing","fortnightly","₹1,600"],
+          ["Compliance certificate","per visit · FSSAI ready","included"]],
+    title:"Pest Control AMC — Spice Route Restaurants",sub2:"₹81,600 / year · monthly billing · 1-year term",
+    visits:12,inv:12,vpm:1,renew:"Mar 2027"},
+  house:{blocks:35,sub:"11 deployments + 24 consumables · market-reference rates",
+    rows:[["Housekeeping staff — 4 persons","daily · 8h shift","₹64,000/mo"],
+          ["Deep cleaning — common areas","monthly","₹8,500"],
+          ["Facade &amp; glass cleaning","quarterly","₹14,000"],
+          ["Consumables &amp; supplies","at actuals","excluded"]],
+    title:"Facility Housekeeping — Marina Bay Apartments",sub2:"₹8,70,000 / year · monthly billing · 1-year term",
+    visits:12,inv:12,vpm:1,renew:"Mar 2027"},
+  mfg:{blocks:96,sub:"34 service cycles + 62 spares · market-reference prices",
+    rows:[["Compressor overhaul cycle","half-yearly · 22 checkpoints","₹46,000"],
+          ["Preventive line inspection","monthly","₹12,000"],
+          ["Calibration &amp; certification","annual · NABL","₹22,000"],
+          ["Wear parts &amp; consumables","at actuals","excluded"]],
+    title:"Plant Maintenance — Sundar Forgings Pvt Ltd",sub2:"₹4,32,000 / year · quarterly billing · 2-year term",
+    visits:18,inv:4,vpm:2,renew:"Mar 2028"}
+};
+const M=['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+let cur='amc';
+
+function render(k,animate){
+  const d=DATA[k];
+  document.getElementById('nBlocks').innerHTML=d.blocks+' <small>blocks</small>';
+  document.getElementById('nSub').textContent=d.sub;
+  document.getElementById('catRows').innerHTML=d.rows.map(r=>
+    `<div class="catrow"><span><span class="cn">${r[0]}</span><div class="cm">${r[1]}</div></span><span class="cp">${r[2]}</span></div>`).join('');
+  document.getElementById('cTitle').textContent=d.title;
+  document.getElementById('cSub').textContent=d.sub2;
+  document.getElementById('genA').textContent=d.visits+' visits';
+  document.getElementById('genB').textContent=d.inv+' invoices';
+  document.getElementById('renewOn').textContent=d.renew;
+  const billEvery = d.inv>=12 ? 1 : 3;
+  document.getElementById('cYear').innerHTML=M.map((m,i)=>{
+    let dots='';
+    for(let v=0;v<d.vpm;v++) dots+='<i class="v"></i>';
+    if(i%billEvery===0) dots+='<i class="b"></i>';
+    return `<div class="yrm"><div class="yn">${m}</div><div class="yrd">${dots}</div></div>`;
+  }).join('');
+  if(animate){
+    const t=(0.3+(d.blocks%7)/10).toFixed(1);
+    document.getElementById('badge').textContent='Built in '+t+'s';
+  }
+}
+function pick(k){
+  if(k===cur) return;
+  cur=k;
+  document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.k===k));
+  const slab=document.querySelector('.slab');
+  slab.style.opacity='.45';
+  setTimeout(()=>{ render(k,true); slab.style.opacity='1'; },160);
+}
+function jump(){
+  document.getElementById('picker').scrollIntoView({block:'center'});
+  const c=document.querySelectorAll('.chip');
+  c.forEach(x=>x.animate([{transform:'scale(1)'},{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'}));
+}
+function theme(){
+  const r=document.documentElement;
+  const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme=dark?'light':'dark';
+}
+let tId;
+function say(m){
+  clearTimeout(tId);
+  let t=document.querySelector('.toast');
+  if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t);}
+  t.textContent=m;
+  tId=setTimeout(()=>t.remove(),2600);
+}
+document.querySelector('.slab').style.transition='opacity .16s ease';
+render('amc',false);
+</script>

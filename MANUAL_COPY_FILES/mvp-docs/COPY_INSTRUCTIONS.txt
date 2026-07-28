@@ -12,7 +12,7 @@ SUBMODULES AFFECTED
   contractnest-ui / contractnest-api / contractnest-edge /
   ContractNest-Mobile / FamilyKnows are NOT touched.
 
-FILES IN THIS BATCH  (8 files, all new)
+FILES IN THIS BATCH  (10 files, all new)
 ───────────────────────────────────────
   MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/README.md
       -> ClaudeDocumentation/mvp/README.md
@@ -30,6 +30,11 @@ FILES IN THIS BATCH  (8 files, all new)
   MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/product-led-shell-TARGET-UX.html
       -> ClaudeDocumentation/mvp/product-led-shell-TARGET-UX.html
       The target UX (your own shell). To be built, not redesigned.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/landing-page.html
+      -> ClaudeDocumentation/mvp/landing-page.html
+      SPRINT 1 BUILD TARGET. High-CRO landing page - product as hero, trade picker
+      rebuilds a live workspace preview before signup.
 
   MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/onboarding-15min.html
       -> ClaudeDocumentation/mvp/onboarding-15min.html
