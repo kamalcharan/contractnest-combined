@@ -1,0 +1,92 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - fix-group-session-duplicate-service-events
+===============================================================
+
+WHAT THIS IS
+---------------------------------------------------------------
+You noticed BBB's /ops/services page showed entries when it shouldn't --
+what's set up for BBB is a Group Session, which isn't supposed to
+create generic "service" events at all.
+
+ROOT CAUSE (confirmed via investigation + live DB evidence):
+A commit from 24 Jul ("fix: Group Session blocks now generate their
+occurrence schedule") added 'session' to a category set called
+SERVICE_TRACKED_CATEGORY_IDS in contractEventsDerivationService.ts
+(and its UI mirror, contractEvents.ts). That was meant to fix Group
+Session contracts getting zero scheduled occurrences -- but Group
+Sessions already have their own correct, dedicated mechanism for that
+(t_group_session_schedule / gs_generate_schedule -- ONE shared
+schedule per block, not per member contract). Adding 'session' to
+that set made a SECOND, wrong engine also fire: a duplicate
+t_contract_events row with event_type='service' for every occurrence,
+for EVERY member contract individually. Confirmed live: BBB's single
+Saturday Cadence block had 675 such stray rows (243 overdue, 432
+scheduled) across 27 member contracts, while the correct schedule
+table had its own separate 51 rows for the same block -- proof of
+duplication, not one feeding the other.
+
+THE FIX
+---------------------------------------------------------------
+Reverted SERVICE_TRACKED_CATEGORY_IDS back to just ['service'] (its
+state before the 24 Jul commit) in both files -- a one-line-set
+change, single call site in each file, no other logic touched.
+Group Session blocks (categoryId 'session') no longer generate any
+per-member service events via this path; their occurrence tracking
+stays solely in t_group_session_schedule, as originally designed.
+
+DATA CLEANUP -- ALREADY DONE LIVE, NOTHING FOR YOU TO RUN
+---------------------------------------------------------------
+Deleted BBB's 675 stray t_contract_events rows directly (event_type=
+'service', block_id = the Saturday Cadence block). Checked first for
+any dependent data (invoices, payment declarations, appointments,
+service evidence, assets, tickets) -- all zero except an audit-log
+table with ON DELETE CASCADE (243 rows, log entries only, no
+functional impact), which cascaded automatically. Verified after
+deletion: 0 stray service events remain, the real 51-row group-session
+schedule is untouched, and all 253 real attendance rows are untouched.
+
+FILES IN THIS FOLDER
+---------------------------------------------------------------
+1. contractnest-api/src/services/contractEventsDerivationService.ts
+   -> Copy to: contractnest-api\src\services\contractEventsDerivationService.ts
+   -> Full file, not a diff. Only change: SERVICE_TRACKED_CATEGORY_IDS
+      back to ['service'] plus an updated comment explaining why.
+
+2. contractnest-ui/src/utils/service-contracts/contractEvents.ts
+   -> Copy to: contractnest-ui\src\utils\service-contracts\contractEvents.ts
+   -> Full file. Same change, mirrored (this file mirrors the API
+      one 1:1 per its own header comment).
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-ui
+
+VERIFICATION ALREADY DONE
+---------------------------------------------------------------
+- contractnest-api: `npx tsc --noEmit` -- zero errors.
+- contractnest-ui: `npx tsc --noEmit` -- zero errors in this file or
+  its close dependencies (categories.ts).
+- Confirmed via grep that SERVICE_TRACKED_CATEGORY_IDS has exactly one
+  call site in each file -- isolated, low-risk change.
+- Live DB: pre-delete dependency check (7 FK-referencing tables, only
+  the cascade-safe audit log had rows), delete executed, post-delete
+  counts confirmed (0 stray events, 51 schedule rows intact, 253
+  attendance rows intact).
+
+TESTING CHECKLIST
+---------------------------------------------------------------
+- [ ] Open BBB's /ops/services page -- confirm the Saturday Cadence
+      Group Session no longer appears there at all.
+- [ ] Open the Group Sessions ops dashboard -- confirm attendance
+      history, schedule, and dues are all still showing correctly
+      (this fix only removed the DUPLICATE data path, not the real one).
+- [ ] Create/preview a NEW Group Session contract (or re-check an
+      existing one's Events Preview step) -- confirm it still shows
+      zero service events in the wizard's preview (expected -- Group
+      Sessions were never supposed to have wizard-level service events;
+      their real schedule generates separately via gs_generate_schedule
+      when the contract is created) and that this doesn't regress
+      anything else about contract creation.
+- [ ] Spot-check a non-Group-Session service contract on /ops/services
+      (any regular 'service' category block) -- confirm it still shows
+      up as before (this fix didn't touch that path).
+
+===============================================================
