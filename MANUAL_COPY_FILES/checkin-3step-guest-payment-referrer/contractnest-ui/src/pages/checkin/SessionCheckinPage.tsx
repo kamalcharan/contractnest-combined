@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // SessionCheckinPage — public Group Session check-in (Batch 3 · G2 polish)
 // ============================================================================
 // Reached at /checkin/:token (no auth, outside the app shell). A member scans
@@ -12,15 +12,14 @@
 // renderer below — deliberately dependency-light (no ThemeContext / admin
 // components) because this page renders for logged-out members on a phone.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   sessionCheckinApi, getOrCreateDeviceToken, forgetDeviceToken,
   type CheckinResolve, type CheckinMember, type CheckinHistory, type BillingRow,
   type CheckinForm, type CheckinField, type CheckinFormSchema, type CheckinPaymentConfig,
-  type CheckinDeviceLookup,
+  type CheckinDeviceLookup, type CheckinGuestService, type CheckinMemberSearchResult,
 } from './useSessionCheckin';
-import { QrCode } from '@/utils/qrcodegen';
 import { countries } from '@/utils/constants/countries';
 import { validatePhoneByCountry, getFullPhoneNumber, getPhonePlaceholder } from '@/utils/validation/contactValidation';
 
@@ -47,23 +46,6 @@ const money = (n?: number, c = 'INR') =>
   `${c === 'INR' ? '₹' : c + ' '}${Number(n || 0).toLocaleString()}`;
 const isOpen = (s: string) => ['scheduled', 'due', 'overdue'].includes(s);
 const initialOf = (s?: string) => (s || '?').trim().charAt(0).toUpperCase() || '?';
-
-// Build a UPI intent URL (upi://pay?…). On a phone this opens the UPI app
-// chooser (GPay / PhonePe / Paytm) pre-filled with payee + amount.
-// mc (merchant category code) is mandatory per the NPCI UPI Linking Spec —
-// every real QR (personal or merchant) carries it, defaulting to 0000 for a
-// non-merchant payee. Omitting it made GPay reject the link outright with
-// "Payments to this receiver are not allowed by UPI network", even to a
-// valid VPA, while scanning that same payee's own QR worked fine.
-const upiPayUrl = (vpa: string, payee?: string, amount?: number, note?: string) => {
-  const parts = [`pa=${encodeURIComponent(vpa)}`];
-  if (payee) parts.push(`pn=${encodeURIComponent(payee)}`);
-  parts.push('mc=0000');
-  if (amount) parts.push(`am=${amount}`);
-  parts.push('cu=INR');
-  if (note) parts.push(`tn=${encodeURIComponent(note)}`);
-  return `upi://pay?${parts.join('&')}`;
-};
 
 // Fields the shell renders itself (the prominent Present/Apologies control),
 // so we don't double them up inside the Smart Form body.
@@ -106,9 +88,38 @@ const Card: React.FC<{ children: React.ReactNode; pad?: number }> = ({ children,
     marginBottom: 14, boxShadow: '0 1px 2px rgba(16,24,40,0.04)' }}>{children}</div>
 );
 
+// Platform brand card — ContractNest's own identity, sitting above the
+// tenant's branding. Deliberately a solid card (not a text strip): this page
+// is a high-frequency, multi-tenant touchpoint (every chapter's members see
+// it every week), so brand propagation here has real reach even though it
+// doesn't move this page's own check-in conversion.
+const PLATFORM_BLUE = '#0EA5E9';
+const PlatformCard: React.FC = () => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: `linear-gradient(135deg, ${PLATFORM_BLUE}, #0369A1)`,
+    borderRadius: 16, padding: '13px 16px', marginBottom: 14, boxShadow: '0 10px 22px -8px rgba(14,165,233,0.5)' }}>
+    <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.16)', flex: 'none',
+      display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 9L12 4L18 9V20H6V9Z" stroke="#fff" strokeWidth="2" />
+        <path d="M9 16H15" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+        <path d="M9 13H15" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    </div>
+    <div>
+      <div style={{ fontSize: 16.5, fontWeight: 800, color: '#fff', letterSpacing: 0.2 }}>ContractNest</div>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: 'rgba(255,255,255,0.88)', marginTop: 1 }}>Secure session check-in</div>
+    </div>
+    <div style={{ marginLeft: 'auto', flex: 'none', fontSize: 10.5, fontWeight: 800, color: '#fff',
+      background: 'rgba(255,255,255,0.18)', borderRadius: 999, padding: '4px 10px', letterSpacing: 0.3 }}>
+      ✓ Verified
+    </div>
+  </div>
+);
+
 const Shell: React.FC<{ chapterName: string; tenantName?: string; children: React.ReactNode }> = ({ chapterName, tenantName, children }) => (
   <div style={{ minHeight: '100vh', background: BRAND.bg, padding: '20px 16px 40px' }}>
     <div style={{ maxWidth: 460, margin: '0 auto' }}>
+      <PlatformCard />
       {/* Branded header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: BRAND.accent, color: '#fff',
@@ -141,6 +152,37 @@ const fullPhone = (num: string, ccIso: string) => getFullPhoneNumber(num, ccIso)
 // Sorted country list, India first (default market).
 const PHONE_COUNTRIES = [...countries].sort((a, b) =>
   a.code === 'IN' ? -1 : b.code === 'IN' ? 1 : a.name.localeCompare(b.name));
+
+// 3-step nav (Identify → Payment → Check-in). Payment is skipped visually
+// when there's nothing to pay (no open dues / no guest-payable services) —
+// callers only render this once identity is resolved.
+type UiStep = 'identify' | 'payment' | 'checkin';
+const StepPills: React.FC<{ step: UiStep; showPayment: boolean }> = ({ step, showPayment }) => {
+  const steps: { key: UiStep; label: string }[] = showPayment
+    ? [{ key: 'identify', label: 'Identify' }, { key: 'payment', label: 'Payment' }, { key: 'checkin', label: 'Check-in' }]
+    : [{ key: 'identify', label: 'Identify' }, { key: 'checkin', label: 'Check-in' }];
+  const order = steps.map((s) => s.key);
+  const idx = order.indexOf(step);
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${steps.length}, 1fr)`, gap: 8, marginBottom: 16 }}>
+      {steps.map((s, i) => {
+        const active = s.key === step;
+        const done = i < idx;
+        return (
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 10px', borderRadius: 12,
+            border: `1px solid ${active ? BRAND.accent : BRAND.line}`, background: active ? BRAND.accentSoft : '#fff' }}>
+            <span style={{ width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11.5, fontWeight: 800, flex: 'none', background: done ? BRAND.ok : active ? BRAND.accent : BRAND.line,
+              color: done || active ? '#fff' : BRAND.sub }}>
+              {done ? '✓' : i + 1}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: active ? BRAND.accentInk : done ? BRAND.ink : BRAND.sub }}>{s.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 // Country-code selector + local number, validated with the product utility.
 const PhoneField: React.FC<{
@@ -198,6 +240,21 @@ const SessionCheckinPage: React.FC = () => {
   const [subForMember, setSubForMember] = useState<CheckinMember | null>(null);
   const [subName, setSubName] = useState('');
 
+  // Guest payment: standalone catalog services the tenant flagged
+  // guestPayable (not hardcoded), fetched once per token. A guest has no
+  // contract, so they pick one of these instead of "paying a due".
+  const [guestServices, setGuestServices] = useState<CheckinGuestService[]>([]);
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('');
+
+  // Guest referrer: which member brought them, tagged via name search.
+  const [referredByQuery, setReferredByQuery] = useState('');
+  const [referredByResults, setReferredByResults] = useState<CheckinMemberSearchResult[]>([]);
+  const [referredById, setReferredById] = useState<string>('');
+
+  // 3-step nav: has the member/guest moved past the Payment step (by paying
+  // or explicitly skipping)? Resets whenever identity resets.
+  const [paymentStepDone, setPaymentStepDone] = useState(false);
+
   // Device recognition (returning browser on this chapter's QR)
   const [deviceToken, setDeviceToken] = useState<string>(() => getOrCreateDeviceToken());
   const [deviceChecking, setDeviceChecking] = useState(true);
@@ -220,17 +277,19 @@ const SessionCheckinPage: React.FC = () => {
   const [selectedCadence, setSelectedCadence] = useState<string | null>(null);
   const [upiRef, setUpiRef] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // React state updates aren't synchronous -- a fast double-tap can invoke
+  // submit() twice before the "submitting" state re-render disables the
+  // button. A ref is read/written synchronously, so it closes that gap even
+  // on the very first click.
+  const submitLockRef = useRef(false);
   const [done, setDone] = useState(false);
-  // UPI deep links have no callback — the browser tab just sits there
-  // untouched while the user pays in GPay/PhonePe. Without this, a user can
-  // easily assume the system detected the payment automatically and never
-  // come back to enter the reference + tap Record payment. A confirm modal
-  // sets that expectation before they leave, and a visibility-change nudge
-  // catches them again if they forget once they're back on the tab.
-  const [payConfirmOpen, setPayConfirmOpen] = useState(false);
-  const [pendingPayUrl, setPendingPayUrl] = useState('');
+  // The member pays manually in their own UPI app (see renderPayBlock) --
+  // there's no callback telling this page a payment succeeded, so a
+  // visibility-change nudge reminds them to come back and enter the
+  // reference once they switch back to this tab.
   const [paymentAttempted, setPaymentAttempted] = useState(false);
   const [showReturnNudge, setShowReturnNudge] = useState(false);
+  const [copiedVpa, setCopiedVpa] = useState(false);
 
   // Resolve the token + load the check-in form on mount
   useEffect(() => {
@@ -281,6 +340,10 @@ const SessionCheckinPage: React.FC = () => {
     (async () => {
       try { const pc = await sessionCheckinApi.paymentConfig(token); if (alive && pc?.ok) setPayCfg(pc); }
       catch { /* payment config is optional — dues still declare without it */ }
+    })();
+    (async () => {
+      try { const gs = await sessionCheckinApi.guestServices(token); if (alive && gs?.ok) setGuestServices(gs.services || []); }
+      catch { /* optional -- tenant may not have configured any guest-payable service */ }
     })();
     // (#3) No pre-fill — each open starts blank.
     return () => { alive = false; };
@@ -341,6 +404,20 @@ const SessionCheckinPage: React.FC = () => {
   }, [form]);
 
   const atStep2 = !!member || (notFound && guestConfirmed);
+  const isGuestPath = !member && notFoundKind === 'guest' && guestConfirmed;
+  const selectedService = guestServices.find((s) => s.id === selectedServiceId) || null;
+  // A substitute has no dues/services of their own to show (matches
+  // gs_checkin_substitute today -- it records attendance only, no payment) --
+  // the Payment step only exists when there's something to actually pay.
+  const hasPaymentStepContent = (!!member && openDues.length > 0) || (isGuestPath && guestServices.length > 0);
+  const uiStep: UiStep = !atStep2 ? 'identify' : (hasPaymentStepContent && !paymentStepDone) ? 'payment' : 'checkin';
+  // payEventId/selectedServiceId auto-populate for display (so the due/service
+  // card can render) -- they are not by themselves a signal of payment intent.
+  // Only tapping "Pay now" or typing a UPI reference means a payment was
+  // actually intended.
+  const hasMemberPaymentIntent = !!payEventId && (paymentAttempted || !!upiRef);
+  const hasGuestPaymentIntent = !!selectedServiceId && (paymentAttempted || !!upiRef);
+  const hasAnyPaymentIntent = hasMemberPaymentIntent || (isGuestPath && hasGuestPaymentIntent);
 
   // Shared by identify() (typed phone) and the on-mount device recognition
   // (silent, no typing) — both land on the same Step 2 attendance screen.
@@ -429,11 +506,23 @@ const SessionCheckinPage: React.FC = () => {
     finally { setSubLookupLoading(false); }
   };
 
+  // Search roster members by name for the guest "Referred by" field.
+  const searchReferrer = async (q: string) => {
+    setReferredByQuery(q);
+    setReferredById('');
+    if (q.trim().length < 2) { setReferredByResults([]); return; }
+    try {
+      const r = await sessionCheckinApi.searchMembers(token, q.trim());
+      if (r?.ok) setReferredByResults(r.members || []);
+    } catch { /* search is optional */ }
+  };
+
   const resetIdentity = () => {
     setMember(null); setAlreadyChecked(false); setNotFound(false); setNotFoundKind('choose'); setGuestConfirmed(false);
     setHistory(null); setSubForMember(null); setSubName(''); setPmNum(''); setPoNum('');
     setFirstTimerName(''); setGuestCompany(''); setGuestEmail(''); setErr(null);
     setP1Num(''); setPayEventId(''); setPayAmount(''); setSelectedCadence(null); setUpiRef(''); setStatus('present');
+    setSelectedServiceId(''); setReferredByQuery(''); setReferredByResults([]); setReferredById(''); setPaymentStepDone(false);
     // Forget this browser too — "not you" means the next scan should ask again.
     setDeviceMatch(null); setDeviceDismissed(true); setDeviceConfirming(false);
     setRecognizedMemberPhone(''); setRecognizedSubPhone(''); setRecognizedGuestPhone('');
@@ -458,26 +547,20 @@ const SessionCheckinPage: React.FC = () => {
   };
 
   const submit = async () => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setErr(null);
     const hasSession = !!resolve?.occurrence;
-    // payEventId is auto-targeted the moment there's an open due (so the
-    // "current due" card can render) — it is NOT itself a signal that the
-    // member wants to pay. Without gating on an actual payment action
-    // (tapped "Pay now", or typed a reference), simply checking in for
-    // attendance with any open due silently created a payment declaration
-    // for every such check-in, whether the member touched the payment
-    // section or not — that's what was flooding "Payments to confirm".
-    const hasPaymentIntent = !!payEventId && (paymentAttempted || !!upiRef);
-    // Already checked in: nothing to record unless they're actually paying a due.
-    if (member && alreadyChecked && !hasPaymentIntent) { setDone(true); return; }
+    // Already checked in: nothing to record unless they're paying.
+    if (member && alreadyChecked && !hasMemberPaymentIntent) { submitLockRef.current = false; setDone(true); return; }
     // Dues-only mode (no session today): only a payment declaration can be
-    // submitted — the backend records it without touching attendance.
-    if (!hasSession && !hasPaymentIntent) { setErr('There is no session today — tap "Pay now" or enter your UPI reference to record a payment.'); return; }
+    // submitted -- the backend records it without touching attendance.
+    if (!hasSession && !hasAnyPaymentIntent) { submitLockRef.current = false; setErr('There is no session today -- tap "Pay now" or enter your UPI reference to record a payment.'); return; }
     // Smart-form questions only apply to a fresh check-in on a session day.
-    if (hasSession && !alreadyChecked && !validateForm()) { setErr('Please answer the required questions.'); return; }
+    if (hasSession && !alreadyChecked && !validateForm()) { submitLockRef.current = false; setErr('Please answer the required questions.'); return; }
     setSubmitting(true);
     try {
-      const payment = hasPaymentIntent
+      const payment = hasMemberPaymentIntent
         ? { billing_event_id: payEventId, upi_reference: upiRef || undefined,
             amount: Number(payAmount) || openDues.find((d) => d.event_id === payEventId)?.amount }
         : null;
@@ -509,7 +592,11 @@ const SessionCheckinPage: React.FC = () => {
           device_token: deviceToken,
         });
       } else {
-        // Guest → own contact tagged 'guest'
+        // Guest -- own contact tagged 'guest'. Payment (if any) is a
+        // standalone catalog service, not a contract due -- no billing_event.
+        const guestPayment = hasGuestPaymentIntent && selectedService
+          ? { cat_block_id: selectedService.id, amount: selectedService.price, currency: selectedService.currency, upi_reference: upiRef || undefined }
+          : null;
         await sessionCheckinApi.guest(token, {
           name: firstTimerName,
           phone: recognizedGuestPhone || phone,
@@ -517,13 +604,15 @@ const SessionCheckinPage: React.FC = () => {
           email: guestEmail || undefined,
           status, responses: fullResponses, ...formIds,
           device_token: deviceToken,
+          referred_by: referredById || null,
+          payment: guestPayment,
         });
       }
       setDone(true);
     } catch (e: any) {
       const reason = e?.response?.data?.message;
       setErr(reason === 'no_session_today' ? 'There is no session scheduled for today.' : (reason || 'Check-in failed.'));
-    } finally { setSubmitting(false); }
+    } finally { submitLockRef.current = false; setSubmitting(false); }
   };
 
   // ── shared UI atoms ──
@@ -647,6 +736,109 @@ const SessionCheckinPage: React.FC = () => {
     );
   };
 
+  // Shared UPI pay button + QR + reference field -- used by both the
+  // member-dues Payment step and the guest-service Payment step, so the
+  // deep-link/QR/return-nudge logic only lives in one place.
+  // A hand-built upi://pay link/QR is unsigned -- GPay (and likely other UPI
+  // apps) rejects payments to this tenant's VPA with "Payments to this
+  // receiver are not allowed by UPI network" when it arrives that way, even
+  // though the exact same VPA works fine via the bank's own signed QR poster.
+  // Only the bank/PSP holds the signing key, so we can't reproduce that here.
+  // The reliable path is the member's own UPI app's built-in "Pay to UPI ID"
+  // entry -- that's the app itself constructing a first-party request, not
+  // an external deep link, so the same rejection doesn't apply.
+  // Gated sequence, not everything shown at once: (1) copy the UPI ID and
+  // tap "Open UPI app" -- only then does (2) the reference field + "Confirm
+  // payment" appear, and only confirming that advances past this step.
+  // "Open UPI app" best-effort launches the device's UPI app via a bare
+  // upi://pay (no payee params, so nothing for GPay's signature check to
+  // reject) -- if nothing opens (desktop, no UPI app registered), the
+  // instructions below already cover opening it manually.
+  const renderPayBlock = (amount: number, currency: string | undefined) => {
+    const canPay = !!payCfg?.configured && !!payCfg.upi_id;
+    const copyVpa = () => {
+      if (!payCfg?.upi_id) return;
+      navigator.clipboard?.writeText(payCfg.upi_id).catch(() => { /* clipboard unavailable -- VPA is still shown for manual copy */ });
+      setCopiedVpa(true);
+      window.setTimeout(() => setCopiedVpa(false), 2000);
+    };
+    const openUpiApp = () => {
+      copyVpa();
+      setPaymentAttempted(true);
+      try { window.location.href = 'upi://pay'; } catch { /* no UPI app registered -- instructions below cover a manual open */ }
+    };
+    if (!canPay) {
+      return (
+        <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
+          <label style={labelStyle}>UPI reference (after paying the chapter UPI)</label>
+          <input value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="e.g. 4098XXXX2231" style={inputStyle} />
+          <p style={{ fontSize: 12, color: BRAND.sub, marginBottom: 0, marginTop: 6 }}>
+            The chair will confirm your payment offline.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink, marginBottom: 8 }}>
+          Pay {money(amount, currency)} via your UPI app
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10,
+          background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>UPI ID</div>
+            <div style={{ fontWeight: 800, color: BRAND.ink, fontSize: 14.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
+            {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 1 }}>{payCfg!.payee_name}</div>}
+          </div>
+          <button type="button" onClick={copyVpa}
+            style={{ flex: 'none', padding: '9px 14px', borderRadius: 10, border: `1.5px solid ${BRAND.accent}`,
+              background: copiedVpa ? BRAND.accent : '#fff', color: copiedVpa ? '#fff' : BRAND.accentInk,
+              fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            {copiedVpa ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+
+        {!paymentAttempted ? (
+          <>
+            <button type="button" onClick={openUpiApp}
+              style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
+                background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+              Open UPI app
+            </button>
+            <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+              Copies the UPI ID and tries to open your UPI app. If nothing opens, launch GPay / PhonePe / any UPI app yourself and choose "Pay to UPI ID."
+            </p>
+          </>
+        ) : (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: BRAND.ok, marginBottom: 10 }}>
+              <span>✓</span><span>Complete the payment in your app, then confirm below</span>
+            </div>
+            {showReturnNudge && (
+              <div style={{ marginBottom: 10, background: BRAND.accentSoft, border: `1px solid ${BRAND.accent}44`, borderRadius: 10, padding: 11 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Back from paying?</div>
+                <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>
+                  Enter your UPI reference below and tap Confirm payment.
+                </div>
+              </div>
+            )}
+            <label style={labelStyle}>UPI reference</label>
+            <input value={upiRef} onChange={(e) => { setUpiRef(e.target.value); setShowReturnNudge(false); }} placeholder="e.g. 4098XXXX2231" style={inputStyle} autoFocus />
+            <button type="button" onClick={() => { if (upiRef.trim()) setPaymentStepDone(true); }} disabled={!upiRef.trim()}
+              style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
+                background: upiRef.trim() ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 15,
+                cursor: upiRef.trim() ? 'pointer' : 'not-allowed' }}>
+              Confirm payment
+            </button>
+            <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+              The chair will confirm it offline once you check in.
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ── screens ──
   if (loading) return <Shell chapterName={chapterName} tenantName={tenantName}><Card>Loading…</Card></Shell>;
   if (err && !resolve) return <Shell chapterName={chapterName} tenantName={tenantName}><Card><p style={{ color: BRAND.err, margin: 0 }}>{err}</p></Card></Shell>;
@@ -658,7 +850,7 @@ const SessionCheckinPage: React.FC = () => {
           <div style={{ width: 68, height: 68, margin: '4px auto 10px', borderRadius: '50%', background: '#ECFDF3',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34 }}>✅</div>
           <h2 style={{ textAlign: 'center', margin: '4px 0', color: BRAND.ink }}>
-            {!occ ? 'Payment recorded' : alreadyChecked && !payEventId ? "You're all set" : "You're checked in"}
+            {!occ ? 'Payment recorded' : alreadyChecked && !hasMemberPaymentIntent ? "You're all set" : "You're checked in"}
           </h2>
           <p style={{ textAlign: 'center', color: BRAND.sub, marginTop: 4, fontSize: 14 }}>
             {!occ
@@ -667,9 +859,15 @@ const SessionCheckinPage: React.FC = () => {
               ? `Attendance already recorded for ${fmtDate(occ?.date)}.`
               : `${status === 'present' ? 'Marked present' : 'Marked apologies'} for ${fmtDate(occ?.date)}.`}
           </p>
-          {payEventId && (
+          {hasMemberPaymentIntent && (
             <div style={{ marginTop: 14, background: BRAND.accentSoft, borderRadius: 12, padding: 12, textAlign: 'center' }}>
               <div style={{ fontSize: 15, color: BRAND.accentInk, fontWeight: 800 }}>{money(Number(payAmount))} recorded as pending</div>
+              <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>The chair will confirm it offline.</div>
+            </div>
+          )}
+          {hasGuestPaymentIntent && selectedService && (
+            <div style={{ marginTop: 14, background: BRAND.accentSoft, borderRadius: 12, padding: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: 15, color: BRAND.accentInk, fontWeight: 800 }}>{money(selectedService.price, selectedService.currency)} recorded as pending</div>
               <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>The chair will confirm it offline.</div>
             </div>
           )}
@@ -692,6 +890,7 @@ const SessionCheckinPage: React.FC = () => {
 
   return (
     <Shell chapterName={chapterName} tenantName={tenantName}>
+      <StepPills step={uiStep} showPayment={hasPaymentStepContent} />
       {/* Session hero */}
       <Card>
         {occ ? (
@@ -813,9 +1012,31 @@ const SessionCheckinPage: React.FC = () => {
                 <label style={labelStyle}>Email (optional)</label>
                 <input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} />
               </div>
-              <button onClick={() => { if (firstTimerName.trim()) setGuestConfirmed(true); }} disabled={!firstTimerName.trim()}
+              <div style={{ marginTop: 12, position: 'relative' }}>
+                <label style={labelStyle}>Referred by <span style={{ color: BRAND.err }}>*</span></label>
+                <input value={referredByQuery} onChange={(e) => searchReferrer(e.target.value)}
+                  placeholder="Search member by name..." autoComplete="off" style={inputStyle} />
+                {referredById && (
+                  <div style={{ fontSize: 12, color: BRAND.ok, fontWeight: 700, marginTop: 5 }}>Selected: {referredByQuery}</div>
+                )}
+                {!referredById && referredByResults.length > 0 && (
+                  <div style={{ marginTop: 6, border: `1px solid ${BRAND.line}`, borderRadius: 10, overflow: 'hidden' }}>
+                    {referredByResults.map((m) => (
+                      <div key={m.contact_id}
+                        onClick={() => { setReferredById(m.contact_id); setReferredByQuery(m.name); setReferredByResults([]); }}
+                        style={{ padding: '10px 12px', fontSize: 13.5, cursor: 'pointer', borderBottom: `1px solid ${BRAND.line}` }}>
+                        {m.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p style={{ fontSize: 12, color: BRAND.sub, marginTop: 5, marginBottom: 0 }}>
+                  Which member brought this guest -- tags the fee to them.
+                </p>
+              </div>
+              <button onClick={() => { if (firstTimerName.trim() && referredById) setGuestConfirmed(true); }} disabled={!firstTimerName.trim() || !referredById}
                 style={{ width: '100%', marginTop: 16, padding: 13, border: 'none', borderRadius: 12,
-                  background: firstTimerName.trim() ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+                  background: (firstTimerName.trim() && referredById) ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
                 Continue as guest
               </button>
               <button onClick={() => setNotFoundKind('choose')}
@@ -903,227 +1124,210 @@ const SessionCheckinPage: React.FC = () => {
                 Standing in for <strong style={{ color: BRAND.ink }}>{subForMember.name}</strong>
               </div>
             )}
-
-            {alreadyChecked ? (
-              <div style={{ marginTop: 14, background: '#ECFDF3', border: '1px solid #A7F3D0', borderRadius: 12, padding: 12 }}>
-                <div style={{ fontWeight: 700, color: '#047857', fontSize: 14 }}>✓ You've already checked in{occ ? ` for ${fmtDate(occ.date)}` : ''}</div>
-                <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>
-                  {openDues.length > 0 ? 'You can still settle your dues below.' : 'Nothing else to do — you’re all set.'}
-                </div>
-              </div>
-            ) : occ ? (
-              <>
-                <div style={{ marginTop: 14, fontSize: 12.5, fontWeight: 700, color: BRAND.sub }}>Are you attending today?</div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  {(['present', 'apologies'] as const).map((s) => (
-                    <button key={s} onClick={() => setStatus(s)}
-                      style={{ flex: 1, padding: 12, borderRadius: 11, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
-                        border: status === s ? `2px solid ${BRAND.accent}` : `1px solid ${BRAND.field}`,
-                        background: status === s ? BRAND.accentSoft : '#fff', color: status === s ? BRAND.accentInk : BRAND.ink }}>
-                      {s === 'present' ? 'Present' : 'Apologies'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              // Dues-only mode: no session today, so no attendance to mark —
-              // the member can still review and settle dues below.
-              <div style={{ marginTop: 14, background: BRAND.accentSoft, borderRadius: 12, padding: 12 }}>
-                <div style={{ fontWeight: 700, color: BRAND.accentInk, fontSize: 14 }}>No session today</div>
-                <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>
-                  You can view and settle your dues below — no attendance will be recorded.
-                </div>
+            {isGuestPath && referredByQuery && (
+              <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 3 }}>
+                Referred by <strong style={{ color: BRAND.ink }}>{referredByQuery}</strong>
               </div>
             )}
           </Card>
 
-          {/* Smart Form questions (tenant-configurable) — only on a fresh
-              check-in on a session day (dues-only mode records no attendance) */}
-          {!alreadyChecked && !!occ && formFields.length > 0 && (
-            <Card>
-              <div style={{ fontWeight: 800, color: BRAND.ink, marginBottom: 4 }}>
-                {form?.schema?.title && form.schema.title !== 'Session Check-in' ? form.schema.title : 'A few quick questions'}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 10 }}>
-                {formFields.map(renderField)}
-              </div>
-            </Card>
-          )}
+          {/* Payment step -- member dues, or a guest's standalone service pick.
+              A substitute has no payment content of their own (matches
+              gs_checkin_substitute today), so this step just doesn't render
+              for them and uiStep goes straight to 'checkin'. */}
+          {uiStep === 'payment' && (
+            <>
+              {member && (
+                <Card>
+                  <div style={{ fontWeight: 800, color: BRAND.ink, marginBottom: 8 }}>Your dues</div>
 
-          {/* BAU dues — matched members only */}
-          {member && (
-            <Card>
-              <div style={{ fontWeight: 800, color: BRAND.ink, marginBottom: 8 }}>Payments</div>
-
-              {/* Total Paid / Balance — same numbers as the seller's Financials tab */}
-              {history?.totals && (history.totals.total_paid > 0 || history.totals.balance > 0) && (
-                <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                  <div style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>TOTAL PAID</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: BRAND.ok, marginTop: 2 }}>{money(history.totals.total_paid)}</div>
-                  </div>
-                  <div style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: '10px 12px' }}>
-                    <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>BALANCE</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: history.totals.balance > 0 ? BRAND.accentInk : BRAND.ok, marginTop: 2 }}>
-                      {money(history.totals.balance)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Payment History — every already-paid event, real dates and
-                  amounts, collapsed by default (same pattern as the seller's
-                  receipts list). Shows exactly which periods are settled. */}
-              {paidEvents.length > 0 && (
-                <div style={{ marginBottom: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowSchedule(!showSchedule)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 12px', borderRadius: 10, border: `1px solid ${BRAND.line}`, background: '#F8FAFC',
-                      cursor: 'pointer' }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink }}>
-                      Payment History
-                      <span style={{ fontWeight: 500, color: BRAND.sub }}> · {paidEvents.length} paid</span>
-                    </span>
-                    <span style={{ fontSize: 12, color: BRAND.sub }}>{showSchedule ? '▲' : '▼'}</span>
-                  </button>
-                  {showSchedule && (
-                    <div style={{ marginTop: 4 }}>
-                      {paidEvents.map((e) => (
-                        <div key={e.event_id}
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px', borderTop: `1px solid #F1F1F3` }}>
-                          <div>
-                            <div style={{ fontSize: 13, color: BRAND.ink }}>{e.label}</div>
-                            <div style={{ fontSize: 11.5, color: BRAND.sub, marginTop: 1 }}>{fmtDate(e.date)}</div>
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: BRAND.ok }}>
-                            ✓ {money(e.amount_settled ?? e.amount, e.currency)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Clear break between what's settled and what's owed now */}
-              {(paidEvents.length > 0 && (targetDue || openDues.length === 0)) && (
-                <div style={{ height: 1, background: BRAND.line, margin: '14px 0' }} />
-              )}
-
-              {openDues.length === 0 ? (
-                <p style={{ color: BRAND.ok, fontSize: 14, margin: 0 }}>All dues are settled. 🎉</p>
-              ) : targetDue && (
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: BRAND.sub, letterSpacing: 0.4, marginBottom: 6 }}>CURRENT</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: BRAND.ink }}>{targetDue.label}</div>
-                      <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>Due {fmtDate(targetDue.date)}</div>
-                    </div>
-                    <div style={{ fontSize: 19, fontWeight: 800, color: BRAND.accentInk }}>
-                      {money(targetDue.remaining ?? targetDue.amount, targetDue.currency)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {payEventId && Number(payAmount) > 0 && (() => {
-                const amount = Number(payAmount);
-                const note = `${chapterName} — ${targetDue?.label || 'dues'}`;
-                const canPay = !!payCfg?.configured && !!payCfg.upi_id;
-                const url = canPay ? upiPayUrl(payCfg!.upi_id!, payCfg!.payee_name, amount, note) : '';
-                let qrSvg = '';
-                if (canPay) { try { qrSvg = QrCode.encodeText(url, 'MEDIUM').toSvgString(1, '#111827', '#ffffff'); } catch { qrSvg = ''; } }
-                return (
-                  <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
-                    {canPay && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => { setPendingPayUrl(url); setPayConfirmOpen(true); }}
-                          style={{ display: 'block', width: '100%', textAlign: 'center', textDecoration: 'none', padding: 13, borderRadius: 12,
-                            background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15.5, border: 'none', cursor: 'pointer' }}>
-                          Pay {money(amount, targetDue?.currency)} now
-                        </button>
-                        <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
-                          Opens your UPI app (GPay / PhonePe / Paytm).
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12,
-                          background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
-                          {qrSvg && <div style={{ width: 84, height: 84, flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: qrSvg }} />}
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 12, color: BRAND.sub }}>Or scan to pay</div>
-                            <div style={{ fontWeight: 700, color: BRAND.ink, fontSize: 13.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
-                            {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub }}>{payCfg!.payee_name}</div>}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    {showReturnNudge && (
-                      <div style={{ marginTop: 12, background: BRAND.accentSoft, border: `1px solid ${BRAND.accent}44`, borderRadius: 10, padding: 11 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Back from paying?</div>
-                        <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>
-                          Enter your UPI reference below and tap Record payment — it isn't recorded until you do.
+                  {history?.totals && (history.totals.total_paid > 0 || history.totals.balance > 0) && (
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                      <div style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>TOTAL PAID</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: BRAND.ok, marginTop: 2 }}>{money(history.totals.total_paid)}</div>
+                      </div>
+                      <div style={{ flex: 1, background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>BALANCE</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: history.totals.balance > 0 ? BRAND.accentInk : BRAND.ok, marginTop: 2 }}>
+                          {money(history.totals.balance)}
                         </div>
                       </div>
-                    )}
-                    <div style={{ marginTop: canPay ? 14 : 0 }}>
-                      <label style={labelStyle}>UPI reference {canPay ? '(after paying)' : '(after paying the chapter UPI)'}</label>
-                      <input value={upiRef} onChange={(e) => { setUpiRef(e.target.value); setShowReturnNudge(false); }} placeholder="e.g. 4098XXXX2231" style={inputStyle} />
-                      <p style={{ fontSize: 12, color: BRAND.sub, marginBottom: 0, marginTop: 6 }}>
-                        The chair will confirm your payment offline.
-                      </p>
+                    </div>
+                  )}
+
+                  {paidEvents.length > 0 && (
+                    <div style={{ marginBottom: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowSchedule(!showSchedule)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 12px', borderRadius: 10, border: `1px solid ${BRAND.line}`, background: '#F8FAFC',
+                          cursor: 'pointer' }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink }}>
+                          Payment History
+                          <span style={{ fontWeight: 500, color: BRAND.sub }}> - {paidEvents.length} paid</span>
+                        </span>
+                        <span style={{ fontSize: 12, color: BRAND.sub }}>{showSchedule ? '▲' : '▼'}</span>
+                      </button>
+                      {showSchedule && (
+                        <div style={{ marginTop: 4 }}>
+                          {paidEvents.map((e) => (
+                            <div key={e.event_id}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px', borderTop: `1px solid #F1F1F3` }}>
+                              <div>
+                                <div style={{ fontSize: 13, color: BRAND.ink }}>{e.label}</div>
+                                <div style={{ fontSize: 11.5, color: BRAND.sub, marginTop: 1 }}>{fmtDate(e.date)}</div>
+                              </div>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: BRAND.ok }}>
+                                ✓ {money(e.amount_settled ?? e.amount, e.currency)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(paidEvents.length > 0 && (targetDue || openDues.length === 0)) && (
+                    <div style={{ height: 1, background: BRAND.line, margin: '14px 0' }} />
+                  )}
+
+                  {openDues.length === 0 ? (
+                    <p style={{ color: BRAND.ok, fontSize: 14, margin: 0 }}>All dues are settled.</p>
+                  ) : targetDue && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: BRAND.sub, letterSpacing: 0.4, marginBottom: 6 }}>CURRENT</div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: BRAND.ink }}>{targetDue.label}</div>
+                          <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>Due {fmtDate(targetDue.date)}</div>
+                        </div>
+                        <div style={{ fontSize: 19, fontWeight: 800, color: BRAND.accentInk }}>
+                          {money(targetDue.remaining ?? targetDue.amount, targetDue.currency)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {payEventId && Number(payAmount) > 0 && renderPayBlock(Number(payAmount), targetDue?.currency)}
+                </Card>
+              )}
+
+              {isGuestPath && (
+                <Card>
+                  <div style={{ fontWeight: 800, color: BRAND.ink, marginBottom: 4 }}>Select what you're paying for</div>
+                  <p style={{ fontSize: 12.5, color: BRAND.sub, margin: '0 0 12px' }}>
+                    Guests aren't on a membership contract, so there are no dues here -- pick a service to pay for instead.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {guestServices.map((svc) => {
+                      const sel = selectedServiceId === svc.id;
+                      return (
+                        <button key={svc.id} type="button" onClick={() => setSelectedServiceId(svc.id)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left',
+                            padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
+                            border: sel ? `1.5px solid ${BRAND.accent}` : `1.5px solid ${BRAND.field}`,
+                            background: sel ? BRAND.accentSoft : '#fff' }}>
+                          <div style={{ fontWeight: 800, fontSize: 14.5, color: BRAND.ink }}>{svc.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ fontWeight: 800, fontSize: 16, color: BRAND.accentInk }}>{money(svc.price, svc.currency)}</div>
+                            <div style={{ fontSize: 11, fontWeight: 800, padding: '5px 10px', borderRadius: 999,
+                              border: sel ? `1.5px solid ${BRAND.accent}` : `1.5px solid ${BRAND.field}`,
+                              background: sel ? BRAND.accent : 'transparent', color: sel ? '#fff' : BRAND.sub }}>
+                              {sel ? '✓ Selected' : 'Select'}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedService && renderPayBlock(selectedService.price, selectedService.currency)}
+                </Card>
+              )}
+
+              {err && <p style={{ color: BRAND.err, fontSize: 13 }}>{err}</p>}
+              <button onClick={() => setPaymentStepDone(true)}
+                style={{ width: '100%', marginTop: 4, padding: 12, background: 'none', border: 'none',
+                  color: BRAND.sub, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
+                Skip for now — continue to check-in →
+              </button>
+            </>
+          )}
+
+          {/* Check-in step -- attendance + smart form + submit */}
+          {uiStep === 'checkin' && (
+            <>
+              <Card>
+                {alreadyChecked ? (
+                  <div style={{ background: '#ECFDF3', border: '1px solid #A7F3D0', borderRadius: 12, padding: 12 }}>
+                    <div style={{ fontWeight: 700, color: '#047857', fontSize: 14 }}>You've already checked in{occ ? ` for ${fmtDate(occ.date)}` : ''}</div>
+                    <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>
+                      {openDues.length > 0 ? 'You can still settle your dues from the Payment step.' : "Nothing else to do -- you're all set."}
                     </div>
                   </div>
+                ) : occ ? (
+                  <>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.sub }}>Are you attending today?</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      {(['present', 'apologies'] as const).map((s) => (
+                        <button key={s} onClick={() => setStatus(s)}
+                          style={{ flex: 1, padding: 12, borderRadius: 11, fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+                            border: status === s ? `2px solid ${BRAND.accent}` : `1px solid ${BRAND.field}`,
+                            background: status === s ? BRAND.accentSoft : '#fff', color: status === s ? BRAND.accentInk : BRAND.ink }}>
+                          {s === 'present' ? 'Present' : 'Apologies'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  // Dues-only mode: no session today, so no attendance to mark.
+                  <div style={{ background: BRAND.accentSoft, borderRadius: 12, padding: 12 }}>
+                    <div style={{ fontWeight: 700, color: BRAND.accentInk, fontSize: 14 }}>No session today</div>
+                    <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 2 }}>
+                      No attendance will be recorded{hasPaymentStepContent ? ' -- your payment from the previous step still submits below.' : '.'}
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Smart Form questions (tenant-configurable) -- only on a fresh
+                  check-in on a session day (dues-only mode records no attendance) */}
+              {!alreadyChecked && !!occ && formFields.length > 0 && (
+                <Card>
+                  <div style={{ fontWeight: 800, color: BRAND.ink, marginBottom: 4 }}>
+                    {form?.schema?.title && form.schema.title !== 'Session Check-in' ? form.schema.title : 'A few quick questions'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 10 }}>
+                    {formFields.map(renderField)}
+                  </div>
+                </Card>
+              )}
+
+              {err && <p style={{ color: BRAND.err, fontSize: 13 }}>{err}</p>}
+              {(() => {
+                const pendingAmount = member ? Number(payAmount) : selectedService?.price;
+                const pendingCurrency = member ? targetDue?.currency : selectedService?.currency;
+                const canSubmit = !!occ || hasAnyPaymentIntent;
+                return (
+                  <button onClick={submit} disabled={submitting || !canSubmit}
+                    style={{ width: '100%', padding: 15, border: 'none', borderRadius: 13,
+                      background: canSubmit ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 16.5, cursor: canSubmit ? 'pointer' : 'not-allowed',
+                      boxShadow: canSubmit ? '0 6px 16px -4px rgba(218,100,16,0.5)' : 'none', opacity: submitting ? 0.75 : 1 }}>
+                    {submitting ? 'Submitting...'
+                      : !occ ? (hasAnyPaymentIntent ? `Record ${money(pendingAmount, pendingCurrency)} payment` : 'No session today')
+                      : alreadyChecked ? (hasAnyPaymentIntent ? `Record ${money(pendingAmount, pendingCurrency)} payment` : 'Done')
+                      : 'Check in'}
+                  </button>
                 );
               })()}
-            </Card>
+              <button onClick={resetIdentity}
+                style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', color: BRAND.sub, fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+                ← Not you? Start over
+              </button>
+            </>
           )}
 
-          {err && <p style={{ color: BRAND.err, fontSize: 13 }}>{err}</p>}
-          <button onClick={submit} disabled={submitting || (!occ && !payEventId)}
-            style={{ width: '100%', padding: 15, border: 'none', borderRadius: 13,
-              background: (occ || payEventId) ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 16.5, cursor: (occ || payEventId) ? 'pointer' : 'not-allowed',
-              boxShadow: (occ || payEventId) ? '0 6px 16px -4px rgba(218,100,16,0.5)' : 'none', opacity: submitting ? 0.75 : 1 }}>
-            {submitting ? 'Submitting…'
-              : !occ ? (payEventId ? `Record ${money(Number(payAmount))} payment` : 'Enter an amount to pay')
-              : alreadyChecked ? (payEventId ? `Record ${money(Number(payAmount))} payment` : 'Done')
-              : 'Check in'}
-          </button>
-          <button onClick={resetIdentity}
-            style={{ marginTop: 12, width: '100%', background: 'none', border: 'none', color: BRAND.sub, fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
-            ← Not you? Start over
-          </button>
-
-          {/* Sets expectations before the user leaves for their UPI app —
-              there's no callback that tells this page a payment succeeded,
-              so without this a user can easily assume it's automatic and
-              never come back to declare it. */}
-          {payConfirmOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 100 }}
-              onClick={() => setPayConfirmOpen(false)}>
-              <div style={{ background: '#fff', borderRadius: 16, padding: 20, maxWidth: 360, width: '100%' }}
-                onClick={(e) => e.stopPropagation()}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: BRAND.ink, marginBottom: 8 }}>Before you pay</div>
-                <p style={{ fontSize: 13.5, color: BRAND.sub, marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>
-                  This opens your UPI app to pay. <strong style={{ color: BRAND.ink }}>The payment isn't recorded automatically</strong> —
-                  once you've paid, come back here, enter the UPI reference number, and tap <strong style={{ color: BRAND.ink }}>Record payment</strong> so the chair knows.
-                </p>
-                <a href={pendingPayUrl}
-                  onClick={() => { setPaymentAttempted(true); setPayConfirmOpen(false); }}
-                  style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: 13, borderRadius: 12,
-                    background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15 }}>
-                  Continue to pay
-                </a>
-                <button onClick={() => setPayConfirmOpen(false)}
-                  style={{ marginTop: 10, width: '100%', background: 'none', border: 'none', color: BRAND.sub, fontWeight: 600, cursor: 'pointer', fontSize: 13, padding: 8 }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </>
       )}
     </Shell>
