@@ -1,0 +1,452 @@
+<title>ContractNest — The 15-Minute Onboarding</title>
+<style>
+  :root{
+    --paper:#F4F6F4; --card:#FFFFFF; --ink:#1B2420; --ink-soft:#4C5B54; --ink-faint:#7C8A83;
+    --line:#DDE4DF; --line-strong:#C4CFC8;
+    --accent:#0E6E58; --accent-ink:#FFFFFF; --accent-soft:#E3F0EB;
+    --good:#237A44; --good-soft:#E4F2E8; --warn:#9A6A1B; --warn-soft:#F7EEDA;
+    --bad:#B3403A; --wa:#1FA855;
+    --shadow:0 1px 2px rgba(27,36,32,.06),0 4px 16px rgba(27,36,32,.07);
+    --shadow-lift:0 2px 6px rgba(27,36,32,.10),0 14px 36px rgba(27,36,32,.16);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --ink-soft:#A9B6AF; --ink-faint:#77857E;
+    --line:#2A332F; --line-strong:#3A453F; --accent:#3FB894; --accent-ink:#0B1512; --accent-soft:#1B2F29;
+    --good:#5CC07E; --good-soft:#1C2E22; --warn:#D9A44A; --warn-soft:#33290F; --bad:#E07670; --wa:#3ED47E;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.4),0 14px 36px rgba(0,0,0,.5);}}
+  :root[data-theme="dark"]{
+    --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --ink-soft:#A9B6AF; --ink-faint:#77857E;
+    --line:#2A332F; --line-strong:#3A453F; --accent:#3FB894; --accent-ink:#0B1512; --accent-soft:#1B2F29;
+    --good:#5CC07E; --good-soft:#1C2E22; --warn:#D9A44A; --warn-soft:#33290F; --bad:#E07670; --wa:#3ED47E;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.3);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.4),0 14px 36px rgba(0,0,0,.5);}
+  :root[data-theme="light"]{
+    --paper:#F4F6F4; --card:#FFFFFF; --ink:#1B2420; --ink-soft:#4C5B54; --ink-faint:#7C8A83;
+    --line:#DDE4DF; --line-strong:#C4CFC8; --accent:#0E6E58; --accent-ink:#FFFFFF; --accent-soft:#E3F0EB;
+    --good:#237A44; --good-soft:#E4F2E8; --warn:#9A6A1B; --warn-soft:#F7EEDA; --bad:#B3403A; --wa:#1FA855;
+    --shadow:0 1px 2px rgba(27,36,32,.06),0 4px 16px rgba(27,36,32,.07);
+    --shadow-lift:0 2px 6px rgba(27,36,32,.10),0 14px 36px rgba(27,36,32,.16);}
+
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+  input,select,textarea{font:inherit;color:var(--ink)}
+  button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  [hidden]{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  .topbar{display:flex;align-items:center;gap:14px;padding:11px 22px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+  .wordmark{font-family:var(--serif);font-size:19px;font-weight:700}
+  .wordmark span{color:var(--accent)}
+  .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);font-weight:700}
+  .spacer{flex:1}
+  .tbtn{font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:6px 13px}
+  .tbtn:hover{border-color:var(--line-strong)}
+
+  .stage{display:grid;grid-template-columns:270px 1fr;gap:0;min-height:calc(100vh - 55px)}
+  @media (max-width:880px){.stage{grid-template-columns:1fr}.rail{position:static!important;border-right:none;border-bottom:1px solid var(--line)}}
+
+  /* ===== CLOCK RAIL ===== */
+  .rail{background:var(--card);border-right:1px solid var(--line);padding:22px 18px;position:sticky;top:55px;align-self:start;max-height:calc(100vh - 55px);overflow-y:auto}
+  .clock{text-align:center;padding:10px 0 16px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .clock .elapsed{font-family:var(--serif);font-size:44px;font-weight:700;line-height:1;letter-spacing:-.01em}
+  .clock .budget{font-size:12px;color:var(--ink-faint);margin-top:4px;font-weight:600}
+  .clock .bar{height:7px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:12px}
+  .clock .bar>div{height:100%;background:var(--accent);border-radius:99px;transition:width .45s cubic-bezier(.4,0,.2,1)}
+  .clock.over .elapsed{color:var(--bad)}
+  .clock.over .bar>div{background:var(--bad)}
+
+  .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+  .steps li{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border-radius:8px;font-size:13.5px;color:var(--ink-faint)}
+  .steps li .dot{width:19px;height:19px;border-radius:50%;border:1.5px solid var(--line-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;margin-top:1px}
+  .steps li.done{color:var(--ink-soft)}
+  .steps li.done .dot{background:var(--good);border-color:var(--good);color:#fff}
+  .steps li.now{background:var(--accent-soft);color:var(--accent);font-weight:650}
+  .steps li.now .dot{border-color:var(--accent);color:var(--accent)}
+  .steps .sname{flex:1;min-width:0}
+  .steps .smin{font-size:11px;color:var(--ink-faint);font-weight:600;white-space:nowrap}
+  .steps li.now .smin{color:var(--accent)}
+
+  .railnote{margin-top:18px;padding:12px 13px;background:var(--paper);border-radius:8px;font-size:12px;color:var(--ink-soft);line-height:1.5}
+  .railnote b{color:var(--ink);display:block;margin-bottom:4px;font-size:11px;text-transform:uppercase;letter-spacing:.09em}
+
+  /* ===== MAIN ===== */
+  .main{padding:38px 34px 90px;display:flex;justify-content:center}
+  @media (max-width:880px){.main{padding:26px 16px 80px}}
+  .panel{width:100%;max-width:560px}
+  .screen{display:none}
+  .screen.on{display:block;animation:rise .22s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;font-weight:700;color:var(--accent);margin-bottom:7px}
+  h1{font-family:var(--serif);font-size:27px;font-weight:700;margin:0 0 6px;text-wrap:balance;line-height:1.2}
+  .sub{color:var(--ink-soft);margin:0 0 22px;font-size:14px;max-width:46ch}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:9px;font-size:14.5px;font-weight:650;border:1px solid transparent}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-ghost{border-color:var(--line-strong);color:var(--ink-soft);background:var(--card)}
+  .btn-ghost:hover{background:var(--paper)}
+  .btn-wa{background:var(--wa);color:#fff}
+  .btn-full{width:100%}
+  .btnrow{display:flex;gap:10px;margin-top:20px;align-items:center}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:15px}
+  .field label{font-size:12.5px;font-weight:650;color:var(--ink-soft)}
+  .field input,.field select,.field textarea{padding:11px 13px;border:1px solid var(--line-strong);border-radius:9px;background:var(--card);font-size:14.5px}
+  .field .hint{font-size:12px;color:var(--ink-faint)}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:560px){.frow{grid-template-columns:1fr}}
+
+  /* choice cards */
+  .choices{display:grid;gap:10px}
+  .choices.two{grid-template-columns:1fr 1fr}
+  .choices.trio{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:560px){.choices.two,.choices.trio{grid-template-columns:1fr}}
+  .choice{text-align:left;border:1.5px solid var(--line-strong);border-radius:11px;padding:14px 15px;background:var(--card);transition:border-color .15s,background .15s}
+  .choice:hover{border-color:var(--accent)}
+  .choice[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+  .choice .ct{font-weight:680;font-size:14.5px;display:flex;align-items:center;gap:7px}
+  .choice .cd{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+  .choice[aria-pressed="true"] .ct{color:var(--accent)}
+
+  /* seeding */
+  .seedlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+  .seedlist li{display:flex;align-items:center;gap:11px;font-size:14px;color:var(--ink-faint)}
+  .seedlist li .sd{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex-shrink:0}
+  .seedlist li.run .sd{border-color:var(--accent);border-top-color:transparent;animation:spin .7s linear infinite}
+  .seedlist li.ok{color:var(--ink)}
+  .seedlist li.ok .sd{background:var(--good);border-color:var(--good);display:flex;align-items:center;justify-content:center}
+  .seedlist li.ok .sd::after{content:"✓";color:#fff;font-size:11px;font-weight:700}
+  .seedlist li .cnt{margin-left:auto;font-size:12.5px;color:var(--ink-faint);font-weight:600}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* paste grid */
+  .paste{width:100%;min-height:110px;padding:12px;border:1.5px dashed var(--line-strong);border-radius:10px;background:var(--paper);font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  .parsed{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:14px}
+  .parsed table{width:100%;border-collapse:collapse;font-size:13px}
+  .parsed th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);padding:8px 11px;border-bottom:1px solid var(--line);background:var(--paper)}
+  .parsed td{padding:8px 11px;border-bottom:1px solid var(--line)}
+  .parsed tr:last-child td{border-bottom:none}
+  .parsedfoot{padding:9px 12px;background:var(--good-soft);color:var(--good);font-size:12.5px;font-weight:650;display:flex;justify-content:space-between;align-items:center}
+
+  /* blocks */
+  .blocks{display:flex;flex-direction:column;gap:8px}
+  .blk{display:grid;grid-template-columns:1fr 88px 96px;gap:8px}
+  .blk input{padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);font-size:13.5px;min-width:0}
+  .ktnote{display:flex;gap:9px;align-items:flex-start;background:var(--accent-soft);border-radius:9px;padding:11px 13px;font-size:12.5px;color:var(--ink-soft);margin-bottom:14px}
+  .ktnote b{color:var(--accent)}
+  .totline{display:flex;justify-content:space-between;align-items:baseline;padding-top:12px;margin-top:12px;border-top:1px dashed var(--line);font-size:13.5px;color:var(--ink-soft)}
+  .totline b{font-family:var(--serif);font-size:19px;color:var(--ink)}
+
+  /* send moment */
+  .sendcard{text-align:center;padding:28px 24px}
+  .cnakbig{font-family:var(--serif);font-size:29px;font-weight:700;letter-spacing:.05em;margin:8px 0 3px}
+  .waprev{text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:13px 15px;font-size:13.5px;line-height:1.55;margin:16px 0 4px}
+  .waprev .from{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-faint);font-weight:700;margin-bottom:6px}
+  .waprev a{color:var(--accent);font-weight:600}
+
+  .doneseal{text-align:center;padding:8px 0 4px}
+  .doneseal .ring{width:62px;height:62px;border-radius:50%;background:var(--good-soft);color:var(--good);display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0}
+  @media(max-width:560px){.kpis{grid-template-columns:1fr}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 14px;text-align:center}
+  .kpi .kv{font-family:var(--serif);font-size:21px;font-weight:700}
+  .kpi .kk{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);font-weight:700;margin-top:2px}
+  .handoff{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:16px 18px;margin-top:6px}
+  .handoff h3{margin:0 0 8px;font-size:14px}
+  .handoff ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-soft);display:flex;flex-direction:column;gap:5px}
+
+  .jit{margin-top:22px;padding:13px 15px;border-left:3px solid var(--warn);background:var(--warn-soft);border-radius:0 9px 9px 0;font-size:12.5px;color:var(--ink-soft)}
+  .jit b{color:var(--warn);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px}
+
+  .toasts{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lift);animation:rise .2s ease-out}
+  .toast.good{background:var(--good);color:#fff}
+</style>
+
+<header class="topbar">
+  <div class="wordmark">Contract<span>Nest</span></div>
+  <span class="tag">The 15-minute onboarding</span>
+  <div class="spacer"></div>
+  <button class="tbtn" onclick="restart()">Restart</button>
+  <button class="tbtn" onclick="toggleTheme()">Theme</button>
+</header>
+
+<div class="stage">
+  <!-- ============ CLOCK RAIL ============ -->
+  <aside class="rail">
+    <div class="clock" id="clock">
+      <div class="elapsed num" id="elapsed">0:00</div>
+      <div class="budget">elapsed of 15:00 budget</div>
+      <div class="bar"><div id="clockbar" style="width:0%"></div></div>
+    </div>
+    <ul class="steps" id="steplist"></ul>
+    <div class="railnote">
+      <b>The finish line is “sent”</b>
+      Onboarding ends when the tenant’s customer receives something — not when a workspace is ready. A dashboard is not an aha moment.
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main"><div class="panel">
+
+    <!-- 0 · SIGN IN -->
+    <section class="screen on" id="sc-0">
+      <div class="eyebrow">Step 1 · 2 minutes</div>
+      <h1>Sign in with your WhatsApp number</h1>
+      <p class="sub">No password to invent, no email to verify. We send a link, you tap it, you're in.</p>
+      <div class="card">
+        <div class="field"><label for="ph">WhatsApp number</label><input id="ph" type="tel" value="98860 41230"><span class="hint">This is also where your reminders will send from.</span></div>
+        <button class="btn btn-primary btn-full" onclick="next()">Send me the link</button>
+      </div>
+      <div class="jit"><b>Deferred, not asked</b>Company address, GST number, logo, team invites, Test vs Live mode. Every one of these is asked later, at the moment it's actually needed.</div>
+    </section>
+
+    <!-- 1 · WHO -->
+    <section class="screen" id="sc-1">
+      <div class="eyebrow">Step 2 · 1 minute</div>
+      <h1>What describes you best?</h1>
+      <p class="sub">This sets your whole workspace. You can be both — many businesses are.</p>
+      <div class="choices trio">
+        <button class="choice" aria-pressed="true" onclick="pick(this)"><div class="ct">I sell services</div><div class="cd">AMC, pest control, housekeeping, manufacturing support</div></button>
+        <button class="choice" aria-pressed="false" onclick="pick(this)"><div class="ct">I buy services</div><div class="cd">I manage vendors and their contracts</div></button>
+        <button class="choice" aria-pressed="false" onclick="pick(this)"><div class="ct">Both</div><div class="cd">I sell, and I manage my own vendors</div></button>
+      </div>
+      <div class="btnrow"><button class="btn btn-primary" onclick="next()">Continue</button><button class="btn btn-ghost" onclick="prev()">Back</button></div>
+    </section>
+
+    <!-- 2 · INDUSTRY -->
+    <section class="screen" id="sc-2">
+      <div class="eyebrow">Step 3 · 1 minute</div>
+      <h1>Your line of work?</h1>
+      <p class="sub">We'll pre-build your catalog with real services and market-reference prices, so you're not staring at an empty product.</p>
+      <div class="choices two">
+        <button class="choice" aria-pressed="true" onclick="pick(this)"><div class="ct">Equipment AMC</div><div class="cd">Lifts, HVAC, DG sets, fire systems</div></button>
+        <button class="choice" aria-pressed="false" onclick="pick(this)"><div class="ct">Pest control</div><div class="cd">Sites, treatments, compliance records</div></button>
+        <button class="choice" aria-pressed="false" onclick="pick(this)"><div class="ct">Housekeeping</div><div class="cd">Manpower deployment + supplies</div></button>
+        <button class="choice" aria-pressed="false" onclick="pick(this)"><div class="ct">Manufacturing support</div><div class="cd">Machines, checkpoints, service cycles</div></button>
+      </div>
+      <div class="btnrow"><button class="btn btn-primary" onclick="seed()">Build my workspace</button><button class="btn btn-ghost" onclick="prev()">Back</button></div>
+    </section>
+
+    <!-- 3 · SEEDING -->
+    <section class="screen" id="sc-3">
+      <div class="eyebrow">Step 4 · 2 minutes</div>
+      <h1>Setting up your workspace…</h1>
+      <p class="sub">Each line is a real step — no fake progress bars.</p>
+      <div class="card">
+        <ul class="seedlist" id="seedlist">
+          <li data-c="14 services"><span class="sd"></span>Loading Equipment AMC service catalog</li>
+          <li data-c="₹ ranges"><span class="sd"></span>Applying market-reference prices</li>
+          <li data-c="4 cadences"><span class="sd"></span>Setting visit &amp; billing cadences</li>
+          <li data-c="3 templates"><span class="sd"></span>Preparing contract templates</li>
+          <li data-c="ready"><span class="sd"></span>Configuring reminders on WhatsApp</li>
+        </ul>
+      </div>
+      <div class="jit"><b>Why this matters most</b>The seeded catalog is the single biggest lever on the 15 minutes — it removes the largest data-entry burden before the tenant ever types anything. Everything here is editable later; nothing here blocks.</div>
+    </section>
+
+    <!-- 4 · CUSTOMERS -->
+    <section class="screen" id="sc-4">
+      <div class="eyebrow">Step 5 · 4 minutes</div>
+      <h1>Bring in your customers</h1>
+      <p class="sub">Paste straight from your Excel or Tally export. Name, phone, site — we work out the rest.</p>
+      <div class="card">
+        <textarea class="paste" id="pastebox" spellcheck="false">Prestige Towers	Ramesh Kumar	98490 11223	Gachibowli	2 lifts
+Cyber Heights	Anitha Rao	99512 33445	Madhapur	4 lifts
+Orchid Residency	S. Mahesh	90301 55667	Kondapur	2 lifts
+Lakeview Apartments	Fatima Begum	91772 88990	Manikonda	1 lift</textarea>
+        <div id="parsedwrap" hidden>
+          <div class="parsed">
+            <table>
+              <thead><tr><th>Client</th><th>Contact</th><th>Site</th><th>Equipment</th></tr></thead>
+              <tbody>
+                <tr><td><b>Prestige Towers</b></td><td>Ramesh Kumar</td><td>Gachibowli</td><td>2 lifts</td></tr>
+                <tr><td><b>Cyber Heights</b></td><td>Anitha Rao</td><td>Madhapur</td><td>4 lifts</td></tr>
+                <tr><td><b>Orchid Residency</b></td><td>S. Mahesh</td><td>Kondapur</td><td>2 lifts</td></tr>
+                <tr><td><b>Lakeview Apartments</b></td><td>Fatima Begum</td><td>Manikonda</td><td>1 lift</td></tr>
+              </tbody>
+            </table>
+            <div class="parsedfoot"><span>4 clients read · 0 errors</span><span>phones validated</span></div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="btn btn-primary" id="parsebtn" onclick="parseRows()">Read these rows</button>
+          <button class="btn btn-ghost" onclick="prev()">Back</button>
+        </div>
+      </div>
+      <div class="jit"><b>The concierge lane</b>Whatever arrives on WhatsApp — a photo of a register, a Tally export, a mess — gets converted into this paste format by you or by VaNi. Same screen, no separate importer to build.</div>
+    </section>
+
+    <!-- 5 · CONTRACT -->
+    <section class="screen" id="sc-5">
+      <div class="eyebrow">Step 6 · 3 minutes</div>
+      <h1>Your first contract</h1>
+      <p class="sub">Five fields. The visit schedule and the payment schedule both derive themselves.</p>
+      <div class="card">
+        <div class="ktnote"><span style="font-size:15px">✳︎</span><span><b>Pre-filled from your catalog.</b> Blocks and prices came from the Equipment AMC seed — edit anything, or type your own. Nothing here is locked.</span></div>
+        <div class="frow">
+          <div class="field"><label for="c-client">Client</label><select id="c-client"><option>Prestige Towers</option><option>Cyber Heights</option><option>Orchid Residency</option><option>Lakeview Apartments</option></select></div>
+          <div class="field"><label for="c-title">Contract name</label><input id="c-title" value="Lift AMC — Prestige Towers"></div>
+        </div>
+        <div class="field"><label>What they get</label>
+          <div class="blocks">
+            <div class="blk"><input value="Preventive maintenance visit"><input class="num" value="12 / yr"><input class="num" value="₹28,000"></div>
+            <div class="blk"><input value="Breakdown response 24×7"><input class="num" value="unlimited"><input class="num" value="₹9,000"></div>
+            <div class="blk"><input value="Parts — rope &amp; controller"><input class="num" value="at actuals"><input class="num" value="excluded"></div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="field"><label for="c-term">Term</label><select id="c-term"><option>1 year · auto-renew unless declined</option><option>2 years · auto-renew</option><option>6 months · renew manually</option></select></div>
+          <div class="field"><label for="c-bill">Billing</label><select id="c-bill"><option>Quarterly · ₹9,250</option><option>Half-yearly · ₹18,500</option><option>Annual · ₹37,000</option></select></div>
+        </div>
+        <div class="totline"><span>12 visits + 4 invoices scheduled for the year</span><b>₹37,000</b></div>
+        <div class="btnrow"><button class="btn btn-primary" onclick="next()">Create &amp; get share key</button><button class="btn btn-ghost" onclick="prev()">Back</button></div>
+      </div>
+      <div class="jit"><b>Why a separate lane</b>The full wizard is 4 phases and stays available as advanced mode. It cannot be edited into a 3-minute flow — so this short lane sits beside it and builds the same payload underneath.</div>
+    </section>
+
+    <!-- 6 · SEND -->
+    <section class="screen" id="sc-6">
+      <div class="eyebrow">Step 7 · 2 minutes · the finish line</div>
+      <h1>Send it to Prestige Towers</h1>
+      <p class="sub">This is the moment onboarding exists for. Not a workspace — a customer who has received something.</p>
+      <div class="card sendcard">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700">Contract share key</div>
+        <div class="cnakbig num">CNAK-6QW4RT</div>
+        <div style="font-size:13px;color:var(--ink-soft)">Secret code <b class="num">8127</b> · opens with no app, no login</div>
+        <div class="waprev">
+          <div class="from">WhatsApp → Ramesh Kumar · 98490 11223</div>
+          Hello Ramesh, here is the Lift AMC contract for Prestige Towers — 12 preventive visits a year, 24×7 breakdown cover, ₹9,250 quarterly.<br><br>
+          Review and accept here: <a href="#" onclick="return false">contractnest.in/c/6QW4RT</a><br>
+          Secret code: 8127
+        </div>
+        <button class="btn btn-wa btn-full" style="margin-top:14px" onclick="doSend()">Send on WhatsApp</button>
+      </div>
+    </section>
+
+    <!-- 7 · DONE -->
+    <section class="screen" id="sc-7">
+      <div class="doneseal">
+        <div class="ring">✓</div>
+        <div class="eyebrow" style="text-align:center">Onboarding complete</div>
+        <h1 style="text-align:center">Ramesh has your contract</h1>
+        <p class="sub" style="margin:0 auto 20px;text-align:center">He can accept it from his phone. The moment he does, your visit and payment schedules go live and reminders start on their own.</p>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="kv num" id="finaltime">14:10</div><div class="kk">elapsed</div></div>
+        <div class="kpi"><div class="kv num">4</div><div class="kk">clients loaded</div></div>
+        <div class="kpi"><div class="kv num">16</div><div class="kk">events scheduled</div></div>
+      </div>
+      <div class="handoff">
+        <h3>From here, the existing app takes over</h3>
+        <ul>
+          <li><b>Contracts Hub</b> — the full wizard, equipment tabs, proof of work, documents</li>
+          <li><b>Receivables</b> — invoices, receipts, allocations, tax</li>
+          <li><b>Contacts</b> — the full client record</li>
+          <li><b>Group Sessions</b> — for tenants who run them</li>
+        </ul>
+        <p style="font-size:12.5px;color:var(--ink-faint);margin:12px 0 0">Only three things were built new: this onboarding, the express contract lane, and the due list you land on tomorrow morning. Everything else is what you already have.</p>
+      </div>
+      <div class="btnrow"><button class="btn btn-primary" onclick="restart()">Run it again</button></div>
+    </section>
+
+  </div></main>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const STEPS=[
+  {n:'Sign in',            min:2, label:'2 min'},
+  {n:'What describes you', min:1, label:'1 min'},
+  {n:'Line of work',       min:1, label:'1 min'},
+  {n:'Workspace seeds',    min:2, label:'2 min'},
+  {n:'Bring customers',    min:4, label:'4 min'},
+  {n:'First contract',     min:3, label:'3 min'},
+  {n:'Send it',            min:2, label:'2 min'},
+  {n:'Live',               min:0, label:'—'},
+];
+let cur=0, spent=0;
+
+function renderSteps(){
+  document.getElementById('steplist').innerHTML=STEPS.map((s,i)=>{
+    const cls = i<cur ? 'done' : (i===cur ? 'now' : '');
+    const mark = i<cur ? '✓' : (i+1);
+    return `<li class="${cls}"><span class="dot">${mark}</span><span class="sname">${s.n}</span><span class="smin">${s.label}</span></li>`;
+  }).join('');
+}
+function fmt(m){ const mm=Math.floor(m), ss=Math.round((m-mm)*60); return mm+':'+String(ss).padStart(2,'0'); }
+function renderClock(){
+  const el=document.getElementById('clock');
+  document.getElementById('elapsed').textContent=fmt(spent);
+  document.getElementById('clockbar').style.width=Math.min(100,(spent/15)*100)+'%';
+  el.classList.toggle('over', spent>15);
+}
+function show(i){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('sc-'+i).classList.add('on');
+  cur=i; renderSteps(); renderClock();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function next(){
+  spent += STEPS[cur].min * (0.82 + Math.min(0.3, cur*0.04)); // realistic, slightly under budget
+  show(Math.min(cur+1, STEPS.length-1));
+}
+function prev(){ show(Math.max(cur-1,0)); }
+function pick(btn){
+  const row=btn.parentElement;
+  row.querySelectorAll('.choice').forEach(b=>b.setAttribute('aria-pressed','false'));
+  btn.setAttribute('aria-pressed','true');
+}
+function seed(){
+  next();
+  const items=[...document.querySelectorAll('#seedlist li')];
+  items.forEach(li=>{ li.className=''; li.querySelector('.cnt')?.remove(); });
+  let k=0;
+  const tick=()=>{
+    if(k>0){ const p=items[k-1]; p.className='ok';
+      const c=document.createElement('span'); c.className='cnt'; c.textContent=p.dataset.c; p.appendChild(c); }
+    if(k<items.length){ items[k].className='run'; k++; setTimeout(tick, 620); }
+    else { toast('Workspace ready — 14 services, prices, cadences','good'); setTimeout(()=>next(), 700); }
+  };
+  tick();
+}
+function parseRows(){
+  document.getElementById('parsedwrap').hidden=false;
+  document.getElementById('parsebtn').textContent='Looks right — add these 4 clients';
+  document.getElementById('parsebtn').onclick=()=>{ toast('4 clients added','good'); next(); };
+  toast('4 rows read, 0 errors');
+}
+function doSend(){
+  spent += STEPS[cur].min*0.85;
+  document.getElementById('finaltime').textContent=fmt(spent);
+  show(7);
+  toast('Contract sent to Ramesh on WhatsApp','good');
+}
+function restart(){
+  spent=0; cur=0;
+  document.getElementById('parsedwrap').hidden=true;
+  const pb=document.getElementById('parsebtn');
+  pb.textContent='Read these rows'; pb.onclick=parseRows;
+  show(0);
+}
+function toggleTheme(){
+  const r=document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+}
+function toast(msg,tone){
+  const t=document.createElement('div'); t.className='toast'+(tone?' '+tone:''); t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>t.remove(),2800);
+}
+renderSteps(); renderClock();
+</script>
