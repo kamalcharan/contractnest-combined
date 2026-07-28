@@ -247,6 +247,23 @@
   .sharecard .sfoot{margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);font-size:12px;opacity:.85;font-family:var(--serif)}
 
   .wanote{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--ink-soft);margin-bottom:16px}
+
+  /* contracts */
+  .cnak{display:inline-flex;align-items:center;gap:6px;font-family:var(--serif);font-weight:700;font-size:13px;letter-spacing:.04em;background:var(--paper);border:1px dashed var(--line-strong);border-radius:7px;padding:3px 9px}
+  .conblocks{list-style:none;margin:0;padding:0}
+  .conblocks li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .conblocks li:last-child{border-bottom:none}
+  .conblocks .bq{color:var(--ink-faint);font-size:12.5px}
+  .twoway{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 9px}
+  .segtoggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .segtoggle button{padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:650;color:var(--ink-soft)}
+  .segtoggle button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+  .blockrow{display:grid;grid-template-columns:1fr 92px 100px;gap:8px;margin-bottom:8px}
+  .blockrow input{padding:8px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);font-size:13.5px;min-width:0}
+  .cnakhero{text-align:center;padding:8px 0 4px}
+  .cnakhero .bigkey{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:.06em;margin:6px 0 2px}
+  .cnakhero .seckey{font-size:13px;color:var(--ink-soft)}
+  .cnakhero .seckey b{font-family:var(--serif);letter-spacing:.1em}
   .settingsec{padding:18px 20px;margin-bottom:16px}
   .settingsec h3{margin:0 0 12px;font-size:15px}
   .tmpl{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;white-space:pre-wrap}
@@ -254,11 +271,11 @@
 
 <!-- ============ TOP BAR ============ -->
 <header class="topbar">
-  <div class="wordmark"><b>Collect<span style="color:var(--accent)">Nest</span></b><span class="tag">7-day wedge · UX shell</span></div>
+  <div class="wordmark"><b>Collect<span style="color:var(--accent)">Nest</span></b><span class="tag">12-day wedge · UX shell</span></div>
   <nav class="viewtabs" aria-label="Prototype views">
     <button id="tab-first" aria-selected="false" onclick="setView('first')">First-run</button>
     <button id="tab-owner" aria-selected="true" onclick="setView('owner')">Owner app</button>
-    <button id="tab-member" aria-selected="false" onclick="setView('member')">Member link</button>
+    <button id="tab-member" aria-selected="false" onclick="setView('member')">Buyer link</button>
   </nav>
   <div class="spacer"></div>
   <button class="themebtn" onclick="toggleTheme()">Theme</button>
@@ -313,6 +330,7 @@
     <nav class="sidenav" aria-label="Owner navigation">
       <button data-s="dash" aria-current="true" onclick="setScreen('dash')">Due list</button>
       <button data-s="customers" onclick="setScreen('customers')">Customers</button>
+      <button data-s="contracts" onclick="setScreen('contracts')">Contracts <span class="navdot" id="condot" style="background:var(--warn)"></span></button>
       <button data-s="reminders" onclick="setScreen('reminders')">Reminders <span class="navdot" id="remdot"></span></button>
       <button data-s="payments" onclick="setScreen('payments')">Payments <span class="navdot" id="paydot"></span></button>
       <button data-s="summary" onclick="setScreen('summary')">Month summary</button>
@@ -378,6 +396,28 @@
             <thead><tr><th>Customer</th><th>Plan</th><th>Next due</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
             <tbody id="custrows"></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- ===== CONTRACTS ===== -->
+      <section class="screen" id="s-contracts">
+        <h1>Contracts</h1>
+        <p class="sub">A plan tells you what's due. A contract adds what the buyer gets, for how long, and their sign-off — extended to them with a CNAK, so it lives on both sides.</p>
+        <div class="wanote"><span style="font-size:18px">🔑</span><span><b>How the two-way works:</b> every sent contract gets a <b>CNAK</b> (a short access key) + 4-digit secret. Share it on WhatsApp — the buyer opens it with no app and no login, accepts on their phone, and the same link becomes their live contract page. If the buyer uses CollectNest too, entering the CNAK claims the contract into <i>their</i> workspace — one contract, both sides, always in sync.</span></div>
+        <div class="toolrow">
+          <span style="font-size:13.5px;color:var(--ink-soft)"><b id="concount">4</b> contracts · <b>₹2,13,500</b> total value</span>
+          <div class="spacer" style="flex:1"></div>
+          <button class="btn btn-primary" onclick="openModal('m-newcontract')">+ New contract</button>
+        </div>
+        <div class="card rowlist" id="conlist"></div>
+        <h2>What a contract adds over a plan</h2>
+        <div class="card" style="padding:16px 18px;font-size:13.5px;color:var(--ink-soft)">
+          <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
+            <li><b style="color:var(--ink)">Service blocks</b> — what the buyer gets, itemised (sessions, visits, access), not just an amount.</li>
+            <li><b style="color:var(--ink)">A term</b> — start, end, and a renewal date the reminder engine already knows how to chase.</li>
+            <li><b style="color:var(--ink)">Acceptance</b> — the buyer's recorded yes: name, time, and CNAK on a one-page document you can both verify.</li>
+            <li><b style="color:var(--ink)">The same payment schedule</b> — collections doesn't change; it now hangs off something both sides agreed to.</li>
+          </ul>
         </div>
       </section>
 
@@ -482,14 +522,50 @@ Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it wh
 <!-- ============ VIEW: MEMBER ============ -->
 <div class="view" id="view-member">
   <div class="memberstage">
-    <p class="stagecap">What a member sees when they open their link from a reminder — no app, no login, no password. This page is the product's public face and its growth loop.</p>
+    <p class="stagecap">The buyer's side — one link, no app, no login. It arrives as a contract to accept (via CNAK), then the same link becomes their living plan-and-payments page.</p>
+    <div class="segtoggle" role="group" aria-label="Buyer link state">
+      <button id="seg-accept" aria-pressed="false" onclick="setMemberState('accept')">1 · Contract received</button>
+      <button id="seg-active" aria-pressed="true" onclick="setMemberState('active')">2 · Accepted &amp; live</button>
+    </div>
     <div class="phone">
       <div class="notch"></div>
       <div class="mhead">
         <div class="biz">FitZone Gym</div>
-        <div class="hello">Hi Ananya — your membership at a glance</div>
+        <div class="hello" id="mhello">Hi Ananya — your membership at a glance</div>
       </div>
-      <div class="mbody">
+
+      <!-- state 1: contract sent, awaiting acceptance -->
+      <div class="mbody" id="mb-accept" hidden>
+        <div class="duecard" style="text-align:left">
+          <div class="dlabel">Contract for your review</div>
+          <div style="font-family:var(--serif);font-size:19px;font-weight:700;margin:4px 0 2px">Personal Training · 3 months</div>
+          <div style="font-size:13px;color:var(--ink-soft)">FitZone Gym ↔ Ananya Iyer · 1 Aug – 31 Oct 2026</div>
+          <div style="margin-top:8px"><span class="cnak num">CNAK-4X7Q2M</span></div>
+        </div>
+        <div class="qrbox" style="text-align:left">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin-bottom:4px">What you get</div>
+          <ul class="conblocks">
+            <li><span>Personal training sessions <div class="bq">12 per month · 60 min</div></span><b class="rupee">₹3,000/mo</b></li>
+            <li><span>Gym floor access <div class="bq">All days · 6 am – 10 pm</div></span><b class="rupee">₹1,200/mo</b></li>
+            <li><span>Diet consultation <div class="bq">1 per month</div></span><b class="rupee">₹300/mo</b></li>
+          </ul>
+        </div>
+        <div class="qrbox" style="text-align:left">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin-bottom:4px">What you pay</div>
+          <ul class="mhist">
+            <li><span>1 Aug 2026</span><b class="rupee">₹4,500</b></li>
+            <li><span>1 Sep 2026</span><b class="rupee">₹4,500</b></li>
+            <li><span>1 Oct 2026</span><b class="rupee">₹4,500</b></li>
+            <li><span><b>Total · renews 1 Nov unless you say no</b></span><b class="rupee">₹13,500</b></li>
+          </ul>
+        </div>
+        <button class="btn btn-primary mbtn" onclick="openModal('m-accept')">Accept contract</button>
+        <button class="btn btn-ghost mbtn" onclick="openModal('m-change')">Request a change</button>
+        <div style="font-size:12px;color:var(--ink-faint);text-align:center">Verify this contract anytime: <span class="num">collectnest.in/verify · CNAK-4X7Q2M</span></div>
+      </div>
+
+      <!-- state 2: accepted & live -->
+      <div class="mbody" id="mb-active">
         <div class="duecard" id="mduecard">
           <div class="dlabel">Due now</div>
           <div class="damt rupee" style="color:var(--bad)">₹1,500</div>
@@ -504,6 +580,15 @@ Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it wh
         <button class="btn btn-primary mbtn" onclick="openModal('m-selfreport')">I've paid — enter UPI reference</button>
         <div id="mreported" hidden style="text-align:center"><span class="pill pill-pend">Reported · waiting for gym to confirm</span></div>
         <hr class="mhr">
+        <div class="qrbox" style="text-align:left">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700">Your contract</div>
+            <span class="twoway">✓ Accepted</span>
+          </div>
+          <div style="font-size:13.5px;margin-top:6px"><b>Personal Training · 3 months</b> · 1 Aug – 31 Oct 2026</div>
+          <div style="font-size:12.5px;color:var(--ink-soft)">Accepted 28 Jul 2026 by Ananya Iyer · <span class="num">CNAK-4X7Q2M</span></div>
+          <div style="font-size:12px;color:var(--ink-faint);margin-top:4px">12 PT sessions/mo · gym access · diet consult — <a href="#" style="color:var(--accent);font-weight:600" onclick="toast('Contract document opened — one page, both parties, CNAK verification footer');return false">view full contract</a></div>
+        </div>
         <div>
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin-bottom:6px">Payment history</div>
           <ul class="mhist">
@@ -569,6 +654,72 @@ Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it wh
   </div>
 </div>
 
+<div class="overlay" id="m-newcontract" role="dialog" aria-modal="true" aria-labelledby="nc-h">
+  <div class="modal" style="max-width:520px">
+    <h3 id="nc-h">New contract</h3>
+    <p class="msub">Who it's for, what they get, for how long. The payment schedule derives itself — collections picks it up automatically.</p>
+    <div class="fieldrow">
+      <div class="field"><label for="nc-buyer">Buyer</label>
+        <select id="nc-buyer"><option>Ananya Iyer (existing customer)</option><option>Vikram Rao (existing customer)</option><option>TechSpire Solutions (company)</option><option>+ New buyer…</option></select>
+      </div>
+      <div class="field"><label for="nc-title">Contract name</label><input id="nc-title" value="Personal Training · 3 months"></div>
+    </div>
+    <div class="field"><label>Service blocks — what the buyer gets</label>
+      <div class="blockrow"><input value="Personal training sessions"><input class="num" value="12 / mo"><input class="num rupee" value="₹3,000/mo"></div>
+      <div class="blockrow"><input value="Gym floor access"><input class="num" value="All days"><input class="num rupee" value="₹1,200/mo"></div>
+      <div class="blockrow"><input value="Diet consultation"><input class="num" value="1 / mo"><input class="num rupee" value="₹300/mo"></div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Service block row added')" style="align-self:flex-start">+ Add block</button>
+    </div>
+    <div class="fieldrow">
+      <div class="field"><label for="nc-start">Starts</label><input id="nc-start" type="date" value="2026-08-01"></div>
+      <div class="field"><label for="nc-term">Term &amp; renewal</label><select id="nc-term"><option>3 months · auto-renew unless declined</option><option>6 months · auto-renew unless declined</option><option>12 months · renew manually</option><option>One-time · no renewal</option></select></div>
+    </div>
+    <div class="field"><label for="nc-paysched">Payment schedule</label>
+      <select id="nc-paysched"><option>Monthly · ₹4,500 on the 1st (derived from blocks)</option><option>Full upfront · ₹13,500</option><option>Half now, half mid-term</option></select>
+      <span class="hint">Every entry lands in your due list and the buyer's page, same as any plan.</span>
+    </div>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Save as draft</button><button class="btn btn-primary" onclick="createContract()">Create &amp; get CNAK</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-cnak" role="dialog" aria-modal="true" aria-labelledby="ck-h">
+  <div class="modal">
+    <h3 id="ck-h">Contract created — extend it to the buyer</h3>
+    <p class="msub">Share the key on WhatsApp. The buyer opens it with no app and no login; the secret keeps it private to them.</p>
+    <div class="cnakhero">
+      <span class="pill pill-pend">Awaiting acceptance</span>
+      <div class="bigkey num" id="cnak-key">CNAK-7PL2XD</div>
+      <div class="seckey">Secret code <b class="num">4419</b> — share both with the buyer only</div>
+    </div>
+    <div class="actionsgrid" style="margin-top:16px">
+      <button class="btn btn-wa" onclick="toast('WhatsApp opened — contract link + CNAK pre-filled for Ananya')">Send on WhatsApp</button>
+      <button class="btn btn-ghost" onclick="toast('CNAK + link copied', 'good')">Copy link &amp; key</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-faint);margin:6px 0 0">If the buyer runs CollectNest too, they can enter this CNAK in their own account to claim the contract into their workspace — then it stays in sync on both sides.</p>
+    <div class="modalfoot"><button class="btn btn-primary" onclick="closeModals()">Done</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-accept" role="dialog" aria-modal="true" aria-labelledby="acc-h">
+  <div class="modal">
+    <h3 id="acc-h">Accept this contract</h3>
+    <p class="msub">Your acceptance is recorded on the contract with your name, date and CNAK — both you and FitZone can verify it anytime.</p>
+    <div class="field"><label for="acc-name">Your full name</label><input id="acc-name" value="Ananya Iyer"></div>
+    <div class="field"><label style="display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:13.5px"><input type="checkbox" id="acc-agree" style="margin-top:2px"> I've read the service blocks, payment schedule and renewal terms, and I agree.</label></div>
+    <p style="font-size:12px;color:var(--ink-faint);margin:0 0 4px">We'll confirm with a one-time code on your WhatsApp before recording.</p>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Not yet</button><button class="btn btn-primary" onclick="acceptContract()">Accept &amp; sign</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-change" role="dialog" aria-modal="true" aria-labelledby="chg-h">
+  <div class="modal">
+    <h3 id="chg-h">Request a change</h3>
+    <p class="msub">Goes straight to FitZone on WhatsApp. The contract stays un-accepted until they send a revised version.</p>
+    <div class="field"><label for="chg-text">What should change?</label><textarea id="chg-text" rows="3" placeholder="e.g. Make it 8 PT sessions a month instead of 12, and adjust the price"></textarea></div>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="closeModals();toast('Change request sent to FitZone', 'good')">Send request</button></div>
+  </div>
+</div>
+
 <!-- ============ CUSTOMER DRAWER ============ -->
 <div class="drawer" id="drawer" role="dialog" aria-modal="false" aria-labelledby="d-name">
   <div class="dhead">
@@ -627,6 +778,12 @@ let PAYMENTS = [
   {date:"25 Jul",name:"Manoj Pillai",mode:"Cash",ref:"—",amt:3000},
   {date:"25 Jul",name:"Nithya Menon",mode:"UPI",ref:"617698002341",amt:1500},
   {date:"22 Jul",name:"Aditya Verma",mode:"UPI",ref:"617644312009",amt:4000},
+];
+let CONTRACTS = [
+  {id:201,title:"Corporate wellness — TechSpire Solutions",buyer:"TechSpire Solutions",status:"active",value:"₹1,80,000 / yr",term:"1 Apr 2026 – 31 Mar 2027",cnak:"CNAK-9KT3WQ",claimed:true,note:"Accepted 28 Mar · claimed by buyer — live in their workspace too"},
+  {id:202,title:"Personal Training · 3 months — Ananya Iyer",buyer:"Ananya Iyer",status:"sent",value:"₹13,500",term:"1 Aug – 31 Oct 2026",cnak:"CNAK-4X7Q2M",note:"Sent yesterday on WhatsApp · not yet accepted"},
+  {id:203,title:"Annual membership + PT — Vikram Rao",buyer:"Vikram Rao",status:"active",value:"₹20,000 / yr",term:"12 Jun 2026 – 11 Jun 2027",cnak:"CNAK-2MRD8F",note:"Accepted 12 Jun by Vikram Rao · renews in 10½ months"},
+  {id:204,title:"Diet program · 6 weeks — draft",buyer:"—",status:"draft",value:"₹6,000",term:"not set",cnak:null,note:"Draft — add a buyer and send to get a CNAK"},
 ];
 let filter="all", activeCust=null, collected=58500, expected=78500;
 
@@ -690,6 +847,44 @@ function renderCustomers(){
     </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:26px">No customers match.</td></tr>';
 }
 function setFilter(f){ filter=f; document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.f===f)); renderCustomers(); }
+function conPill(c){
+  if(c.status==='active') return '<span class="pill pill-paid">Active</span>'+(c.claimed?' <span class="twoway">⇄ Two-way · claimed</span>':'');
+  if(c.status==='sent') return '<span class="pill pill-pend">Awaiting acceptance</span>';
+  return '<span class="pill" style="background:var(--line);color:var(--ink-soft)">Draft</span>';
+}
+function renderContracts(){
+  document.getElementById('concount').textContent=CONTRACTS.length;
+  document.getElementById('condot').style.display=CONTRACTS.some(c=>c.status==='sent')?'':'none';
+  document.getElementById('conlist').innerHTML=CONTRACTS.map(c=>`
+    <div>
+      <div class="rowmain">
+        <div class="nm">${c.title}</div>
+        <div class="mt">${c.term} · <b class="rupee">${c.value}</b>${c.cnak?' · <span class="num" style="color:var(--ink-faint)">'+c.cnak+'</span>':''}</div>
+        <div class="mt" style="margin-top:2px">${c.note}</div>
+      </div>
+      ${conPill(c)}
+      ${c.status==='sent'?'<button class="btn btn-wa btn-sm" onclick="toast(\'WhatsApp opened — contract link + CNAK re-sent to '+c.buyer+'\')">Resend</button>':''}
+      ${c.status==='draft'?'<button class="btn btn-ghost btn-sm" onclick="openModal(\'m-newcontract\')">Finish draft</button>':'<button class="btn btn-ghost btn-sm" onclick="toast(\'Contract document opened — one page with CNAK verification footer\')">View</button>'}
+    </div>`).join('');
+}
+function createContract(){
+  CONTRACTS.unshift({id:Date.now(),title:document.getElementById('nc-title').value||'New contract',buyer:document.getElementById('nc-buyer').value.split(' (')[0],status:'sent',value:'₹13,500',term:'1 Aug – 31 Oct 2026',cnak:'CNAK-7PL2XD',note:'Created just now · share the CNAK to get acceptance'});
+  closeModals(); renderContracts(); openModal('m-cnak');
+}
+function setMemberState(s){
+  document.getElementById('mb-accept').hidden = s!=='accept';
+  document.getElementById('mb-active').hidden = s!=='active';
+  document.getElementById('seg-accept').setAttribute('aria-pressed', s==='accept');
+  document.getElementById('seg-active').setAttribute('aria-pressed', s==='active');
+  document.getElementById('mhello').textContent = s==='accept' ? 'Hi Ananya — FitZone sent you a contract to review' : 'Hi Ananya — your membership at a glance';
+}
+function acceptContract(){
+  if(!document.getElementById('acc-agree').checked){ toast('Tick the box to confirm you agree', 'bad'); return; }
+  const c=CONTRACTS.find(x=>x.cnak==='CNAK-4X7Q2M');
+  if(c){ c.status='active'; c.note='Accepted 28 Jul 2026 by Ananya Iyer · via CNAK sign-off'; }
+  closeModals(); renderContracts(); setMemberState('active');
+  toast('Contract accepted — recorded with your name, date and CNAK. FitZone has been notified.', 'good');
+}
 function renderReminders(){
   const q=CUSTOMERS.filter(c=>c.status!=='paid');
   document.getElementById('remcount').textContent=q.length;
@@ -728,7 +923,7 @@ function refreshStats(){
   document.getElementById('collectpct').textContent=pct+'% collected';
   document.getElementById('collectedBig').innerHTML=inr(collected)+' <span style="font-size:13px;color:var(--ink-faint);font-family:var(--sans);font-weight:600">of '+inr(expected)+'</span>';
 }
-function renderAll(){ renderAttention(); renderCustomers(); renderReminders(); renderConfirms(); renderPayments(); refreshStats(); }
+function renderAll(){ renderAttention(); renderCustomers(); renderContracts(); renderReminders(); renderConfirms(); renderPayments(); refreshStats(); }
 
 /* ============ ACTIONS ============ */
 function remindOne(name){ toast('WhatsApp opened — reminder to '+name+' pre-filled'); }
