@@ -1,0 +1,822 @@
+<title>CollectNest — 7-Day Wedge UX Shell</title>
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --paper:#F4F6F4;
+    --card:#FFFFFF;
+    --ink:#1B2420;
+    --ink-soft:#4C5B54;
+    --ink-faint:#7C8A83;
+    --line:#DDE4DF;
+    --line-strong:#C4CFC8;
+    --accent:#0E6E58;
+    --accent-ink:#FFFFFF;
+    --accent-soft:#E3F0EB;
+    --good:#237A44;
+    --good-soft:#E4F2E8;
+    --warn:#9A6A1B;
+    --warn-soft:#F7EEDA;
+    --bad:#B3403A;
+    --bad-soft:#F9E7E5;
+    --wa:#1FA855;
+    --shadow:0 1px 2px rgba(27,36,32,.06), 0 4px 16px rgba(27,36,32,.07);
+    --shadow-lift:0 2px 6px rgba(27,36,32,.10), 0 12px 32px rgba(27,36,32,.14);
+    --r:10px;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --ink-soft:#A9B6AF; --ink-faint:#77857E;
+      --line:#2A332F; --line-strong:#3A453F;
+      --accent:#3FB894; --accent-ink:#0B1512; --accent-soft:#1B2F29;
+      --good:#5CC07E; --good-soft:#1C2E22; --warn:#D9A44A; --warn-soft:#33290F;
+      --bad:#E07670; --bad-soft:#372019; --wa:#3ED47E;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.3);
+      --shadow-lift:0 2px 6px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --ink-soft:#A9B6AF; --ink-faint:#77857E;
+    --line:#2A332F; --line-strong:#3A453F;
+    --accent:#3FB894; --accent-ink:#0B1512; --accent-soft:#1B2F29;
+    --good:#5CC07E; --good-soft:#1C2E22; --warn:#D9A44A; --warn-soft:#33290F;
+    --bad:#E07670; --bad-soft:#372019; --wa:#3ED47E;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.3);
+    --shadow-lift:0 2px 6px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"]{
+    --paper:#F4F6F4; --card:#FFFFFF; --ink:#1B2420; --ink-soft:#4C5B54; --ink-faint:#7C8A83;
+    --line:#DDE4DF; --line-strong:#C4CFC8;
+    --accent:#0E6E58; --accent-ink:#FFFFFF; --accent-soft:#E3F0EB;
+    --good:#237A44; --good-soft:#E4F2E8; --warn:#9A6A1B; --warn-soft:#F7EEDA;
+    --bad:#B3403A; --bad-soft:#F9E7E5; --wa:#1FA855;
+    --shadow:0 1px 2px rgba(27,36,32,.06), 0 4px 16px rgba(27,36,32,.07);
+    --shadow-lift:0 2px 6px rgba(27,36,32,.10), 0 12px 32px rgba(27,36,32,.14);
+  }
+
+  /* ============ BASE ============ */
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+  input,select,textarea{font:inherit;color:var(--ink)}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ============ TOP BAR ============ */
+  .topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line)}
+  .wordmark{font-family:var(--serif);font-size:20px;letter-spacing:.2px;display:flex;align-items:baseline;gap:8px}
+  .wordmark b{font-weight:700}
+  .wordmark .tag{font-family:var(--sans);font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);font-weight:600}
+  .viewtabs{display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:3px;margin-left:8px}
+  .viewtabs button{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-soft)}
+  .viewtabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+  .topbar .spacer{flex:1}
+  .themebtn{font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+  .themebtn:hover{border-color:var(--line-strong)}
+
+  /* ============ LAYOUT ============ */
+  .view{display:none}
+  .view.active{display:block}
+  .ownerwrap{display:grid;grid-template-columns:216px 1fr;min-height:calc(100vh - 54px)}
+  @media (max-width:860px){.ownerwrap{grid-template-columns:1fr}.sidenav{position:sticky;top:54px;z-index:30;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:8px 12px}}
+  .sidenav{display:flex;flex-direction:column;gap:2px;padding:18px 12px;border-right:1px solid var(--line);background:var(--card)}
+  .sidenav button{display:flex;align-items:center;gap:10px;text-align:left;padding:9px 12px;border-radius:8px;font-size:14px;font-weight:500;color:var(--ink-soft);white-space:nowrap}
+  .sidenav button:hover{background:var(--paper)}
+  .sidenav button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:650}
+  .sidenav .navdot{width:7px;height:7px;border-radius:50%;background:var(--bad);margin-left:auto}
+  .sidenav .navlabel{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-faint);font-weight:700;padding:14px 12px 4px}
+  .main{padding:26px 30px 80px;max-width:980px}
+  @media (max-width:860px){.main{padding:20px 16px 80px}}
+  .screen{display:none}
+  .screen.active{display:block;animation:rise .18s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  h1{font-family:var(--serif);font-size:26px;font-weight:700;margin:0 0 2px;text-wrap:balance}
+  .sub{color:var(--ink-soft);margin:0 0 22px;font-size:14px}
+  h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.11em;color:var(--ink-faint);margin:26px 0 10px}
+
+  /* ============ COMPONENTS ============ */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+  .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:8px;font-size:14px;font-weight:600;border:1px solid transparent}
+  .btn-primary{background:var(--accent);color:var(--accent-ink)}
+  .btn-primary:hover{filter:brightness(1.08)}
+  .btn-ghost{border-color:var(--line-strong);color:var(--ink-soft);background:var(--card)}
+  .btn-ghost:hover{background:var(--paper)}
+  .btn-wa{background:var(--wa);color:#fff}
+  .btn-sm{padding:5px 11px;font-size:12.5px;border-radius:7px}
+  .btn-danger{background:var(--bad-soft);color:var(--bad)}
+  .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+  .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .pill-paid{background:var(--good-soft);color:var(--good)}
+  .pill-due{background:var(--warn-soft);color:var(--warn)}
+  .pill-over{background:var(--bad-soft);color:var(--bad)}
+  .pill-pend{background:var(--accent-soft);color:var(--accent)}
+  .rupee{font-family:var(--serif);font-variant-numeric:tabular-nums}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-faint);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:var(--paper)}
+  .tscroll{overflow-x:auto}
+
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+  .field label{font-size:12.5px;font-weight:650;color:var(--ink-soft)}
+  .field input,.field select,.field textarea{padding:9px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);font-size:14px}
+  .field .hint{font-size:12px;color:var(--ink-faint)}
+  .fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:560px){.fieldrow{grid-template-columns:1fr}}
+
+  /* stat tiles */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .stat{padding:14px 16px}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700}
+  .stat .v{font-family:var(--serif);font-size:24px;font-weight:700;margin-top:2px}
+  .stat .d{font-size:12px;color:var(--ink-soft);margin-top:2px}
+  .stat.tone-good .v{color:var(--good)}
+  .stat.tone-warn .v{color:var(--warn)}
+  .stat.tone-bad .v{color:var(--bad)}
+
+  .progresswrap{padding:16px 18px;margin-bottom:20px}
+  .progressbar{height:10px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0 6px}
+  .progressbar>div{height:100%;border-radius:999px;background:var(--accent);transition:width .4s ease}
+  .progressmeta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft)}
+
+  .rowlist>div{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .rowlist>div:last-child{border-bottom:none}
+  .avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+  .rowmain{flex:1;min-width:0}
+  .rowmain .nm{font-weight:600;font-size:14px}
+  .rowmain .mt{font-size:12.5px;color:var(--ink-soft)}
+  .rowamt{font-family:var(--serif);font-weight:700;font-size:15px;text-align:right}
+
+  .checklist{padding:16px 18px}
+  .checklist h3{margin:0 0 4px;font-size:14.5px}
+  .checklist p{margin:0 0 12px;font-size:12.5px;color:var(--ink-soft)}
+  .checklist ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .checklist li{display:flex;align-items:center;gap:9px;font-size:13.5px}
+  .tick{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px}
+  li.done{color:var(--ink-faint);text-decoration:line-through}
+  li.done .tick{background:var(--good);border-color:var(--good);color:#fff}
+
+  .toolrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .search{flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card)}
+  .chips{display:flex;gap:6px}
+  .chip{padding:5px 12px;border-radius:999px;border:1px solid var(--line-strong);font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+  .chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+  /* modal + drawer */
+  .overlay{position:fixed;inset:0;background:rgba(15,20,18,.45);z-index:60;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+  .overlay.open{display:flex}
+  .modal{background:var(--card);border-radius:14px;box-shadow:var(--shadow-lift);width:100%;max-width:460px;padding:24px;animation:rise .18s ease-out}
+  .modal h3{margin:0 0 2px;font-family:var(--serif);font-size:19px}
+  .modal .msub{margin:0 0 18px;font-size:13px;color:var(--ink-soft)}
+  .modalfoot{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,100%);background:var(--card);border-left:1px solid var(--line);box-shadow:var(--shadow-lift);z-index:70;transform:translateX(102%);transition:transform .22s ease;overflow-y:auto}
+  .drawer.open{transform:none}
+  .drawer .dhead{padding:20px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px}
+  .drawer .dbody{padding:18px 22px 40px}
+  .xbtn{margin-left:auto;color:var(--ink-faint);font-size:20px;line-height:1;padding:2px 6px}
+  .timeline{list-style:none;margin:0;padding:0}
+  .timeline li{display:flex;gap:10px;padding:8px 0;font-size:13.5px;border-bottom:1px dashed var(--line)}
+  .timeline li:last-child{border-bottom:none}
+  .timeline .tdate{color:var(--ink-faint);width:74px;flex-shrink:0}
+  .actionsgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+
+  /* toast */
+  .toasts{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .toast{background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:999px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lift);animation:rise .2s ease-out}
+  .toast.good{background:var(--good);color:#fff}
+  .toast.bad{background:var(--bad);color:#fff}
+
+  /* ============ FIRST-RUN ============ */
+  .firstwrap{max-width:520px;margin:40px auto 80px;padding:0 16px}
+  .stepdots{display:flex;gap:8px;justify-content:center;margin-bottom:22px}
+  .stepdots span{width:34px;height:5px;border-radius:99px;background:var(--line)}
+  .stepdots span.on{background:var(--accent)}
+  .authcard{padding:30px 28px;text-align:center}
+  .authcard .biglogo{font-family:var(--serif);font-size:30px;font-weight:700;margin-bottom:4px}
+  .authcard p{color:var(--ink-soft);font-size:14px;margin:0 0 20px;text-wrap:balance}
+  .obcard{padding:26px 28px}
+  .obcard h3{font-family:var(--serif);font-size:20px;margin:0 0 4px}
+  .obcard>p{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px}
+  .planquick{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .planquick .prow{display:flex;gap:8px}
+  .planquick input{flex:1;padding:8px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card)}
+  .planquick input.amt{max-width:110px}
+  .planquick select{max-width:130px;padding:8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card)}
+  .importbox{border:1.5px dashed var(--line-strong);border-radius:10px;padding:22px;text-align:center;color:var(--ink-soft);font-size:13.5px;margin-bottom:14px}
+
+  /* ============ MEMBER PHONE ============ */
+  .memberstage{display:flex;flex-direction:column;align-items:center;gap:18px;padding:36px 16px 80px}
+  .stagecap{max-width:420px;text-align:center;color:var(--ink-soft);font-size:13.5px;text-wrap:balance}
+  .phone{width:390px;max-width:100%;background:var(--card);border:1px solid var(--line);border-radius:34px;box-shadow:var(--shadow-lift);overflow:hidden}
+  .phone .notch{height:26px;display:flex;justify-content:center;align-items:center}
+  .phone .notch::after{content:"";width:110px;height:8px;border-radius:99px;background:var(--line)}
+  .mhead{padding:14px 22px 18px;background:var(--accent);color:var(--accent-ink)}
+  .mhead .biz{font-family:var(--serif);font-size:19px;font-weight:700}
+  .mhead .hello{font-size:13px;opacity:.85;margin-top:2px}
+  .mbody{padding:18px 20px 26px;display:flex;flex-direction:column;gap:14px}
+  .duecard{border:1px solid var(--line);border-radius:12px;padding:16px 18px;text-align:center}
+  .duecard .dlabel{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700}
+  .duecard .damt{font-family:var(--serif);font-size:34px;font-weight:700;margin:4px 0 2px}
+  .duecard .ddate{font-size:13px;color:var(--ink-soft)}
+  .qrbox{border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+  .qrgrid{width:150px;height:150px;margin:8px auto;image-rendering:pixelated;border:6px solid #fff;background:#fff;box-shadow:0 0 0 1px var(--line)}
+  .qrbox .vpa{font-size:13px;font-weight:650}
+  .qrbox .qhint{font-size:12px;color:var(--ink-faint);margin-top:4px}
+  .mhr{border:none;border-top:1px dashed var(--line);margin:2px 0}
+  .mhist{list-style:none;margin:0;padding:0;font-size:13.5px}
+  .mhist li{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .mhist li:last-child{border-bottom:none}
+  .poweredby{text-align:center;font-size:11.5px;color:var(--ink-faint);padding:12px 0 18px}
+  .poweredby b{color:var(--accent);font-family:var(--serif)}
+  .mbtn{width:100%;justify-content:center}
+
+  /* summary share card */
+  .sharecard{max-width:430px;background:var(--accent);color:var(--accent-ink);border-radius:16px;padding:26px 28px;box-shadow:var(--shadow-lift)}
+  .sharecard .sk{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:700;opacity:.8}
+  .sharecard .biggest{font-family:var(--serif);font-size:44px;font-weight:700;line-height:1.1;margin:6px 0 2px}
+  .sharecard .srow{display:flex;gap:22px;margin-top:16px}
+  .sharecard .srow .v{font-family:var(--serif);font-size:21px;font-weight:700}
+  .sharecard .srow .k{font-size:11.5px;opacity:.8}
+  .sharecard .sfoot{margin-top:18px;padding-top:12px;border-top:1px solid rgba(255,255,255,.25);font-size:12px;opacity:.85;font-family:var(--serif)}
+
+  .wanote{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--ink-soft);margin-bottom:16px}
+  .settingsec{padding:18px 20px;margin-bottom:16px}
+  .settingsec h3{margin:0 0 12px;font-size:15px}
+  .tmpl{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:8px;white-space:pre-wrap}
+</style>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="wordmark"><b>Collect<span style="color:var(--accent)">Nest</span></b><span class="tag">7-day wedge · UX shell</span></div>
+  <nav class="viewtabs" aria-label="Prototype views">
+    <button id="tab-first" aria-selected="false" onclick="setView('first')">First-run</button>
+    <button id="tab-owner" aria-selected="true" onclick="setView('owner')">Owner app</button>
+    <button id="tab-member" aria-selected="false" onclick="setView('member')">Member link</button>
+  </nav>
+  <div class="spacer"></div>
+  <button class="themebtn" onclick="toggleTheme()">Theme</button>
+</header>
+
+<!-- ============ VIEW: FIRST-RUN ============ -->
+<div class="view" id="view-first">
+  <div class="firstwrap">
+    <div class="stepdots" id="stepdots"><span class="on"></span><span></span><span></span><span></span></div>
+
+    <div class="card authcard" id="ob-0">
+      <div class="biglogo">Collect<span style="color:var(--accent)">Nest</span></div>
+      <p>Put your customers on a payment schedule. We generate every due date, send the reminders, and give each customer a link to pay and check their status.</p>
+      <div class="field" style="text-align:left"><label for="loginphone">Your WhatsApp number</label><input id="loginphone" type="tel" placeholder="98495 00000" value="98860 41230"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="obGo(1)">Send magic link on WhatsApp</button>
+      <p style="font-size:12px;margin-top:12px;color:var(--ink-faint)">No password. Tap the link we send you and you're in.</p>
+    </div>
+
+    <div class="card obcard" id="ob-1" hidden>
+      <h3>Your business</h3>
+      <p>Two fields now, everything else later. This is what your customers will see on their payment page.</p>
+      <div class="field"><label for="bizname">Business name</label><input id="bizname" value="FitZone Gym, Kondapur"></div>
+      <div class="field"><label for="bizvpa">UPI ID for receiving payments</label><input id="bizvpa" value="fitzonegym@okaxis"><span class="hint">Your existing GPay / PhonePe / bank UPI ID. We show your QR — money goes straight to you, never through us.</span></div>
+      <div class="modalfoot"><button class="btn btn-ghost" onclick="obGo(0)">Back</button><button class="btn btn-primary" onclick="obGo(2)">Continue</button></div>
+    </div>
+
+    <div class="card obcard" id="ob-2" hidden>
+      <h3>Your plans</h3>
+      <p>Just a name, an amount and how often it's due. You can edit these anytime in Settings.</p>
+      <div class="planquick">
+        <div class="prow"><input value="Monthly membership"><input class="amt num" value="₹1,500"><select><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option><option>One-time</option></select></div>
+        <div class="prow"><input value="Quarterly membership"><input class="amt num" value="₹4,000"><select><option>Quarterly</option><option>Monthly</option><option>Half-yearly</option><option>Annual</option><option>One-time</option></select></div>
+        <div class="prow"><input value="Personal training add-on"><input class="amt num" value="₹3,000"><select><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option><option>One-time</option></select></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="toast('Plan row added')">+ Add another plan</button>
+      <div class="modalfoot"><button class="btn btn-ghost" onclick="obGo(1)">Back</button><button class="btn btn-primary" onclick="obGo(3)">Continue</button></div>
+    </div>
+
+    <div class="card obcard" id="ob-3" hidden>
+      <h3>Bring in your customers</h3>
+      <p>Paste from Excel, upload a file, or add them one by one. Name + phone + plan is all we need — we compute every due date from the start date.</p>
+      <div class="importbox">Drop an Excel / CSV here, or paste rows copied from your sheet<br><button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="toast('Import parsed: 42 customers found', 'good')">Choose file</button></div>
+      <div class="field"><span class="hint">Prefer we do it for you? Send us your list on WhatsApp and we'll set everything up — free in your first month.</span></div>
+      <div class="modalfoot"><button class="btn btn-ghost" onclick="obGo(2)">Back</button><button class="btn btn-primary" onclick="finishOnboarding()">Finish — take me to my due list</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ VIEW: OWNER ============ -->
+<div class="view active" id="view-owner">
+  <div class="ownerwrap">
+    <nav class="sidenav" aria-label="Owner navigation">
+      <button data-s="dash" aria-current="true" onclick="setScreen('dash')">Due list</button>
+      <button data-s="customers" onclick="setScreen('customers')">Customers</button>
+      <button data-s="reminders" onclick="setScreen('reminders')">Reminders <span class="navdot" id="remdot"></span></button>
+      <button data-s="payments" onclick="setScreen('payments')">Payments <span class="navdot" id="paydot"></span></button>
+      <button data-s="summary" onclick="setScreen('summary')">Month summary</button>
+      <span class="navlabel">Setup</span>
+      <button data-s="settings" onclick="setScreen('settings')">Settings</button>
+    </nav>
+
+    <main class="main">
+      <!-- ===== DASHBOARD ===== -->
+      <section class="screen active" id="s-dash">
+        <h1>July at FitZone Gym</h1>
+        <p class="sub">Tuesday 28 July · 3 days left in the month</p>
+
+        <div class="card progresswrap">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-faint)">Collected this month</span>
+            <span class="rupee" style="font-size:22px;font-weight:700" id="collectedBig">₹58,500 <span style="font-size:13px;color:var(--ink-faint);font-family:var(--sans);font-weight:600">of ₹78,500</span></span>
+          </div>
+          <div class="progressbar"><div id="collectbar" style="width:74%"></div></div>
+          <div class="progressmeta"><span id="collectpct">74% collected</span><span>₹20,000 still out</span></div>
+        </div>
+
+        <div class="stats">
+          <div class="card stat tone-good"><div class="k">Paid</div><div class="v num" id="stat-paid">39</div><div class="d">customers</div></div>
+          <div class="card stat tone-warn"><div class="k">Due this week</div><div class="v num" id="stat-due">7</div><div class="d">₹11,500 expected</div></div>
+          <div class="card stat tone-bad"><div class="k">Overdue</div><div class="v num" id="stat-over">5</div><div class="d">₹8,500 outstanding</div></div>
+          <div class="card stat"><div class="k">To confirm</div><div class="v num" id="stat-conf">2</div><div class="d">member-reported payments</div></div>
+        </div>
+
+        <h2>Needs your attention</h2>
+        <div class="card rowlist" id="attnlist"></div>
+
+        <h2>Getting set up</h2>
+        <div class="card checklist">
+          <h3>You're 4 of 5 steps in</h3>
+          <p>Finish the last step and your collections run themselves.</p>
+          <ul>
+            <li class="done"><span class="tick">✓</span>Add your business &amp; UPI ID</li>
+            <li class="done"><span class="tick">✓</span>Create your plans</li>
+            <li class="done"><span class="tick">✓</span>Add at least 5 customers <span style="color:var(--ink-faint)">(51 added)</span></li>
+            <li class="done"><span class="tick">✓</span>Send your first reminder</li>
+            <li><span class="tick"></span>Share your first month-end summary <button class="btn btn-ghost btn-sm" style="margin-left:6px" onclick="setScreen('summary')">Go</button></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== CUSTOMERS ===== -->
+      <section class="screen" id="s-customers">
+        <h1>Customers</h1>
+        <p class="sub">Everyone on a plan, with their next due date. Tap a row for details.</p>
+        <div class="toolrow">
+          <input class="search" id="custsearch" placeholder="Search name or phone…" oninput="renderCustomers()">
+          <div class="chips" role="group" aria-label="Filter by status">
+            <button class="chip" aria-pressed="true" data-f="all" onclick="setFilter('all')">All</button>
+            <button class="chip" aria-pressed="false" data-f="paid" onclick="setFilter('paid')">Paid</button>
+            <button class="chip" aria-pressed="false" data-f="due" onclick="setFilter('due')">Due</button>
+            <button class="chip" aria-pressed="false" data-f="over" onclick="setFilter('over')">Overdue</button>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('m-addcust')">+ Add customer</button>
+        </div>
+        <div class="card tscroll">
+          <table>
+            <thead><tr><th>Customer</th><th>Plan</th><th>Next due</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead>
+            <tbody id="custrows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== REMINDERS ===== -->
+      <section class="screen" id="s-reminders">
+        <h1>Reminders</h1>
+        <p class="sub">One tap per customer — WhatsApp opens with the message and their payment link pre-filled. You press send.</p>
+        <div class="wanote"><span style="font-size:18px">💬</span><span><b>Why tap-to-send?</b> Messages go from <i>your</i> WhatsApp number, so members recognise the sender and reply to you — and nothing lands in spam. Fully automatic sending arrives with WhatsApp Business API.</span></div>
+        <div class="toolrow">
+          <span style="font-size:13.5px;color:var(--ink-soft)"><b id="remcount">9</b> reminders queued today</span>
+          <div class="spacer" style="flex:1"></div>
+          <button class="btn btn-wa" onclick="sendAllReminders()">Send all, one by one</button>
+        </div>
+        <div class="card rowlist" id="remlist"></div>
+      </section>
+
+      <!-- ===== PAYMENTS ===== -->
+      <section class="screen" id="s-payments">
+        <h1>Payments</h1>
+        <p class="sub">Confirm what members report, record what you receive by hand, and see everything that came in.</p>
+
+        <h2>Waiting for your confirmation</h2>
+        <div class="card rowlist" id="conflist"></div>
+
+        <h2>Received this month</h2>
+        <div class="card tscroll">
+          <table>
+            <thead><tr><th>Date</th><th>Customer</th><th>Mode</th><th>UPI ref</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody id="payrows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== SUMMARY ===== -->
+      <section class="screen" id="s-summary">
+        <h1>Month summary</h1>
+        <p class="sub">Your month, one card. Share it to your owners' group — this is how FitZone brags.</p>
+        <div class="sharecard">
+          <div class="sk">FitZone Gym · July 2026</div>
+          <div class="biggest rupee">₹58,500</div>
+          <div style="font-size:13.5px;opacity:.9">collected from 39 of 51 members</div>
+          <div class="srow">
+            <div><div class="v num">92%</div><div class="k">on time</div></div>
+            <div><div class="v num">4.2 days</div><div class="k">faster than June</div></div>
+            <div><div class="v num">₹8,500</div><div class="k">recovered from overdue</div></div>
+          </div>
+          <div class="sfoot">Collected with CollectNest · collectnest.in</div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" onclick="toast('Summary image saved — ready to share', 'good')">Download as image</button>
+          <button class="btn btn-wa" onclick="toast('WhatsApp opened with your summary card')">Share on WhatsApp</button>
+        </div>
+      </section>
+
+      <!-- ===== SETTINGS ===== -->
+      <section class="screen" id="s-settings">
+        <h1>Settings</h1>
+        <p class="sub">Everything you set in onboarding lives here.</p>
+
+        <div class="card settingsec">
+          <h3>Business</h3>
+          <div class="fieldrow">
+            <div class="field"><label for="set-name">Business name</label><input id="set-name" value="FitZone Gym, Kondapur"></div>
+            <div class="field"><label for="set-phone">Owner WhatsApp</label><input id="set-phone" value="98860 41230"></div>
+          </div>
+          <div class="field"><label for="set-vpa">UPI ID</label><input id="set-vpa" value="fitzonegym@okaxis"><span class="hint">Shown as a QR on every member's payment page. Test it after any change.</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="toast('Saved', 'good')">Save changes</button>
+        </div>
+
+        <div class="card settingsec">
+          <h3>Plans</h3>
+          <div class="planquick">
+            <div class="prow"><input value="Monthly membership"><input class="amt num" value="₹1,500"><select><option>Monthly</option></select></div>
+            <div class="prow"><input value="Quarterly membership"><input class="amt num" value="₹4,000"><select><option>Quarterly</option></select></div>
+            <div class="prow"><input value="Personal training add-on"><input class="amt num" value="₹3,000"><select><option>Monthly</option></select></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="toast('Plan row added')">+ Add plan</button>
+        </div>
+
+        <div class="card settingsec">
+          <h3>Reminder messages</h3>
+          <p style="font-size:13px;color:var(--ink-soft);margin:0 0 10px">Sent with each customer's name, amount and link filled in. Keep it in your own voice.</p>
+          <div class="tmpl"><b>3 days before due</b>
+Hi {name}! Your {plan} at FitZone ({amount}) is due on {date}. Pay &amp; check your status anytime: {link}</div>
+          <div class="tmpl"><b>On due date</b>
+Hi {name}, gentle reminder — {amount} is due today for your {plan}. Pay here: {link}</div>
+          <div class="tmpl"><b>Overdue</b>
+Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it when you can: {link}</div>
+          <button class="btn btn-ghost btn-sm" onclick="toast('Templates saved', 'good')">Edit templates</button>
+        </div>
+
+        <div class="card settingsec">
+          <h3>Plan &amp; billing</h3>
+          <p style="font-size:13.5px;margin:0 0 6px">Founding member — <b>free until 31 August</b>, then ₹999/month. Cancel anytime.</p>
+          <p style="font-size:12.5px;color:var(--ink-faint);margin:0">Free forever under 20 customers.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- ============ VIEW: MEMBER ============ -->
+<div class="view" id="view-member">
+  <div class="memberstage">
+    <p class="stagecap">What a member sees when they open their link from a reminder — no app, no login, no password. This page is the product's public face and its growth loop.</p>
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="mhead">
+        <div class="biz">FitZone Gym</div>
+        <div class="hello">Hi Ananya — your membership at a glance</div>
+      </div>
+      <div class="mbody">
+        <div class="duecard" id="mduecard">
+          <div class="dlabel">Due now</div>
+          <div class="damt rupee" style="color:var(--bad)">₹1,500</div>
+          <div class="ddate">Monthly membership · was due Fri, 25 July</div>
+          <div style="margin-top:8px"><span class="pill pill-over">Overdue by 3 days</span></div>
+        </div>
+        <div class="qrbox">
+          <div class="vpa">Pay FitZone Gym · <span class="num">fitzonegym@okaxis</span></div>
+          <canvas class="qrgrid" id="qrcanvas" width="29" height="29" aria-label="UPI QR code (illustrative)"></canvas>
+          <div class="qhint">Open GPay / PhonePe / Paytm → scan this QR → pay ₹1,500</div>
+        </div>
+        <button class="btn btn-primary mbtn" onclick="openModal('m-selfreport')">I've paid — enter UPI reference</button>
+        <div id="mreported" hidden style="text-align:center"><span class="pill pill-pend">Reported · waiting for gym to confirm</span></div>
+        <hr class="mhr">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);font-weight:700;margin-bottom:6px">Payment history</div>
+          <ul class="mhist">
+            <li><span>25 Jun 2026 · Monthly membership</span><b class="rupee">₹1,500</b></li>
+            <li><span>25 May 2026 · Monthly membership</span><b class="rupee">₹1,500</b></li>
+            <li><span>25 Apr 2026 · Monthly membership</span><b class="rupee">₹1,500</b></li>
+            <li><span>25 Mar 2026 · Joining + first month</span><b class="rupee">₹2,000</b></li>
+          </ul>
+        </div>
+        <div style="font-size:12px;color:var(--ink-faint);text-align:center">Questions about your plan? <a href="#" style="color:var(--accent);font-weight:600" onclick="toast('WhatsApp opened to FitZone Gym');return false">Message FitZone on WhatsApp</a></div>
+      </div>
+      <div class="poweredby">Powered by <b>CollectNest</b> — put your own customers on autopilot → <a href="#" style="color:var(--accent)" onclick="toast('CollectNest landing page — the growth loop in action');return false">collectnest.in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODALS ============ -->
+<div class="overlay" id="m-addcust" role="dialog" aria-modal="true" aria-labelledby="addcust-h">
+  <div class="modal">
+    <h3 id="addcust-h">Add a customer</h3>
+    <p class="msub">Five fields. Their entire schedule is generated from the start date — calendar-aligned, always the same day each month.</p>
+    <div class="fieldrow">
+      <div class="field"><label for="ac-name">Full name</label><input id="ac-name" placeholder="Priya Sharma"></div>
+      <div class="field"><label for="ac-phone">WhatsApp number</label><input id="ac-phone" placeholder="99887 76655"></div>
+    </div>
+    <div class="field"><label for="ac-plan">Plan</label>
+      <select id="ac-plan">
+        <option>Monthly membership · ₹1,500</option>
+        <option>Quarterly membership · ₹4,000</option>
+        <option>Personal training add-on · ₹3,000</option>
+      </select>
+    </div>
+    <div class="fieldrow">
+      <div class="field"><label for="ac-start">Start date</label><input id="ac-start" type="date" value="2026-07-28"></div>
+      <div class="field"><label for="ac-amt">Amount (override)</label><input id="ac-amt" class="num" placeholder="₹1,500"></div>
+    </div>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="addCustomer()">Add &amp; create schedule</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-recpay" role="dialog" aria-modal="true" aria-labelledby="recpay-h">
+  <div class="modal">
+    <h3 id="recpay-h">Record a payment</h3>
+    <p class="msub" id="recpay-sub">Money you received directly — cash, UPI to your phone, bank transfer.</p>
+    <div class="fieldrow">
+      <div class="field"><label for="rp-amt">Amount received</label><input id="rp-amt" class="num" value="₹1,500"></div>
+      <div class="field"><label for="rp-date">Date</label><input id="rp-date" type="date" value="2026-07-28"></div>
+    </div>
+    <div class="fieldrow">
+      <div class="field"><label for="rp-mode">Mode</label><select id="rp-mode"><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Card</option></select></div>
+      <div class="field"><label for="rp-ref">UPI ref (optional)</label><input id="rp-ref" placeholder="617728834412"></div>
+    </div>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="recordPayment()">Record payment</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="m-selfreport" role="dialog" aria-modal="true" aria-labelledby="sr-h">
+  <div class="modal">
+    <h3 id="sr-h">Tell FitZone you've paid</h3>
+    <p class="msub">Enter the UPI reference number from your payment app. The gym confirms it and your status turns green.</p>
+    <div class="field"><label for="sr-ref">UPI reference number</label><input id="sr-ref" placeholder="e.g. 617728834412"><span class="hint">GPay → tap the payment → "UPI transaction ID"</span></div>
+    <div class="modalfoot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="selfReport()">Submit</button></div>
+  </div>
+</div>
+
+<!-- ============ CUSTOMER DRAWER ============ -->
+<div class="drawer" id="drawer" role="dialog" aria-modal="false" aria-labelledby="d-name">
+  <div class="dhead">
+    <div class="avatar" id="d-avatar">RS</div>
+    <div>
+      <div style="font-weight:700;font-size:16px" id="d-name">Rohit Sharma</div>
+      <div style="font-size:12.5px;color:var(--ink-soft)" id="d-meta">98492 11223 · Monthly membership · since Mar 2026</div>
+      <div style="margin-top:6px" id="d-pill"><span class="pill pill-over">Overdue</span></div>
+    </div>
+    <button class="xbtn" onclick="closeDrawer()" aria-label="Close">×</button>
+  </div>
+  <div class="dbody">
+    <div class="duecard" style="text-align:left;display:flex;justify-content:space-between;align-items:center">
+      <div><div class="dlabel">Next due</div><div style="font-size:14px;font-weight:600" id="d-duedate">25 Jul 2026 · overdue 3 days</div></div>
+      <div class="damt rupee" style="font-size:24px;margin:0" id="d-dueamt">₹1,500</div>
+    </div>
+    <div class="actionsgrid">
+      <button class="btn btn-primary" onclick="openRecordFor()">Record payment</button>
+      <button class="btn btn-wa" onclick="toast('WhatsApp opened with reminder + payment link')">Send reminder</button>
+      <button class="btn btn-ghost" onclick="toast('Payment link copied', 'good')">Copy pay link</button>
+      <button class="btn btn-ghost" onclick="toast('Plan paused — no reminders until resumed')">Pause plan</button>
+    </div>
+    <h2 style="margin-top:18px">Schedule &amp; history</h2>
+    <ul class="timeline" id="d-timeline"></ul>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ============ STATE ============ */
+const CUSTOMERS = [
+  {id:1,name:"Ananya Iyer",phone:"99887 12001",plan:"Monthly membership",amt:1500,due:"25 Jul",status:"over",since:"Mar 2026",overdays:3},
+  {id:2,name:"Rohit Sharma",phone:"98492 11223",plan:"Monthly membership",amt:1500,due:"25 Jul",status:"over",since:"Mar 2026",overdays:3},
+  {id:3,name:"Meena Reddy",phone:"90001 22334",plan:"Quarterly membership",amt:4000,due:"22 Jul",status:"over",since:"Jan 2026",overdays:6},
+  {id:4,name:"Vikram Rao",phone:"98860 33445",plan:"Monthly membership",amt:1500,due:"20 Jul",status:"over",since:"Feb 2026",overdays:8},
+  {id:5,name:"Sana Khan",phone:"97012 44556",plan:"Monthly membership",amt:1500,due:"18 Jul",status:"over",since:"May 2026",overdays:10},
+  {id:6,name:"Arjun Nair",phone:"96543 55667",plan:"Monthly membership",amt:1500,due:"30 Jul",status:"due",since:"Apr 2026"},
+  {id:7,name:"Divya Prasad",phone:"95432 66778",plan:"PT add-on",amt:3000,due:"30 Jul",status:"due",since:"Jun 2026"},
+  {id:8,name:"Kiran Kumar",phone:"94321 77889",plan:"Monthly membership",amt:1500,due:"1 Aug",status:"due",since:"Jan 2026"},
+  {id:9,name:"Lakshmi Devi",phone:"93210 88990",plan:"Quarterly membership",amt:4000,due:"1 Aug",status:"due",since:"Feb 2026"},
+  {id:10,name:"Farhan Ali",phone:"92109 99001",plan:"Monthly membership",amt:1500,due:"1 Aug",status:"due",since:"Jul 2026"},
+  {id:11,name:"Pooja Hegde",phone:"91098 10112",plan:"Monthly membership",amt:1500,due:"2 Aug",status:"due",since:"Mar 2026"},
+  {id:12,name:"Suresh Babu",phone:"90987 21223",plan:"Monthly membership",amt:1500,due:"3 Aug",status:"due",since:"Jun 2026"},
+  {id:13,name:"Nithya Menon",phone:"90876 32334",plan:"Monthly membership",amt:1500,due:"25 Jul",status:"paid",since:"Jan 2026"},
+  {id:14,name:"Aditya Verma",phone:"90765 43445",plan:"Quarterly membership",amt:4000,due:"25 Jul",status:"paid",since:"Apr 2026"},
+  {id:15,name:"Rekha Joshi",phone:"90654 54556",plan:"Monthly membership",amt:1500,due:"20 Jul",status:"paid",since:"Feb 2026"},
+  {id:16,name:"Manoj Pillai",phone:"90543 65667",plan:"PT add-on",amt:3000,due:"15 Jul",status:"paid",since:"May 2026"},
+];
+let CONFIRMS = [
+  {id:101,name:"Nithya Menon",amt:1500,ref:"617728834412",when:"Today, 9:14 am"},
+  {id:102,name:"Aditya Verma",amt:4000,ref:"617719220871",when:"Yesterday, 6:40 pm"},
+];
+let PAYMENTS = [
+  {date:"27 Jul",name:"Rekha Joshi",mode:"UPI",ref:"617702118834",amt:1500},
+  {date:"25 Jul",name:"Manoj Pillai",mode:"Cash",ref:"—",amt:3000},
+  {date:"25 Jul",name:"Nithya Menon",mode:"UPI",ref:"617698002341",amt:1500},
+  {date:"22 Jul",name:"Aditya Verma",mode:"UPI",ref:"617644312009",amt:4000},
+];
+let filter="all", activeCust=null, collected=58500, expected=78500;
+
+/* ============ VIEWS & SCREENS ============ */
+function setView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  ['first','owner','member'].forEach(t=>document.getElementById('tab-'+t).setAttribute('aria-selected', t===v));
+  window.scrollTo(0,0);
+}
+function setScreen(s){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById('s-'+s).classList.add('active');
+  document.querySelectorAll('.sidenav [data-s]').forEach(b=>b.setAttribute('aria-current', b.dataset.s===s));
+  closeDrawer(); window.scrollTo(0,0);
+}
+function toggleTheme(){
+  const r=document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+}
+
+/* ============ FIRST-RUN ============ */
+function obGo(n){
+  [0,1,2,3].forEach(i=>document.getElementById('ob-'+i).hidden = i!==n);
+  document.querySelectorAll('#stepdots span').forEach((d,i)=>d.classList.toggle('on', i<=n));
+  if(n===1) toast('Magic link tapped — you are in', 'good');
+}
+function finishOnboarding(){ setView('owner'); setScreen('dash'); toast('51 customers imported, schedules created', 'good'); }
+
+/* ============ RENDER ============ */
+function initials(n){ return n.split(' ').map(w=>w[0]).slice(0,2).join(''); }
+function inr(n){ return '₹'+n.toLocaleString('en-IN'); }
+function pillFor(s,od){
+  if(s==='paid') return '<span class="pill pill-paid">Paid</span>';
+  if(s==='over') return '<span class="pill pill-over">Overdue'+(od?' '+od+'d':'')+'</span>';
+  return '<span class="pill pill-due">Due</span>';
+}
+function renderAttention(){
+  const over = CUSTOMERS.filter(c=>c.status==='over');
+  const el = document.getElementById('attnlist');
+  el.innerHTML = over.length ? over.map(c=>`
+    <div>
+      <div class="avatar">${initials(c.name)}</div>
+      <div class="rowmain"><div class="nm">${c.name}</div><div class="mt">${c.plan} · was due ${c.due} · ${c.overdays} days ago</div></div>
+      <div class="rowamt rupee">${inr(c.amt)}</div>
+      <button class="btn btn-wa btn-sm" onclick="event.stopPropagation();remindOne('${c.name}')">Remind</button>
+      <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDrawer(${c.id})">Open</button>
+    </div>`).join('')
+    : '<div style="justify-content:center;color:var(--ink-faint);padding:22px">Nothing overdue. Enjoy it.</div>';
+}
+function renderCustomers(){
+  const q=(document.getElementById('custsearch').value||'').toLowerCase();
+  const rows=CUSTOMERS.filter(c=>(filter==='all'||c.status===filter)&&(c.name.toLowerCase().includes(q)||c.phone.includes(q)));
+  document.getElementById('custrows').innerHTML = rows.map(c=>`
+    <tr onclick="openDrawer(${c.id})" tabindex="0" onkeydown="if(event.key==='Enter')openDrawer(${c.id})">
+      <td><b>${c.name}</b><div style="font-size:12px;color:var(--ink-faint)" class="num">${c.phone}</div></td>
+      <td>${c.plan}</td><td class="num">${c.due}</td>
+      <td class="num rupee" style="text-align:right;font-weight:600">${inr(c.amt)}</td>
+      <td>${pillFor(c.status,c.overdays)}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:26px">No customers match.</td></tr>';
+}
+function setFilter(f){ filter=f; document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed', c.dataset.f===f)); renderCustomers(); }
+function renderReminders(){
+  const q=CUSTOMERS.filter(c=>c.status!=='paid');
+  document.getElementById('remcount').textContent=q.length;
+  document.getElementById('remdot').style.display=q.some(c=>c.status==='over')?'':'none';
+  document.getElementById('remlist').innerHTML=q.map(c=>`
+    <div>
+      <div class="avatar">${initials(c.name)}</div>
+      <div class="rowmain"><div class="nm">${c.name}</div><div class="mt">${c.status==='over'?'Overdue message':'Due-date message'} · ${c.plan} · ${inr(c.amt)}</div></div>
+      ${pillFor(c.status,c.overdays)}
+      <button class="btn btn-wa btn-sm" onclick="remindOne('${c.name}')">Send on WhatsApp</button>
+    </div>`).join('');
+}
+function renderConfirms(){
+  const el=document.getElementById('conflist');
+  document.getElementById('stat-conf').textContent=CONFIRMS.length;
+  document.getElementById('paydot').style.display=CONFIRMS.length?'':'none';
+  el.innerHTML=CONFIRMS.length?CONFIRMS.map(p=>`
+    <div>
+      <div class="avatar">${initials(p.name)}</div>
+      <div class="rowmain"><div class="nm">${p.name} says they paid ${inr(p.amt)}</div><div class="mt num">UPI ref ${p.ref} · reported ${p.when}</div></div>
+      <button class="btn btn-primary btn-sm" onclick="confirmPay(${p.id},true)">Confirm</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmPay(${p.id},false)">Not received</button>
+    </div>`).join('')
+    :'<div style="justify-content:center;color:var(--ink-faint);padding:22px">Nothing waiting — all reported payments are confirmed.</div>';
+}
+function renderPayments(){
+  document.getElementById('payrows').innerHTML=PAYMENTS.map(p=>`
+    <tr style="cursor:default"><td class="num">${p.date}</td><td><b>${p.name}</b></td><td>${p.mode}</td><td class="num" style="color:var(--ink-faint)">${p.ref}</td><td class="num rupee" style="text-align:right;font-weight:600">${inr(p.amt)}</td></tr>`).join('');
+}
+function refreshStats(){
+  document.getElementById('stat-paid').textContent=CUSTOMERS.filter(c=>c.status==='paid').length + 23; /* +23 imported not shown in demo list */
+  document.getElementById('stat-due').textContent=CUSTOMERS.filter(c=>c.status==='due').length;
+  document.getElementById('stat-over').textContent=CUSTOMERS.filter(c=>c.status==='over').length;
+  const pct=Math.round(collected/expected*100);
+  document.getElementById('collectbar').style.width=pct+'%';
+  document.getElementById('collectpct').textContent=pct+'% collected';
+  document.getElementById('collectedBig').innerHTML=inr(collected)+' <span style="font-size:13px;color:var(--ink-faint);font-family:var(--sans);font-weight:600">of '+inr(expected)+'</span>';
+}
+function renderAll(){ renderAttention(); renderCustomers(); renderReminders(); renderConfirms(); renderPayments(); refreshStats(); }
+
+/* ============ ACTIONS ============ */
+function remindOne(name){ toast('WhatsApp opened — reminder to '+name+' pre-filled'); }
+function sendAllReminders(){ toast('Opening WhatsApp for each customer, one after another'); }
+function confirmPay(id, ok){
+  const p=CONFIRMS.find(x=>x.id===id); CONFIRMS=CONFIRMS.filter(x=>x.id!==id);
+  if(ok){
+    PAYMENTS.unshift({date:"28 Jul",name:p.name,mode:"UPI",ref:p.ref,amt:p.amt});
+    collected+=0; /* already counted in demo month figures */
+    toast('Confirmed — '+p.name+' marked paid, receipt sent on WhatsApp', 'good');
+  } else {
+    toast('Marked not received — '+p.name+' will see "payment not found, please re-check"', 'bad');
+  }
+  renderAll();
+}
+function addCustomer(){
+  const name=document.getElementById('ac-name').value.trim()||'New Customer';
+  const phone=document.getElementById('ac-phone').value.trim()||'99999 00000';
+  const plansel=document.getElementById('ac-plan').value;
+  const plan=plansel.split(' · ')[0];
+  const amt=parseInt((document.getElementById('ac-amt').value||plansel.split('₹')[1]||'1500').replace(/[^0-9]/g,''))||1500;
+  CUSTOMERS.unshift({id:Date.now(),name,phone,plan,amt,due:"28 Aug",status:"due",since:"Jul 2026"});
+  expected+=amt;
+  closeModals(); renderAll(); setScreen('customers');
+  toast(name+' added — 12 due dates created, next: 28 Aug', 'good');
+}
+function recordPayment(){
+  const amt=parseInt((document.getElementById('rp-amt').value||'1500').replace(/[^0-9]/g,''))||1500;
+  const who=activeCust?activeCust.name:'Customer';
+  PAYMENTS.unshift({date:"28 Jul",name:who,mode:document.getElementById('rp-mode').value,ref:document.getElementById('rp-ref').value||'—',amt});
+  if(activeCust){ activeCust.status='paid'; }
+  collected+=amt;
+  closeModals(); closeDrawer(); renderAll();
+  toast('Payment recorded — '+who+' is paid up. Receipt sent on WhatsApp.', 'good');
+}
+function selfReport(){
+  const ref=document.getElementById('sr-ref').value.trim();
+  if(!ref){ toast('Enter the UPI reference from your payment app', 'bad'); return; }
+  CONFIRMS.unshift({id:Date.now(),name:"Ananya Iyer",amt:1500,ref,when:"Just now"});
+  document.getElementById('mreported').hidden=false;
+  closeModals(); renderConfirms();
+  toast('Reported to FitZone — they\'ll confirm shortly', 'good');
+}
+
+/* ============ DRAWER ============ */
+function openDrawer(id){
+  const c=CUSTOMERS.find(x=>x.id===id); if(!c) return; activeCust=c;
+  document.getElementById('d-avatar').textContent=initials(c.name);
+  document.getElementById('d-name').textContent=c.name;
+  document.getElementById('d-meta').textContent=c.phone+' · '+c.plan+' · since '+c.since;
+  document.getElementById('d-pill').innerHTML=pillFor(c.status,c.overdays);
+  document.getElementById('d-duedate').textContent=c.due+' 2026'+(c.status==='over'?' · overdue '+c.overdays+' days':'');
+  document.getElementById('d-dueamt').textContent=inr(c.amt);
+  document.getElementById('d-timeline').innerHTML=`
+    <li><span class="tdate num">${c.due}</span><span>${c.plan} — ${inr(c.amt)} ${c.status==='paid'?'<b style="color:var(--good)">· paid</b>':(c.status==='over'?'<b style="color:var(--bad)">· overdue</b>':'· due')}</span></li>
+    <li><span class="tdate num">25 Jun</span><span>Paid ${inr(c.amt)} · UPI · reminder sent 22 Jun</span></li>
+    <li><span class="tdate num">25 May</span><span>Paid ${inr(c.amt)} · Cash at counter</span></li>
+    <li><span class="tdate num">25 Apr</span><span>Paid ${inr(c.amt)} · UPI · confirmed from member report</span></li>
+    <li><span class="tdate num">${c.since}</span><span>Joined · plan started, schedule created</span></li>`;
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); }
+function openRecordFor(){
+  document.getElementById('recpay-sub').textContent = activeCust ? ('Recording for '+activeCust.name+' · '+activeCust.plan) : 'Money you received directly.';
+  document.getElementById('rp-amt').value = activeCust?inr(activeCust.amt):'₹1,500';
+  openModal('m-recpay');
+}
+
+/* ============ MODALS & TOASTS ============ */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModals(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open')); }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) closeModals(); }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeModals(); closeDrawer(); }});
+function toast(msg, tone){
+  const t=document.createElement('div'); t.className='toast'+(tone?' '+tone:''); t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+/* ============ FAKE QR ============ */
+(function(){
+  const cv=document.getElementById('qrcanvas'), ctx=cv.getContext('2d');
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,29,29); ctx.fillStyle='#111';
+  let seed=42; const rnd=()=>{ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+  for(let y=0;y<29;y++)for(let x=0;x<29;x++){ if(rnd()>.52) ctx.fillRect(x,y,1,1); }
+  function finder(x,y){ ctx.fillStyle='#111'; ctx.fillRect(x,y,7,7); ctx.fillStyle='#fff'; ctx.fillRect(x+1,y+1,5,5); ctx.fillStyle='#111'; ctx.fillRect(x+2,y+2,3,3); }
+  finder(0,0); finder(22,0); finder(0,22);
+})();
+
+renderAll();
+</script>
