@@ -426,11 +426,11 @@
       <section class="screen" id="s-reminders">
         <h1>Reminders</h1>
         <p class="sub">One tap per customer — WhatsApp opens with the message and their payment link pre-filled. You press send.</p>
-        <div class="wanote"><span style="font-size:18px">💬</span><span><b>Why tap-to-send?</b> Messages go from <i>your</i> WhatsApp number, so members recognise the sender and reply to you — and nothing lands in spam. Fully automatic sending arrives with WhatsApp Business API.</span></div>
+        <div class="wanote"><span style="font-size:18px">💬</span><span><b>Sent automatically.</b> Reminders go out on schedule over WhatsApp — 3 days before due, on the due date, and after. Review the queue below and edit anything before it sends; anything you don't touch goes out on its own.</span></div>
         <div class="toolrow">
           <span style="font-size:13.5px;color:var(--ink-soft)"><b id="remcount">9</b> reminders queued today</span>
           <div class="spacer" style="flex:1"></div>
-          <button class="btn btn-wa" onclick="sendAllReminders()">Send all, one by one</button>
+          <button class="btn btn-wa" onclick="sendAllReminders()">Send all now</button>
         </div>
         <div class="card rowlist" id="remlist"></div>
       </section>
@@ -693,7 +693,7 @@ Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it wh
       <div class="seckey">Secret code <b class="num">4419</b> — share both with the buyer only</div>
     </div>
     <div class="actionsgrid" style="margin-top:16px">
-      <button class="btn btn-wa" onclick="toast('WhatsApp opened — contract link + CNAK pre-filled for Ananya')">Send on WhatsApp</button>
+      <button class="btn btn-wa" onclick="toast('Contract link + CNAK sent to Ananya on WhatsApp', 'good')">Send now</button>
       <button class="btn btn-ghost" onclick="toast('CNAK + link copied', 'good')">Copy link &amp; key</button>
     </div>
     <p style="font-size:12.5px;color:var(--ink-faint);margin:6px 0 0">If the buyer runs CollectNest too, they can enter this CNAK in their own account to claim the contract into their workspace — then it stays in sync on both sides.</p>
@@ -739,7 +739,7 @@ Hi {name}, your {plan} payment of {amount} was due on {date}. Please clear it wh
     </div>
     <div class="actionsgrid">
       <button class="btn btn-primary" onclick="openRecordFor()">Record payment</button>
-      <button class="btn btn-wa" onclick="toast('WhatsApp opened with reminder + payment link')">Send reminder</button>
+      <button class="btn btn-wa" onclick="toast('Reminder sent on WhatsApp', 'good')">Send reminder</button>
       <button class="btn btn-ghost" onclick="toast('Payment link copied', 'good')">Copy pay link</button>
       <button class="btn btn-ghost" onclick="toast('Plan paused — no reminders until resumed')">Pause plan</button>
     </div>
@@ -895,7 +895,7 @@ function renderReminders(){
       <div class="avatar">${initials(c.name)}</div>
       <div class="rowmain"><div class="nm">${c.name}</div><div class="mt">${c.status==='over'?'Overdue message':'Due-date message'} · ${c.plan} · ${inr(c.amt)}</div></div>
       ${pillFor(c.status,c.overdays)}
-      <button class="btn btn-wa btn-sm" onclick="remindOne('${c.name}')">Send on WhatsApp</button>
+      <button class="btn btn-wa btn-sm" onclick="remindOne('${c.name}')">Send now</button>
     </div>`).join('');
 }
 function renderConfirms(){
@@ -927,8 +927,8 @@ function refreshStats(){
 function renderAll(){ renderAttention(); renderCustomers(); renderContracts(); renderReminders(); renderConfirms(); renderPayments(); refreshStats(); }
 
 /* ============ ACTIONS ============ */
-function remindOne(name){ toast('WhatsApp opened — reminder to '+name+' pre-filled'); }
-function sendAllReminders(){ toast('Opening WhatsApp for each customer, one after another'); }
+function remindOne(name){ toast('Reminder sent to '+name+' on WhatsApp', 'good'); }
+function sendAllReminders(){ toast('All queued reminders sent on WhatsApp', 'good'); }
 function confirmPay(id, ok){
   const p=CONFIRMS.find(x=>x.id===id); CONFIRMS=CONFIRMS.filter(x=>x.id!==id);
   if(ok){

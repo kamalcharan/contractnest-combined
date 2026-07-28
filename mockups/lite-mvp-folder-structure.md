@@ -124,18 +124,20 @@ contractnest-ui/src/lite/api/
 └── (thin per-domain wrappers over serviceURLs.ts entries)
 ```
 
-### The two honest exceptions
+### Already built — lite consumes, never rebuilds
 
-1. **Razorpay** genuinely needs backend work — link creation and a signature-verified
-   webhook receiver. Gateway payments are *not* built today (Sprint 7, per the spec).
-   If the UX-only rule is to hold in week 1, **ship UPI-offline only and defer Razorpay to
-   week 2** as one additive route (`routes/paymentWebhookRoutes.ts` + `razorpayService.ts`)
-   that no existing code path calls. Recommended: defer it.
-2. **Bulk import performance** — 50 rows = 50 sequential API calls. Fine at this scale
-   (a few seconds behind a progress bar). Revisit only if a tenant arrives with 500+ rows.
+- **Razorpay** — configured per tenant at `/settings/integrations`; the integrations edge
+  function and `RecordPaymentDialog` already handle it. Lite reads the tenant's configured
+  mode and renders the right pay affordance. No new payment code.
+- **WhatsApp delivery (MSG91)** — already sending (contract review links, check-in links).
+  Lite reminders are therefore **real automated sends**, not tap-to-send `wa.me` links.
+  This is better than the mockup: the mockup's "why tap-to-send" rationale no longer
+  applies and should be dropped.
 
-Anything else that "needs an API change" is a signal the lite UX drifted out of scope —
-adapt the UI, not the backend.
+**Result: the UX-only rule holds with zero exceptions.** The only non-ideal is the import
+loop (50 rows = 50 sequential calls — fine behind a progress bar; revisit past ~500 rows).
+Anything that "needs an API change" is a signal the lite UX drifted out of scope: adapt
+the UI, not the backend.
 
 ## Delivery (your existing workflow)
 
@@ -214,32 +216,27 @@ exactly as today. The folder is not the risk. These four things are:
 | **Shared middleware** | If lite "just needs a tweak" to auth/tenant middleware, that touches BBB's path. | Lite adapts to existing middleware. Zero edits — if lite needs different behaviour, it wraps in the UI, never modifies the server. |
 | **Founder attention** | 39 chapter onboardings and a 7-day sprint compete for the same person. This is the biggest one. | See the sequencing note below — make them the *same* work, not competing work. |
 
-### Open modelling decision — resolve BEFORE writing lite code
+### Chapters are tenants — which makes lite's onboarding the highest-leverage build
 
-There is **no chapter entity in the codebase** (searched: only a UX metaphor in the wizard
-spec). So "39 chapters" today means one of:
+There is no chapter entity, and none is needed: **each BBB chapter is its own tenant.**
+So the 39-chapter rollout is literally 39 tenant onboardings through the current
+implementation-heavy path — the exact pain lite exists to remove.
 
-- **A. 39 tenants** — full isolation, 39 separate onboardings, 39 × the setup work,
-  cross-chapter reporting impossible without new work.
-- **B. 1 tenant, chapters as a grouping** on contacts/contracts — one onboarding, shared
-  master data, but needs a chapter dimension threaded through check-in, dues and dashboards.
-- **C. Hybrid** — 1 tenant per chapter for money/dues, a parent org for rollup reporting.
+That resolves the resourcing collision. The 7-day sprint and the 39-chapter rollout are
+**the same work**, not competing work. Sequence accordingly:
 
-This decision has a far larger blast radius than the lite folder. Pick it first.
+1. **`lite/pages/onboarding/` first (Days 1–3)** — tenant bootstrap, paste import of the
+   member/client list, payment mode selection. Serves BBB chapters *and* the AMC pipeline
+   identically. First real users are **BBB chapters #2 and #3**: already-paying customer,
+   zero sales risk, immediate proof, and every friction found is fixed before a cold
+   prospect ever sees it.
+2. **Owner app (Days 4–6)** — due list, contracts, visits, CNAK. AMC / pest control /
+   housekeeping only.
 
-### Sequencing that removes the collision
-
-Split lite into two halves that ship independently:
-
-1. **`lite/pages/onboarding/` + `liteOnboardingService` + `liteImportService`** — tenant
-   bootstrap, paste import, payment setup. **This serves BBB's 39 chapters AND the AMC
-   pipeline.** It is the same work. Build it Days 1–3 and point it at BBB chapters #2 and
-   #3 first: real users, zero sales risk, immediate proof.
-2. **The owner app** (due list, contracts, visits, CNAK) — AMC/pest/housekeeping only.
-   Days 4–6, sold to new prospects.
-
-Chapters still use the existing group-session/check-in surface for their weekly meetings.
-Lite only replaces the *onboarding* path, which is exactly where the pain is.
+Chapters keep using the existing group-session and check-in surfaces for their weekly
+meetings — lite replaces only the onboarding path. Measure success on the stopwatch:
+if chapter #4 onboards in under 30 minutes of founder time, chapters #5–39 are a
+scheduling problem, not an engineering one.
 
 ## Payment modes (tenant setting, set during onboarding)
 

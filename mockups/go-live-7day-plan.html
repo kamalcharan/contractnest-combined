@@ -54,13 +54,13 @@
 <header class="hero">
   <div class="eyebrow">ContractNest · Express — AMC · Manufacturing · Pest Control · Housekeeping</div>
   <h1>7 days to a self-serve front door</h1>
-  <p class="lede">The pipeline is recurring field-service businesses: AMC vendors, manufacturers, pest control, housekeeping. Different industries, one identical shape — recurring visits + recurring billing + renewals — so one express product serves all four with vocabulary as the only difference. BBB (fitness) stays untouched on the current surface as the only production tenant. This week ships a thin onboarding surface over the existing backend, converts 2–3 pipeline prospects into paying founding tenants, and prices the product. Nothing else.</p>
+  <p class="lede">The pipeline is recurring field-service businesses: AMC vendors, manufacturers, pest control, housekeeping. Different industries, one identical shape — recurring visits + recurring billing + renewals — so one express product serves all four with vocabulary as the only difference. This week ships a <b>UX-only</b> surface over the existing API, edge functions and tables: no new endpoints, no migrations. Its first users are <b>BBB’s own chapters</b> (each chapter is its own tenant — 39 to onboard), which de-risks the surface on a paying customer before a cold prospect sees it, then 2–3 pipeline prospects convert as founding tenants.</p>
 </header>
 
 <div class="card rule">
   <b>The three rules of the week.</b>
   <b>1 · Platform freeze:</b> bugfix-only everywhere existing; every idea goes to the parking lot, not the codebase.
-  <b>2 · BBB is sacred:</b> zero schema changes that touch their flows; they never see the new surface.
+  <b>2 · UX-only:</b> no new API route, edge function, table or column. Lite is a new client of the existing backend — which is what makes BBB structurally safe.
   <b>3 · Scope is this page:</b> if a screen isn’t listed here, it does not exist this week.
 </div>
 
@@ -77,11 +77,11 @@
 <h2><span class="n">02</span>What ships (and what it reuses)</h2>
 <div class="tablewrap"><table>
   <tr><th>Surface</th><th>Screens</th><th>Backend it reuses</th></tr>
-  <tr><td>First-run</td><td>WhatsApp magic-link login · business + payment details (bank + UPI) · paste-import of the AMC book: client, site, equipment, value, term, billing cadence, visit frequency</td><td>existing auth + tenant tables; contracts created as express records with default blocks</td></tr>
-  <tr><td>Owner app</td><td><b>Due list = payments + renewals in one view</b> · contracts list · tap-to-send WhatsApp reminders (to owner/accountant) · record payment (mode + UTR) · confirm client-reported payments · month summary · settings</td><td>contract events / billing schedule engine; receipts</td></tr>
+  <tr><td>First-run <span class="tag" style="background:var(--accent-soft);color:var(--accent)">also = BBB chapter onboarding</span></td><td>WhatsApp magic-link login · business + payment mode · paste-import of the book: client, site, equipment, value, term, billing cadence, visit frequency. <b>Each BBB chapter is its own tenant — this same flow onboards all 39.</b></td><td>existing auth + tenant tables; contracts created as express records with default blocks</td></tr>
+  <tr><td>Owner app</td><td><b>Due list = payments + renewals in one view</b> · contracts list · <b>automated WhatsApp reminders</b> (MSG91 — already live) · record payment (mode + UTR) · confirm client-reported payments · month summary · settings</td><td>contract events / billing schedule engine; receipts; existing MSG91 delivery</td></tr>
   <tr><td>Express contract</td><td>client + equipment service blocks (visits/frequency, parts terms: included / at actuals) + term + renewal → derived visit &amp; payment schedules → CNAK share card. KT pre-fills blocks for known equipment (lift, HVAC, DG, compressor) — <b>optional, never gating</b></td><td>contracts, t_contract_blocks, CNAK issue/claim/verify, KT read-only</td></tr>
   <tr><td>Visit check-off</td><td>One screen: today’s scheduled visits → done + photo + notes. No technician app — the owner or supervisor taps it</td><td>existing proof-of-work objects</td></tr>
-  <tr><td>Client link (CNAK)</td><td>contract review → accept (name + OTP) → living page: next visit, visit history with proof, dues, renewal date, powered-by footer. <b>Pay two ways per tenant setting:</b> UPI-offline (QR + bank details, client self-reports UTR, owner confirms) or a <b>Razorpay payment link</b> (tenant’s own account keys, webhook auto-confirms — no manual step)</td><td>public token routes — with the no-cache + IST + cheap-Android lessons already learned; Razorpay is the one new integration allowed this week</td></tr>
+  <tr><td>Client link (CNAK)</td><td>contract review → accept (name + OTP) → living page: next visit, visit history with proof, dues, renewal date, powered-by footer. <b>Pay two ways, per the tenant’s existing setting:</b> UPI-offline (QR + bank details, client self-reports UTR, owner confirms) or <b>Razorpay</b> — both already configured at <code>/settings/integrations</code></td><td>public token routes (no-cache + IST + cheap-Android lessons already learned); existing Razorpay integration — nothing new built</td></tr>
 </table></div>
 <p>A re-skin plus one express-create path — not a rebuild. The full wizard stays as “advanced mode.” We do <b>not</b> replace their invoicing: they bill from Tally/their CA as today; we track schedule, proof, collection status, and renewals against it.</p>
 
@@ -114,12 +114,12 @@
 <h2><span class="n">05</span>The seven days</h2>
 <div class="tablewrap"><table>
   <tr><th>Day</th><th>Build</th><th>Business</th></tr>
-  <tr><td>Day 1</td><td>Thin-front scaffold; magic-link auth on existing tenant model</td><td>Pick the 3 warmest pipeline prospects — favour pest control / housekeeping for speed (high visit frequency, monthly billing, fast decision) with one AMC/manufacturing anchor; get “yes, this Friday” from 2</td></tr>
-  <tr><td>Day 2</td><td>First-run: business + payment details, paste-import → confirm (schedules derived)</td><td>Founding offer one-pager sent, price in writing; request their AMC register in any format</td></tr>
-  <tr><td>Day 3</td><td>Due list (payments + renewals) · contracts list · record payment with UTR</td><td>Dry-run import of a real register — fix what breaks; this is the day reality edits the parser</td></tr>
-  <tr><td>Day 4</td><td>Reminders (tap-to-send wa.me) · client-reported payment confirm queue · visit check-off screen</td><td>Walk prospect #1 through their own data on a call</td></tr>
-  <tr><td>Day 5</td><td>Express contract → CNAK card · client link accept state + living page · Razorpay payment-link + webhook confirm (tenant-keyed) for tenants who have an account</td><td>Onboard tenant #1 yourself, stopwatch running; ask each tenant: Razorpay or UPI-offline?</td></tr>
-  <tr><td>Day 6</td><td>Harden public pages: no-store headers, IST dates, cheap-Android test, QR/bank display + one real ₹1 Razorpay payment verified on real devices</td><td>Onboard tenant #2 (and #3 if ready); fix top 3 observed frictions</td></tr>
+  <tr><td>Day 1</td><td>Lite scaffold under <code>src/lite/</code>; route mount + layout shell on existing auth</td><td>Pick 3 warmest pipeline prospects — favour pest control / housekeeping for speed, one AMC/manufacturing anchor; get “yes, this Friday” from 2</td></tr>
+  <tr><td>Day 2</td><td><b>Express onboarding</b>: business + payment mode + paste-import → parse → confirm (schedules derived via the mapper)</td><td>Founding offer one-pager sent, price in writing; request registers/member lists in any format</td></tr>
+  <tr><td>Day 3</td><td>Onboarding hardening — real data breaks the parser, fix it</td><td><b>Onboard BBB chapter #2 and #3 through lite.</b> Stopwatch running. Already-paying customer, zero sales risk, every friction found before a prospect sees it</td></tr>
+  <tr><td>Day 4</td><td>Due list (payments + renewals) · contracts list · record payment with UTR · automated WhatsApp reminders via existing MSG91</td><td>Walk prospect #1 through their own imported data on a call</td></tr>
+  <tr><td>Day 5</td><td>Express contract → CNAK card · client link accept state + living page (reads tenant’s existing Razorpay/UPI setting)</td><td>Onboard AMC tenant #1 yourself, stopwatch running</td></tr>
+  <tr><td>Day 6</td><td>Harden public pages: no-store headers, IST dates, cheap-Android test, QR/bank + Razorpay flow verified on real devices</td><td>Onboard tenant #2 (and #3 if ready); fix top 3 observed frictions</td></tr>
   <tr><td>Day 7</td><td>Buffer — nothing new, only fixes</td><td><b>Launch = a real client receives a real reminder or renewal notice.</b> Screenshot the first collection/renewal saved</td></tr>
 </table></div>
 
@@ -132,15 +132,16 @@
       <li>SLA penalty math, response-time credits</li>
       <li>New KT curation (read-only pre-fill of existing equipment data only)</li>
       <li>SmartForms anywhere</li>
-      <li>UPI intent deep links (the GPay lesson) — QR/bank + UTR, or Razorpay link, only</li>
-      <li>Razorpay Route / marketplace splits / our-account collection — tenant’s own keys only</li>
-      <li>Automated WhatsApp API sending</li>
+      <li>UPI intent deep links (the GPay lesson) — QR/bank + UTR, or Razorpay, only</li>
+      <li><b>Any</b> new API route, edge function, table or column — the surface is UX-only</li>
+      <li>Rebuilding Razorpay or WhatsApp delivery — both already exist; lite consumes them</li>
       <li>Fitness expansion, mobile app, RFQ, group sessions, FamilyKnows</li>
       <li>Migrating BBB to the new surface</li>
     </ul>
   </div>
   <div class="card"><b class="yes">Success on day 7:</b>
     <ul style="font-size:13.5px;margin:8px 0 0">
+      <li><span class="metric">2</span> BBB chapters onboarded through lite (proving the path for the remaining 37)</li>
       <li><span class="metric">2–3</span> pipeline prospects live as tenants, activated (≥5 contracts, ≥1 reminder/alert)</li>
       <li><span class="metric">₹1,999</span> commitment in writing from each</li>
       <li>Onboarding stopwatch <span class="metric">≤ 30 min</span> founder time</li>
