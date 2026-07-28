@@ -111,9 +111,6 @@ D:\projects\core projects\ContractNest\contractnest-combined\
 ├── contractnest-edge/         # Edge Functions/Serverless - branch: main
 ├── ClaudeDocumentation/       # Documentation - branch: master
 ├── ContractNest-Mobile/       # Mobile App (React Native) - branch: main
-├── FamilyKnows/               # Separate Product (Expo + React Website) - branch: main
-│   ├── app/                   # Expo mobile app
-│   └── website/               # React/TypeScript website
 ├── MANUAL_COPY_FILES/         # Claude's output folder for code changes
 └── CLAUDE.md                  # THIS FILE
 ```
@@ -131,13 +128,12 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 # Ensure all submodules are initialized and updated
 git submodule update --init --recursive
 
-# Verify ALL 6 submodules are present and accessible
+# Verify ALL 5 submodules are present and accessible
 ls -la contractnest-api/
 ls -la contractnest-ui/
 ls -la contractnest-edge/
 ls -la ClaudeDocumentation/
 ls -la ContractNest-Mobile/
-ls -la FamilyKnows/
 
 # Check submodule status
 git submodule status
@@ -150,7 +146,6 @@ git submodule status
  [commit-hash] contractnest-edge (heads/main)
  [commit-hash] ClaudeDocumentation (heads/master)
  [commit-hash] ContractNest-Mobile (heads/main)
- [commit-hash] FamilyKnows (heads/main)
 ```
 
 ⚠️ **If any submodule shows as empty or missing, run:**
@@ -169,7 +164,6 @@ git submodule update --init --recursive --force
 | `contractnest-edge` | Edge/Serverless Functions | `main` | Cloudflare Workers / Edge |
 | `ClaudeDocumentation` | Project Documentation | `master` | Markdown |
 | `ContractNest-Mobile` | Mobile Application | `main` | React Native |
-| `FamilyKnows` | Separate SaaS Product | `main` | Expo (app/) + React (website/) |
 
 ---
 
@@ -192,11 +186,6 @@ MANUAL_COPY_FILES/
     │   └── [files]
     ├── ContractNest-Mobile/
     │   └── [files]
-    ├── FamilyKnows/
-    │   ├── app/
-    │   │   └── [Expo app files]
-    │   └── website/
-    │       └── [React website files]
     └── COPY_INSTRUCTIONS.txt
 ```
 
@@ -314,16 +303,7 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 4: Commit FamilyKnows Changes (if applicable)
-─────────────────────────────────
-cd FamilyKnows
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 5: Commit Mobile Changes (if applicable)
+STEP 4: Commit Mobile Changes (if applicable)
 ─────────────────────────────────
 cd ContractNest-Mobile
 git status
@@ -332,7 +312,7 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 6: Commit Documentation Changes (if applicable)
+STEP 5: Commit Documentation Changes (if applicable)
 ─────────────────────────────────
 cd ClaudeDocumentation
 git status
@@ -341,14 +321,14 @@ git commit -m "docs: [descriptive message]"
 git push origin master
 cd ..
 
-STEP 7: Update Parent Repo Submodule References
+STEP 6: Update Parent Repo Submodule References
 ─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
-git add contractnest-ui contractnest-api contractnest-edge ClaudeDocumentation ContractNest-Mobile FamilyKnows
+git add contractnest-ui contractnest-api contractnest-edge ClaudeDocumentation ContractNest-Mobile
 git commit -m "chore: update submodules - [feature description]"
 git push origin master
 
-STEP 8: Verify Clean State
+STEP 7: Verify Clean State
 ─────────────────────────────────
 git status
 git submodule status
@@ -394,11 +374,6 @@ git pull origin master
 cd ..
 
 cd ContractNest-Mobile
-git checkout main
-git pull origin main
-cd ..
-
-cd FamilyKnows
 git checkout main
 git pull origin main
 cd ..
@@ -456,15 +431,6 @@ git checkout main
 git pull origin main
 git add .
 git commit -m "Update Mobile" --allow-empty
-git push origin main
-cd ..
-
-# Push FamilyKnows
-cd FamilyKnows
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update FamilyKnows" --allow-empty
 git push origin main
 cd ..
 
