@@ -747,58 +747,94 @@ const SessionCheckinPage: React.FC = () => {
   // The reliable path is the member's own UPI app's built-in "Pay to UPI ID"
   // entry -- that's the app itself constructing a first-party request, not
   // an external deep link, so the same rejection doesn't apply.
+  // Gated sequence, not everything shown at once: (1) copy the UPI ID and
+  // tap "Open UPI app" -- only then does (2) the reference field + "Confirm
+  // payment" appear, and only confirming that advances past this step.
+  // "Open UPI app" best-effort launches the device's UPI app via a bare
+  // upi://pay (no payee params, so nothing for GPay's signature check to
+  // reject) -- if nothing opens (desktop, no UPI app registered), the
+  // instructions below already cover opening it manually.
   const renderPayBlock = (amount: number, currency: string | undefined) => {
     const canPay = !!payCfg?.configured && !!payCfg.upi_id;
     const copyVpa = () => {
       if (!payCfg?.upi_id) return;
       navigator.clipboard?.writeText(payCfg.upi_id).catch(() => { /* clipboard unavailable -- VPA is still shown for manual copy */ });
       setCopiedVpa(true);
-      setPaymentAttempted(true);
       window.setTimeout(() => setCopiedVpa(false), 2000);
     };
-    return (
-      <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
-        {canPay && (
-          <>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink, marginBottom: 8 }}>
-              Pay {money(amount, currency)} via your UPI app
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10,
-              background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>UPI ID</div>
-                <div style={{ fontWeight: 800, color: BRAND.ink, fontSize: 14.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
-                {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 1 }}>{payCfg!.payee_name}</div>}
-              </div>
-              <button type="button" onClick={copyVpa}
-                style={{ flex: 'none', padding: '9px 14px', borderRadius: 10, border: `1.5px solid ${BRAND.accent}`,
-                  background: copiedVpa ? BRAND.accent : '#fff', color: copiedVpa ? '#fff' : BRAND.accentInk,
-                  fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
-                {copiedVpa ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <ol style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12.5, color: BRAND.sub, lineHeight: 1.7 }}>
-              <li>Open Google Pay, PhonePe, or any UPI app</li>
-              <li>Choose "Pay to UPI ID" (or "Pay phone number")</li>
-              <li>Enter the UPI ID above and the amount, then pay</li>
-            </ol>
-          </>
-        )}
-        {showReturnNudge && (
-          <div style={{ marginTop: 12, background: BRAND.accentSoft, border: `1px solid ${BRAND.accent}44`, borderRadius: 10, padding: 11 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Back from paying?</div>
-            <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>
-              Enter your UPI reference below and tap Record payment -- it isn't recorded until you do.
-            </div>
-          </div>
-        )}
-        <div style={{ marginTop: canPay ? 14 : 0 }}>
-          <label style={labelStyle}>UPI reference {canPay ? '(after paying)' : '(after paying the chapter UPI)'}</label>
-          <input value={upiRef} onChange={(e) => { setUpiRef(e.target.value); setShowReturnNudge(false); }} placeholder="e.g. 4098XXXX2231" style={inputStyle} />
+    const openUpiApp = () => {
+      copyVpa();
+      setPaymentAttempted(true);
+      try { window.location.href = 'upi://pay'; } catch { /* no UPI app registered -- instructions below cover a manual open */ }
+    };
+    if (!canPay) {
+      return (
+        <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
+          <label style={labelStyle}>UPI reference (after paying the chapter UPI)</label>
+          <input value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="e.g. 4098XXXX2231" style={inputStyle} />
           <p style={{ fontSize: 12, color: BRAND.sub, marginBottom: 0, marginTop: 6 }}>
             The chair will confirm your payment offline.
           </p>
         </div>
+      );
+    }
+    return (
+      <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink, marginBottom: 8 }}>
+          Pay {money(amount, currency)} via your UPI app
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10,
+          background: '#F8FAFC', border: `1px solid ${BRAND.line}`, borderRadius: 12, padding: 12 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 600 }}>UPI ID</div>
+            <div style={{ fontWeight: 800, color: BRAND.ink, fontSize: 14.5, wordBreak: 'break-all' }}>{payCfg!.upi_id}</div>
+            {payCfg!.payee_name && <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 1 }}>{payCfg!.payee_name}</div>}
+          </div>
+          <button type="button" onClick={copyVpa}
+            style={{ flex: 'none', padding: '9px 14px', borderRadius: 10, border: `1.5px solid ${BRAND.accent}`,
+              background: copiedVpa ? BRAND.accent : '#fff', color: copiedVpa ? '#fff' : BRAND.accentInk,
+              fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+            {copiedVpa ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+
+        {!paymentAttempted ? (
+          <>
+            <button type="button" onClick={openUpiApp}
+              style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
+                background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+              Open UPI app
+            </button>
+            <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+              Copies the UPI ID and tries to open your UPI app. If nothing opens, launch GPay / PhonePe / any UPI app yourself and choose "Pay to UPI ID."
+            </p>
+          </>
+        ) : (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: BRAND.ok, marginBottom: 10 }}>
+              <span>✓</span><span>Complete the payment in your app, then confirm below</span>
+            </div>
+            {showReturnNudge && (
+              <div style={{ marginBottom: 10, background: BRAND.accentSoft, border: `1px solid ${BRAND.accent}44`, borderRadius: 10, padding: 11 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Back from paying?</div>
+                <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>
+                  Enter your UPI reference below and tap Confirm payment.
+                </div>
+              </div>
+            )}
+            <label style={labelStyle}>UPI reference</label>
+            <input value={upiRef} onChange={(e) => { setUpiRef(e.target.value); setShowReturnNudge(false); }} placeholder="e.g. 4098XXXX2231" style={inputStyle} autoFocus />
+            <button type="button" onClick={() => { if (upiRef.trim()) setPaymentStepDone(true); }} disabled={!upiRef.trim()}
+              style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
+                background: upiRef.trim() ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 15,
+                cursor: upiRef.trim() ? 'pointer' : 'not-allowed' }}>
+              Confirm payment
+            </button>
+            <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+              The chair will confirm it offline once you check in.
+            </p>
+          </div>
+        )}
       </div>
     );
   };
@@ -1212,10 +1248,9 @@ const SessionCheckinPage: React.FC = () => {
 
               {err && <p style={{ color: BRAND.err, fontSize: 13 }}>{err}</p>}
               <button onClick={() => setPaymentStepDone(true)}
-                style={{ width: '100%', padding: 15, border: 'none', borderRadius: 13,
-                  background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 16.5, cursor: 'pointer',
-                  boxShadow: '0 6px 16px -4px rgba(218,100,16,0.5)' }}>
-                Continue to check-in
+                style={{ width: '100%', marginTop: 4, padding: 12, background: 'none', border: 'none',
+                  color: BRAND.sub, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
+                Skip for now — continue to check-in →
               </button>
             </>
           )}
