@@ -1,0 +1,64 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP documentation pack
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   28 Jul 2026
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  ClaudeDocumentation  (branch: master)   <-- ONLY this one
+
+  No code changes. Documentation only.
+  contractnest-ui / contractnest-api / contractnest-edge /
+  ContractNest-Mobile / FamilyKnows are NOT touched.
+
+FILES IN THIS BATCH  (8 files, all new)
+───────────────────────────────────────
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/README.md
+      -> ClaudeDocumentation/mvp/README.md
+      Index of the pack. Read order + one-paragraph summary.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/decision-page.html
+      -> ClaudeDocumentation/mvp/decision-page.html
+      THE one-pager. Core call, 5 decisions, build list, hide list, done criteria.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/EXECUTION-PLAN.md
+      -> ClaudeDocumentation/mvp/EXECUTION-PLAN.md
+      Folder structure + 5 sprints, each with verification checklist and sign-off gate.
+      This is the working document during the build.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/product-led-shell-TARGET-UX.html
+      -> ClaudeDocumentation/mvp/product-led-shell-TARGET-UX.html
+      The target UX (your own shell). To be built, not redesigned.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/onboarding-15min.html
+      -> ClaudeDocumentation/mvp/onboarding-15min.html
+      15-minute onboarding with per-step minute budget. Timing spec for Sprints 2-4.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/mvp-reveal-schedule.md
+      -> ClaudeDocumentation/mvp/mvp-reveal-schedule.md
+      What to hide on day one + unlock triggers. Source data for Sprint 1.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/lite-mvp-folder-structure.md
+      -> ClaudeDocumentation/mvp/lite-mvp-folder-structure.md
+      Long-form folder structure, isolation rules, screen->endpoint map, BBB risk table.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/go-live-7day-plan.html
+      -> ClaudeDocumentation/mvp/go-live-7day-plan.html
+      Pricing, positioning, day-by-day. Superseded on sequencing by EXECUTION-PLAN.md.
+
+  MANUAL_COPY_FILES/mvp-docs/ClaudeDocumentation/mvp/collectnest-7day-wedge-ux-shell.html
+      -> ClaudeDocumentation/mvp/collectnest-7day-wedge-ux-shell.html
+      Early wedge exploration. Kept for the CNAK buyer-acceptance flow.
+
+POWERSHELL — single command
+───────────────────────────
+  New-Item -ItemType Directory -Force -Path "ClaudeDocumentation\mvp"
+  Copy-Item "MANUAL_COPY_FILES\mvp-docs\ClaudeDocumentation\mvp\*" -Destination "ClaudeDocumentation\mvp\" -Recurse -Force
+
+NOTES
+─────
+  * Files are additive. Nothing existing in ClaudeDocumentation is modified or deleted.
+  * ClaudeDocumentation pushes to branch "master" (not main).
+  * Parent repo submodule pointer must be updated after committing the submodule.
+═══════════════════════════════════════════════════
