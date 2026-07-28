@@ -141,22 +141,37 @@ existing product look small.*
 
 ---
 
-### Sprint 2 — Onboarding: persona → industry → furnished workspace
+### Sprint 2 — Express onboarding (RESCOPED after measuring the existing flow)
 *The first half of the 15 minutes.*
 
-**Build**
-- `PersonaStep` → writes `t_tenant_profiles.persona` via existing profile endpoint.
-- `IndustryStep` → seeder intent (AMC · pest · housekeeping · manufacturing).
-- `FurnishStep` → calls existing seed endpoints; shows **real counts** as each completes
-  (services, checkpoints, blocks, priced, cadences). No fake progress.
-- Empty-KT fallback: if an industry has no KT rows, the step completes with a
-  "start from scratch" state — **it must never block**.
+**What we found:** all of this already existed. The VaNi onboarding has 25 step
+components and `TOTAL_STEPS = 11`; tracing forward navigation gives a real chain of
+**~16 screens** (vani-intro → user-profile → business-details → persona-selection →
+engagement-model → theme-selection → industry-selection → resource-pick → vani-consent →
+vani-intelligence → vani-working → pricing-review → terms-conditions → equipment →
+lov-setup → done). So Sprint 2 became **cut the path, not build it**.
+
+**Owner decisions:** keep pricing-review, equipment and terms-conditions; build the
+express path *beside* the existing flow rather than trimming it in place.
+
+**Built**
+- `/start` — business name + persona (replaces 4 screens). Same profile write as the
+  existing PersonaSelectionStep: `POST /api/tenant-profile` with the
+  persona + business_type_id dual-write, then `completeVaniStep`.
+- `/start/trade` — served industries (replaces 5 screens), pre-selected from the trade
+  the visitor picked on the public landing page.
+- Handoff to **`/onboarding/vani-working`** — the existing seeding step and everything
+  after it (pricing → terms → equipment → lov-setup → done) runs unmodified.
+- Net: ~16 screens → ~7. The long form stays reachable at `/onboarding`, linked from
+  the first express screen.
 
 **Verify (you)**
-- [ ] New tenant reaches a furnished workspace in **≤ 6 minutes**, stopwatch run.
-- [ ] Catalog is populated with real services and sensible prices.
+- [ ] `/start` → `/start/trade` → seeding runs exactly as it does today.
+- [ ] Stopwatch: signup → furnished workspace in **≤ 6 minutes**.
+- [ ] Landing carry-over: a trade picked on the landing pre-selects the industry.
 - [ ] An industry with no KT data still completes and lands in a usable workspace.
-- [ ] Nothing in BBB's tenant changed — spot-check catalog + settings.
+- [ ] The long form still works end to end at `/onboarding`.
+- [ ] Nothing in BBB's tenant changed.
 
 **Sign-off:** "Sprint 2 verified" → merge.
 

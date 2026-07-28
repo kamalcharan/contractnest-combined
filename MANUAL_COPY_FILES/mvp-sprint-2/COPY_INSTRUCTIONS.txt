@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2 (express onboarding)
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   28 Jul 2026
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+WHAT CHANGED IN THE PLAN, AND WHY
+─────────────────────────────────
+  Sprint 2 was written as "build persona -> industry -> furnished workspace".
+  It turned out that ALL of it already exists: the VaNi onboarding has 25 step
+  components and TOTAL_STEPS = 11. Tracing each step's forward navigation gives
+  the real chain, ~16 screens:
+
+    vani-intro -> user-profile -> business-details -> persona-selection ->
+    engagement-model -> theme-selection -> industry-selection -> resource-pick ->
+    vani-consent -> vani-intelligence -> vani-working -> pricing-review ->
+    terms-conditions -> equipment -> lov-setup -> done
+
+  So Sprint 2 became CUT THE PATH, not build it.
+
+  Per your decision (keep pricing-review + equipment + terms; express path
+  BESIDE the existing flow), express replaces the first NINE screens with TWO,
+  then hands off into the existing chain at vani-working — which already seeds
+  the catalog and carries the tenant through pricing -> terms -> equipment ->
+  lov-setup -> done, completely untouched.
+
+    /start        business name + persona          (replaces 4 screens)
+    /start/trade  served industries                (replaces 5 screens)
+    -> /onboarding/vani-working  (existing, unmodified, and everything after it)
+
+  Net: ~16 screens -> ~7. Nothing in the existing flow is edited, and it stays
+  fully reachable at /onboarding for anyone who wants the long form (there is a
+  link to it on the first express screen).
+
+FILES  (5 new, 1 modified)
+──────────────────────────
+  NEW  src/lite/onboarding/expressFlow.ts
+       The path definition, persona list, and the landing-trade -> industry
+       matcher. Persona ids are seller/buyer/both — the same values the existing
+       PersonaSelectionStep writes.
+
+  NEW  src/lite/onboarding/ExpressShell.tsx
+       Shared frame: brand, 3-step progress rail, card.
+
+  NEW  src/lite/onboarding/BusinessPersonaStep.tsx
+       Screen 1. Business name + persona. Writes via the SAME call the existing
+       step uses: POST /api/tenant-profile with business_name + persona +
+       business_type_id (the dual-write /settings/business-profile and
+       AuthContext.initializePerspective depend on), then completeVaniStep.
+
+  NEW  src/lite/onboarding/TradeStep.tsx
+       Screen 2. Served industries via useIndustries + useServedIndustriesManager,
+       then completeVaniStep and handoff. If the visitor picked a trade on the
+       public landing page it is PRE-SELECTED here — that is what the landing's
+       localStorage handoff was for, so the question is confirmed not answered.
+
+  NEW  src/lite/onboarding/express.css
+       Namespaced cnx-, tokenised on .cnx-root, resets via :where() so component
+       classes always win. Same containment rules as the landing.
+
+  MOD  src/App.tsx
+       Two imports and two routes (/start, /start/trade), both wrapped in
+       ProtectedRoute requireTenant — same guard the existing onboarding uses.
+       Nothing else touched.
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Rendered BOTH express screens in the running app and screenshotted them
+    (via temporary unprotected preview routes, since /start is behind
+    ProtectedRoute; the preview routes were removed before packaging — confirm
+    with: grep -c PREVIEW src/App.tsx  -> 0).
+  * Every import verified to exist before use: components/common/toast,
+    utils/onboarding/completeVaniStep, hooks/queries/useProductMasterdata,
+    hooks/queries/useServedIndustries, context/AuthContext, hooks/useTenantProfile,
+    and API_ENDPOINTS.TENANTS.PROFILE ('/api/tenant-profile').
+  * tsc app-wide (tsconfig.app.json) -> 1188 errors, IDENTICAL to the
+    pre-Sprint-1 baseline, 0 from src/lite.
+  * eslint on src/lite and src/App.tsx -> no new problems.
+  * contractnest-ui working tree left pristine.
+
+POWERSHELL — copy
+─────────────────
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\lite\onboarding" -Destination "contractnest-ui\src\lite\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+  NOTE: this App.tsx already contains the Sprint 1 landing wiring, so it
+  supersedes the Sprint 1 copy of the same file.
+
+TEST  (needs a LOGGED-IN tenant — /start is protected)
+──────────────────────────────────────────────────────
+  cd contractnest-ui
+  npm run dev
+  # sign in, then open http://localhost:5173/start
+
+  TESTING CHECKLIST
+  [ ] /start shows business name + 3 persona cards; Continue disabled until both set
+  [ ] Continue saves and moves to /start/trade
+  [ ] Industries load; multi-select works; Build my workspace disabled until one picked
+  [ ] It hands off to /onboarding/vani-working and the seeding runs as it always did
+  [ ] After seeding, the existing pricing -> terms -> equipment -> done chain is unchanged
+  [ ] STOPWATCH: signup -> furnished workspace. Target <= 6 minutes.
+  [ ] The long form still works end to end at /onboarding
+  [ ] Landing carry-over: pick a trade on the landing page, sign up, and confirm
+      the matching industry is pre-selected on /start/trade
+  [ ] An industry with no KT data still completes and lands in a usable workspace
+  [ ] BBB tenant: /onboarding unchanged, no surprises
+
+KNOWN GAP
+─────────
+  The landing -> industry match is heuristic (name contains 'pest', 'hvac',
+  'housekeeping', ...). If your industry master names differ, the pre-selection
+  simply does not fire and the tenant picks manually — it never blocks. Tell me
+  the real industry names and I will map them exactly.
+
+NOT YET DONE
+────────────
+  * Paste-import of the client list (was Sprint 3)
+  * Express contract lane (Sprint 3)
+  * Mount <RevealProvider> + wrap the 9 surfaces (tail of Sprint 1)
+═══════════════════════════════════════════════════
