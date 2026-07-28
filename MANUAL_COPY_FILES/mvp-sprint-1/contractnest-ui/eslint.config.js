@@ -56,7 +56,10 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/lite/**'],
+    // src/App.tsx is the single documented mount seam: it routes to the lite
+    // surfaces, so it is the one file allowed to import them. Keeping the
+    // exception to exactly one file is what stops the dependency spreading.
+    ignores: ['src/lite/**', 'src/App.tsx'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [

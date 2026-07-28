@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS — MVP Sprint 1 (part A: reveal module + isolation rules)
+COPY INSTRUCTIONS — MVP Sprint 1
 Branch: claude/contractnest-launch-strategy-aad14f
 Date:   28 Jul 2026
 ═══════════════════════════════════════════════════
@@ -12,73 +12,111 @@ SUBMODULES AFFECTED
 
 WHAT THIS BATCH IS
 ──────────────────
-  Sprint 1 items 2, 3 and 4 — the src/lite scaffold, the reveal (hide-until-
-  earned) module, and the one-way import rules that keep src/lite deletable.
+  All four Sprint 1 items:
+    1. New public landing page (replaces the old one at "/")
+    2. src/lite scaffold
+    3. reveal (hide-until-earned) module
+    4. one-way import rules that keep src/lite deletable
 
-  Sprint 1 item 1 (landing page) is NOT in this batch. A live landing page
-  already exists at src/pages/public/LandingPage.tsx with 19 components —
-  building a second one would create the parallel-implementation problem the
-  audit already flagged. Decision needed before that item proceeds; see the
-  session notes.
+  Per your decision: the new landing REPLACES the previous 19-component landing.
+  The old files are left in the tree, just unwired — delete them once this has
+  run a week in production. Also per your decision, all testimonial and
+  social-proof content is GONE; the proof band now carries only claims we can
+  support (39 chapters, 4 trades, 15 minutes, free under 10 contracts).
 
-FILES IN THIS BATCH  (6 files: 5 new, 1 modified)
-─────────────────────────────────────────────────
-  NEW  src/lite/reveal/revealRules.ts
-       The reveal schedule as DATA. 9 rules, each with an unlock condition.
-       Every rule fails OPEN on unknown signals.
+FILES  (13 new, 2 modified)
+───────────────────────────
+  LANDING (new)
+    src/lite/landing/LandingPage.tsx    Page composition. Carries the visitor's
+                                        trade into signup via localStorage so
+                                        onboarding never asks for it again.
+    src/lite/landing/HeroDemo.tsx       3-scene loop: write → CNAK → accepted,
+                                        clock landing on 3:00. Starts on
+                                        scroll-into-view; shows the final signed
+                                        state (no motion) under
+                                        prefers-reduced-motion.
+                                        SWAP SLOT: replace the contents of
+                                        .cn-demostage with a muted autoplay
+                                        <video> when the recording exists.
+    src/lite/landing/WorkspaceSlab.tsx  The live workspace preview.
+    src/lite/landing/TradePicker.tsx    Four trade chips.
+    src/lite/landing/previewData.ts     Per-trade preview data (illustrative
+                                        marketing data, NOT the seeder).
+    src/lite/landing/sections.tsx       Nav, 15-minute strip, value cards,
+                                        client-portal split, proof band, FAQ,
+                                        final CTA, footer.
+    src/lite/landing/landing.css        All styles. Every class in the cn-
+                                        namespace, tokens on .cn-landing.
+                                        Independent of ThemeContext by design.
 
-  NEW  src/lite/reveal/revealContext.ts
-       Context + useRevealContext accessor. Split from the provider so the
-       provider file exports only a component (keeps Fast Refresh working).
+  REVEAL (new)
+    src/lite/reveal/revealRules.ts      9 rules as DATA; each fails OPEN on
+                                        unknown signals.
+    src/lite/reveal/revealContext.ts    Context + accessor.
+    src/lite/reveal/RevealProvider.tsx  Holds signals; fetches nothing.
+                                        revealAll={true} shows everything —
+                                        pass it for pre-MVP tenants.
+    src/lite/reveal/useReveal.ts        useReveal('perspective') -> boolean.
+    src/lite/reveal/RevealGate.tsx      <RevealGate id="charts">…</RevealGate>
 
-  NEW  src/lite/reveal/RevealProvider.tsx
-       Holds signals + overrides. Does NOT fetch anything — screens push in
-       numbers they already have, so no new queries and no added API load.
-       Pass revealAll={true} for any pre-MVP tenant to show everything.
+  MODIFIED
+    src/App.tsx        Two lines: import LiteLandingPage from './lite/landing/
+                       LandingPage', and SmartHomePage returns <LiteLandingPage/>
+                       instead of <LandingPage/>. Nothing else touched.
+    eslint.config.js   Two no-restricted-imports blocks. src/App.tsx is the one
+                       documented exception (the single mount seam).
 
-  NEW  src/lite/reveal/useReveal.ts
-       useReveal('perspective') -> boolean. Plus useReveals, useRevealSignals
-       and useRevealAudit (dev/QA table of every rule and its current outcome).
-
-  NEW  src/lite/reveal/RevealGate.tsx
-       <RevealGate id="charts" fallback={<EmptyCta/>}>...</RevealGate>
-       Wrapping is the ONLY way reveal touches existing screens.
-
-  MOD  eslint.config.js
-       Adds two no-restricted-imports blocks:
-         A) src/lite may not import ContractWizard, pages/contracts,
-            catalog-studio or group-sessions.
-         B) nothing outside src/lite may import from src/lite.
-       Both verified to fire on canary files, then the canaries were deleted.
-
-VERIFIED BEFORE HANDOVER
-────────────────────────
-  * tsc --strict on src/lite  -> 0 errors
-  * eslint on src/lite/reveal -> 0 errors, 0 warnings
-  * eslint canary test        -> both isolation rules fired correctly
+VERIFIED IN THE RUNNING APP BEFORE HANDOVER
+───────────────────────────────────────────
+  * Ran the real dev server and rendered the page — full page screenshotted,
+    all sections correct, demo animating, trade chips and CTAs styled.
+  * tsc --strict on src/lite              -> 0 errors
+  * tsc app-wide (tsconfig.app.json)      -> 1188 errors, ALL pre-existing,
+                                             0 from src/lite
+  * eslint on src/lite and src/App.tsx    -> 0 new problems
+                                             (App.tsx's 4 unused-var errors are
+                                             pre-existing — confirmed against
+                                             the pristine file)
+  * eslint canary test                    -> both isolation rules fired
+  * Browser console on the live page      -> no errors
   * contractnest-ui working tree left pristine (git status clean)
+
+  Three real bugs were found by rendering it and fixed before handover:
+    - the landing inherited the app shell's background (mockup had it on body)
+    - a global :focus-visible and a global reduced-motion reset were leaking
+      out of the stylesheet into the whole app
+    - `.cn-landing button` (0,1,1) outranked `.cn-btn-cta` (0,1,0) and stripped
+      every button; resets now use :where() at zero specificity
 
 POWERSHELL — copy
 ─────────────────
-  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\lite\reveal"
-  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\src\lite\reveal\*" -Destination "contractnest-ui\src\lite\reveal\" -Recurse -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\lite"
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\src\lite\*" -Destination "contractnest-ui\src\lite\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
   Copy-Item "MANUAL_COPY_FILES\mvp-sprint-1\contractnest-ui\eslint.config.js" -Destination "contractnest-ui\eslint.config.js" -Force
 
-  Write-Host "Copied. Now verify:" -ForegroundColor Green
+  Write-Host "Copied." -ForegroundColor Green
 
-VERIFY LOCALLY
-──────────────
+TEST
+────
   cd contractnest-ui
-  npx tsc --noEmit -p tsconfig.app.json   # expect NO NEW errors vs your baseline
-  npm run lint                            # expect no new errors from src/lite
+  npm run dev
+  # open http://localhost:5173  while LOGGED OUT  (use an incognito window)
 
-  Nothing is wired into any screen yet — this batch adds capability only, so
-  the running app must look and behave EXACTLY as it does today. That is the
-  main thing to confirm.
+  TESTING CHECKLIST
+  [ ] New landing appears at / when logged out
+  [ ] Hero demo cycles: write -> CNAK -> accepted, clock reaches 3:00, loops
+  [ ] All four trade chips rebuild the slab (catalog count, contract, year strip)
+  [ ] "See my workspace" scrolls to the trade picker
+  [ ] "Start free with this setup" -> /signup
+  [ ] Logged IN, / still redirects to /ops/cockpit as before
+  [ ] Rest of the app looks unchanged (reveal is NOT wired to any screen yet)
+  [ ] npm run lint -> no new errors from src/lite
+  [ ] Mobile width: hero stacks, nav links hide, no horizontal scroll
 
 NOT YET DONE (next batch, after your sign-off)
 ──────────────────────────────────────────────
-  * Mount <RevealProvider> in App.tsx with revealAll for existing tenants
+  * Mount <RevealProvider> in App.tsx (revealAll for existing tenants)
   * Wrap the 9 surfaces with <RevealGate>
-  * Landing page decision + build
+  * Delete the retired landing components once this has run a week
 ═══════════════════════════════════════════════════
