@@ -80,12 +80,25 @@
 
   /* ── hero ── */
   .cn-hero{padding:58px 0 20px}
-  .cn-kicker{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--deep);background:var(--wash);border-radius:99px;padding:6px 15px;margin-bottom:22px}
+  .cn-kicker{display:inline-flex;align-items:center;gap:9px;max-width:100%;white-space:normal;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--deep);background:var(--wash);border-radius:99px;padding:6px 15px;margin-bottom:22px}
   .cn-kicker i{width:6px;height:6px;border-radius:50%;background:var(--good);font-style:normal;animation:pulse 2.4s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .cn-head{font-family:var(--serif);font-size:clamp(40px,6.4vw,74px);line-height:1.03;font-weight:700;letter-spacing:-.022em;margin:0 0 20px;max-width:16ch;text-wrap:balance}
-  .cn-head em{font-style:normal;color:var(--deep);position:relative;white-space:nowrap}
-  .cn-head em::after{content:"";position:absolute;left:0;right:0;bottom:.06em;height:.09em;background:var(--ember);opacity:.55;border-radius:2px}
+  .cn-head{overflow-wrap:break-word;min-width:0;font-family:var(--serif);font-size:clamp(36px,4.5vw,62px);line-height:1.05;font-weight:700;letter-spacing:-.02em;margin:0 0 20px;text-wrap:balance}
+  /* The underline is painted as a background on the text rather than an
+     absolutely-positioned bar, so it follows the words when the headline
+     wraps. The previous version needed white-space:nowrap to keep the bar
+     aligned, which let the headline overflow its grid column and collide
+     with the hero demo on narrower viewports. */
+  .cn-head em{
+    font-style:normal;color:var(--deep);
+    background-image:linear-gradient(to right,var(--ember),var(--ember));
+    background-size:100% .085em;
+    background-position:0 .93em;
+    background-repeat:no-repeat;
+    -webkit-box-decoration-break:clone;
+    box-decoration-break:clone;
+    opacity:1;
+  }
   .cn-dek{font-size:clamp(17px,2vw,20px);color:var(--soft);max-width:52ch;margin:0 0 26px;line-height:1.55}
   .cn-dek b{color:var(--ink);font-weight:650}
   .cn-heroacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
@@ -95,7 +108,7 @@
   /* ── hero grid + demo ── */
   .cn-herogrid{display:grid;grid-template-columns:1.02fr .98fr;gap:52px;align-items:center}
   @media(max-width:980px){.cn-herogrid{grid-template-columns:1fr;gap:36px}}
-  .cn-herogrid .cn-hl{min-width:0}
+  .cn-herogrid .cn-hl{min-width:0;overflow:hidden}
 
   /* the demo slot — swap inner content for a <video> later, keep the frame */
   .cn-demo{background:var(--slab);border:1px solid var(--line);border-radius:15px;box-shadow:var(--lift);overflow:hidden}
@@ -301,4 +314,28 @@
   .cn-slabwrap,.cn-slabwrap.dim{transition:none;opacity:1}
   .cn-scene{transition:none}
   .cn-caret{animation:none}
+}
+
+/* ── small screens ──
+   The nav row (brand + Sign in + CTA) and the kicker were wider than a 390px
+   viewport, which pushed the whole page sideways. Shrink them, and clip at the
+   root as a final guard so no future addition can reintroduce a sideways
+   scroll on a phone. */
+.cn-landing{overflow-x:clip}
+@media(max-width:620px){
+  .cn-navinner{gap:10px;height:auto;min-height:58px}
+  .cn-brand{font-size:18px}
+  .cn-nav .cn-btn-cta{padding:9px 13px;font-size:13px}
+  .cn-nav .cn-btn-plain{font-size:13px}
+  .cn-kicker{font-size:10.5px;letter-spacing:.07em;padding:5px 12px;margin-bottom:18px}
+  .cn-hero{padding:34px 0 12px}
+  .cn-herogrid{gap:28px}
+  .cn-microproof{gap:6px 14px}
+  .cn-demostage{height:344px}
+  .cn-slabfoot{flex-direction:column;align-items:stretch}
+  .cn-clockstrip{grid-template-columns:1fr}
+  .cn-ct{border-right:none;border-bottom:1px solid var(--line)}
+  .cn-ct:last-child{border-bottom:none}
+  .cn-proofgrid{grid-template-columns:1fr 1fr;gap:20px}
+  .cn-final{padding:34px 20px}
 }

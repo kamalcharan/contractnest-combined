@@ -81,7 +81,16 @@ VERIFIED IN THE RUNNING APP BEFORE HANDOVER
   * Browser console on the live page      -> no errors
   * contractnest-ui working tree left pristine (git status clean)
 
-  Three real bugs were found by rendering it and fixed before handover:
+  Responsive verified at a true 375px viewport (via a same-origin iframe —
+  headless Chromium clamps its own layout viewport to 485px, so a narrow
+  --window-size only crops the screenshot and does not test the media queries):
+  document scrollWidth == clientWidth, i.e. ZERO horizontal overflow.
+
+  Four real bugs were found by rendering it and fixed before handover:
+    - the headline's `white-space:nowrap` (needed by the old absolute-positioned
+      underline) let it overflow its grid column and collide with the hero demo.
+      The underline is now painted as a background on the text, so it follows
+      the words when the headline wraps, and the nowrap is gone.
     - the landing inherited the app shell's background (mockup had it on body)
     - a global :focus-visible and a global reduced-motion reset were leaking
       out of the stylesheet into the whole app
