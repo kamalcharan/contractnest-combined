@@ -1,0 +1,159 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 3b
+"Accept KT pricing" — where the prices come from
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-3. Three files.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+
+
+WHAT WAS REPORTED
+─────────────────
+  The pricing step shows one button, "Accept KT pricing", and reads as though
+  the tenant has no choice but to accept.
+
+
+WHAT IS ACTUALLY THERE — the options existed, they were just quiet
+──────────────────────────────────────────────────────────────────
+  Reading Screen8APricingStep before changing it:
+
+    line 352   every row has an `edit` control that opens an inline price field
+    line 343   with save / cancel
+    line 521   unpriced groups get a "Fill unpriced" action
+    line 397   a Skip in the empty state
+    line 552   "Skip for now — I'll set prices later" under the list
+    line 652   the primary button is ALREADY dynamic:
+                 changed > 0  ->  `Confirm pricing (N edits) →`
+                 changed = 0  ->  `Accept KT pricing →`
+
+  So a tenant can edit every price, fill gaps, or skip entirely. The button
+  only says "Accept" because they have not edited anything yet — technically
+  accurate, and it reads like an ultimatum.
+
+  Three real problems, none of them a missing feature:
+
+    1. "KT" is internal vocabulary. A tenant on day one has never heard of a
+       Knowledge Tree and cannot know whether accepting it is safe.
+    2. The `edit` control is a small text link on each row, easy to miss when
+       the eye goes straight to the big button at the bottom.
+    3. Nothing on the screen says where the numbers came from, so "accept"
+       sounds like agreeing to something binding.
+
+
+WHAT CHANGED
+────────────
+  1. AN EXPLAINER CARD, first thing in the right panel
+
+     The panel is already a 1fr/300px grid (line 434) carrying a Pricing
+     Progress card and a Catalog Summary card. A third card goes ABOVE both,
+     so it is read before the numbers:
+
+       "Where these prices come from
+        These are market-reference prices we researched for your equipment —
+        a starting point, not a quote.
+        Change any of them now with the edit link on each row, or leave them
+        and adjust later — every price stays editable in Catalog Studio.
+        Nothing is sent to a customer from this screen."
+
+     It names the `edit` control explicitly, which is what makes the row
+     affordance findable, and it names Catalog Studio — which is reachable
+     again since Sprint 2f unwired that nav gate.
+
+  2. THE BUTTON
+
+       'Accept KT pricing →'   ->   'Use these prices →'
+
+     The edited-state label is unchanged: `Confirm pricing (N edits) →`.
+     "Use these" is a choice; "Accept KT" is a demand in a language the tenant
+     does not speak.
+
+  3. THE PROGRESS TABLE
+
+       'KT suggested'  ->  'Suggested'
+
+     Same number, no jargon.
+
+  4. "BEGIN YOUR SETUP JOURNEY" — the header subtitle
+
+     Every express screen showed that same line, on every step, as if the flow
+     never moved. Same root cause as the header title fixed in Sprint 2c:
+     OnboardingUtils.getStepDefinition has no entry for these routes, so
+     currentStepDef is undefined and the header falls back to a generic string.
+
+     JourneyStep now carries an optional `blurb`, and the header uses it on the
+     express journey:
+
+       Your business      Name and what you do
+       What you service   Pick your equipment — we work out the rest
+       Building           Building your catalog
+       Your prices        Market-reference prices — edit any of them, or
+                          change them later
+       Your terms         The terms your contracts carry
+       Your assets        What you own and maintain
+       Your lists         Roles and tags for your team
+       Workspace ready    Everything is set up
+       First contract     A rehearsal, in test mode
+       Your plan          Nothing is charged today
+
+     Off the express journey the old fallback is untouched.
+
+
+FILES  (3 modified)
+───────────────────
+  MOD  src/pages/onboarding/steps/Screen8APricingStep.tsx
+         explainer card, button label, progress-table label
+  MOD  src/components/onboarding/journey.ts
+         optional `blurb` per step
+  MOD  src/components/onboarding/OnboardingLayout.tsx
+         header subtitle uses the blurb on the express journey
+
+  No logic changed on the pricing screen — the save, edit, skip and confirm
+  handlers are untouched. This is copy and one card.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Read the screen before changing it, and confirmed the edit / fill / skip
+    affordances already exist rather than adding duplicates.
+  * VANI_SOFT, VANI, TEXT, TEXT_DIM and TEXT_MUTED all confirmed defined in
+    the file (lines 60-65) before use.
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: Screen8APricingStep 11 problems WITH and WITHOUT the change;
+    OnboardingLayout 18 vs 19 at HEAD (one fewer, from an earlier batch).
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3b\contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3b\contractnest-ui\src\components\onboarding\*" -Destination "contractnest-ui\src\components\onboarding\" -Force
+
+  Write-Host "Sprint 3b copied" -ForegroundColor Green
+
+  # no new routes — Ctrl+F5 is enough
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Reach the pricing step -> the explainer card is the FIRST thing in the
+      right column, above Pricing Progress
+  [ ] The button reads "Use these prices →", not "Accept KT pricing →"
+  [ ] Click `edit` on a row, change a price, save -> the button becomes
+      "Confirm pricing (1 edits) →"
+  [ ] The progress table reads "Suggested", not "KT suggested"
+  [ ] "Skip for now — I'll set prices later" still works
+  [ ] Header subtitle reads "Market-reference prices — edit any of them, or
+      change them later", NOT "Begin your setup journey"
+  [ ] Walk the whole express flow — every screen has its own subtitle
+  [ ] Long form from /onboarding/vani-intro -> header behaves as before
+  [ ] Catalog Studio is reachable from the nav, so the card's promise is true
+  [ ] BBB unchanged
+═══════════════════════════════════════════════════
