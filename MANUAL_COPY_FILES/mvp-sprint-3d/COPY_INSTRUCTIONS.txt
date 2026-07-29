@@ -1,0 +1,111 @@
+═══════════════════════════════════════════════════
+MVP Sprint 3d — URGENT FIX
+A buyer had no Revenue/Expense switcher, so no way to reach RFQs
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-2e/2f. Two files.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+
+
+WHAT WAS WRONG — mine, from Sprint 2e
+─────────────────────────────────────
+  The `perspective` reveal rule unlocked the Revenue/Expense switcher on
+  vendorContractCount >= 1. A brand-new buyer tenant has zero non-client
+  contracts, so the switcher was hidden — and the switcher is the only way to
+  reach the expense side, where a buyer's RFQs and vendor contracts live.
+
+  The rule was circular: the switcher unlocked on having a non-client
+  contract, and creating one required the switcher.
+
+  The mistake was assuming every tenant starts on the revenue side and grows
+  into the expense side. That describes a seller. For a BUYER the expense side
+  is not a later unlock — it is the entire product.
+
+  Persona now decides, and the count is only the fallback for a seller who has
+  grown into it:
+
+    buyer / both  -> always shown
+    seller        -> shown once a non-client contract exists
+    unknown       -> falls back to the count (which fails open)
+
+  Note what is NOT done here: persona is used to GRANT, never to deny. BBB's
+  persona is 'seller' and it holds 44 partner contracts, so it keeps the
+  switcher through the count — the reason the count stays in the rule at all.
+
+
+FILES  (2 modified)
+───────────────────
+  MOD  src/components/reveal/revealRules.ts
+         RevealSignals gains `persona`; the perspective rule uses it
+  MOD  src/components/reveal/RevealSignalsBridge.tsx
+         pushes persona from the tenant profile. Null persona is left unset so
+         the rule falls back to the count rather than assuming 'seller'.
+
+
+THE PATTERN, STATED PLAINLY
+───────────────────────────
+  This is the third reveal rule corrected after contact with a real tenant.
+  Of the nine originally written:
+
+    env-badge       deleted   — the sandbox was complete; nothing to protect
+    payables        deleted   — redundant with perspective
+    catalog-studio  unwired   — blocked operations (2f)
+    discount        unwired   — never applied to a surface
+    sla-metrics     unwired   — every tenant has zero visits
+    contact-tabs    unwired   — same signal
+    charts          unwired   — the only signal measures the wrong thing
+    perspective     PATCHED   — this batch
+    group-sessions  untouched — the only rule that has needed no correction
+
+  One rule out of nine has survived unchanged. The schedule was written before
+  the code and the data were read, and it shows. Worth deciding whether reveal
+  earns its keep at all, rather than continuing to patch it rule by rule.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: 0 problems from src/components/reveal and src/lite.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3d\contractnest-ui\src\components\reveal\*" -Destination "contractnest-ui\src\components\reveal\" -Force
+
+  # no new routes — Ctrl+F5 is enough
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Onboard a NEW BUYER -> Revenue/Expense switcher IS present
+  [ ] Switch to Expense -> Payables loads; the RFQ/vendor surfaces are reachable
+  [ ] Onboard a NEW SELLER with no partner contracts -> switcher still hidden
+  [ ] BBB (persona 'seller', 44 partner contracts) -> switcher present
+  [ ] Block /api/tenant-profile in DevTools -> switcher still appears
+      (persona unknown -> falls back to the count -> fails open)
+
+
+STILL OPEN FOR THE BUYER PATH — not in this batch
+─────────────────────────────────────────────────
+  * /start/serve still says "What do you service?" to a buyer. Should ask what
+    they OWN, and say those items go into their equipment and facility
+    registries — which is what actually happens to them.
+  * VaniDoneStep points ALL personas at /start/contract (my Sprint 3 change).
+    A buyer cannot author a contract — the vendor initiates. Their equivalent
+    is an RFQ: record_type 'rfq', RFQ_STEPS exists at stepConfig.ts:45
+    (path -> nomenclature -> Select Vendors -> details -> Define Required
+    Services -> Review & Send RFQ), and RFQs deliberately carry no T&C.
+  * Screen9B's "I have a contract code (CNAK) →" button has an EMPTY onClick,
+    while /contracts/claim exists and is routed at App.tsx:682.
+  * Catalog Studio should be hidden for buyers — a persona rule, distinct from
+    the contract-count rule unwired in 2f.
+═══════════════════════════════════════════════════
