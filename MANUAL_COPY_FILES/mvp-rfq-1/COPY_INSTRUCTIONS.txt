@@ -4,7 +4,37 @@ The RFQ cycle: four breaks closed, nothing invented
 Branch: claude/contractnest-launch-strategy-aad14f
 Date:   29 Jul 2026
 
-THIS BATCH IS A MIGRATION. NOTHING HAS BEEN APPLIED.
+*** APPLIED TO PRODUCTION (uwyqhzotluikawcboldr) ON 29 JUL 2026 ***
+Applied on the owner's instruction, in six named migration chunks rather
+than one file, so a failure would have been locatable. Each chunk is its
+own transaction and each is idempotent. Recorded in migration history as:
+
+  rfq_cycle_072_part1_columns_index_triggers
+  rfq_cycle_072_part2_vendor_access_grants
+  rfq_cycle_072_part3_nondestructive_vendor_replace
+  rfq_cycle_072_part4_resolve_for_vendor
+  rfq_cycle_072_part5_submit_quote
+  rfq_cycle_072_part6_award_and_grants
+
+The .sql file below is the single-file equivalent and is kept as the
+readable record. DO NOT RE-APPLY IT — it is idempotent, but re-running
+part 3 would abort by design (the STEP 6 text it looks for is gone now,
+because it has already been replaced). That abort is the guard working,
+not a failure.
+
+VERIFIED AFTER APPLYING, against production:
+  7 new columns on t_contract_vendors ................ present
+  5 new functions ..................................... present
+  2 new triggers ...................................... present
+  uq_contract_vendors_contract_vendor ................. present
+  idx_contract_access_unique_grant .................... now includes
+      accessor_contact_id; all 63 existing access rows survived the swap
+  update_contract_transaction ......................... patched; the
+      destructive "DELETE FROM t_contract_vendors WHERE contract_id ="
+      no longer appears anywhere in the function (0 occurrences)
+  rfq_resolve_for_vendor(bad link) .................... INVALID_LINK
+  rfq_submit_quote(bad link) .......................... INVALID_LINK
+  rfq_award(bad ids) .................................. NOT_FOUND
 ═══════════════════════════════════════════════════
 
 SUBMODULES AFFECTED
