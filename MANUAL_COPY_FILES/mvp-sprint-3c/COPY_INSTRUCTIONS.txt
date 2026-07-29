@@ -1,0 +1,199 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 3c
+The first contract, fixed: one equipment, services only,
+document + schedule + CNAK before anything is written
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-3 and 3b. Two files.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+THE BUG YOU FOUND
+─────────────────
+  A tenant onboarded for lifts AND HVAC got a first contract containing every
+  block of both — roughly 166 rows, ~140 of them spare parts including ₹35k
+  rescue devices. That was this screen pre-ticking everything shortlist()
+  returned. My defaulting decision, and wrong: it holds for one equipment's
+  services and collapses at two equipments plus a parts catalog.
+
+
+1. ONE EQUIPMENT AT A TIME
+──────────────────────────
+  VaniCandidate already carries `equipment`, so the screen groups by it and
+  asks which one this contract is for. The picker only appears when there is
+  more than one — a single-equipment tenant sees no extra control.
+
+  Switching equipment re-defaults the ticks to that equipment's services.
+
+
+2. SERVICES TICKED, PARTS NOT
+─────────────────────────────
+  Within an equipment, services and spare parts are now separate sections.
+  Services are ticked by default; parts are listed dashed and unticked, with
+  the note "charged when used, so normally left out of an AMC".
+
+  A service is identified by carrying a cadence (cycle_days > 0). For an
+  Elevator / Lift the split is about 12 services to 70 parts, which is exactly
+  why parts must not be ticked by default.
+
+  Parts are capped at 12 with a line saying how many more are in the catalog —
+  a first contract does not need a 70-row parts list, and silently truncating
+  without saying so would be worse.
+
+
+3. THE VARIANT IS NAMED — BUT NOT PRICED
+────────────────────────────────────────
+  "Your catalog covers 8 types of Elevator / Lift. This quick contract uses
+   Traction Passenger Elevator (Geared) — the full wizard lets you pick any of
+   them per contract."
+
+  Read from the blocks' variant_pricing, because the composer's candidate
+  payload drops variants entirely (vaniComposerService never mentions the
+  word). Purely additive: if that query fails the line is omitted.
+
+  ONLY THE NAME IS USED, NEVER THE VARIANT PRICE — and this is worth your
+  attention independently of onboarding:
+
+    block                                base_price   1st variant price
+    Electrical & Controls Maintenance      ₹1,000            19
+    Hoistway & Pit Servicing               ₹1,200           960
+    Ride Quality & Mechanical Inspection   ₹1,500             1
+
+  Those read like multipliers or bad seed data rather than rupees (there is an
+  m_kt_variant_price_multipliers table, which would explain it). Quoting them
+  could produce a ₹20 annual AMC, so the contract stays on the block's own
+  price. ALSO NOTE: t_contract_blocks has NO variant column — a contract never
+  records which variant it is for. The variant is a catalog-authoring concept,
+  so naming it is the honest limit of what this screen can claim.
+
+  OPEN QUESTION FOR YOU: if a tenant picks a variant in the full wizard today,
+  is it charging ₹1 for a mechanical inspection? That is a live-catalog
+  question, not an onboarding one, and it is not touched here.
+
+
+4. EVENT SCHEDULE AND CONTRACT DOCUMENT — BY REUSING VaNiReviewFinalize
+──────────────────────────────────────────────────────────────────────
+  I said I would read it before building a parallel one. I did, and it does
+  the entire second half already:
+
+    - renders ReviewSendStep      the contract document view
+    - renders EventsPreviewStep   the service + billing timeline
+    - performs the submit itself
+    - shows the success state with the CNAK and a copy button
+    - takes exactly one input: a VaniComposeResult
+
+  A VaniComposeResult is precisely what assemble() returns. So this screen now
+  collects the answers, calls assemble(), and hands the result over.
+
+  Consequences:
+
+    * The duplicate submit() this file used to carry is DELETED. There is now
+      one submission path for the express flow, the wizard and the composer.
+    * The express flow shows the same document, schedule and CNAK treatment as
+      the composer, because it IS the same component.
+    * A bug is fixed on the way: submit() returns global_access_id and the
+      previous version discarded it — the express flow minted a CNAK and never
+      showed it to anyone.
+    * NOTHING IS WRITTEN until the tenant has seen the document and the
+      schedule. Previously the contract was created and then they moved on.
+
+  The button changes from "Create in test mode" to "Review the contract →",
+  because that is now what it does.
+
+  The framing you asked for sits on the form, before the button:
+    "Next you'll see the contract itself and its full schedule — every service
+     visit and every invoice, dated. That is the point of doing this once: your
+     delivery calendar and your receivables are planned from the day the
+     contract starts."
+
+
+FILES  (2 modified)
+───────────────────
+  MOD  src/lite/onboarding/FirstContractStep.tsx
+         equipment grouping + picker, service/part split, variant note,
+         assemble-then-hand-off to VaNiReviewFinalize, submit removed
+  MOD  src/lite/onboarding/PlanStep.tsx
+         the confirmation card no longer repeats the contract number —
+         VaNiReviewFinalize has already shown the document and the CNAK, so
+         this only acknowledges it happened
+
+  NOT TOUCHED: VaNiReviewFinalize itself, ReviewSendStep, EventsPreviewStep,
+  the wizard, the composer, App.tsx, journey.ts.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... the write moved INTO VaNiReviewFinalize, which is
+                             the same path the composer uses. This screen now
+                             performs no writes at all.
+  Race conditions .......... useRef in-flight guard on assemble; button
+                             disabled while preparing; the shortlist effect is
+                             cancellable.
+  Error handling ........... assemble failures surface the server message and
+                             leave the form intact; shortlist failure degrades
+                             to an explanatory empty state with Skip.
+  Toasts ................... vaniToast on assemble failure; success toasts now
+                             come from VaNiReviewFinalize.
+  Loaders .................. Loader2 for contacts, blocks and preparing.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Read VaNiReviewFinalize's props and success handling before reusing it,
+    rather than assuming it would detach.
+  * Variant price anomaly checked against production data, not assumed.
+  * Confirmed t_contract_blocks has no variant column before deciding the
+    variant could only be a message.
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: 0 problems from src/lite.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3c\contractnest-ui\src\lite\onboarding\*" -Destination "contractnest-ui\src\lite\onboarding\" -Force
+
+  Write-Host "Sprint 3c copied" -ForegroundColor Green
+
+  # no new routes — Ctrl+F5 is enough
+
+
+TESTING CHECKLIST
+─────────────────
+  THE BUG
+  [ ] Onboard a tenant with BOTH lifts and HVAC
+  [ ] The contract screen shows an equipment picker with both
+  [ ] Only ONE equipment's blocks are listed at a time
+  [ ] Only its SERVICES are ticked — spare parts are dashed and unticked
+  [ ] The running total is a plausible AMC, not six figures of spare parts
+  [ ] Switch equipment -> ticks re-default to that equipment's services
+
+  THE VARIANT LINE
+  [ ] "Your catalog covers N types of <equipment>" appears for lifts
+  [ ] It names a variant, and quotes NO variant price
+
+  THE REVIEW
+  [ ] Button reads "Review the contract →"
+  [ ] It opens the contract document view — the same one the wizard shows
+  [ ] The events tab shows service visits AND billing events, dated
+  [ ] NOTHING exists in Contracts yet at this point — verify in another tab
+  [ ] Approve & Send -> success screen shows the CNAK with a copy button
+  [ ] NOW the contract exists in Contracts (test)
+  [ ] Back / Edit from review returns to the form with choices intact
+  [ ] Done -> /start/plan, which acknowledges the contract without repeating it
+
+  REGRESSION
+  [ ] The VaNi composer still works end to end (same component)
+  [ ] The contract wizard still works
+  [ ] Switch to Live -> the test contract is NOT there
+  [ ] BBB unchanged
+═══════════════════════════════════════════════════
