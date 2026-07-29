@@ -1,0 +1,272 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2b
+"What do you service?"  — the reverse query, applied
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-1 AND mvp-sprint-2.
+This batch REPLACES the /start/trade screen from Sprint 2.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+WHAT YOU ASKED FOR
+──────────────────
+  "we have mapping, currently -- Industry you serve -> equipments/
+   facilities/services. Now what we are doing is - selecting an equipment -
+   so in reverse we will get - industry you serve. It is a kind of reverse
+   query."
+
+  Built. Express screen 2 is now "What do you service?", the tenant picks
+  equipment / facilities / services, and the served industry is derived
+  backwards from what they picked.
+
+
+WHY THE FORWARD DIRECTION WAS ACTIVELY WRONG (this is the bug you hit)
+─────────────────────────────────────────────────────────────────────
+  You reported: "I selected Lifts/Elevators but the equipment list shows the
+  whole list of other items." Here is what the data actually says.
+
+  v_resource_templates_by_industry — the view every template list is built
+  from — is:
+
+      m_catalog_resource_templates
+        JOIN m_catalog_resource_template_industries    (the link table)
+      UNION ALL
+      templates WHERE scope='universal'  CROSS JOIN every root industry
+
+  So a template only appears under an industry if it has a LINK ROW, or if
+  it is universal (in which case it appears under EVERY industry).
+
+  Counted live:
+
+    industry_id       equipment templates   with NO link row
+    ----------------  -------------------   ----------------
+    lifts_elevators             2                  2
+    hvac                        2                  2
+
+  Both of that industry's templates have zero link rows and are not
+  universal. They are therefore invisible to the view. Selecting "Lifts &
+  Elevators" returns ONLY the 8 universal templates — Air Conditioner,
+  Electrical Panel, CCTV, Fire Extinguisher, Laptop, Router, Printer, RO —
+  which is exactly the list in your screenshot. Not a cache. Not a filter.
+  The data has a hole, and `hvac` has the identical hole.
+
+  Meanwhile the template that carries the lift Knowledge Tree — the one at
+  /admin/global-templates/tree/598f5591-e0ed-473b-8e4d-59b25c5b128a, which
+  you correctly said has KT — is "Elevator / Lift", and its home industry is
+  facility_management, linked to 14 industries, with 8 variants and 23
+  checkpoints.
+
+  So the industry a lift company would NAME and the industry that actually
+  CARRIES its catalog are different rows. No amount of fixing the industry
+  picker changes that. Asking for the equipment removes the guess entirely:
+  whatever the tenant picks is, by construction, a template that exists.
+
+
+THE SECOND THING THE DATA SAID
+──────────────────────────────
+  Platform-wide, only 16 templates have a Knowledge Tree (variants +
+  checkpoints). ResourcePickStep already refuses to let a SELLER pick
+  equipment without KT — `hasKT(t, ktCoverage)` — because KT is what becomes
+  priced service blocks. So those 16 are the real universe of "onboard and
+  get a furnished catalog":
+
+    STP / WTP Plant .............. facility_management   12 var / 95 chk
+    Transformer .................. facility_management   10 / 15
+    DG Set (Generator) ........... facility_management   10 / 95
+    HVAC System .................. facility_management   10 / 97
+    Elevator / Lift .............. facility_management    8 / 23
+    UPS System ................... facility_management    7 / 25
+    Power Plant / Substation ..... energy                12 / 15
+    HVAC-AHU (Pharma Grade) ...... pharma                10 / 15
+    Purified Water System ........ pharma                 6 / 28
+    ATM Machine .................. financial_services     9 / 15
+    BMS / Building Automation .... real_estate            8 / 15
+    Hospital Ward ................ healthcare             8 / 28
+    Operation Theatre ............ healthcare             8 / 28
+    Ventilator ................... healthcare             6 / 19
+    Parking Area ................. (universal)           10 / 15
+    Washroom / Restroom .......... (universal)            8 / 15
+
+  NOT ONE of them sits under lifts_elevators or hvac. A tenant who picks
+  those industries gets a KT-empty workspace no matter what else is fixed.
+  A tenant who picks the EQUIPMENT "Elevator / Lift" gets facility_management
+  and a working catalog. That is the whole argument for the inversion.
+
+  The new screen surfaces these 16 first, badged "Ready", with everything
+  else one click behind "Show all N items".
+
+
+HOW THE REVERSE QUERY IS COMPUTED (no new endpoint)
+───────────────────────────────────────────────────
+  The view emits ONE ROW PER (template, industry). Walking the pages and
+  folding rows by template id therefore yields, for free:
+
+      template.industries[]        every industry it is linked to
+      template.primaryIndustryId   the row where is_primary = true
+
+  primaryIndustryId IS the reverse answer, and it is what gets saved as the
+  served industry.
+
+  Cross-industry templates deliberately do NOT contribute their full link
+  list. HVAC System is linked to 16 industries; saving all of them would
+  seed catalogs for hospitals, banks and airlines because someone services
+  air conditioners. The home industry is the one that owns the Knowledge
+  Tree, so it is the one worth serving.
+
+  Fetching before the tenant has any industry:
+  /api/resources/resource-templates is scoped server-side by served
+  industries — empty at this point. It already accepts an `industry_ids`
+  override (the admin global designer uses it), so passing every industry id
+  gives the unscoped list with no API/edge/table change. The edge clamps
+  `limit` to 100 and slices the view BEFORE de-duplicating, so one page
+  returns ~84 distinct templates out of ~199 and silently drops 5 of the 16
+  KT-ready ones — measured, not assumed. Pages are therefore walked: page 1
+  reports the total, the remaining pages go out in parallel, capped at 8.
+
+
+WHERE IT HANDS BACK — vani-consent, NOT resource-pick
+─────────────────────────────────────────────────────
+  Sprint 2 handed off at /onboarding/resource-pick because skipping it left
+  the seeder with empty template arrays ("no service blocks found").
+
+  Now express asks that question itself, so resource-pick is genuinely
+  redundant rather than skipped. The new screen emits the EXACT route-state
+  payload ResourcePickStep emits:
+
+      { selectedEquipmentTemplates, selectedFacilityTemplates,
+        selectedServiceTemplates, personaId }
+
+  and makes the same two side-effect calls it makes:
+
+      POST /api/onboarding/selected-resources    (best-effort, seed retries)
+      completeVaniStep('resource-pick', {...})
+
+  plus completeVaniStep('industry-selection', {...}) for the screen it also
+  stands in for. Nothing downstream can tell the difference:
+  vani-consent → vani-intelligence → vani-working → pricing-review →
+  terms-conditions → equipment → done all run unmodified.
+
+  Screen count: express now replaces the first EIGHT screens of the long
+  chain with TWO.  ~16 screens -> ~9.
+
+
+FILES  (2 new, 4 modified, 1 deleted)
+─────────────────────────────────────
+  NEW  src/lite/onboarding/useGlobalTemplates.ts
+         Paged, tenant-unscoped template fetch. Folds (template, industry)
+         rows into one card per template carrying industries[] +
+         primaryIndustryId. This is the reverse map.
+
+  NEW  src/lite/onboarding/ServiceableStep.tsx
+         The screen. Tiles grouped Equipment / Facilities & areas /
+         Standalone services, KT-ready first and badged "Ready", search,
+         "show all", live derived-industry line
+         ("We'll set your workspace up for Facility Management").
+
+  MOD  src/lite/onboarding/expressFlow.ts
+         /start/trade -> /start/serve, handoff moved to vani-consent,
+         deriveServedIndustries() (the reverse query), normalisePersona(),
+         landing-trade hints now match template names instead of industry
+         names.
+
+  MOD  src/lite/onboarding/express.css      tile styles (cnx-tile*)
+  MOD  src/lite/onboarding/BusinessPersonaStep.tsx   1 line: -> /start/serve
+  MOD  src/App.tsx     ServiceableStep import + /start/serve route.
+                       /start/trade kept as a redirect so bookmarks and
+                       half-finished sessions land somewhere real.
+                       Supersedes the Sprint 2 copy of this file.
+
+  DEL  src/lite/onboarding/TradeStep.tsx    the industry-chip screen
+
+  NOT TOUCHED: every file under src/pages/onboarding/ — the VaNi steps are
+  untouched, as you asked. src/context/AuthContext.tsx untouched.
+  src/pages/auth/LoginPage.tsx untouched.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... The save is ordered so the only step that can
+                             fail visibly (addIndustries) runs FIRST; a
+                             failure there aborts before any navigation, so
+                             the tenant retries a clean screen. The
+                             selected-resources POST is best-effort exactly
+                             as ResourcePickStep documents (seed retries from
+                             route state). No partial state can strand a
+                             tenant mid-chain.
+  Race conditions .......... useRef inflight guard survives re-render (state
+                             alone does not); addIndustries has its own
+                             in-flight guard; button disabled while saving;
+                             template query is de-duplicated by React Query
+                             on a stable sorted key.
+  Error handling ........... Per-page fetch failures degrade to a shorter
+                             list instead of a crash; explicit isError state
+                             with a Try-again button; API errors surface the
+                             server message.
+  Toasts ................... vaniToast (existing) — success on submit,
+                             error on failure.
+  Loaders .................. Loader2 (existing lucide spinner) for the
+                             catalog load and the submit button.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Every claim above measured against the live database, not inferred.
+  * tsc app-wide unchanged from baseline, 0 errors from src/lite.
+  * Every import checked to exist before use.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+  # 1. the new + changed lite files
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2b\contractnest-ui\src\lite\onboarding\*" -Destination "contractnest-ui\src\lite\onboarding\" -Recurse -Force
+
+  # 2. App.tsx (supersedes the Sprint 2 copy)
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2b\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+  # 3. remove the retired industry-chip screen
+  Remove-Item "contractnest-ui\src\lite\onboarding\TradeStep.tsx" -ErrorAction SilentlyContinue
+
+  Write-Host "Sprint 2b copied" -ForegroundColor Green
+
+
+RESTART THE DEV SERVER — VITE WILL NOT HOT-RELOAD A NEW ROUTE
+─────────────────────────────────────────────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
+  npm run dev
+  # use the EXACT url the banner prints, then Ctrl+F5
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Register a NEW account + NEW workspace -> land on /start
+  [ ] Pick "I provide services" -> Continue -> /start/serve
+  [ ] The list shows ~16 tiles badged "Ready", NOT the whole catalog
+  [ ] "Elevator / Lift" IS in that list  <-- the thing that was broken
+  [ ] Search "lift" finds it; search "hvac" finds HVAC System
+  [ ] Tick Elevator / Lift -> hint reads
+      "1 selected. We'll set your workspace up for Facility Management."
+  [ ] Tick Ventilator too -> hint adds Healthcare
+  [ ] "Show all N items" reveals the rest; toggles back
+  [ ] "Build my workspace" -> /onboarding/vani-consent, then seeding runs
+      and DOES produce service blocks (the Sprint 2 bug stays fixed)
+  [ ] After seeding: pricing -> terms -> equipment -> done, unchanged
+  [ ] Settings > Business Profile shows Facility Management as served
+  [ ] Catalog has real blocks with checkpoints and prices, not empty shells
+  [ ] STOPWATCH from "Start free" to a furnished workspace. Target <= 6 min.
+  [ ] Pick "I own equipment" (buyer) instead -> equipment is NOT KT-gated
+  [ ] /start/trade in the address bar -> redirects to /start/serve
+  [ ] /onboarding/vani-intro still reachable (long form intact)
+  [ ] A tenant part-way through the LONG form -> still resumes on their step
+  [ ] BBB chapter login -> completely unchanged
+═══════════════════════════════════════════════════
