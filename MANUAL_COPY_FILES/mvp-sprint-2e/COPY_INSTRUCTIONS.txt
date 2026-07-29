@@ -1,0 +1,256 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2e
+Reveal wired: the module stops being inert
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-1, 2, 2b, 2c AND 2d.
+Supersedes the 2d copy of App.tsx.
+DELETES src/lite/reveal/ — see MOVE below.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+WHAT WAS WRONG
+──────────────
+  src/lite/reveal/ has existed since Sprint 1 — rules table, provider, hook,
+  gate, all compiling — but RevealProvider was never mounted in App.tsx and not
+  one surface was ever wrapped. A working engine with nothing connected to it.
+  Every signal stayed undefined, every rule failed open, nothing was ever
+  hidden. This connects it.
+
+
+THE MOVE: src/lite/reveal/ -> src/components/reveal/
+────────────────────────────────────────────────────
+  Gating means Header.tsx and Sidebar.tsx have to import RevealGate. The
+  Sprint 1 eslint rule forbids anything outside src/lite from importing into
+  it, and that rule is worth keeping. So reveal moves out — the same call made
+  for components/onboarding/journey.ts in Sprint 2c. Shared infrastructure
+  lives outside the lite boundary; lite-only UI stays inside it.
+
+  DELETE src/lite/reveal/ after copying. The copy command below does it.
+
+
+NINE RULES CHECKED AGAINST PRODUCTION. FOUR SURVIVED.
+─────────────────────────────────────────────────────
+  Every threshold was run against real data before wiring. That disqualified
+  four rules — which is the point of checking rather than assuming.
+
+  WIRED (4):
+
+    perspective     Revenue/Expense switcher in the header.
+                    Unlocks on: first non-client contract.
+                    BBB has 44 partner contracts -> shows.
+                    Gating this ALSO gates Payables: operations/finance/
+                    index.tsx:107 derives its view purely from perspective
+                    (`perspective === 'expense' ? 'payables' : 'receivables'`),
+                    so the separate `payables` rule was redundant and is gone.
+
+    catalog-studio  Catalog Studio nav group.
+                    Unlocks on: 5+ contracts. BBB has 56 -> shows.
+
+    group-sessions  Group Sessions nav item (submenu, under Operations).
+                    Unlocks on: tenant has group-session schedules.
+                    BBB has 86 rows -> shows.
+
+    discount        Rule kept and wired in the table; the contract-wizard
+                    surface itself is not yet wrapped (see OPEN ITEMS).
+
+  DELETED (2):
+
+    env-badge       It hid the Test/Live switch, on the theory that a wrong
+                    environment choice would break CNAK claims across
+                    environments. Both halves were wrong:
+                      * the sandbox is COMPLETE — 33 tables carry is_live
+                        (t_contacts, t_contracts, t_contract_events, t_invoices,
+                        t_invoice_receipt_allocations, t_service_tickets,
+                        t_service_evidence, t_catalog_items,
+                        t_sequence_counters, t_group_session_schedule,
+                        t_tenant_integrations, ...) plus t_tenants.is_test
+                      * tenants ALREADY use it — 100 test contacts, 7 test
+                        contracts, 7 test invoices in production
+                      * claim_contract_by_cnak ALREADY filters on is_live, so
+                        the environments cannot cross
+                    Nothing to protect against. The switch stays visible in the
+                    header (Header.tsx:302) so tenants can switch when they
+                    need to.
+
+    payables        Redundant with perspective — see above.
+
+  NOT WIRED, kept as data (3):
+
+    sla-metrics     Needs completed service visits. EVERY tenant in production
+    contact-tabs    has zero, BBB included, because BBB's work is check-ins and
+                    group sessions rather than field-service events. Wiring
+                    these would not be progressive disclosure, it would be
+                    "hidden for everyone, forever."
+
+    charts          Signal is months of billing history. The only column
+                    available is t_invoices.created_at, which clusters by when
+                    invoices were generated rather than the period they bill —
+                    BBB reads as 1 month despite holding April-July schedules.
+                    A rule firing on a number we know is wrong is worse than no
+                    rule.
+
+  All three stay in revealRules.ts with `wired: false` and the reason, so
+  turning one on later is a wrap, not a rewrite.
+
+
+WHY PERSONA WAS NOT USED AS A SHORTCUT
+──────────────────────────────────────
+  The obvious cheap signal for `perspective` was the tenant's persona — a
+  'seller' has no expense side, so hide it. Checked it first:
+
+    tenant   persona   partner contracts
+    BBB      seller    44
+
+  BBB's persona is 'seller' and it holds 44 partner contracts. Persona would
+  have hidden the switcher from the one tenant that demonstrably uses it. The
+  count is measured, not inferred.
+
+
+THE MISSING HALF: RevealSignalsBridge
+─────────────────────────────────────
+  RevealProvider deliberately does not fetch. That is fine for a screen that
+  already holds its numbers, and useless for the sidebar, which renders on
+  every page and needs the answer before anything else has loaded. Without a
+  source, every signal stays undefined forever and the module is inert — which
+  is exactly the state it was in.
+
+  RevealSignalsBridge renders nothing and pushes three signals, using the SAME
+  hooks the app already uses so React Query dedupes rather than duplicates:
+
+    useContractStats()   -> contractCount AND vendorContractCount
+                            (one call: the response already carries
+                             by_contract_type, contracts.ts:616, so the
+                             expense-side count comes out of the same payload)
+                            Sidebar.tsx already calls this hook, so on most
+                            pages it is a cache read, not a request.
+    useGroupSessions()   -> usesGroupSessions
+
+  TWO cached reads per session, not per page. The original design note claimed
+  "adds no queries"; that was not survivable, and pretending otherwise would
+  have meant shipping a module that never hides anything. This is the honest
+  price.
+
+  Every push is guarded on the query having SUCCEEDED. While loading or errored
+  the signal stays undefined -> fails open -> the surface shows. A slow or
+  broken API can never blank out a tenant's navigation; it can only fail to
+  hide something.
+
+
+FILES  (6 new, 3 modified, 1 directory deleted)
+───────────────────────────────────────────────
+  NEW  src/components/reveal/revealRules.ts        rules + why each was kept
+  NEW  src/components/reveal/revealContext.ts      moved
+  NEW  src/components/reveal/RevealProvider.tsx    moved, ALL_ON updated
+  NEW  src/components/reveal/useReveal.ts          moved
+  NEW  src/components/reveal/RevealGate.tsx        moved
+  NEW  src/components/reveal/RevealSignalsBridge.tsx   the missing half
+
+  MOD  src/App.tsx                       mounts RevealProvider + the bridge
+                                         inside QueryProvider. Supersedes 2d.
+  MOD  src/components/layout/Header.tsx  perspective switcher wrapped
+  MOD  src/components/layout/Sidebar.tsx menu filtered by reveal, top level
+                                         AND submenus (Group Sessions is a
+                                         submenu under Operations)
+
+  DEL  src/lite/reveal/                  moved to components/reveal
+
+  NOT TOUCHED: every file under src/pages/onboarding/. AuthContext,
+  LoginPage, and the environment switch itself all untouched.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... n/a — presentation only, no writes.
+  Race conditions .......... signals push from effects guarded on isSuccess;
+                             setSignals skips the state update when nothing
+                             changed (RevealProvider), so no render loop.
+                             GATED_IDS is module-level so useReveals memoises.
+  Error handling ........... every rule is try/caught in evaluateReveal and a
+                             throw returns true; failed queries leave signals
+                             undefined which fails open.
+  Toasts ................... n/a.
+  Loaders .................. n/a — surfaces render normally while signals load.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Every threshold run against production data, not assumed.
+  * The persona shortcut tested and rejected on BBB's real numbers.
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: Header 5 problems WITH and WITHOUT the change; Sidebar 2 and 2
+    (both compared against the files as they stand in HEAD). 0 problems from
+    src/components/reveal and src/lite.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  # reveal moves out of lite
+  Remove-Item -Recurse -Force "contractnest-ui\src\lite\reveal" -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\reveal" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2e\contractnest-ui\src\components\reveal\*" -Destination "contractnest-ui\src\components\reveal\" -Force
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2e\contractnest-ui\src\components\layout\*" -Destination "contractnest-ui\src\components\layout\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2e\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+  Write-Host "Sprint 2e copied" -ForegroundColor Green
+
+
+RESTART THE DEV SERVER
+──────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
+  npm run dev
+
+
+TESTING CHECKLIST
+─────────────────
+  BBB — THE ONE THAT MATTERS
+  [ ] Log in as BBB. Revenue/Expense switcher STILL THERE
+  [ ] Catalog Studio STILL in the nav
+  [ ] Group Sessions STILL in the nav under Operations
+  [ ] Test/Live switch STILL in the header
+  [ ] Switch to Expense -> Payables still loads
+  [ ] Check-in and group-session flows untouched
+
+  A BRAND-NEW TENANT
+  [ ] Finish onboarding on a fresh workspace
+  [ ] NO Revenue/Expense switcher (no partner contracts yet)
+  [ ] NO Catalog Studio (fewer than 5 contracts)
+  [ ] NO Group Sessions (no schedules)
+  [ ] Test/Live switch IS there
+  [ ] Create 5 contracts -> Catalog Studio appears (may need a refresh; the
+      stats query is cached)
+
+  FAIL-OPEN
+  [ ] DevTools -> block /api/contracts/stats -> every gated surface SHOWS.
+      This is the single most important test in this batch: a broken API must
+      never remove navigation.
+  [ ] Set revealAll on RevealProvider in App.tsx -> everything shows regardless
+      of signals (the escape hatch for when plan-based segmentation lands)
+
+
+OPEN ITEMS
+──────────
+  * `discount` is wired in the rules table but the contract-wizard surface is
+    not yet wrapped. It needs the wizard to push inFirstContractCreate, which
+    belongs with the express-contract work rather than here.
+  * The sidebar still carries more than the reveal schedule covers — VaNi,
+    VaNi (old), Equipment Registry, Facility Registry, Appointments, Ops
+    Cockpit, Event Schedule. Getting a new tenant down to "Dashboard ·
+    Contracts · Contacts · Receivables · Get Started" needs a decision about
+    the MENU, not more reveal rules. Flagging rather than deciding it here.
+  * When t_bm_tenant_subscription starts carrying rows, plan assignment becomes
+    the pre-MVP/MVP signal and plugs into `revealAll` — one query, one prop.
+═══════════════════════════════════════════════════
