@@ -1,0 +1,177 @@
+/* src/lite/onboarding/express.css
+ *
+ * Styles for the express onboarding screens. Namespaced cnx- and tokenised on
+ * .cnx-root, same containment rule as the landing page: nothing leaks out,
+ * nothing leaks in. Resets use :where() so component classes always win.
+ *
+ * PALETTE — these are the VaNi tokens, not a second design.
+ * The express screens used to carry their own paper-and-green palette while
+ * every screen after them (VaniWorkingStep, Screen8APricingStep,
+ * TermsConditionsStep, LovSetupStep) hardcodes the VaNi orange set. Walking
+ * the flow meant walking through two different products. The values below are
+ * lifted verbatim from those files:
+ *
+ *     VANI       #ff6b2b      TEXT       #1a1816
+ *     TEXT_DIM   #8a847a      TEXT_MUTED #bab4a8
+ *     BORDER     #e5e1db      BG         #f7f5f2
+ *     SURFACE    #faf9f7      WHITE      #ffffff
+ *
+ * LIGHT ONLY, also deliberately. The VaNi steps have no dark variant — their
+ * palette is hardcoded — so a dark express screen handing off to a permanently
+ * light pricing screen was the most jarring transition in the flow. Matching
+ * the destination beats being individually nicer.
+ */
+
+.cnx-root{
+  --paper:#F7F5F2; --card:#FFFFFF; --surface:#FAF9F7;
+  --ink:#1A1816; --soft:#8A847A; --faint:#BAB4A8;
+  --line:#EDEAE4; --edge:#E5E1DB;
+  --deep:#FF6B2B; --deep-ink:#FFFFFF; --wash:#FFF3ED;
+  --bad:#B3403A;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --lift:0 1px 2px rgba(26,24,22,.04),0 14px 40px rgba(26,24,22,.07);
+  background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);
+  min-height:100vh;padding:40px 20px 70px;-webkit-font-smoothing:antialiased;
+}
+.cnx-root :where(*){box-sizing:border-box}
+.cnx-root :where(button){font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+.cnx-root :where(h1,p,ol,ul,li){margin:0}
+.cnx-root :where(ul,ol){padding:0;list-style:none}
+.cnx-root :focus-visible{outline:2px solid var(--deep);outline-offset:2px;border-radius:6px}
+
+.cnx-wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.cnx-wrap.cnx-wide{max-width:960px}
+.cnx-brand{font-size:20px;font-weight:700;text-align:center;letter-spacing:-.01em}
+.cnx-brand span{color:var(--deep)}
+
+/* two-column: main card + a contextual aside */
+.cnx-cols{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:18px;align-items:start}
+@media(max-width:900px){.cnx-cols{grid-template-columns:1fr}}
+
+/* card */
+.cnx-card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--lift);padding:28px 26px;display:flex;flex-direction:column;gap:18px}
+@media(max-width:520px){.cnx-card{padding:22px 18px}}
+.cnx-title{font-size:24px;font-weight:700;line-height:1.22;letter-spacing:-.015em;text-wrap:balance}
+.cnx-sub{color:var(--soft);font-size:14px;margin-top:-10px}
+
+/* fields */
+.cnx-field{display:flex;flex-direction:column;gap:8px}
+.cnx-label{font-size:12.5px;font-weight:650;color:var(--soft)}
+.cnx-labelnote{font-weight:500;color:var(--faint)}
+.cnx-input{padding:11px 13px;border:1px solid var(--edge);border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:15px;width:100%}
+.cnx-input:focus{outline:none;border-color:var(--deep);box-shadow:0 0 0 3px var(--wash)}
+.cnx-search{margin-bottom:2px}
+.cnx-hint{font-size:12.5px;color:var(--faint);line-height:1.5}
+
+/* intro */
+.cnx-orbwrap{display:flex;justify-content:center;padding:6px 0 2px}
+.cnx-orb{
+  width:96px;height:96px;
+  background:radial-gradient(circle at 34% 30%, #ffb08a 0%, var(--deep) 55%, #d8480f 100%);
+  border-radius:38% 62% 63% 37% / 41% 44% 56% 59%;
+  box-shadow:0 10px 40px rgba(255,107,43,.34);
+  animation:cnx-morph 9s ease-in-out infinite, cnx-pulse 4s ease-in-out infinite;
+}
+@keyframes cnx-morph{
+  0%{border-radius:38% 62% 63% 37% / 41% 44% 56% 59%}
+  25%{border-radius:55% 45% 38% 62% / 55% 38% 62% 45%}
+  50%{border-radius:63% 37% 50% 50% / 30% 60% 40% 70%}
+  75%{border-radius:45% 55% 62% 38% / 62% 44% 56% 38%}
+  100%{border-radius:38% 62% 44% 56% / 50% 55% 45% 50%}
+}
+@keyframes cnx-pulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.06);opacity:1}}
+
+.cnx-promises{display:flex;flex-direction:column;gap:10px}
+.cnx-promise{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--soft);line-height:1.45}
+.cnx-promisetick{flex:none;width:7px;height:7px;margin-top:7px;border-radius:50%;background:var(--deep)}
+
+/* persona choices */
+.cnx-choices{display:grid;gap:9px}
+.cnx-choice{text-align:left;border:1.5px solid var(--edge);border-radius:11px;padding:13px 15px;background:var(--card);transition:border-color .15s,background .15s;display:block}
+.cnx-choice:hover{border-color:var(--deep)}
+.cnx-choice[aria-pressed="true"]{border-color:var(--deep);background:var(--wash)}
+.cnx-ct{display:block;font-weight:680;font-size:14.5px}
+.cnx-choice[aria-pressed="true"] .cnx-ct{color:var(--deep)}
+.cnx-cd{display:block;font-size:12.5px;color:var(--soft);margin-top:2px}
+
+/* serviceable tiles — "what do you service" */
+.cnx-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:8px}
+@media(max-width:520px){.cnx-tiles{grid-template-columns:1fr}}
+.cnx-tile{
+  display:flex;align-items:flex-start;gap:9px;text-align:left;
+  border:1.5px solid var(--edge);border-radius:11px;padding:11px 12px;background:var(--card);
+  transition:border-color .15s,background .15s;position:relative;
+}
+.cnx-tile:hover{border-color:var(--deep)}
+.cnx-tile[aria-pressed="true"]{border-color:var(--deep);background:var(--wash)}
+.cnx-tiletick{
+  flex:none;width:17px;height:17px;margin-top:1px;border-radius:5px;
+  border:1.5px solid var(--edge);background:var(--card);
+  display:flex;align-items:center;justify-content:center;color:var(--deep-ink);
+}
+.cnx-tile[aria-pressed="true"] .cnx-tiletick{background:var(--deep);border-color:var(--deep)}
+.cnx-tiletext{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.cnx-tilename{font-size:13.5px;font-weight:620;line-height:1.35}
+.cnx-tile[aria-pressed="true"] .cnx-tilename{color:var(--deep)}
+.cnx-tilesub{font-size:11.5px;color:var(--faint);line-height:1.35}
+.cnx-tilebadge{
+  flex:none;align-self:flex-start;display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--deep);background:var(--wash);border-radius:99px;padding:2px 7px;
+}
+/* an item we can register but cannot price yet — see ServiceableStep */
+.cnx-tile.cnx-pending[aria-pressed="true"]{
+  border-color:var(--edge);
+  background:var(--surface);
+  border-style:dashed;
+}
+.cnx-tile.cnx-pending[aria-pressed="true"] .cnx-tiletick{
+  background:var(--soft);border-color:var(--soft);
+}
+.cnx-tile.cnx-pending[aria-pressed="true"] .cnx-tilename{color:var(--ink)}
+
+/* aside — the activation notice */
+.cnx-aside{
+  background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:20px 18px;display:flex;flex-direction:column;gap:12px;
+  box-shadow:var(--lift);
+}
+@media(min-width:901px){.cnx-aside{position:sticky;top:24px}}
+.cnx-asideicon{
+  width:34px;height:34px;border-radius:10px;background:var(--wash);color:var(--deep);
+  display:flex;align-items:center;justify-content:center;
+}
+.cnx-asidetitle{font-size:15px;font-weight:700;line-height:1.3}
+.cnx-asidebody{font-size:13px;color:var(--soft);line-height:1.6}
+.cnx-asidelist{display:flex;flex-direction:column;gap:6px}
+.cnx-asideitem{
+  display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:620;
+  color:var(--ink);background:var(--card);border:1px solid var(--edge);
+  border-radius:8px;padding:7px 10px;
+}
+.cnx-asidedot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--deep)}
+.cnx-asidesla{
+  font-size:12px;color:var(--deep);background:var(--wash);
+  border-radius:9px;padding:9px 11px;line-height:1.5;font-weight:600;
+}
+
+/* plan grid — wraps the existing PlanCard, which brings its own styling */
+.cnx-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;align-items:start}
+@media(max-width:640px){.cnx-plans{grid-template-columns:1fr}}
+
+/* actions */
+.cnx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;font-weight:650;font-size:15px;padding:13px 20px}
+.cnx-primary{background:var(--deep);color:var(--deep-ink)}
+.cnx-primary:hover:not(:disabled){filter:brightness(1.06)}
+.cnx-btn:disabled{opacity:.45;cursor:not-allowed}
+.cnx-foot{text-align:center}
+.cnx-link{font-size:13px;color:var(--soft);text-decoration:underline;text-underline-offset:3px}
+.cnx-link:hover{color:var(--ink)}
+
+.cnx-loading{display:flex;align-items:center;gap:10px;color:var(--soft);font-size:14px;padding:14px 0}
+.cnx-empty{font-size:13.5px;color:var(--soft);line-height:1.55}
+.cnx-spin{animation:cnx-rot 1s linear infinite}
+@keyframes cnx-rot{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .cnx-root *,.cnx-root *::before,.cnx-root *::after{animation:none!important;transition:none!important}
+}

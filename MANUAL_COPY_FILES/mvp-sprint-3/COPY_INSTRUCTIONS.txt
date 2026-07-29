@@ -1,0 +1,284 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 3
+Onboarding ends with a real contract
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-1, 2, 2b, 2c, 2d, 2e AND 2f.
+Supersedes the 2e copy of App.tsx and the 2d copies of journey.ts and
+express.css.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+WHY THIS SPRINT IS SO SMALL
+───────────────────────────
+  The execution plan listed four builds for Sprint 3. Reading the code first
+  showed all four already exist:
+
+    plan: ImportStep, paste -> parse -> preview -> confirm, batched, per-row
+          errors
+      -> pages/contacts/import ALREADY DOES THIS. 1,177 lines. xlsx/csv upload,
+         column mapping, preview + validate, batched POST /api/contacts/import,
+         per-row results report, entity-agnostic adapter. Routed at
+         /contacts/import. NOT REBUILT.
+
+    plan: ExpressContract, 5 fields with blocks pre-filled
+      -> vaniComposerService.assemble() already returns a full reviewable draft
+         from blocks, deterministically. Used here rather than rewritten.
+
+    plan: mappers/expressContract.ts, wizard-shaped payload
+      -> mapWizardToRequest() is already the single source of truth for both
+         single and bulk submission. NOT REBUILT.
+
+    plan: throttled sequential creates with a progress bar
+      -> would have been a DOWNGRADE. useContractSubmission.submitBulk already
+         posts one request to a server-side bulk endpoint that creates,
+         activates and dedups on template_id.
+
+  So this sprint is one real screen, one thin wrapper and one CTA.
+
+
+THE FLOW NOW
+────────────
+  /start                     VaNi intro (splash, no rail)
+  /start/business            name + persona
+  /start/serve               what you service
+  /onboarding/vani-working   seeding
+  /onboarding/pricing-review
+  /onboarding/terms-conditions
+  /onboarding/equipment-confirm   (buyer / both)
+  /onboarding/lov-setup           UNTOUCHED — it exists to guarantee Roles
+  /onboarding/done                "Workspace ready"
+  /start/contract            <-- NEW: create a real contract, in test
+  /start/plan                <-- NEW: pick a plan
+  -> /ops/cockpit
+
+  LovSetupStep is NOT modified. The hand-off is VaniDoneStep's CTA instead.
+
+  Rail: seller 9 steps, buyer 8, both 10.
+
+
+1. /start/contract — the one real build
+───────────────────────────────────────
+  Client (the 3 seeded contacts + Add someone) · what's included (their own
+  blocks, pre-ticked) · term · billing cycle · start date · running total.
+
+  EVERY CALL ALREADY EXISTS. No template, no LLM, no new endpoint:
+
+    vaniComposerService.shortlist(intent)
+        returns the tenant's own blocks already carrying activity, cycle_days
+        and price — the grouping m_cat_blocks does not store is resolved
+        server-side here.
+
+    vaniComposerService.assemble(intent, buyer, candidates, selection)
+        STEP 5, deterministic. The LLM step (selectBlocks) is SKIPPED: the
+        tenant ticks boxes, so the selection is built locally in the exact
+        shape assemble() expects.
+
+    useContractSubmission.submit(draft, 'client')
+        the same path the wizard and the VaNi composer both finalize through.
+
+  The wizard, the VaNi composer, bulk assign and template assignment are all
+  UNTOUCHED. This is a narrow front door for someone four minutes old, not a
+  replacement.
+
+  CREATED IN TEST — AND IT HAS TO BE, NOT JUST OUGHT TO BE
+  Checked against production before building this. Onboarding seeds:
+
+    tenant             live contacts   test contacts
+    feed / live / set         0               3
+    sharma elevators          0               3
+
+    tenant             live blocks     test blocks
+    feed / live               42             41
+    set                      110            109
+
+  The sample contacts exist ONLY in test — which confirms your point that VaNi
+  switches to test before creating a contract; the seeder does it server-side,
+  which is why there is no client-side switch to find. Blocks are mirrored into
+  both. So running this screen in LIVE would show an empty client dropdown and
+  the screen would be unusable. Test is required, not preferred.
+
+  It is a rehearsal against sample contacts and must not land in a real
+  ledger. api.ts reads localStorage['is_live_environment'] on EVERY request
+  (getCurrentEnvironment, api.ts:75) and the request interceptor overwrites
+  any per-request header, so flipping that key is both necessary and
+  sufficient. AuthContext is NOT modified.
+
+  Acceptance is 'signoff', not 'auto': auto-accept would flip the contract
+  straight to active and generate invoices and billing events for a rehearsal.
+
+  Skippable. If the catalog is empty or shortlist fails, the screen says so and
+  offers to move on rather than trapping the tenant.
+
+
+2. /start/plan — a wrapper, nothing designed
+────────────────────────────────────────────
+  Renders the SAME PlanCard component /businessmodel/tenants/pricing-plans
+  renders, from the same fakePricingPlans fixture.
+
+  WHY THE EXISTING PAGE COULD NOT SIMPLY BE ROUTED IN — you asked whether an
+  existing screen could just be shown. It cannot, for two reasons:
+
+    a) all three of its actions navigate OUT of onboarding:
+         line 71 -> /businessmodel/tenants/pricing-plans/{planId}/subscribe
+         line 76 -> /businessmodel/tenants/pricing-plans/{planId}/trial
+         line 81 -> /businessmodel/tenants/subscription
+
+    b) TWO OF THOSE THREE ROUTES DO NOT EXIST. App.tsx registers only an
+       `index` child under /businessmodel/tenants/pricing-plans, so "Subscribe"
+       and "Start trial" land on NotFoundPage TODAY for any tenant who clicks
+       them. Same class of bug as the lov-setup 404. Reported here, NOT fixed
+       in this batch — see OPEN ITEMS.
+
+  So the component is reused and the handlers are onboarding-appropriate.
+
+  WHAT IT WRITES: completeVaniStep('done', { selected_plan_id }) into
+  step_data only. t_bm_tenant_subscription is deliberately NOT written —
+  PlanCard is fed from a JSON fixture, and a subscription row pointing at a
+  fixture id would be worse than no row. When the 8 real plans in
+  t_bm_pricing_plan are wired up, that is the one line to change, and the same
+  row becomes the pre-MVP/MVP signal for revealAll.
+
+  LEAVING ONBOARDING IS A HARD NAVIGATION (window.location.assign), on
+  purpose: the contract screen put the session into test via localStorage, but
+  AuthContext only reads that key when it initialises (AuthContext.tsx:169). A
+  router push would leave the header badge saying "Live" while every request
+  went to test. A full load re-seeds AuthContext so the badge tells the truth.
+
+
+3. VaniDoneStep — the CTA
+─────────────────────────
+  handleDashboard navigated to /dashboard, and all three persona screens
+  labelled it "Try it in test mode →" / "Go to dashboard →". A tenant with a
+  furnished catalog and sample contacts was handed a to-do list.
+
+  Now: navigate('/start/contract'), and all three CTAs read "Create your first
+  contract →". Four lines in one file. Revert = navigate('/dashboard').
+
+
+FILES  (2 new, 5 modified)
+──────────────────────────
+  NEW  src/lite/onboarding/FirstContractStep.tsx   the contract screen
+  NEW  src/lite/onboarding/PlanStep.tsx            the PlanCard wrapper
+
+  MOD  src/App.tsx                          /start/contract + /start/plan
+                                            routes. Supersedes 2e.
+  MOD  src/components/onboarding/journey.ts contract + plan added; 'done'
+                                            relabelled "Workspace ready"
+                                            since it is no longer the end
+  MOD  src/lite/onboarding/express.css      .cnx-plans grid only
+  MOD  src/pages/onboarding/steps/VaniDoneStep.tsx   CTA target + 3 labels
+
+  NOT TOUCHED: LovSetupStep (it guarantees Roles), the contract wizard, the
+  VaNi composer, BulkAssignDialog, template assignment, /contacts/import,
+  AuthContext, LoginPage.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... contract creation is a single submit() through
+                             the existing path, which creates then transitions
+                             status server-side. A failed status transition
+                             leaves a draft, exactly as the wizard does.
+  Race conditions .......... useRef in-flight guard on create; button disabled
+                             while submitting; the shortlist effect is
+                             cancellable so a fast unmount cannot setState.
+  Error handling ........... shortlist failure degrades to an explanatory
+                             empty state with skip, not a dead screen; submit
+                             errors surface the server message.
+  Toasts ................... vaniToast on success and failure.
+  Loaders .................. Loader2 for contacts, for blocks and on submit.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Every call signature read from source before use — QuickAddContactDrawer
+    takes onSuccess(contactId) not onCreated, SubmissionResult carries `id`
+    not `contractId`, useContactList exposes hardRefresh for post-create.
+    All three were wrong in the first draft and corrected against the code.
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: 0 problems from src/lite; VaniDoneStep 0 problems WITH and
+    WITHOUT the change.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3\contractnest-ui\src\lite\onboarding\*" -Destination "contractnest-ui\src\lite\onboarding\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3\contractnest-ui\src\components\onboarding\journey.ts" -Destination "contractnest-ui\src\components\onboarding\journey.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-3\contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" -Force
+
+  Write-Host "Sprint 3 copied" -ForegroundColor Green
+
+
+RESTART THE DEV SERVER — NEW ROUTES
+───────────────────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
+  npm run dev
+
+
+TESTING CHECKLIST
+─────────────────
+  THE NEW ENDING
+  [ ] Finish onboarding on a fresh workspace -> "Workspace ready" screen
+  [ ] Its CTA reads "Create your first contract →", not "Try it in test mode"
+  [ ] It leads to /start/contract
+  [ ] The client dropdown lists the 3 sample contacts seeding created
+  [ ] "What's included" lists YOUR blocks with prices, all pre-ticked
+  [ ] Untick some -> running total drops accordingly
+  [ ] Pick term / billing / start date
+  [ ] "Create in test mode" -> success toast -> /start/plan
+
+  THE CONTRACT IS REAL AND IS IN TEST
+  [ ] Header badge shows TEST after landing on the cockpit
+  [ ] Contracts page (test) lists the new contract
+  [ ] Its status is pending_acceptance, NOT active (no invoices generated)
+  [ ] Its blocks match what you ticked, at the prices shown
+  [ ] Switch to Live -> the contract is NOT there. This is the important one.
+
+  THE PLAN SCREEN
+  [ ] Plan cards render (same look as /businessmodel/tenants/pricing-plans)
+  [ ] The contract number is shown in the confirmation card above them
+  [ ] Picking a plan -> lands on /ops/cockpit, badge reads TEST
+  [ ] "Skip — decide later" also lands on the cockpit
+
+  DEGRADED PATHS
+  [ ] Add a contact via "Add someone else" -> it is selected automatically
+  [ ] Block /api/vani-composer/shortlist in DevTools -> the screen explains
+      and offers Skip; it does not hang or blank
+  [ ] "Skip — I'll do this later" on the contract screen -> straight to plan
+
+  REGRESSION
+  [ ] LovSetupStep unchanged — still reachable, still no 404
+  [ ] The contract wizard still works normally for an existing tenant
+  [ ] The VaNi composer still works
+  [ ] BBB login completely unchanged
+  [ ] STOPWATCH signup -> contract created. Target <= 15 min.
+
+
+OPEN ITEMS
+──────────
+  * /businessmodel/tenants/pricing-plans/{id}/subscribe and /trial are dead
+    routes — they 404 today for any tenant who clicks Subscribe or Start Trial
+    on the existing pricing page. Found while wiring PlanStep, NOT fixed here
+    because it is a separate surface with its own subscription flow. Third
+    dead route found this session.
+  * PricingPlansPage still reads fakePricingPlans with a simulated 800ms
+    delay while 8 real plans sit in t_bm_pricing_plan.
+  * "Invite your team" is not built. InviteUserForm already accepts
+    availableRoles ({id,name,description}[]) — exactly the Roles LOV that
+    LovSetupStep creates — so the pieces exist. Suggested placement is a card
+    on the Workspace-ready screen rather than a tenth wizard step.
+═══════════════════════════════════════════════════
