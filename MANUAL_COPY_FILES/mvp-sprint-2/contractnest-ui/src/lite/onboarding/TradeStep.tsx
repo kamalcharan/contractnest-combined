@@ -16,10 +16,13 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
 import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { useServedIndustriesManager } from '@/hooks/queries/useServedIndustries';
+import { resourceTemplateKeys } from '@/hooks/queries/useResourceTemplates';
+import { knowledgeTreeKeys } from '@/hooks/queries/useKnowledgeTree';
 import { vaniToast } from '@/components/common/toast';
 import { completeVaniStep } from '@/utils/onboarding/completeVaniStep';
 
@@ -38,6 +41,7 @@ interface IndustryRow {
 
 export const TradeStep: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: industriesResponse, isLoading } = useIndustries();
   const { addIndustries, isAdding } = useServedIndustriesManager();
 
@@ -75,6 +79,16 @@ export const TradeStep: React.FC = () => {
       await addIndustries(selected);
       completeVaniStep('industry-selection', { industryIds: selected });
       clearLandingTrade();
+
+      // Resource templates are scoped SERVER-SIDE by the tenant's served
+      // industries, and useResourceTemplates caches for 2 minutes. Without this
+      // invalidation the next screen can render a template list fetched before
+      // the industries existed — which shows every type instead of the ones for
+      // the chosen trade. Awaited so resource-pick mounts against fresh data.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: resourceTemplateKeys.all }),
+        queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.all }),
+      ]);
 
       const industryNames = industries
         .filter((i) => i.id && selected.includes(i.id))

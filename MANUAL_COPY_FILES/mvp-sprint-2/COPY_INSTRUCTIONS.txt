@@ -50,6 +50,22 @@ WHY SPRINT 2 IS A CUT, NOT A BUILD
   auto-selects sensible templates, so it is a safe entry point. Four screens
   came back, and the workspace is actually built. Correctness over screen count.
 
+  SECOND BUG FROM THE SAME HANDOFF: WRONG EQUIPMENT LIST
+  ------------------------------------------------------
+  After selecting "Lifts / Elevators", resource-pick showed every equipment
+  type instead of the ones for that industry.
+
+  Root cause: useResourceTemplates is scoped SERVER-SIDE by the tenant's served
+  industries (its industry_ids filter is an admin-only override) and caches for
+  2 minutes (staleTime). TradeStep saved the industries and navigated straight
+  away, so resource-pick could render a template list that had been fetched
+  before those industries existed.
+
+  Fix: TradeStep now awaits invalidation of the resource-template and
+  knowledge-tree caches after saving industries and before navigating, so
+  resource-pick always mounts against freshly scoped data. Contained entirely
+  in the express file — no existing file touched.
+
 ROUTING: TWO ONE-LINE CHANGES, NOT SIX
 ──────────────────────────────────────
   A first pass patched redirects in AuthContext, LoginPage, CreateTenantPage
