@@ -183,6 +183,76 @@ Items 7–9 are one UI batch. Item 10 needs your answer first.
 
 ---
 
+## Decisions taken 30 Jul 2026 (post batch-2 review)
+
+Owner reviewed the live flow (`sell` tenant, RFQ `PRJ-1001` / `CNAK-741BFB`) and
+settled the open questions plus surfaced a cross-cutting gap.
+
+**Award model — decided.** Award → the **winning vendor issues a DRAFT
+contract** (they are a seller-tenant). The draft carries its own CNAK. The buyer
+watches multiple draft proposals arrive against the one RFQ, accepts one — a
+modal warns that accepting marks every other proposal on the RFQ rejected — and
+that draft becomes a real contract, visible in the contracts hub. This is the
+mirror of the existing contract→CNAK→claim flow, so it reuses contract creation,
+CNAK minting, the claim path and the contract document view. **New pieces only:**
+a `source_rfq_id` link column on `t_contracts` (today only `rfq_number` text
+exists), a "proposals on this RFQ" grouping view, and an accept-one/reject-rest
+action (mirrors `rfq_award`'s winner/loser marking).
+
+**RFQ blocks — two confirmed defects (found on `PRJ-1001`).**
+1. Flyby lines are created with `name: ''` and the name is not captured/persisted
+   in RFQ mode — `PRJ-1001`'s two blocks both landed with empty `block_name`.
+2. RFQ mode exposes ONLY free-text flyby lines — catalog search is hidden
+   (`!rfqMode`, ServiceBlocksStep:722) and recommendations are off
+   (`if (rfqMode) return []`, :364). There is no asset/registry pull at all.
+
+**The equipment/facility vs pure-service split — owner's framing.**
+- Equipment / facility → come from the **registry**. The wizard already has the
+  steps for this (`AssetSelectionStep`, `EquipmentStep`, reading
+  `useAssetRegistry`/`useResources`, nomenclature-driven). `RFQ_STEPS` simply
+  omits the asset step — so this is reuse, not new build.
+- Pure-play service (e.g. "10-member security for a warehouse, 1 year") → NOT
+  from registry. The existing free-text flyby line is the correct tool; keep it,
+  fix the empty-name bug.
+
+**"Last date to apply" — confirmed absent.** No deadline column on `t_contracts`.
+To add: one column + details-step field + shown to vendor + enforced in
+`rfq_submit_quote`.
+
+**RFQ has no home — confirmed.** The hub does not filter by `record_type`, so an
+RFQ leaks into the vendor-contracts list with status `sent`, which the contract
+status pills don't model. Needs an RFQ tab + RFQ status pills (`useContracts`
+already supports `record_type=rfq`).
+
+**Separate CNAK series for RFQ — approved.** RFQ CNAKs may use a distinct prefix
+so an RFQ and the draft contracts it spawns are distinguishable at a glance.
+
+## The onboarding-forcing gap — fill AFTER RFQ (owner flagged, 30 Jul 2026)
+
+**Owner decision:** users must never be *forced* to onboard to see or act on a
+CNAK-shared item. Onboarding is a cross-sell, not a gate. Two mirror scenarios,
+to be solved as ONE concept — a **CNAK persona**: a lightweight identity that can
+view and respond to a CNAK-shared object, with tenant onboarding offered
+afterwards as an upsell.
+
+- **Scenario 1 — Seller → Buyer (contract).** Verified: `/contracts/claim` is
+  nested inside `ProtectedRoute` (`App.tsx:682`). A buyer with a contract CNAK
+  cannot open the claim page without logging in as a tenant — onboarding is
+  forced before they can read what they were sent. **The laggard.**
+- **Scenario 2 — Buyer → Vendor (RFQ).** The batch-2 vendor quote page
+  (`/quote/:cnak/:secret`) is already public — it sets the right precedent. But
+  the gap returns at the vendor's *issue-draft-contract* step, which today needs
+  a login.
+
+**Shapes the RFQ build now:** the award→issue-draft step may assume the vendor is
+a seller-tenant FOR NOW, but must be structured so the CNAK-persona layer slots
+in later without rework. **When to revisit:** immediately after the RFQ cycle;
+retrofits both the contract claim flow and the RFQ issue step onto one surface.
+Permanent home: CLAUDE.md → Future Review Items (move it there when RFQ is
+committed).
+
+---
+
 ## Two things worth knowing that are not RFQ items
 
 - **`update_contract_transaction` STEP 6 is not the only delete-and-replace in that
