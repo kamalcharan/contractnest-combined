@@ -1,0 +1,35 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-11 — RFQ Type step: grouped nomenclature (wizard design) + kind mapping
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-10 builder (keeps its FlyBy controls, adds this):
+  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+WHAT CHANGED — the "Type" step (nomenclature)
+Now uses the SAME grouped design as the contract wizard's "What type of contract
+is this?" step:
+  • Category group headers (icon + label + "N types"), e.g. "Equipment
+    Maintenance Contracts · 6 types", "Facility & Property Contracts · 3 types".
+  • Cards with the short code (AMC, CMC, PMC …) + full name + a radio/check,
+    matching the wizard.
+And it MAPS to what the buyer picked in step 1:
+  • Equipment → equipment-based types  · Facility → entity-based types  ·
+    Service → service-based types (via form_settings flags). Falls back to all
+    types if nothing matches, so it never blocks.
+Picking a type still auto-fills the typical duration.
+
+COPY (PowerShell, from repo root)
+  git pull origin claude/rfq-handover-facilities-i4w7mt
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-11\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+  cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+TEST
+  [ ] /contracts/rfq/new → pick Equipment → "What kind of contract is this?"
+      shows grouped cards; only equipment-relevant groups/types appear
+  [ ] Pick Facility instead → facility/property types appear
+  [ ] Cards show code + full name + radio; selecting one fills duration
+  [ ] Scope step still has the FlyBy controls from mvp-rfq-10
