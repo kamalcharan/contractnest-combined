@@ -1,0 +1,61 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-8 — B7: dedicated RFQ view / report
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY  (no App.tsx, no API/edge, no migration)
+tsc: clean — `npx tsc -p tsconfig.app.json --noEmit` shows only the 3 pre-existing
+     environment errors; these two files add ZERO new errors.
+
+────────────────────────────────────────────────────────────
+FILES (2)
+────────────────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/detail/RfqReport.tsx        (NEW)
+2. contractnest-ui/src/pages/contracts/detail/index.tsx            (2-line wire-up)
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED
+────────────────────────────────────────────────────────────
+Opening an RFQ used to reuse the CONTRACT detail layout. Now, when
+record_type === 'rfq', the detail page early-returns a purpose-built RFQ
+report (RfqReport.tsx):
+  • Header: request number, CNAK, status pill, and — for the seller — the
+    valid status actions (Send / Award / Cancel …) driven by the same
+    handleStatusChange the page already uses.
+  • Hero: title, nomenclature, term, quote currency, CNAK.
+  • Timeline strip: Starts · Term · Last date to apply (with a live
+    "N days left / closed" countdown, red once past).
+  • What it covers: equipment_details / coverage_types (name, qty, flavour).
+  • Services to quote: the flyby service lines with their cadence.
+  • Vendors & quotes (the heart): per-vendor status (Awaiting / Quoted /
+    Declined / Accepted), quoted amount in the RFQ currency, notes, and a
+    quoted/awaiting/declined tally.
+
+NO new route — it renders inside the existing /contracts/:id, so the CNAK/link
+a buyer already holds keeps working. Reads only data the detail page already
+loads (ContractDetail); no API/edge/migration change.
+
+WIRE-UP in index.tsx (only 2 edits):
+  • import RfqReport from './RfqReport';
+  • after the loading/error guards:  if (isRfq) return <RfqReport … />;
+    (placed after all hooks — safe re: rules-of-hooks)
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-8\contractnest-ui\src\pages\contracts\detail\RfqReport.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-8\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\" -Force
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST
+────────────────────────────────────────────────────────────
+  [ ] Open an existing RFQ from Requests (e.g. PRJ-1001 / PRJ-1004)
+  [ ] It shows the RFQ report (not the contract tabs layout)
+  [ ] Vendors show correct status + any quoted amounts in the RFQ currency
+  [ ] Deadline countdown reads correctly (days left / closed)
+  [ ] Seller sees the valid status actions; buyer sees a clean read view
+  [ ] Opening a normal CONTRACT is unchanged (still the full contract detail)
