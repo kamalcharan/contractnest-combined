@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP RFQ batch 6 (URGENT unblock)
+Bring back the Revenue / Expense toggle
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   30 Jul 2026
+
+One file. Restores the perspective switcher so you can reach Expense →
+Requests (RFQ) on a fresh tenant.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   1 file. No API/edge/DB.
+
+
+WHAT WAS WRONG
+──────────────
+  The Revenue/Expense switcher in the header was wrapped in
+  <RevealGate id="perspective"> (shipped in mvp-sprint-2e). That reveal rule
+  hides the switch for a tenant with no non-client contracts — which is EVERY
+  fresh seller. Result: a new tenant can't switch to Expense, so can't reach
+  vendor contracts or Requests (RFQ) at all.
+
+  This is circular and wrong: you need the Expense side to create the vendor
+  contract that the rule waits for. The Revenue/Expense switch is CORE
+  NAVIGATION and must always be visible.
+
+
+THE FIX
+───────
+  Ship the ungated Header (the switcher renders on `currentTenant` alone, no
+  RevealGate). Verified by diff against your current (2e) Header: the ONLY
+  differences are the removal of the RevealGate import and the wrapper around
+  the perspective switcher — nothing else in the header changes.
+
+
+FILES
+─────
+  MOD  contractnest-ui/src/components/layout/Header.tsx
+         removes <RevealGate id="perspective"> around the Revenue/Expense pill
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-6\contractnest-ui\src\components\layout\Header.tsx" -Destination "contractnest-ui\src\components\layout\" -Force
+
+  # Ctrl+F5
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] The Revenue / Expense pill is back in the header on the new tenant
+  [ ] Switch to Expense → the hub shows the Contracts | Requests toggle
+  [ ] Requests → New Request opens the builder
+  [ ] Switch back to Revenue → client contracts as before
+  [ ] BBB unchanged
+
+
+STILL OPEN — facilities not in registry (being investigated)
+────────────────────────────────────────────────────────────
+  Onboarding for the new tenant "setup" DID seed 6 served industries and its
+  catalog got BOTH equipment (6) and facilities/asset (4) into
+  t_category_resources_master. But t_tenant_asset_registry (owned units) is
+  empty for both types. So whether "equipment shows but facilities don't"
+  depends on WHICH screen you were looking at — the catalog has both; the
+  owned-registry has neither. Need to pin the exact screen before fixing the
+  right seed path (see the chat note).
+═══════════════════════════════════════════════════
