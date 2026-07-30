@@ -1,115 +1,145 @@
 ═══════════════════════════════════════════════════
 COPY INSTRUCTIONS — MVP RFQ batch 3 (batch 1 of the build plan)
-RFQ home: a place to SEE your requests in the hub
+RFQ home in the hub + an RFQ-specific row
 Branch: claude/contractnest-launch-strategy-aad14f
 Date:   30 Jul 2026
 
-Smallest item in the plan, and the one that unblocks testing all the
-rest — until you can see RFQs, you can't watch the flow work.
+Two parts:
+  A. RFQ home — the Contracts|Requests toggle (UI only)
+  B. RFQ row  — the row now speaks RFQ, not contract
+     (UI + one migration, ALREADY APPLIED to prod)
 ═══════════════════════════════════════════════════
 
 SUBMODULES AFFECTED
 ───────────────────
-  contractnest-ui  (branch: main)   2 files, both UI-only. No API/edge/DB.
+  contractnest-ui    (branch: main)    3 files
+  contractnest-edge  (branch: main)    1 migration — ALREADY APPLIED (see below)
 
 
-WHAT THIS FIXES
-───────────────
-  You asked: "there is no way to see where my RFPs are — contracts hub only
-  focuses on contracts, not RFP."
+PART A — RFQ HOME (the toggle)
+──────────────────────────────
+  You asked: "no way to see where my RFPs are — the hub only shows contracts."
+  It was worse than hidden: the hub never passed record_type, so RFQs LEAKED
+  into the Expense vendor-contract list with status 'sent', which the contract
+  pills don't model.
 
-  It was worse than hidden. The hub never passed record_type at all, so your
-  RFQ (contract_type 'vendor') actually LEAKED into the Expense vendor-contract
-  list — but with status 'sent', which the contract status pills don't model,
-  so it showed up mis-bucketed with wrong pipeline maths and no "this is a
-  request" marker.
-
-  Now:
-    * Expense mode gets a "Contracts | Requests" toggle.
-    * "Requests" filters to record_type = 'rfq' and swaps the pipeline pills to
-      the RFQ lifecycle: Draft · Sent · Quotes In · Awarded · Converted.
-    * "Contracts" now explicitly filters record_type = 'contract' — which also
-      stops RFQs leaking into the contract list. That leak is fixed for free.
-    * Revenue mode is untouched — an RFQ is an expense-side concept (a buyer
-      asking vendors to quote), so the toggle only appears in Expense.
+  Now Expense mode has a "Contracts | Requests" toggle. Requests filters
+  record_type=rfq with an RFQ pipeline (Draft · Sent · Quotes In · Awarded ·
+  Converted); Contracts filters record_type=contract, which also stops the leak.
+  Revenue mode is untouched (RFQ is an expense-side concept).
 
 
-HOW IT REUSES WHAT EXISTS  (your question — "how will you use existing code")
+PART B — THE RFQ ROW  (your latest ask)
+───────────────────────────────────────
+  The row showed contract columns (health, ₹value, party) that mean nothing for
+  an RFQ. It now shows, per your list:
+
+    ID .................... PRJ-1001 (rfq_number)
+    Heading ............... the request name
+    Project start date .... "Starts 4 Aug 2026"
+    Vendors sent .......... "2 vendors"
+    Last date to submit ... 20 Aug 2026
+    Aging vs today ........ a coloured chip: "21d left" (info) →
+                            "3d left"/"Closes today" (amber) →
+                            "Closed 2d ago" (red). Awarded/converted/cancelled
+                            RFQs don't age — the status says it instead.
+
+  The avatar becomes a document mark (an RFQ has no counterparty yet).
+  Contract rows are completely unchanged — this is a branch on record_type.
+
+
+THE DATA THIS NEEDED  (your question — "how will you use existing code")
+────────────────────────────────────────────────────────────────────────
+  Audited get_contracts_list against production first:
+    * The FLAT (List) build ALREADY returned vendors_count — the live function
+      had drifted ahead of the repo, so vendor count needed NO new work.
+    * start_date was not returned by either build.
+    * response_deadline ("last date to apply") did not exist as a column.
+
+  Migration 073 therefore:
+    1. adds t_contracts.response_deadline (DATE, nullable) — the last date to
+       submit a quote. Enforced later in rfq_submit_quote; shown to vendors as
+       "respond by" in the create flow (batch 2).
+    2. adds start_date + response_deadline to BOTH list builds, and vendors_count
+       to the grouped build too, so List and By-Vendor agree.
+
+  The whole function body in 073 is the LIVE definition pulled with
+  pg_get_functiondef, with ONLY those keys inserted — nothing else retyped or
+  reordered — so it cannot drift from what prod runs.
+
+  Aging is computed client-side (today vs response_deadline); the server only
+  carries the date.
+
+
+*** MIGRATION 073 IS ALREADY APPLIED TO PRODUCTION (uwyqhzotluikawcboldr) ***
 ────────────────────────────────────────────────────────────────────────────
-  * useContracts already accepts record_type — the hook needed NO change.
-  * get_contracts_list RPC already filters on p_record_type — DB needed NO
-    change.
-  * CONTRACT_STATUS_COLORS already carries sent/quotes_received/awarded/
-    converted_to_contract labels + colours — the row badge renders RFQ statuses
-    correctly with no new map.
-  * ContractPortfolioRow already renders every RFQ needs — one line changed so
-    it shows rfq_number instead of a blank contract_number for requests.
-  * The RFQ pipeline counts read from the SAME stats payload: every RFQ status
-    is RFQ-exclusive (a contract is never 'sent'/'quotes_received'/'awarded'),
-    so the counts are accurate even though the stats endpoint scopes by
-    contract_type, not record_type. No new stats call.
-
-  Net new code: a toggle, a second pipeline-stages array, and a one-line row
-  tweak. Everything else is wiring that already existed.
+  Applied 30 Jul 2026 on your instruction, in two chunks:
+    rfq_list_fields_073      — ALTER TABLE add response_deadline
+    rfq_list_fields_073_fn   — CREATE OR REPLACE get_contracts_list
+  Verified: the RFQ list row now returns start_date (2026-08-04),
+  response_deadline (2026-08-20), vendors_count (2) for PRJ-1001.
+  A test deadline of 20 Aug 2026 was set on PRJ-1001 so you can SEE the aging
+  chip immediately. The .sql file is the readable record — DO NOT re-apply it;
+  it's a plain CREATE OR REPLACE so re-running is harmless, but there's no need.
 
 
-FILES  (2 modified)
-───────────────────
-  MOD  src/pages/contracts/hub/index.tsx
-         recordType state + effectiveRecordType (expense-only), the
-         Contracts|Requests toggle, rfqStages, record_type in filters,
-         header/label/placeholder/create-button copy, URL ?record=rfq sync
-  MOD  src/components/contracts/list/ContractPortfolioRow.tsx
-         show rfq_number for record_type 'rfq' (one line)
+FILES
+─────
+  contractnest-ui
+    MOD  src/pages/contracts/hub/index.tsx                          (Part A)
+    MOD  src/components/contracts/list/ContractPortfolioRow.tsx     (Part B)
+    MOD  src/types/contracts.ts   (adds response_deadline?: string|null)
+
+  contractnest-edge
+    NEW  supabase/migrations/contracts/073_rfq_list_fields.sql
+         (record only — already applied)
 
 
 VERIFIED BEFORE HANDOVER
 ────────────────────────
   * tsc (tsconfig.check.json): 50 errors WITH the change, 50 WITHOUT — zero
-    added. (That 50 is the pre-existing baseline for this tsconfig, unrelated.)
+    added. (The 50 is a pre-existing baseline unrelated to RFQ.)
+  * Migration 073 applied and its output verified against PRJ-1001 live.
   * contractnest-ui working tree restored pristine after the check.
-  * No API, edge, RPC, or migration touched.
 
 
-POWERSHELL — copy
-─────────────────
+POWERSHELL — copy (UI only; the migration is already live)
+──────────────────────────────────────────────────────────
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   git pull origin claude/contractnest-launch-strategy-aad14f
 
   Copy-Item "MANUAL_COPY_FILES\mvp-rfq-3\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\" -Force
   Copy-Item "MANUAL_COPY_FILES\mvp-rfq-3\contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx" -Destination "contractnest-ui\src\components\contracts\list\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-3\contractnest-ui\src\types\contracts.ts" -Destination "contractnest-ui\src\types\" -Force
 
-  # no new routes — Ctrl+F5 is enough
+  # Ctrl+F5 — no new routes
 
 
 TESTING CHECKLIST
 ─────────────────
-  [ ] Go to the contracts hub, switch to EXPENSE — a "Contracts | Requests"
-      toggle appears next to New Contract
-  [ ] Click "Requests" — the pills become Draft · Sent · Quotes In · Awarded ·
-      Converted, and your PRJ-1001 "checking of RFQ" appears (status Sent)
-  [ ] The row shows PRJ-1001 (rfq_number), not a blank number
-  [ ] Click the row — it opens the RFQ detail (the quotes panel from batch 2 if
-      that's copied in; otherwise the standard detail)
-  [ ] Switch back to "Contracts" — PRJ-1001 is GONE from the contract list
-      (the leak is fixed)
-  [ ] The button reads "New Request" in Requests view, "New Contract" otherwise
-  [ ] REVENUE mode shows NO toggle (unchanged)
-  [ ] URL carries ?record=rfq in Requests view; reload keeps you there
+  [ ] Hub → Expense → "Contracts | Requests" toggle appears
+  [ ] Click Requests → pills become Draft·Sent·Quotes In·Awarded·Converted
+  [ ] PRJ-1001 shows as an RFQ row with:
+        · a document avatar (not initials)
+        · PRJ-1001 under the heading
+        · "Starts 5 Aug 2026" (or your start date)
+        · "2 vendors"
+        · 20 Aug 2026 as the last date
+        · a "…d left" chip in amber/green depending on today
+  [ ] Switch to Contracts → PRJ-1001 gone from the contract list (leak fixed)
+  [ ] Contract rows look EXACTLY as before (unchanged branch)
+  [ ] "By Vendor" grouped view also shows the RFQ fields (grouped build patched)
+  [ ] Revenue mode → no toggle, no change
   [ ] BBB unchanged
 
 
 WHERE THIS SITS IN THE PLAN
 ───────────────────────────
-  1. RFQ home in the hub .................... THIS BATCH
-  2. RFQ creation flow (the 6-step PLG flow) . next — the big one
-  3. Last date to apply ..................... after 2
-  4. Award -> vendor issues draft contract .. after 3 (needs source_rfq_id)
+  1. RFQ home + RFQ row ..................... THIS BATCH ✓
+  2. RFQ creation flow (the 6-step PLG flow)  next — the big one; this is where
+     response_deadline actually gets SET by the user (today it's null except the
+     PRJ-1001 test value)
+  3. Last date to apply — enforcement ....... folds into 2 (column now exists)
+  4. Award → vendor issues draft contract ... after 2 (needs source_rfq_id)
   5. RFQ document view ...................... last
-
-  The product-led creation flow you approved (the 6-screen HTML) is batch 2.
-  It's the largest single piece — a new wizard step order, the registry pull,
-  the flyby name-capture fix, and the save-as-template nudge — so it gets its
-  own batch with the full production pass rather than being rushed in behind
-  this one.
 ═══════════════════════════════════════════════════

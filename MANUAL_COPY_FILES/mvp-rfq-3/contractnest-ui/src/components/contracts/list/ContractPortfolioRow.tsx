@@ -4,7 +4,7 @@
 // Shows: avatar, title+CN#, status badge, client name, value, overdue, view button
 
 import React from 'react';
-import { Eye, FileText, User, Play } from 'lucide-react';
+import { FileText, User, Play, CalendarDays, Users, Clock } from 'lucide-react';
 import type { Contract } from '@/types/contracts';
 import { CONTRACT_STATUS_COLORS } from '@/types/contracts';
 
@@ -20,6 +20,36 @@ interface ContractPortfolioRowProps {
 const fmt = (n: number, currency?: string) => {
   if (currency === 'USD') return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 });
   return '\u20B9' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+};
+
+// Short date, e.g. "4 Aug 2026". Accepts date-only or timestamp strings.
+const fmtDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  return isNaN(d.getTime())
+    ? '—'
+    : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+// Aging of an RFQ against its submission deadline, from *today*. Returns a
+// label + a semantic tone key. Whole-day math on the date part only, so it
+// doesn't flip on the hour. Terminal RFQ states don't age — the status tells
+// the story instead.
+const rfqAging = (
+  deadline?: string | null,
+  status?: string
+): { label: string; tone: 'muted' | 'info' | 'warning' | 'error' } | null => {
+  if (['awarded', 'converted_to_contract', 'cancelled'].includes(status || '')) return null;
+  if (!deadline) return { label: 'No deadline', tone: 'muted' };
+  const d = new Date(`${deadline.slice(0, 10)}T00:00:00`);
+  if (isNaN(d.getTime())) return { label: 'No deadline', tone: 'muted' };
+  const today = new Date();
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.round((d.getTime() - t0.getTime()) / 86400000);
+  if (days < 0) return { label: `Closed ${Math.abs(days)}d ago`, tone: 'error' };
+  if (days === 0) return { label: 'Closes today', tone: 'warning' };
+  if (days <= 3) return { label: `${days}d left`, tone: 'warning' };
+  return { label: `${days}d left`, tone: 'info' };
 };
 
 const getSemanticColor = (colorKey: string, colors: any): string => {
@@ -64,6 +94,15 @@ const ContractPortfolioRow: React.FC<ContractPortfolioRowProps> = ({
   const statusConfig = CONTRACT_STATUS_COLORS[c.status] || CONTRACT_STATUS_COLORS.draft;
   const statusColor = getSemanticColor(statusConfig.bg, colors);
 
+  // ── RFQ rows speak a different language: not a party + value + health, but
+  // start date, how many vendors were asked, and how long until quotes close.
+  const isRfq = c.record_type === 'rfq';
+  const vendorsSent = (c as any).vendors_count ?? 0;
+  const aging = isRfq ? rfqAging((c as any).response_deadline, c.status) : null;
+  const agingColor = aging
+    ? getSemanticColor(aging.tone === 'info' ? 'info' : aging.tone, colors)
+    : colors.utility.secondaryText;
+
   const clientName = c.buyer_company || c.buyer_name || '—';
   const initials = clientName
     .split(' ')
@@ -101,25 +140,26 @@ const ContractPortfolioRow: React.FC<ContractPortfolioRowProps> = ({
         e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
-      {/* ── Circle Avatar ── */}
+      {/* ── Circle Avatar ── (a request has no counterparty yet, so it wears
+           a document mark rather than someone's initials) */}
       <div
         style={{
           width: 42,
           height: 42,
           borderRadius: '50%',
-          background: avatarBg + '20',
-          border: `2px solid ${avatarBg}40`,
+          background: isRfq ? colors.brand.primary + '18' : avatarBg + '20',
+          border: `2px solid ${isRfq ? colors.brand.primary + '40' : avatarBg + '40'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 13,
           fontWeight: 800,
-          color: avatarBg,
+          color: isRfq ? colors.brand.primary : avatarBg,
           flexShrink: 0,
           letterSpacing: 0.5,
         }}
       >
-        {initials || '??'}
+        {isRfq ? <FileText size={18} /> : (initials || '??')}
       </div>
 
       {/* ── Title + Contract Number ── */}
@@ -168,80 +208,144 @@ const ContractPortfolioRow: React.FC<ContractPortfolioRowProps> = ({
         {statusConfig.label}
       </span>
 
-      {/* ── Client Name (plain text, no click) ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          width: 180,
-          flexShrink: 0,
-        }}
-      >
-        <User size={13} style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />
-        <span
-          style={{
-            fontSize: 13,
-            color: colors.utility.secondaryText,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          title={clientName}
-        >
-          {clientName}
-        </span>
-      </div>
+      {isRfq ? (
+        <>
+          {/* ── Project start date ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: 150, flexShrink: 0 }}>
+            <CalendarDays size={13} style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: colors.utility.secondaryText, whiteSpace: 'nowrap' }}>
+              Starts {fmtDate(c.start_date)}
+            </span>
+          </div>
 
-      {/* ── Contract Type ── */}
-      <span
-        style={{
-          padding: '3px 8px',
-          borderRadius: 6,
-          background: colors.utility.primaryText + '08',
-          color: colors.utility.secondaryText,
-          fontSize: 11,
-          fontWeight: 500,
-          flexShrink: 0,
-          textTransform: 'capitalize' as const,
-        }}
-      >
-        {c.contract_type || c.record_type || 'Client'}
-      </span>
+          {/* ── Vendors sent ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: 120, flexShrink: 0 }}>
+            <Users size={13} style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: colors.utility.secondaryText, whiteSpace: 'nowrap' }}>
+              {vendorsSent} vendor{vendorsSent === 1 ? '' : 's'}
+            </span>
+          </div>
 
-      {/* ── Value ── */}
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 14,
-          fontWeight: 700,
-          color: colors.utility.primaryText,
-          textAlign: 'right',
-          width: 110,
-          flexShrink: 0,
-        }}
-      >
-        {fmt(c.grand_total || c.total_value || 0, c.currency)}
-      </div>
+          {/* ── Last date to submit ── */}
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 13,
+              color: colors.utility.primaryText,
+              textAlign: 'right',
+              width: 120,
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+            }}
+            title="Last date to submit a quote"
+          >
+            {fmtDate((c as any).response_deadline)}
+          </div>
 
-      {/* ── Overdue indicator ── */}
-      {hasOverdue ? (
-        <span
-          style={{
-            fontSize: 10,
-            padding: '2px 7px',
-            borderRadius: 5,
-            background: colors.semantic.error + '12',
-            color: colors.semantic.error,
-            fontWeight: 700,
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {eventsOverdue} overdue
-        </span>
+          {/* ── Aging vs last date ── */}
+          {aging ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 5,
+                background: agingColor + '15',
+                color: agingColor,
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                width: 104,
+                justifyContent: 'center',
+              }}
+            >
+              <Clock size={11} />
+              {aging.label}
+            </span>
+          ) : (
+            <span style={{ width: 104, flexShrink: 0 }} />
+          )}
+        </>
       ) : (
-        <span style={{ width: 20, flexShrink: 0 }}>—</span>
+        <>
+          {/* ── Client Name (plain text, no click) ── */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              width: 180,
+              flexShrink: 0,
+            }}
+          >
+            <User size={13} style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />
+            <span
+              style={{
+                fontSize: 13,
+                color: colors.utility.secondaryText,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={clientName}
+            >
+              {clientName}
+            </span>
+          </div>
+
+          {/* ── Contract Type ── */}
+          <span
+            style={{
+              padding: '3px 8px',
+              borderRadius: 6,
+              background: colors.utility.primaryText + '08',
+              color: colors.utility.secondaryText,
+              fontSize: 11,
+              fontWeight: 500,
+              flexShrink: 0,
+              textTransform: 'capitalize' as const,
+            }}
+          >
+            {c.contract_type || c.record_type || 'Client'}
+          </span>
+
+          {/* ── Value ── */}
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 14,
+              fontWeight: 700,
+              color: colors.utility.primaryText,
+              textAlign: 'right',
+              width: 110,
+              flexShrink: 0,
+            }}
+          >
+            {fmt(c.grand_total || c.total_value || 0, c.currency)}
+          </div>
+
+          {/* ── Overdue indicator ── */}
+          {hasOverdue ? (
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 7px',
+                borderRadius: 5,
+                background: colors.semantic.error + '12',
+                color: colors.semantic.error,
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {eventsOverdue} overdue
+            </span>
+          ) : (
+            <span style={{ width: 20, flexShrink: 0 }}>—</span>
+          )}
+        </>
       )}
 
       {/* ── Resume Button (draft contracts) ── */}
