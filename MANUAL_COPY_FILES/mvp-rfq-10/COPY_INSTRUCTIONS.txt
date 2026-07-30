@@ -1,0 +1,37 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-10 — RFQ builder: real FlyBy controls (replaces "service line")
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-9 builder:
+  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+WHAT CHANGED
+The "Scope" step (was "Services") no longer offers a single generic "service
+line". It now uses the real FLYBY controls — the same four block types as the
+contract wizard (from the shared FLYBY_TYPE_CONFIG):
+  • Service   — with a cadence (Monthly … One-time)
+  • Spare Part — with a quantity
+  • Text       — a free-text note the vendor should read/agree to
+  • Document   — an expected file type (PDF/DOCX/…)
+FlyBy = structure only. NO library, NO pricing — the buyer names each block now;
+the vendor fills the price when quoting. Each block maps to the existing payload
+`blocks[]` with source_type:'flyby', flyby_type, block_name, quantity, and (for
+service) billing_cycle; type-specifics (content, fileType) ride in custom_fields.
+Review step shows each block with its type badge.
+
+COPY (PowerShell, from repo root)
+  git pull origin claude/rfq-handover-facilities-i4w7mt
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-10\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+  cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+TEST
+  [ ] /contracts/rfq/new → reach the "Scope" step
+  [ ] Four add buttons: Service, Spare Part, Text Block, Document (colored, with icons)
+  [ ] Service block shows cadence chips; Spare shows a qty stepper; Text shows a
+      textarea; Document shows file-type chips — and NO price anywhere
+  [ ] Add a couple, name them, Continue → Review lists them with type badges
+  [ ] Send → the RFQ persists them as flyby blocks (flyby_type set per block)
