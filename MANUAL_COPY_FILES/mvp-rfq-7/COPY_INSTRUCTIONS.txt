@@ -1,0 +1,78 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-7 — RFQ builder polish + Expenditure="my items" registry
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY  (no App.tsx, no API/edge, no migration)
+tsc: verified clean — `npx tsc -p tsconfig.app.json --noEmit` shows only the 3
+     pre-existing environment errors (node/vite types, deprecated baseUrl). My
+     two files add ZERO new errors.
+
+────────────────────────────────────────────────────────────
+FILES (2) — mirror exact paths
+────────────────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+2. contractnest-ui/src/pages/equipment-registry/index.tsx
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED
+────────────────────────────────────────────────────────────
+A) RfqBuilderPage.tsx — builder polish (tracker items B4/B3/B6/B2)
+   • B4 Currency — was silently hard-coded 'INR'. Now a real "Quote currency"
+     selector in the Timing step (INR/USD/EUR/GBP/AED/SGD), wired into the
+     payload (`currency`) and shown on the Review summary.
+   • B3 Deadline — "Last date to apply" was buried + shipped null (PRJ-1004).
+     Now PRE-FILLED to 7 days out (editable), promoted to a prominent
+     calendar-icon field, and still flows to `response_deadline`.
+   • B6 Nomenclature — was an easy-to-miss optional chip inside "Request".
+     Promoted to its own dedicated step ("What kind of contract is this?"),
+     placed right after "What for", and REQUIRED to advance (no more null
+     nomenclature). Removed the old chip block from the basics step.
+   • B2 Flyby — services step re-framed to read as ad-hoc/on-the-fly service
+     lines the buyer defines (the flyby concept); payload was already flyby.
+
+B) equipment-registry/index.tsx — Expenditure = "my items"
+   Model locked with owner: Expenditure→Buyer→MY items (ownership 'self'),
+   Revenue→Seller→customer items (ownership 'client', client name captured).
+   • The sidebar/grouping now ALWAYS reflects the tenant's OWN configured
+     resources (t_category_resources_master via useResources) for BOTH
+     perspectives — Expense no longer dumps the full master catalog.
+   • The master templates are now used ONLY as the "+ Add" picker (a buyer can
+     still add a brand-new owned item type from the full catalog).
+   • Grouping/counts/filter now resolve an asset's category via resource id OR
+     template id OR seeded template_id — so onboarding-seeded instances (which
+     carry template_id, not asset_type_id) group and filter correctly instead
+     of silently landing in "Other".
+
+────────────────────────────────────────────────────────────
+RELATED DATA FIX (already applied live to setup — NOT in these files)
+────────────────────────────────────────────────────────────
+The buyer's 10 onboarding-seeded registry items (tenant `setup`,
+59f3f4bc-…) were is_live=false (staged, pending the skippable Screen 8B
+confirm) and therefore invisible. They were flipped to is_live=true live in
+the DB so they render now. SYSTEMIC follow-up (not done here): make the buyer
+seed land is_live=true (or make promotion non-skippable) so future buyers
+aren't stranded — see handover.
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-7\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Then:  cd contractnest-ui ; npm run dev   (hard refresh Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST CHECKLIST
+────────────────────────────────────────────────────────────
+RFQ builder (/contracts/rfq/new, as a buyer):
+  [ ] Step order: What for → Type → Request → Timing → (Covers) → Services → Vendors → Review
+  [ ] "Type" step blocks Continue until a contract type is picked
+  [ ] Timing shows a Quote currency selector; pick USD → Review shows "· USD"
+  [ ] "Last date to apply" is pre-filled ~7 days out and editable
+  [ ] Send → new RFQ persists currency + response_deadline + nomenclature_id (all non-null)
+Registry (as buyer, Expenditure perspective):
+  [ ] /equipment-registry sidebar shows YOUR equipment categories (not the whole master catalog)
+  [ ] /equipment-registry lists your 6 seeded equipment as cards
+  [ ] Selecting a sidebar category filters your items correctly (seeded items included)
+  [ ] "+ Add Equipment" dialog still offers the full catalog to add a new type
+  [ ] Revenue perspective unchanged (client items + client-name capture)
