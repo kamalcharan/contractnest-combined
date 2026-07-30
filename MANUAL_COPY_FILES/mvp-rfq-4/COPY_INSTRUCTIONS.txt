@@ -1,0 +1,126 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP RFQ batch 4 (build plan: batch 2, slice A)
+"Last date to apply" — the input, end to end
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   30 Jul 2026
+
+The deadline you saw on the row (batch 3) had no way to be SET. This
+adds the input, wires it to the create RPC, and — since the column and
+row already exist — the aging chip now lights up for real on any RFQ
+you create.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui    (branch: main)    4 files
+  contractnest-edge  (branch: main)    1 migration — ALREADY APPLIED (see below)
+
+
+WHY THIS SLICE FIRST
+────────────────────
+  You said: "response date will start showing when you address batch 2."
+  This is exactly that — the smallest complete vertical of batch 2:
+
+    RFQ details step  →  wizard state  →  mapper payload  →  create RPC
+
+  It reuses the existing DatePicker and the existing details step; it only
+  appears in RFQ mode, so contracts and templates are untouched.
+
+
+WHAT CHANGED
+────────────
+  1. A "Last date to apply" date field in the RFQ details step, under
+     Duration & Timeline. minDate = today. Helper line: "Vendors see this as
+     their deadline; quotes are not accepted after it. Optional."
+     Shown ONLY when showResponseDeadline (RFQ mode). Contracts/templates
+     never see it.
+
+  2. wizardState gains responseDeadline (ISO yyyy-mm-dd string | null).
+     handleDetailsChange already spreads details into state, so it flows with
+     no new handler.
+
+  3. mapper sends response_deadline in the payload FOR RFQs ONLY — omitted for
+     contracts so it can never land on a non-RFQ row.
+
+  4. create_contract_transaction now persists it (migration 074, applied).
+
+
+FILES
+─────
+  contractnest-ui
+    MOD  src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
+           deadline field + ContractDetailsData.responseDeadline + prop
+    MOD  src/components/contracts/ContractWizard/index.tsx
+           passes responseDeadline in data + showResponseDeadline={isRfqMode}
+    MOD  src/components/contracts/ContractWizard/logic/state.ts
+           responseDeadline in the state shape + default null
+    MOD  src/components/contracts/ContractWizard/logic/mapper.ts
+           response_deadline in the payload (RFQ only)
+
+  contractnest-edge
+    NEW  supabase/migrations/contracts/074_rfq_persist_response_deadline.sql
+           (record only — already applied)
+
+
+*** MIGRATION 074 IS ALREADY APPLIED TO PRODUCTION (uwyqhzotluikawcboldr) ***
+────────────────────────────────────────────────────────────────────────────
+  Applied 30 Jul 2026. It patches create_contract_transaction in place — the
+  live definition is pulled, response_deadline is inserted into the column list
+  and the VALUES list via two unique anchors, and it ABORTS if either anchor is
+  missing. Verified: the function now references response_deadline in both
+  places. DO NOT re-apply (a second run aborts on "anchor not found" — the
+  guard working, not a failure).
+
+  NOT patched: update_contract_transaction. Editing an RFQ draft's deadline is
+  a follow-up; the create path is what makes the deadline appear on new RFQs.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * tsc (tsconfig.check.json): 50 WITH the change, 50 WITHOUT — zero added.
+  * Migration 074 applied; column + VALUES patch confirmed in the live function.
+  * contractnest-ui working tree restored pristine.
+
+
+POWERSHELL — copy (UI only; migration already live)
+───────────────────────────────────────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  $W = "contractnest-ui\src\components\contracts\ContractWizard"
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\steps\ContractDetailsStep.tsx" -Destination "$W\steps\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\index.tsx" -Destination "$W\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\state.ts" -Destination "$W\logic\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\mapper.ts" -Destination "$W\logic\" -Force
+
+  # Ctrl+F5 — no new routes
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Start a NEW RFQ (contract wizard → request path)
+  [ ] On Request Details, a "Last date to apply" date field is present
+  [ ] It is NOT present when creating a normal CONTRACT or a TEMPLATE
+  [ ] Past dates are blocked (minDate = today)
+  [ ] Pick a date, finish and send the RFQ
+  [ ] In the hub → Expense → Requests, the new RFQ's row shows that date as the
+      last date, and the aging chip shows "…d left"
+  [ ] Leaving it blank is allowed → the row shows "No deadline"
+  [ ] Existing RFQ PRJ-1001 still shows the 20 Aug test date + aging
+  [ ] BBB / normal contract creation unchanged
+
+
+WHERE THIS SITS IN THE PLAN
+───────────────────────────
+  1. RFQ home + RFQ row ............................ done (batch 3)
+  2. RFQ creation flow — SLICE A: deadline input ... THIS BATCH ✓
+                          SLICE B: equipment/facility-from-registry step
+                                   + flyby name-capture fix ......... next
+                          SLICE C: save-as-template nudge ........... after B
+  3. Award → vendor issues draft contract .......... needs source_rfq_id
+  4. RFQ document view ............................. last
+
+  Slice B is the bigger one (adds the asset step to RFQ_STEPS reusing
+  AssetSelectionStep, and fixes flyby lines being addable while unnamed). It
+  gets its own batch so the shared wizard change is done carefully.
+═══════════════════════════════════════════════════
