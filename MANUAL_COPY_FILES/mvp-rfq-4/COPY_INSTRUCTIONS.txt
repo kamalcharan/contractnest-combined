@@ -1,85 +1,98 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS — MVP RFQ batch 4 (build plan: batch 2, slice A)
-"Last date to apply" — the input, end to end
+COPY INSTRUCTIONS — MVP RFQ batch 4 (build plan: batch 2, slices A + B)
+The RFQ creation flow, completed within the existing wizard
 Branch: claude/contractnest-launch-strategy-aad14f
 Date:   30 Jul 2026
 
-The deadline you saw on the row (batch 3) had no way to be SET. This
-adds the input, wires it to the create RPC, and — since the column and
-row already exist — the aging chip now lights up for real on any RFQ
-you create.
+Two slices, one copy:
+  A. "Last date to apply" input — end to end (unblocks the aging chip)
+  B. Equipment/facility-from-registry step + the flyby name-capture fix
 ═══════════════════════════════════════════════════
 
 SUBMODULES AFFECTED
 ───────────────────
-  contractnest-ui    (branch: main)    4 files
-  contractnest-edge  (branch: main)    1 migration — ALREADY APPLIED (see below)
+  contractnest-ui    (branch: main)    7 files (1 new)
+  contractnest-edge  (branch: main)    1 migration — ALREADY APPLIED
 
 
-WHY THIS SLICE FIRST
-────────────────────
-  You said: "response date will start showing when you address batch 2."
-  This is exactly that — the smallest complete vertical of batch 2:
-
-    RFQ details step  →  wizard state  →  mapper payload  →  create RPC
-
-  It reuses the existing DatePicker and the existing details step; it only
-  appears in RFQ mode, so contracts and templates are untouched.
+SLICE A — "LAST DATE TO APPLY" (you asked for this explicitly)
+──────────────────────────────────────────────────────────────
+  The deadline shown on the RFQ row (batch 3) had no way to be SET. Now:
+  a date field in the RFQ details step (RFQ mode only, minDate today,
+  optional) → wizardState.responseDeadline → mapper (RFQ only) →
+  create_contract_transaction (migration 074). Create an RFQ with a date and
+  its row's aging chip lights up. Contracts/templates never see the field.
 
 
-WHAT CHANGED
-────────────
-  1. A "Last date to apply" date field in the RFQ details step, under
-     Duration & Timeline. minDate = today. Helper line: "Vendors see this as
-     their deadline; quotes are not accepted after it. Optional."
-     Shown ONLY when showResponseDeadline (RFQ mode). Contracts/templates
-     never see it.
+SLICE B — EQUIPMENT FROM REGISTRY + FLYBY NAME FIX
+──────────────────────────────────────────────────
+  1. A new "What does this cover?" step in the RFQ flow, between Request
+     Details and Define Services. It reads the buyer's OWN registry (useAssets
+     — same source as the Equipment Registry page), lists equipment and
+     facilities with tick + quantity steppers, and writes equipment_details
+     (which the mapper already forwards). OPTIONAL: a pure-service request
+     ("10 guards, 1 year") picks nothing and continues.
 
-  2. wizardState gains responseDeadline (ISO yyyy-mm-dd string | null).
-     handleDetailsChange already spreads details into state, so it flows with
-     no new handler.
+     Why a NEW component (RfqAssetStep), not the wizard's AssetSelectionStep:
+     that one answers "which of your CLIENT's assets does this contract cover"
+     — it's keyed on a counterparty (useClientAssets({contact_id})) and carries
+     the whole "client lists them after signing" flow. An RFQ's equipment is
+     the buyer's own, with no counterparty. Bending that component would have
+     been riskier than a small focused one. Contracts still use
+     AssetSelectionStep unchanged — the wizard picks per record type.
 
-  3. mapper sends response_deadline in the payload FOR RFQs ONLY — omitted for
-     contracts so it can never land on a non-RFQ row.
+  2. Flyby name-capture fix. The empty-name blocks on your PRJ-1001 happened
+     because the step let you continue without naming a custom line. Names are
+     editable (the row auto-expands on add with a "Custom line name…" field) —
+     nothing was broken in persistence — but nothing REQUIRED them. Now the
+     blocks step won't continue in RFQ mode until every line has a name, with
+     the hint "Name every line you want quoted."
 
-  4. create_contract_transaction now persists it (migration 074, applied).
+
+HOW IT REUSES WHAT EXISTS  (your standing question)
+────────────────────────────────────────────────────
+  * useAssets (useAssetRegistry) — the tenant's own registry, already built.
+  * mapper already forwards equipment_details — no mapper change for slice B.
+  * create_contract_transaction already inserts equipment_details — no RPC
+    change for the assets (074 was only for the deadline).
+  * The gate seam (canGoNextForStep) and blockedHintFor already exist — the
+    name requirement and the optional-asset rule are added there, not in JSX.
+  * shouldSkipAssetStepFor already returns "don't skip" for RFQ, so adding
+    assetSelection to RFQ_STEPS just makes it appear.
 
 
 FILES
 ─────
   contractnest-ui
-    MOD  src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
-           deadline field + ContractDetailsData.responseDeadline + prop
+    NEW  src/components/contracts/ContractWizard/steps/RfqAssetStep.tsx
     MOD  src/components/contracts/ContractWizard/index.tsx
-           passes responseDeadline in data + showResponseDeadline={isRfqMode}
-    MOD  src/components/contracts/ContractWizard/logic/state.ts
-           responseDeadline in the state shape + default null
-    MOD  src/components/contracts/ContractWizard/logic/mapper.ts
-           response_deadline in the payload (RFQ only)
+           deadline props (A) + render RfqAssetStep for RFQ assetSelection (B)
+    MOD  src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx  (A)
+    MOD  src/components/contracts/ContractWizard/logic/state.ts                 (A)
+    MOD  src/components/contracts/ContractWizard/logic/mapper.ts                (A)
+    MOD  src/components/contracts/ContractWizard/logic/gating.ts               (B)
+           blocks: require named lines in RFQ; assetSelection: optional in RFQ
+    MOD  src/components/contracts/ContractWizard/logic/stepConfig.ts           (B)
+           assetSelection added to RFQ_STEPS + RFQ-aware blocked hints
 
   contractnest-edge
     NEW  supabase/migrations/contracts/074_rfq_persist_response_deadline.sql
-           (record only — already applied)
+           (record only — ALREADY APPLIED to prod)
 
 
 *** MIGRATION 074 IS ALREADY APPLIED TO PRODUCTION (uwyqhzotluikawcboldr) ***
-────────────────────────────────────────────────────────────────────────────
-  Applied 30 Jul 2026. It patches create_contract_transaction in place — the
-  live definition is pulled, response_deadline is inserted into the column list
-  and the VALUES list via two unique anchors, and it ABORTS if either anchor is
-  missing. Verified: the function now references response_deadline in both
-  places. DO NOT re-apply (a second run aborts on "anchor not found" — the
-  guard working, not a failure).
-
-  NOT patched: update_contract_transaction. Editing an RFQ draft's deadline is
-  a follow-up; the create path is what makes the deadline appear on new RFQs.
+  In-place patch of create_contract_transaction (deadline into the INSERT),
+  two unique anchors, aborts if either is absent. Verified. DO NOT re-apply.
 
 
 VERIFIED BEFORE HANDOVER
 ────────────────────────
-  * tsc (tsconfig.check.json): 50 WITH the change, 50 WITHOUT — zero added.
-  * Migration 074 applied; column + VALUES patch confirmed in the live function.
+  * tsc (tsconfig.check.json): 50 WITH the change, 50 WITHOUT — zero added,
+    across all 7 UI files together.
   * contractnest-ui working tree restored pristine.
+  * useAssets confirmed as the tenant's-own-registry source (equipment-registry
+    page uses it); TenantAsset → EquipmentDetailItem mapping checked field by
+    field against the migration-040 JSONB shape.
 
 
 POWERSHELL — copy (UI only; migration already live)
@@ -89,38 +102,59 @@ POWERSHELL — copy (UI only; migration already live)
 
   $W = "contractnest-ui\src\components\contracts\ContractWizard"
   Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\steps\ContractDetailsStep.tsx" -Destination "$W\steps\" -Force
-  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\index.tsx" -Destination "$W\" -Force
-  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\state.ts" -Destination "$W\logic\" -Force
-  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\mapper.ts" -Destination "$W\logic\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\steps\RfqAssetStep.tsx"        -Destination "$W\steps\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\index.tsx"                     -Destination "$W\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\state.ts"               -Destination "$W\logic\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\mapper.ts"              -Destination "$W\logic\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\gating.ts"              -Destination "$W\logic\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-4\$W\logic\stepConfig.ts"          -Destination "$W\logic\" -Force
 
   # Ctrl+F5 — no new routes
 
 
 TESTING CHECKLIST
 ─────────────────
-  [ ] Start a NEW RFQ (contract wizard → request path)
-  [ ] On Request Details, a "Last date to apply" date field is present
-  [ ] It is NOT present when creating a normal CONTRACT or a TEMPLATE
-  [ ] Past dates are blocked (minDate = today)
-  [ ] Pick a date, finish and send the RFQ
-  [ ] In the hub → Expense → Requests, the new RFQ's row shows that date as the
-      last date, and the aging chip shows "…d left"
-  [ ] Leaving it blank is allowed → the row shows "No deadline"
-  [ ] Existing RFQ PRJ-1001 still shows the 20 Aug test date + aging
-  [ ] BBB / normal contract creation unchanged
+  SLICE A — deadline
+  [ ] New RFQ → Request Details shows "Last date to apply" (past dates blocked)
+  [ ] Not shown for a normal contract or a template
+  [ ] Pick a date, send → the RFQ row shows it + a "…d left" aging chip
+  [ ] Leave blank → row shows "No deadline"
+
+  SLICE B — equipment step
+  [ ] New RFQ → after Request Details there's a "What does this cover?" step
+  [ ] It lists YOUR equipment + facilities (from your registry), not a client's
+  [ ] Tick an item → a quantity stepper appears; set a quantity
+  [ ] Continue with NOTHING selected → allowed (pure-service path)
+  [ ] Finish; the created RFQ carries the equipment (check equipment_details /
+      the contract detail)
+  [ ] Empty registry → an explanatory empty state, Continue still works
+
+  SLICE B — flyby names
+  [ ] Define Services: add a custom line, leave it unnamed → Continue is
+      blocked with "Name every line you want quoted"
+  [ ] Name it → Continue works
+  [ ] (Contrast) a normal contract's catalog blocks are unaffected
+
+  REGRESSION
+  [ ] Normal contract creation: asset step still uses the client-asset picker
+      (AssetSelectionStep), unchanged
+  [ ] Template creation unchanged
+  [ ] BBB unchanged
 
 
 WHERE THIS SITS IN THE PLAN
 ───────────────────────────
   1. RFQ home + RFQ row ............................ done (batch 3)
-  2. RFQ creation flow — SLICE A: deadline input ... THIS BATCH ✓
-                          SLICE B: equipment/facility-from-registry step
-                                   + flyby name-capture fix ......... next
-                          SLICE C: save-as-template nudge ........... after B
-  3. Award → vendor issues draft contract .......... needs source_rfq_id
+  2. RFQ creation flow — SLICE A deadline .......... done (this batch)
+                          SLICE B assets + flyby .... done (this batch)
+                          SLICE C save-as-template .. optional polish, later
+  3. Award → vendor issues draft contract .......... needs source_rfq_id (next
+     big one — the loop that turns a chosen quote into a contract)
   4. RFQ document view ............................. last
 
-  Slice B is the bigger one (adds the asset step to RFQ_STEPS reusing
-  AssetSelectionStep, and fixes flyby lines being addable while unnamed). It
-  gets its own batch so the shared wizard change is done carefully.
+  Not done here (deliberate, flagged): the mockup's step-1 "what for" router
+  (Equipment/Facility/Service chooser) and the full single-column PLG restyle.
+  The FUNCTION is complete — equipment from registry + pure-service via flyby —
+  within the existing wizard; the router + restyle are visual polish on a
+  shared component, saved for their own pass so contracts aren't disturbed.
 ═══════════════════════════════════════════════════
