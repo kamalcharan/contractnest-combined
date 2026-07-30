@@ -697,7 +697,12 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<EntityRegistryPage />} />
+            {/* Use the mode-aware EquipmentPage in 'entity' mode: it surfaces the
+                seeded facility catalog (t_category_resources_master via resource
+                templates), matching how equipment-registry works. The old
+                EntityRegistryPage read only the empty instance table, so seeded
+                facilities never showed. */}
+            <Route index element={<EquipmentPage registryMode="entity" />} />
           </Route>
 
           {/* Appointments — scaffold showing existing widget + placeholder */}
