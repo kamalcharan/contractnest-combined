@@ -1,0 +1,118 @@
+/* src/lite/onboarding/express.css
+ *
+ * Styles for the express onboarding screens. Namespaced cnx- and tokenised on
+ * .cnx-root, same containment rule as the landing page: nothing leaks out,
+ * nothing leaks in. Resets use :where() so component classes always win.
+ */
+
+.cnx-root{
+  --paper:#F6F4EE; --card:#FFFFFF; --ink:#14201B; --soft:#4A5A52; --faint:#8A968F;
+  --line:#E0DDD3; --edge:#CBC7BA;
+  --deep:#0B5F4E; --deep-ink:#FFFFFF; --wash:#E4EEE9;
+  --bad:#B3403A;
+  --serif:"Iowan Old Style","Charter","Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --lift:0 1px 2px rgba(20,32,27,.05),0 14px 40px rgba(20,32,27,.10);
+  background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);
+  min-height:100vh;padding:40px 20px 70px;-webkit-font-smoothing:antialiased;
+}
+@media (prefers-color-scheme:dark){
+  .cnx-root{
+    --paper:#121815; --card:#1A211D; --ink:#E9EDE9; --soft:#A6B2AB; --faint:#76837B;
+    --line:#28312C; --edge:#3A453E;
+    --deep:#3EAF92; --deep-ink:#08120F; --wash:#182B25; --bad:#E07670;
+    --lift:0 1px 2px rgba(0,0,0,.4),0 14px 40px rgba(0,0,0,.5);
+  }
+}
+.cnx-root :where(*){box-sizing:border-box}
+.cnx-root :where(button){font:inherit;color:inherit;background:none;border:none;cursor:pointer;padding:0}
+.cnx-root :where(h1,p,ol,ul){margin:0}
+.cnx-root :focus-visible{outline:2px solid var(--deep);outline-offset:2px;border-radius:6px}
+
+.cnx-wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.cnx-brand{font-family:var(--serif);font-size:21px;font-weight:700;text-align:center}
+.cnx-brand span{color:var(--deep)}
+
+/* progress rail */
+.cnx-rail{list-style:none;padding:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.cnx-railitem{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--faint);font-weight:600}
+.cnx-railitem+.cnx-railitem::before{content:"";width:16px;height:1px;background:var(--edge);margin-right:1px}
+.cnx-dot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--edge);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.cnx-now{color:var(--deep)}
+.cnx-now .cnx-dot{border-color:var(--deep);background:var(--wash);color:var(--deep)}
+.cnx-done{color:var(--soft)}
+.cnx-done .cnx-dot{background:var(--deep);border-color:var(--deep);color:var(--deep-ink)}
+@media(max-width:520px){.cnx-raillabel{display:none}}
+
+/* card */
+.cnx-card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--lift);padding:28px 26px;display:flex;flex-direction:column;gap:18px}
+@media(max-width:520px){.cnx-card{padding:22px 18px}}
+.cnx-title{font-family:var(--serif);font-size:25px;font-weight:700;line-height:1.2;text-wrap:balance}
+.cnx-sub{color:var(--soft);font-size:14px;margin-top:-10px}
+
+/* fields */
+.cnx-field{display:flex;flex-direction:column;gap:8px}
+.cnx-label{font-size:12.5px;font-weight:650;color:var(--soft)}
+.cnx-input{padding:11px 13px;border:1px solid var(--edge);border-radius:9px;background:var(--card);color:var(--ink);font:inherit;font-size:15px;width:100%}
+.cnx-input:focus{outline:none;border-color:var(--deep);box-shadow:0 0 0 3px var(--wash)}
+.cnx-search{margin-bottom:2px}
+.cnx-hint{font-size:12.5px;color:var(--faint);line-height:1.5}
+.cnx-labelnote{font-weight:500;color:var(--faint)}
+
+/* persona choices */
+.cnx-choices{display:grid;gap:9px}
+.cnx-choice{text-align:left;border:1.5px solid var(--edge);border-radius:11px;padding:13px 15px;background:var(--card);transition:border-color .15s,background .15s;display:block}
+.cnx-choice:hover{border-color:var(--deep)}
+.cnx-choice[aria-pressed="true"]{border-color:var(--deep);background:var(--wash)}
+.cnx-ct{display:block;font-weight:680;font-size:14.5px}
+.cnx-choice[aria-pressed="true"] .cnx-ct{color:var(--deep)}
+.cnx-cd{display:block;font-size:12.5px;color:var(--soft);margin-top:2px}
+
+/* industry chips */
+.cnx-chips{display:flex;flex-wrap:wrap;gap:8px}
+.cnx-chip{border:1.5px solid var(--edge);background:var(--card);border-radius:99px;padding:8px 15px;font-size:13.5px;font-weight:620;color:var(--soft);transition:all .15s}
+.cnx-chip:hover{border-color:var(--deep);color:var(--ink)}
+.cnx-chip[aria-pressed="true"]{background:var(--deep);border-color:var(--deep);color:var(--deep-ink)}
+
+/* serviceable tiles — "what do you service" */
+.cnx-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:8px}
+@media(max-width:520px){.cnx-tiles{grid-template-columns:1fr}}
+.cnx-tile{
+  display:flex;align-items:flex-start;gap:9px;text-align:left;
+  border:1.5px solid var(--edge);border-radius:11px;padding:11px 12px;background:var(--card);
+  transition:border-color .15s,background .15s;position:relative;
+}
+.cnx-tile:hover{border-color:var(--deep)}
+.cnx-tile[aria-pressed="true"]{border-color:var(--deep);background:var(--wash)}
+.cnx-tiletick{
+  flex:none;width:17px;height:17px;margin-top:1px;border-radius:5px;
+  border:1.5px solid var(--edge);background:var(--card);
+  display:flex;align-items:center;justify-content:center;color:var(--deep-ink);
+}
+.cnx-tile[aria-pressed="true"] .cnx-tiletick{background:var(--deep);border-color:var(--deep)}
+.cnx-tiletext{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.cnx-tilename{font-size:13.5px;font-weight:620;line-height:1.35}
+.cnx-tile[aria-pressed="true"] .cnx-tilename{color:var(--deep)}
+.cnx-tilesub{font-size:11.5px;color:var(--faint);line-height:1.35}
+.cnx-tilebadge{
+  flex:none;align-self:flex-start;display:inline-flex;align-items:center;gap:3px;
+  font-size:10px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;
+  color:var(--deep);background:var(--wash);border-radius:99px;padding:2px 7px;
+}
+
+/* actions */
+.cnx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:9px;font-weight:650;font-size:15px;padding:13px 20px}
+.cnx-primary{background:var(--deep);color:var(--deep-ink)}
+.cnx-primary:hover:not(:disabled){filter:brightness(1.08)}
+.cnx-btn:disabled{opacity:.45;cursor:not-allowed}
+.cnx-foot{text-align:center}
+.cnx-link{font-size:13px;color:var(--soft);text-decoration:underline;text-underline-offset:3px}
+.cnx-link:hover{color:var(--ink)}
+
+.cnx-loading{display:flex;align-items:center;gap:10px;color:var(--soft);font-size:14px;padding:14px 0}
+.cnx-empty{font-size:13.5px;color:var(--soft);line-height:1.55}
+.cnx-spin{animation:cnx-rot 1s linear infinite}
+@keyframes cnx-rot{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .cnx-root *,.cnx-root *::before,.cnx-root *::after{animation:none!important;transition:none!important}
+}

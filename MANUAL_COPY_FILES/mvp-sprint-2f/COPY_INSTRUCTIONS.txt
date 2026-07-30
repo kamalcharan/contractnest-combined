@@ -1,0 +1,130 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2f
+FIX: Catalog Studio must stay visible
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-2e. Two files.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+
+
+WHAT WAS WRONG
+──────────────
+  Sprint 2e gated the Catalog Studio nav behind "5+ contracts", on the
+  reasoning that "before that the seeded catalog is enough". Reported the same
+  day: the menu was gone and it blocks operations. Correct — the reasoning was
+  wrong, and here is exactly how.
+
+  /catalog-studio is the ONLY route to four things:
+
+    /catalog-studio/blocks           the 83-499 catalog blocks that onboarding
+                                     just built and counted at the tenant
+    /catalog-studio/templates-list   the ONLY place templates are managed
+    /catalog-studio/configure        catalog configuration
+    /catalog-studio/equipment        VaNi seeding
+
+  Grepped for another way in: nothing else in the app links to templates-list.
+
+  So the gate caused two things:
+
+  1. A tenant finished onboarding, was told "83 service blocks built" by
+     VaniIntelligenceStep and VaniWorkingStep, and then could not find them.
+
+  2. Template seeding is parked pending "review patterns after usage". Usage
+     requires access. With the nav hidden, no tenant could reach template
+     management, so no tenant could produce a pattern — the gate quietly
+     guaranteed the thing it was waiting for would never happen.
+
+  The original justification only holds if the seeded catalog is fine as-is
+  and the studio is for power editing later. With seeding parked, hand-building
+  a template in that page IS the path.
+
+
+WHAT CHANGED
+────────────
+  catalog-studio is UNWIRED. The rule stays in the table as data with
+  `wired: false`, `show: () => true` and the full reasoning above, so it is a
+  deliberate record rather than a silent deletion.
+
+  Also corrected in the same pass: `discount` claimed `wired: true` but no
+  surface applies it — the contract wizard would have to push
+  inFirstContractCreate, which belongs with the express-contract work. It now
+  says `wired: false`. `wired` is documented as "applied to a real surface";
+  leaving it true made the table lie about itself.
+
+  WIRED, AFTER THIS BATCH — two rules:
+
+    perspective     Revenue/Expense switcher. Unlocks on first non-client
+                    contract. BBB has 44 partner contracts -> shows.
+                    Also gates Payables, which finance derives from it.
+
+    group-sessions  Group Sessions nav item. Unlocks on the tenant having
+                    group-session schedules. BBB has 86 rows -> shows.
+
+  That is where the evidence has landed. Of nine rules originally written,
+  seven did not survive measurement against production:
+
+    env-badge       deleted  — sandbox is complete and CNAK already filters
+                               on is_live; nothing to protect against
+    payables        deleted  — redundant, finance derives its view from
+                               perspective
+    catalog-studio  unwired  — this batch
+    discount        unwired  — needs the wizard to push a signal
+    sla-metrics     unwired  — every tenant has zero completed visits
+    contact-tabs    unwired  — same signal
+    charts          unwired  — the only available column measures the wrong
+                               thing
+
+  The schedule was written before the code and the data were read. Two rules
+  survived that, and both were verified against BBB's real numbers.
+
+
+FILES  (2 modified)
+───────────────────
+  MOD  src/components/reveal/revealRules.ts     catalog-studio + discount
+                                                unwired, with reasons recorded
+  MOD  src/components/layout/Sidebar.tsx        catalog-studio removed from
+                                                REVEAL_BY_MENU_ID and GATED_IDS
+
+  Nothing else changes. RevealProvider, RevealSignalsBridge, RevealGate,
+  Header.tsx and App.tsx are all untouched from 2e.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Confirmed by grep that no other UI route reaches templates-list.
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: Sidebar 2 problems WITH and WITHOUT the change; 0 from
+    src/components/reveal.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2f\contractnest-ui\src\components\reveal\revealRules.ts" -Destination "contractnest-ui\src\components\reveal\revealRules.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2f\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force
+
+  Write-Host "Sprint 2f copied" -ForegroundColor Green
+
+  # a plain refresh is enough — no new routes in this batch
+  # Ctrl+F5 in the browser
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Brand-new tenant (0-1 contracts) -> Catalog Studio IS in the nav
+  [ ] Open it -> blocks page lists the blocks onboarding built
+  [ ] /catalog-studio/templates-list reachable from the nav
+  [ ] Group Sessions still hidden for a tenant with no schedules
+  [ ] Revenue/Expense still hidden for a tenant with no partner contracts
+  [ ] BBB -> Catalog Studio, Group Sessions, Revenue/Expense all present
+  [ ] Block /api/contracts/stats in DevTools -> everything still shows
+      (fail-open still holds)
+═══════════════════════════════════════════════════

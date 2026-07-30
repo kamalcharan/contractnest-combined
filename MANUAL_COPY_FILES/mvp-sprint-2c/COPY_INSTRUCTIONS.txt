@@ -1,0 +1,257 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2c
+The lov-setup 404, the VaNi consent screen, and ONE wizard
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-1, mvp-sprint-2 AND mvp-sprint-2b.
+This batch supersedes the Sprint 2b copy of App.tsx and of every file
+under src/lite/onboarding/.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+1. THE 404 — ROOT CAUSE FOUND, AND IT WAS NEVER SUPABASE
+────────────────────────────────────────────────────────
+  You were right that it is a "no page found", not an HTTP error.
+
+  src/pages/onboarding/steps/LovSetupStep.tsx exists — 440 lines, with a
+  default export — but App.tsx NEVER IMPORTED IT and never declared a route
+  for it. The /onboarding parent lists 24 children; lov-setup is not among
+  them.
+
+  Five places navigate there anyway:
+
+    TermsConditionsStep.tsx:147,158   persona !== 'both' -> lov-setup
+    Screen8BEquipmentStep.tsx:154,161 continue and skip
+    ResourcePickStep.tsx:252          the Skip branch
+    pages/onboarding/index.tsx:57     the resume map
+
+  No child route matches, so React Router falls through to
+  App.tsx:910 — <Route path="*" element={<NotFoundPage />} />.
+
+  This explains every symptom exactly:
+    * it fires on the long path too (you confirmed that)
+    * every Supabase edge call in the run returned 200 — no request is ever
+      made, because the component never mounts
+    * the data IS seeded, because t_category_master is populated at tenant
+      creation by the `tenants` edge function, not by this screen
+
+  Fix: the import plus one <Route path="lov-setup"> inside the existing
+  /onboarding parent, which already carries ProtectedRoute requireTenant and
+  OnboardingLayout. No guard changes.
+
+
+2. THE VaNi CONSENT SCREEN IS GONE FROM THE EXPRESS PATH
+────────────────────────────────────────────────────────
+  Express handed off at /onboarding/vani-consent, which is why you saw
+  "Step 7 of 9 · VaNi Consent — 6A". The handoff now goes straight to
+  /onboarding/vani-working, the seeding screen.
+
+  Verified skippable before moving it — both intervening screens are pure
+  display:
+
+    VaniConsentStep       passes routeState through unchanged; its only side
+                          effect is setTheme('vani'), and NOTHING downstream
+                          reads the theme (VaniWorkingStep, Screen8APricing,
+                          TermsConditions all carry hardcoded palettes —
+                          neither imports useTheme).
+    VaniIntelligenceStep  selEquipment = routeState.selectedEquipmentTemplates
+                          filtered for nulls (line 80-81), handed straight
+                          back out (line 168-170). Display only.
+
+  Neither calls completeVaniStep, so skipping them writes nothing different
+  to step_data. No parity gap.
+
+  Express now replaces the first TEN screens of the long chain with TWO.
+
+
+3. THE NUMBERING — THREE MODELS, ALL DISAGREEING
+────────────────────────────────────────────────
+  You asked why the numbering is inconsistent. There were three separate
+  step models running at once:
+
+  (a) OnboardingLayout's header dots + counter, driven by
+      OnboardingUtils.getAllSteps() — the LEGACY 11-step list:
+        welcome, storage-setup, user-profile, theme-selection,
+        business-basic, business-branding, served-industries,
+        business-preferences, sequence-numbers, master-data, complete
+      Almost no VaNi route is in it, so findIndex returned -1 and the header
+      counter rendered "0 / 11" with NO dot marked current. The dots were
+      also clickable and navigated into the legacy flow.
+
+  (b) Hardcoded "Step N of 9" strings inside six VaNi components:
+        userProfileStep:239        Step 2 of 9
+        BusinessDetailsStep:139    Step 3 of 9
+        PersonaSelectionStep:304   Step 4 of 9
+        ThemeSelectionStep:295     Step 5 of 9
+        IndustrySelectionStep:358  Step 6 of 9
+        VaniConsentStep:240        Step 7 of 9 · VaNi Consent — 6A
+      A different total, on a different scale, from the header above it.
+
+  (c) The express rail — its own three-step model.
+
+  So a screen could truthfully claim to be step 0 of 11 and step 7 of 9 at
+  the same time. That is what you were looking at.
+
+  ONE MODEL NOW: src/components/onboarding/journey.ts, rendered by ONE
+  component, src/components/onboarding/JourneyRail.tsx, used by BOTH the
+  express screens (via ExpressShell) and the OnboardingLayout header.
+
+  The journey branches exactly as the code does — read off the components,
+  not assumed:
+
+    VaniWorkingStep:390     buyer -> equipment-confirm, else -> pricing-review
+    Screen8APricingStep     -> terms-conditions
+    TermsConditionsStep:147 both  -> equipment-confirm, else -> lov-setup
+    Screen8BEquipmentStep   -> lov-setup
+    LovSetupStep            -> done
+
+  giving:
+
+    seller  Your business · What you service · Building · Your prices ·
+            Your terms · Your lists · Done                        (7 steps)
+    buyer   Your business · What you service · Building ·
+            Your assets · Your lists · Done                       (6 steps)
+    both    Your business · What you service · Building · Your prices ·
+            Your terms · Your assets · Your lists · Done          (8 steps)
+
+  THE LONG FORM IS UNTOUCHED. resolveJourney() returns null for any route
+  outside the express journey, and OnboardingLayout then renders exactly its
+  original markup. The six hardcoded "Step N of 9" strings are all on
+  long-path-only screens now, so they were left alone — see OPEN ITEMS.
+
+  journey.ts and JourneyRail.tsx live in components/onboarding/, NOT in
+  src/lite, because src/lite may import outward but nothing outside it may
+  import in (the eslint no-restricted-imports rule from Sprint 1). A shared
+  model has to sit outside for OnboardingLayout to use it.
+
+
+4. A SECOND HEADER BUG FIXED ON THE WAY
+───────────────────────────────────────
+  stepsWithOwnButtons did not list 'terms-conditions' or 'lov-setup', so the
+  header drew its own Continue on both — on top of the buttons those screens
+  already render. And because currentIndex is -1 for them, that Continue
+  computed allSteps[-1 + 1] = allSteps[0] and would have thrown the tenant
+  back to the legacy 'welcome' screen. Both are now listed.
+
+
+FILES  (3 new, 6 modified)
+──────────────────────────
+  NEW  src/components/onboarding/journey.ts        the one step model
+  NEW  src/components/onboarding/JourneyRail.tsx   the one wizard
+  NEW  src/components/onboarding/journeyRail.css   cnj- namespaced, scoped
+
+  MOD  src/App.tsx
+         + LovSetupStep import and <Route path="lov-setup">
+         (also carries Sprint 1 landing and Sprint 2b /start/serve wiring —
+          supersedes both earlier copies of this file)
+  MOD  src/components/onboarding/OnboardingLayout.tsx
+         header renders JourneyRail on the express journey, original dots
+         everywhere else; header title uses the journey label; duplicate step
+         counter suppressed; terms-conditions + lov-setup added to
+         stepsWithOwnButtons
+  MOD  src/lite/onboarding/expressFlow.ts       handoff -> vani-working
+  MOD  src/lite/onboarding/ExpressShell.tsx     uses the shared rail
+  MOD  src/lite/onboarding/BusinessPersonaStep.tsx   passes persona to shell
+  MOD  src/lite/onboarding/ServiceableStep.tsx       passes persona; handoff
+                                                     payload for vani-working
+
+  NOT TOUCHED: every file under src/pages/onboarding/steps/. The VaNi steps
+  are byte-identical to main. AuthContext and LoginPage untouched.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... unchanged from 2b — the one visibly-failable
+                             call (addIndustries) still runs first and aborts
+                             before navigation.
+  Race conditions .......... unchanged; useRef in-flight guard retained.
+  Error handling ........... resolveJourney returns null rather than throwing
+                             on an unknown route, and every caller treats
+                             null as "fall back to what you did before".
+  Toasts ................... vaniToast, unchanged.
+  Loaders .................. Loader2, unchanged.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Root cause of the 404 proved from the route table, not inferred.
+  * Skippability of vani-consent / vani-intelligence proved by reading what
+    they pass forward, line by line.
+  * tsc app-wide unchanged from the pristine 1189 baseline; 0 errors from any
+    new file.
+  * eslint on OnboardingLayout: 19 problems WITH the changes, 19 WITHOUT
+    (compared against the file as it stands in HEAD). No new problems.
+    0 problems from src/lite and from the three new files.
+  * contractnest-ui working tree left pristine.
+
+
+OPEN ITEMS (deliberately not fixed here)
+────────────────────────────────────────
+  * The header counter still reads "0 / 11" on the LONG path's VaNi screens,
+    because those routes are absent from OnboardingUtils.getAllSteps().
+    Fixing it means adding the VaNi steps to that list, which changes
+    TOTAL_STEPS and the backend progress percentage — too wide to change in
+    the same batch as a go-live fix. The express path no longer shows it.
+  * The six hardcoded "Step N of 9" strings remain on the long-path screens.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2c\contractnest-ui\src\components\onboarding\*" -Destination "contractnest-ui\src\components\onboarding\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2c\contractnest-ui\src\lite\onboarding\*" -Destination "contractnest-ui\src\lite\onboarding\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2c\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+  Write-Host "Sprint 2c copied" -ForegroundColor Green
+
+
+RESTART THE DEV SERVER — VITE WILL NOT HOT-RELOAD A NEW ROUTE
+─────────────────────────────────────────────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
+  npm run dev
+  # use the EXACT url the banner prints, then Ctrl+F5
+
+
+TESTING CHECKLIST
+─────────────────
+  THE 404
+  [ ] /onboarding/lov-setup typed directly -> the LOV screen, not NotFound
+  [ ] Finish onboarding as a SELLER: terms -> lov-setup -> done, no 404
+  [ ] Finish onboarding as a BUYER:  equipment-confirm -> lov-setup -> done
+  [ ] The LOV screen lists Roles (Owner/Admin/Member) and Tags (Lead/Guest/VIP)
+  [ ] Add a value -> saves, appears in the list, toast fires
+  [ ] Long path (start at /onboarding/vani-intro) also reaches lov-setup
+
+  THE CONSENT SCREEN
+  [ ] "Build my workspace" goes STRAIGHT to the seeding screen
+  [ ] "Step 7 of 9 · VaNi Consent — 6A" is never seen
+  [ ] Seeding still produces real service blocks with checkpoints and prices
+
+  THE WIZARD
+  [ ] /start shows the same rail style as every later screen
+  [ ] Seller: rail reads 1..7, header agrees on every screen
+  [ ] Buyer:  rail reads 1..6 and shows Your assets, never Your prices
+  [ ] Both:   rail reads 1..8 and shows both
+  [ ] No screen ever shows "0 / 11"
+  [ ] Header title matches the rail's current label
+  [ ] Only ONE Continue button on terms-conditions and on lov-setup
+  [ ] Narrow the window: labels collapse, the counter still reads correctly
+
+  REGRESSION
+  [ ] Long form from /onboarding/vani-intro -> header dots look EXACTLY as
+      they do today (legacy behaviour preserved)
+  [ ] A tenant part-way through the long form still resumes on their step
+  [ ] Existing completed tenant -> login still goes to /ops/cockpit
+  [ ] BBB chapter login -> completely unchanged
+  [ ] STOPWATCH from "Start free" to a furnished workspace. Target <= 6 min.
+═══════════════════════════════════════════════════

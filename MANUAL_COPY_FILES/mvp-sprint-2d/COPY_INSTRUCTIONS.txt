@@ -1,0 +1,247 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP Sprint 2d
+One theme · VaNi intro first · "we'll activate it for you"
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+APPLY ON TOP OF mvp-sprint-1, 2, 2b AND 2c.
+Supersedes the 2c copies of App.tsx, journey.ts and everything under
+src/lite/onboarding/.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   <-- ONLY this one
+  No API, edge, migration or table changes. UX-only.
+
+
+1. ONE THEME FOR THE WHOLE FLOW
+───────────────────────────────
+  You were seeing three identities in one journey:
+
+    express screens   their own paper-and-green palette (--deep #0B5F4E),
+                      a serif headline, and a dark-mode variant
+    VaNi tail         hardcoded orange — VaniWorkingStep, Screen8APricingStep,
+                      TermsConditionsStep and LovSetupStep each define
+                      VANI #ff6b2b / TEXT #1a1816 / BG #f7f5f2 as constants,
+                      light only, no theme lookup at all
+    header chrome     whatever theme the tenant happened to have
+
+  The header drifted because the long flow applies the VaNi theme in
+  VaniIntroStep and again in VaniConsentStep — and express skips both.
+
+  Fixed on both sides:
+
+    * express.css now carries the VaNi tokens VERBATIM from those step files.
+      Same orange, same ink, same paper, same borders.
+    * The serif headline is gone; the VaNi steps use the system stack.
+    * The dark-mode block is gone. Deliberate: the VaNi steps have no dark
+      variant because their palette is hardcoded, so a dark express screen
+      handing off to a permanently light pricing screen was the single most
+      jarring transition in the flow. Matching the destination beats being
+      individually nicer.
+    * ExpressShell calls setTheme('vani') on mount, so the OnboardingLayout
+      header matches from the very first screen through to done.
+
+  setTheme only writes localStorage — it does NOT touch preferred_theme on the
+  user record (only ThemePreferences and Header do that), and ThemeContext
+  re-reads preferred_theme from user_data on the next login. So this is
+  exactly what the long flow already did, nothing is permanently overwritten.
+
+
+2. VaNi INTRODUCES HERSELF FIRST
+────────────────────────────────
+  New screen at /start, and /start/business is now the business+persona form.
+
+  VaniIntroStep could not simply be reused: its "Let's go" hardcodes
+  navigate('/onboarding/user-profile') — the long path — so reusing it would
+  drop an express tenant into the 16-screen form. The new intro carries the
+  same VaNi identity (same accent, same breathing orb, same voice) and
+  continues into express.
+
+  It is a SPLASH, not a form step: resolveJourney has no entry for /start, so
+  no progress rail renders there. The wizard starts counting on the first
+  screen that actually asks for something, which keeps the totals honest at
+  7 / 6 / 8 rather than inflating them with a welcome screen.
+
+  Route map now:
+    /start            VaNi intro          (no rail)
+    /start/business   name + persona      step 1
+    /start/serve      what you service    step 2
+    /start/trade      -> redirects to /start/serve
+
+
+3. "WE'LL ACTIVATE YOUR LINE OF BUSINESS" — THE ASIDE CARD
+──────────────────────────────────────────────────────────
+  Before this, a seller could not even SEE equipment without a Knowledge Tree:
+  the list was filtered to selectable items, matching ResourcePickStep's rule
+  that a seller's equipment needs a KT because that is what becomes priced
+  catalog blocks.
+
+  Hiding it was the wrong answer. The tenant genuinely services that
+  equipment, and that is exactly what we want to know. So now:
+
+    * Everything is listed and pickable.
+    * "Ready" badge marks the ones that arrive with a KT.
+    * Picking one that has no KT shows a panel on the right naming exactly
+      what they picked, thanking them, telling them to carry on, and
+      promising activation "usually within 12 hours, often much sooner".
+      Naming the equipment matters — a generic "we'll get back to you" reads
+      as a brush-off.
+    * The tile itself goes dashed-outline rather than solid orange, so the
+      difference between "building this now" and "building this for you" is
+      visible at a glance without a word of explanation.
+
+  WHAT THE SEEDER RECEIVES
+  Only the buildable set. Equipment awaiting activation is held back — it has
+  no KT, so passing it in would seed nothing and reproduce the exact "no
+  service blocks found" failure from Sprint 2. It is recorded, not seeded.
+
+  WHO IS AFFECTED
+  Only equipment, only for sellers (and 'both'). Facilities and services need
+  no KT — they seed as registry nodes and shell blocks — and a buyer's
+  equipment goes to the asset registry. None of those ever wait on us.
+
+  IF EVERYTHING PICKED IS AWAITING ACTIVATION
+  Seeding would run on empty arrays, so the flow takes ResourcePickStep's own
+  documented Skip route (ResourcePickStep:252) straight to lov-setup — the
+  path it already uses for a business the catalog does not model yet. Proven
+  code path, not a new one. The button reads "Continue" instead of "Build my
+  workspace" in that case, because there is nothing to build yet.
+
+  HOW ADMIN FINDS THE QUEUE (no schema change, works today)
+  The picks are written to t_tenant_selected_resources exactly as before —
+  including the ones awaiting activation, because that table is the tenant's
+  stated intent. "Awaiting activation" is derivable:
+
+    select tn.name as tenant, rt.name as item, rt.resource_type_id,
+           rt.industry_id, s.purpose, s.selected_at
+    from t_tenant_selected_resources s
+    join m_catalog_resource_templates rt on rt.id = s.resource_template_id
+    join t_tenants tn on tn.id = s.tenant_id
+    where s.purpose = 'sell'
+      and rt.resource_type_id in ('equipment','consumable')
+      and not exists (select 1 from m_equipment_variants v
+                      where v.resource_template_id = rt.id and v.is_active)
+    order by s.selected_at desc;
+
+  It is ALSO written explicitly into t_tenant_onboarding.step_data under
+  resource-pick as `pending_activation: [{template_id, name,
+  resource_type_id, industry_id}]`, so the queue survives even if that
+  derived query is ever unavailable.
+
+  THE WHATSAPP NOTIFICATION IS NOT BUILT — as you said, later. When it is,
+  `pending_activation` in step_data is the hook to read: it already carries
+  the tenant, the item names and the industry.
+
+
+FILES  (1 new, 6 modified)
+──────────────────────────
+  NEW  src/lite/onboarding/IntroStep.tsx          the VaNi welcome
+
+  MOD  src/lite/onboarding/express.css            VaNi palette; two-column
+                                                  layout; aside card; pending
+                                                  tile state; orb; light only
+  MOD  src/lite/onboarding/ExpressShell.tsx       setTheme('vani'); optional
+                                                  aside; widens when present
+  MOD  src/lite/onboarding/ServiceableStep.tsx    everything listed; pending
+                                                  split; aside card; seeder
+                                                  gets only what it can build
+  MOD  src/lite/onboarding/BusinessPersonaStep.tsx  footer -> back to intro
+  MOD  src/components/onboarding/journey.ts       business moves to
+                                                  /start/business
+  MOD  src/App.tsx                                /start intro + /start/business
+
+  NOT TOUCHED: every file under src/pages/onboarding/. The VaNi steps remain
+  byte-identical to main. AuthContext and LoginPage untouched.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... unchanged ordering — addIndustries first, abort
+                             before navigation on failure. The pending split
+                             happens before any write, so a failure cannot
+                             half-record an activation request.
+  Race conditions .......... useRef in-flight guard retained; addIndustries
+                             keeps its own guard; button disabled while saving.
+  Error handling ........... the empty-buildable case is an explicit branch to
+                             a proven route, not an unhandled path; per-page
+                             template fetch failures still degrade to a short
+                             list with a Try again button.
+  Toasts ................... vaniToast, with distinct wording for the three
+                             outcomes (all ready / mixed / all pending).
+  Loaders .................. Loader2 on catalog load and on submit.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Palette values copied from the VaNi step files, not eyeballed.
+  * setTheme confirmed to write localStorage only (ThemeContext:205-217) and
+    to be re-derived from preferred_theme on next login (ThemeContext:173).
+  * tsc app-wide unchanged from the pristine 1189 baseline.
+  * eslint: 0 problems from src/lite and from journey/JourneyRail.
+  * contractnest-ui working tree left pristine.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2d\contractnest-ui\src\lite\onboarding\*" -Destination "contractnest-ui\src\lite\onboarding\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2d\contractnest-ui\src\components\onboarding\*" -Destination "contractnest-ui\src\components\onboarding\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-sprint-2d\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+  Write-Host "Sprint 2d copied" -ForegroundColor Green
+
+
+RESTART THE DEV SERVER — VITE WILL NOT HOT-RELOAD A NEW ROUTE
+─────────────────────────────────────────────────────────────
+  Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+  cd contractnest-ui
+  Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
+  npm run dev
+  # use the EXACT url the banner prints, then Ctrl+F5
+
+
+TESTING CHECKLIST
+─────────────────
+  THEME
+  [ ] /start, /start/business, /start/serve are all VaNi orange on warm paper
+  [ ] The seeding screen, pricing, terms, LOV and done look like the SAME
+      product as the express screens — no palette jump anywhere
+  [ ] The OnboardingLayout header is VaNi-themed from the first screen
+  [ ] Switch your OS to dark mode: onboarding stays light throughout (by
+      design — the VaNi steps have no dark variant)
+  [ ] Log out and back in AFTER onboarding -> your own theme is back
+
+  INTRO
+  [ ] /start shows the VaNi welcome with the animated orb and NO progress rail
+  [ ] "Let's go" -> /start/business, rail appears reading step 1
+  [ ] Back from /start/business returns to the intro
+
+  ACTIVATION CARD
+  [ ] As a SELLER, "Show all N items" now lists equipment WITHOUT a Ready badge
+  [ ] Click one -> the right-hand card appears naming that exact equipment
+  [ ] Its tile goes dashed, not solid orange
+  [ ] Pick a second one -> the card lists both, title switches to plural
+  [ ] Deselect them all -> the card disappears and the layout narrows again
+  [ ] Mixed pick (1 Ready + 1 pending) -> "Build my workspace", seeding runs
+      on the Ready one only, toast mentions activating the other
+  [ ] ONLY pending picks -> button reads "Continue", goes to lov-setup, no
+      "no service blocks found" error anywhere
+  [ ] As a BUYER, no equipment is ever marked pending (registry needs no KT)
+  [ ] Narrow the window below 900px -> the card stacks under the list
+
+  ADMIN QUEUE
+  [ ] Run the query in section 3 -> your pending picks are listed
+  [ ] t_tenant_onboarding.step_data -> resource-pick -> pending_activation
+      contains the same items with their names
+
+  REGRESSION
+  [ ] Seller with only Ready picks -> identical to Sprint 2c behaviour
+  [ ] lov-setup still reachable, still no 404
+  [ ] Long form from /onboarding/vani-intro unchanged
+  [ ] BBB chapter login -> completely unchanged
+  [ ] STOPWATCH from "Start free" to a furnished workspace. Target <= 6 min.
+═══════════════════════════════════════════════════

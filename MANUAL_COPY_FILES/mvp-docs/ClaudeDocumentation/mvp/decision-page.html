@@ -1,0 +1,131 @@
+<title>ContractNest — One Decision Page</title>
+<style>
+  :root{
+    --paper:#F4F6F4; --card:#FFF; --ink:#1B2420; --soft:#4C5B54; --faint:#7C8A83;
+    --line:#DDE4DF; --accent:#0E6E58; --accent-soft:#E3F0EB;
+    --good:#237A44; --good-soft:#E4F2E8; --stop:#B3403A; --stop-soft:#F9E7E5;
+    --wait:#9A6A1B; --wait-soft:#F7EEDA;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --soft:#A9B6AF; --faint:#77857E;
+    --line:#2A332F; --accent:#3FB894; --accent-soft:#1B2F29;
+    --good:#5CC07E; --good-soft:#1C2E22; --stop:#E07670; --stop-soft:#372019;
+    --wait:#D9A44A; --wait-soft:#33290F;}}
+  :root[data-theme="dark"]{
+    --paper:#151A18; --card:#1D2421; --ink:#E8EDEA; --soft:#A9B6AF; --faint:#77857E;
+    --line:#2A332F; --accent:#3FB894; --accent-soft:#1B2F29;
+    --good:#5CC07E; --good-soft:#1C2E22; --stop:#E07670; --stop-soft:#372019;
+    --wait:#D9A44A; --wait-soft:#33290F;}
+  :root[data-theme="light"]{
+    --paper:#F4F6F4; --card:#FFF; --ink:#1B2420; --soft:#4C5B54; --faint:#7C8A83;
+    --line:#DDE4DF; --accent:#0E6E58; --accent-soft:#E3F0EB;
+    --good:#237A44; --good-soft:#E4F2E8; --stop:#B3403A; --stop-soft:#F9E7E5;
+    --wait:#9A6A1B; --wait-soft:#F7EEDA;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:36px 20px 80px}
+  h1{font-family:var(--serif);font-size:29px;margin:4px 0 4px}
+  .lede{color:var(--soft);margin:0 0 8px;font-size:14.5px}
+  .eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+  h2{font-family:var(--serif);font-size:19px;margin:34px 0 12px;padding-bottom:7px;border-bottom:2px solid var(--ink)}
+  .row{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:9px}
+  .mark{width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:1px}
+  .go .mark{background:var(--good-soft);color:var(--good)}
+  .no .mark{background:var(--stop-soft);color:var(--stop)}
+  .hold .mark{background:var(--wait-soft);color:var(--wait)}
+  .rt{flex:1;min-width:0}
+  .rt b{display:block;font-size:14.5px;margin-bottom:2px}
+  .rt span{font-size:13px;color:var(--soft)}
+  .q{background:var(--accent-soft);border:none;border-left:3px solid var(--accent);border-radius:0 10px 10px 0;padding:14px 16px;margin-bottom:11px}
+  .q .qh{font-weight:700;font-size:14.5px;margin-bottom:5px}
+  .q .qa{font-size:13.5px;color:var(--soft)}
+  .q .qa b{color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th{text-align:left;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);font-weight:700;padding:9px 13px;border-bottom:1px solid var(--line)}
+  td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td:first-child{font-family:var(--serif);font-weight:700;white-space:nowrap}
+  .tw{overflow-x:auto;margin-bottom:8px}
+  .metric{font-family:var(--serif);font-weight:700}
+  .foot{margin-top:34px;padding-top:12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--faint)}
+  .num{font-variant-numeric:tabular-nums}
+</style>
+<div class="wrap">
+
+<div class="eyebrow">ContractNest · 28 Jul 2026</div>
+<h1>One decision page</h1>
+<p class="lede">Everything from this session, reduced to what you decide and what you build. Nothing else needs reading.</p>
+
+<h2>The core call</h2>
+<div class="row go"><span class="mark">✓</span><div class="rt">
+  <b>Build the product-led shell you already designed. Do not redesign anything.</b>
+  <span>It already has persona → industry → seeded catalog, JIT questions, coach marks, NPS, landing, portal, and a 4-step wizard. The design work is done.</span>
+</div></div>
+<div class="row go"><span class="mark">✓</span><div class="rt">
+  <b>In 7 days, build only what does not exist yet.</b>
+  <span>Onboarding, an express contract lane, and hide-until-earned rules. Redesigning live screens is the roadmap, not the sprint — that's what protects BBB.</span>
+</div></div>
+
+<h2>Five open questions — my answer to each</h2>
+
+<div class="q">
+  <div class="qh">1 · Does the sprint touch existing screens?</div>
+  <div class="qa"><b>No.</b> Add new screens only; leave Dashboard, Contracts, Contact view, AR/AP exactly as they are. Zero risk to BBB, and you can ship without a regression pass you don't have time for.</div>
+</div>
+<div class="q">
+  <div class="qh">2 · Collapse the 13-step wizard now?</div>
+  <div class="qa"><b>No — put a 5-field express lane beside it.</b> The wizard is what BBB uses. A new short path costs days; rewriting the wizard costs weeks and risks a live tenant.</div>
+</div>
+<div class="q">
+  <div class="qh">3 · Who onboards first?</div>
+  <div class="qa"><b>BBB chapters #2 and #3, on Day 3.</b> Each chapter is its own tenant, so the 39-chapter rollout and this build are the same work. A paying customer finds your bugs before a cold prospect does.</div>
+</div>
+<div class="q">
+  <div class="qh">4 · Price?</div>
+  <div class="qa"><b>₹1,999/month, agreed in writing on day one, first month free.</b> Free under 10 contracts. ₹5,000 one-time to load their book. The written commitment is the signal — not the revenue.</div>
+</div>
+<div class="q">
+  <div class="qh">5 · VaNi now?</div>
+  <div class="qa"><b>No — week 3+.</b> It's the moat, not the wedge. It already exists in three disconnected places (scanner, wizard draft, block recommender on an idle branch). Converging them is its own project.</div>
+</div>
+
+<h2>Build list — the whole sprint</h2>
+<div class="tw"><table>
+  <tr><th>#</th><th>What</th><th>Why it can't be skipped</th></tr>
+  <tr><td>1</td><td>Onboarding: persona → industry → seeded catalog → first contract → <b>send</b></td><td>Doesn't exist. This is the 15 minutes.</td></tr>
+  <tr><td>2</td><td>Express contract lane (5 fields → existing payload)</td><td>The wizard cannot be 3 minutes.</td></tr>
+  <tr><td>3</td><td>Hide-until-earned rules</td><td>Cheap. Turns a big product into a small one.</td></tr>
+</table></div>
+<p style="font-size:13.5px;color:var(--soft);margin:4px 0 0">That's it. No new API, no new tables, no migrations — everything already exists, including Razorpay and WhatsApp.</p>
+
+<h2>Hide on day one</h2>
+<div class="tw"><table>
+  <tr><th>Hide</th><th>Show it when</th></tr>
+  <tr><td>Test/Live badge</td><td>Never by default — put everyone on Live</td></tr>
+  <tr><td>Revenue/Expense toggle + Payables</td><td>First vendor contract exists</td></tr>
+  <tr><td>Group Sessions</td><td>Industry needs it (BBB chapters keep it)</td></tr>
+  <tr><td>Catalog Studio</td><td>5+ contracts, or from a block's edit link</td></tr>
+  <tr><td>SLA % everywhere</td><td>3+ visits logged — before that it lies</td></tr>
+  <tr><td>Charts &amp; renewals radar</td><td>2 months of data; use empty-state CTAs meanwhile</td></tr>
+</table></div>
+
+<h2>Done means</h2>
+<div class="tw"><table>
+  <tr><td><span class="metric num">2</span> BBB chapters</td><td>onboarded through the new flow</td></tr>
+  <tr><td><span class="metric num">2–3</span> prospects</td><td>live tenants with ₹1,999 in writing</td></tr>
+  <tr><td><span class="metric num">&lt;30</span> min</td><td>of your time per onboarding</td></tr>
+  <tr><td><span class="metric num">1</span> real send</td><td>a customer received a contract or reminder</td></tr>
+  <tr><td><span class="metric">0</span> incidents</td><td>on BBB</td></tr>
+</table></div>
+<p style="font-size:13.5px;color:var(--soft);margin:8px 0 0">If chapter #4 onboards in under 30 minutes, chapters #5–39 become a scheduling problem instead of an engineering one. That's the number that says the week worked.</p>
+
+<h2>Do not do this week</h2>
+<div class="row no"><span class="mark">✕</span><div class="rt"><b>Redesign live screens</b><span>Dashboard, contract view, AR/AP, contacts — all roadmap.</span></div></div>
+<div class="row no"><span class="mark">✕</span><div class="rt"><b>Touch the API, edge functions, or tables</b><span>UX-only. This is what makes BBB structurally safe, not just carefully handled.</span></div></div>
+<div class="row no"><span class="mark">✕</span><div class="rt"><b>Add anything not in the build list</b><span>Ideas go to a parking lot and re-enter only when a paying tenant asks twice.</span></div></div>
+<div class="row hold"><span class="mark">!</span><div class="rt"><b>Deploy Friday night or Saturday</b><span>BBB's cadence is Saturday. With ~1,500 legacy tsc errors, CI won't catch a regression for you.</span></div></div>
+
+<div class="foot">Supporting detail, if ever needed: <b>mvp-reveal-schedule.md</b> (hide list) · <b>lite-mvp-folder-structure.md</b> (where code goes) · <b>go-live-7day-plan.html</b> (day by day) · <b>onboarding-15min.html</b> (minute budget). This page is the only one you need to act.</div>
+</div>

@@ -1,0 +1,255 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP RFQ batch 1 (server)
+The RFQ cycle: four breaks closed, nothing invented
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+*** APPLIED TO PRODUCTION (uwyqhzotluikawcboldr) ON 29 JUL 2026 ***
+Applied on the owner's instruction, in six named migration chunks rather
+than one file, so a failure would have been locatable. Each chunk is its
+own transaction and each is idempotent. Recorded in migration history as:
+
+  rfq_cycle_072_part1_columns_index_triggers
+  rfq_cycle_072_part2_vendor_access_grants
+  rfq_cycle_072_part3_nondestructive_vendor_replace
+  rfq_cycle_072_part4_resolve_for_vendor
+  rfq_cycle_072_part5_submit_quote
+  rfq_cycle_072_part6_award_and_grants
+
+The .sql file below is the single-file equivalent and is kept as the
+readable record. DO NOT RE-APPLY IT — it is idempotent, but re-running
+part 3 would abort by design (the STEP 6 text it looks for is gone now,
+because it has already been replaced). That abort is the guard working,
+not a failure.
+
+VERIFIED AFTER APPLYING, against production:
+  7 new columns on t_contract_vendors ................ present
+  5 new functions ..................................... present
+  2 new triggers ...................................... present
+  uq_contract_vendors_contract_vendor ................. present
+  idx_contract_access_unique_grant .................... now includes
+      accessor_contact_id; all 63 existing access rows survived the swap
+  update_contract_transaction ......................... patched; the
+      destructive "DELETE FROM t_contract_vendors WHERE contract_id ="
+      no longer appears anywhere in the function (0 occurrences)
+  rfq_resolve_for_vendor(bad link) .................... INVALID_LINK
+  rfq_submit_quote(bad link) .......................... INVALID_LINK
+  rfq_award(bad ids) .................................. NOT_FOUND
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-edge      (branch: main)   1 new migration
+  ClaudeDocumentation    (branch: master) 1 doc, REPLACES an earlier one
+  contractnest-ui        NOT TOUCHED in this batch
+  contractnest-api       NOT TOUCHED
+
+
+READ THIS FIRST — I GOT THE EARLIER ANALYSIS WRONG
+──────────────────────────────────────────────────
+  RFQ-GAP-ANALYSIS.md (this morning) said "nothing persists vendors" and
+  "stages 4-6 do not exist". Both wrong.
+
+  I had grepped contractnest-api/src and contractnest-edge/functions and found
+  nothing. The search was right; the conclusion was not. The whole contract
+  layer lives in Postgres functions, which are not in the repo — the edge
+  handler at contracts/index.ts:577 just forwards the payload to
+  create_contract_transaction. A repo grep cannot see any of it.
+
+  What is ALREADY live and working, verified via pg_get_functiondef:
+
+    * mapper.ts:117 builds vendors[]
+    * create_contract_transaction STEP 6 inserts them
+    * get_contract_by_id STEP 4 reads them back with quotes
+    * detail/index.tsx VendorsCard already renders status + quoted amount
+    * update_contract_status carries the FULL RFQ state machine:
+        draft -> sent -> quotes_received -> awarded -> converted_to_contract
+    * t_contract_vendors.response_status CHECK: pending|quoted|declined|accepted
+    * ContractWizard/index.tsx:783 already fires draft -> sent for RFQs
+    * rfq_sent is already queued to JTD
+
+  The cycle was designed, shipped and never switched on. Production agrees:
+  zero rfq rows ever, zero t_contract_vendors rows.
+
+  Item 1 of my earlier "what I would do, in order" table — "persist vendors[],
+  size XS, do this first" — was work that did not need doing.
+
+
+THE FOUR REAL BREAKS, AND WHAT THE MIGRATION DOES
+─────────────────────────────────────────────────
+  BREAK 1  Vendors have no address.
+           mapper.ts sends vendor_id + vendor_name only. Every vendor row is
+           created with vendor_email NULL, so nothing can be delivered.
+           BuyerSelectionStep's multi-select only carries (ids, names), so the
+           email is not even in wizard state.
+           -> BEFORE INSERT/UPDATE trigger fills name/company/email from
+              t_contacts + t_contact_channels. Note t_contacts has NO email
+              column — email is a channel row. Fixed server-side so every
+              future writer inherits it, and so the wizard needs no change.
+
+  BREAK 2  Only ONE vendor can ever hold a grant. THE REAL BLOCKER.
+           idx_contract_access_unique_grant is unique on
+             (contract_id, accessor_role, COALESCE(accessor_tenant_id, 0-uuid))
+           Every RFQ vendor is role 'vendor' with a NULL accessor_tenant_id, so
+           vendor #2 collides with vendor #1.
+           Worse: update_contract_status only creates the grant IF buyer_id IS
+           NOT NULL, and an RFQ has no buyer_id. So today an RFQ mints a CNAK
+           that literally nobody can use.
+           -> accessor_contact_id added to the unique key (this only LOOSENS
+              the constraint, so no valid row can be invalidated), plus a
+              trigger that mints one grant per vendor on rfq -> sent, each with
+              its own secret_code. Shared CNAK, per-vendor secret.
+
+  BREAK 3  Nothing can write a quote, and a vendor has no route.
+           A vendor is a contact, not a tenant — authenticated routes are shut.
+           -> rfq_resolve_for_vendor(cnak, secret)  — anon
+              rfq_submit_quote(cnak, secret, ...)   — anon
+              Same public pattern as the check-in page.
+              The vendor sees the RFQ and their OWN row only — never another
+              vendor's quote, never the invitee list, and never the buyer's own
+              prices (they are quoting, not matching a number).
+
+  BREAK 4  Editing an RFQ destroys quotes.  ** FIX THIS BEFORE, NOT AFTER **
+           update_contract_transaction STEP 6 does DELETE-ALL then re-insert
+           with response_status 'pending'. Harmless today only because no quote
+           has ever existed. The moment BREAK 3 lands, a buyer adding a sixth
+           vendor silently wipes five quotes.
+           -> Now non-destructive: a vendor who responded is never removed, a
+              vendor still on the list keeps their quote, only pending vendors
+              dropped from the list are deleted.
+
+
+YOUR ANSWER ON QUOTING, AND HOW IT LANDED
+─────────────────────────────────────────
+  "usually single, however it is left to users"
+
+  quoted_amount stays the headline and is the only thing a comparison sorts on.
+  quote_breakdown (new jsonb) carries optional per-block detail. A vendor who
+  prices the blocks and gives no headline gets the headline computed as the sum
+  — so a mixed set of responses still compares on one axis.
+
+  NO NEW TABLE. quoted_amount keeps its meaning for every response.
+
+
+WHAT THE MIGRATION DELIBERATELY DOES NOT DO
+───────────────────────────────────────────
+  rfq_award marks the winner accepted, the rest declined, and moves the RFQ to
+  'awarded'. It does NOT create a contract.
+
+  Your model is "the vendor initiates the contract". If accepting a quote
+  created the contract, the BUYER would have authored it. So the migration
+  stops at 'awarded' and leaves 'converted_to_contract' — which already exists
+  in the state machine — for whatever you decide that next act is. Two shapes:
+
+    a) winning vendor issues a contract from the awarded RFQ
+       (matches your model; needs a source_rfq_id link column)
+    b) flip the RFQ row itself to record_type 'contract'
+       (no new column; the RFQ stops existing as a record of what was compared)
+
+  I did not pick. It is the only remaining design choice in the cycle.
+
+
+FILES (2)
+─────────
+  NEW  contractnest-edge/supabase/migrations/contracts/072_rfq_cycle.sql
+  MOD  ClaudeDocumentation/mvp/RFQ-GAP-ANALYSIS.md
+         REPLACES the earlier file of the same name. Do not keep both — the
+         old one is wrong in its headline finding.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Every claim re-derived from pg_get_functiondef / information_schema
+    against production, not from the repo. That is what I got wrong last time.
+  * The in-place patch of update_contract_transaction pulls the LIVE definition
+    and substitutes STEP 6 by text replace — the other 18,816 characters are
+    never retyped, so they cannot drift. Same technique as the IST fix (048).
+  * The expected STEP 6 text was confirmed present in the live function at
+    offset 15124 before the migration was written. If it ever stops matching,
+    the migration ABORTS rather than leaving the destructive version in place.
+  * t_contract_vendors has 0 rows in production, so the new unique index on
+    (contract_id, vendor_id) cannot fail on existing data.
+  * Loosening idx_contract_access_unique_grant cannot invalidate an existing
+    row — adding a column to a unique key only permits more.
+  * Migration is idempotent (IF NOT EXISTS / CREATE OR REPLACE / DROP TRIGGER
+    IF EXISTS) and wrapped in BEGIN/COMMIT.
+
+
+HOW TO APPLY
+────────────
+  Review 072_rfq_cycle.sql first — it touches a live function.
+
+  Apply via your usual migration path against uwyqhzotluikawcboldr.
+  It is one transaction: it either lands completely or not at all.
+
+  ROLLBACK NOTE: the only irreversible-feeling step is the replacement of
+  update_contract_transaction. To revert it, re-run the same DO block with
+  v_old and v_new swapped — the original text is preserved verbatim in the
+  migration file, so nothing is lost.
+
+
+TESTING CHECKLIST  (after applying — end-to-end, no UI yet)
+──────────────────
+  SETUP
+  [ ] As a buyer tenant, create an RFQ in the wizard (path -> Request Type ->
+      Select Vendors: pick 2+ -> details -> blocks -> Review & Send)
+  [ ] t_contracts now has a record_type 'rfq' row, status 'sent'  <-- first ever
+
+  BREAK 1
+  [ ] t_contract_vendors rows have vendor_email and vendor_company FILLED,
+      even though the wizard sent neither
+  [ ] A vendor contact with no email channel gets NULL email and no error
+
+  BREAK 2
+  [ ] t_contract_access has ONE ROW PER VENDOR on that contract  <-- the fix
+  [ ] Each has a DIFFERENT secret_code, all with the same global_access_id
+  [ ] accessor_role is 'vendor' on all of them
+
+  BREAK 3
+  [ ] rfq_resolve_for_vendor(cnak, secret_of_vendor_A) returns the RFQ,
+      its blocks, and vendor A's row
+  [ ] It does NOT return vendor B, and does NOT return any buyer price
+  [ ] A wrong secret returns INVALID_LINK, not a partial payload
+  [ ] rfq_submit_quote with a single amount -> vendor A is 'quoted'
+  [ ] The RFQ auto-advances 'sent' -> 'quotes_received' on that first quote
+  [ ] rfq_submit_quote with breakdown only -> quoted_amount is the SUM
+  [ ] rfq_submit_quote with neither -> AMOUNT_REQUIRED, nothing written
+  [ ] rfq_submit_quote with p_decline -> 'declined' + reason, no amount
+  [ ] Vendor A re-quotes -> amount updated, still one row
+
+  BREAK 4  ** the one that would have cost real data **
+  [ ] With vendor A quoted, open the RFQ and add a third vendor
+  [ ] Vendor A's quote SURVIVES
+  [ ] Removing vendor B (still pending) deletes vendor B
+  [ ] Removing vendor A (quoted) does NOT delete vendor A
+
+  AWARD
+  [ ] rfq_award to a vendor who has not quoted -> NO_QUOTE, nothing changes
+  [ ] rfq_award to vendor A -> A 'accepted', others 'declined',
+      RFQ status 'awarded'
+  [ ] rfq_submit_quote after the award -> RFQ_CLOSED
+  [ ] The contract detail page's VendorsCard shows all of this with no UI change
+
+  REGRESSION — the migration touches a function every contract uses
+  [ ] Edit an ordinary CONTRACT (not an RFQ) and save -> blocks still replace
+      correctly, totals unchanged
+  [ ] Create a contract through the wizard -> unchanged
+  [ ] VaNi composer -> unchanged
+  [ ] Claim a contract by CNAK -> unchanged (the access index was loosened)
+  [ ] BBB unchanged
+
+
+WHAT COMES NEXT (not in this batch)
+───────────────────────────────────
+  7.  Vendor-facing quote page — public route, no auth, reads
+      rfq_resolve_for_vendor and posts rfq_submit_quote. This is the one
+      genuinely new screen in the whole cycle.
+  8.  Buyer comparison + Award button — VendorsCard is already most of the read
+      side; it needs sorting, the breakdown expanded, and the award action.
+  9.  Delivery — the WhatsApp/MSG91 path already used for contracts, carrying
+      cnak + per-vendor secret.
+  10. Award -> contract. NEEDS YOUR DECISION (a or b above).
+  11. Buyer onboarding: /start/serve still says "What you service"; and
+      VaniDoneStep still sends buyers to /start/contract, which a buyer
+      cannot author. Both still open from Sprint 3d.
+═══════════════════════════════════════════════════

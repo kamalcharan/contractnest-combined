@@ -1,0 +1,322 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP RFQ batch 2 (surfaces)
+The vendor quote page, the buyer's comparison + award,
+and the buyer onboarding path that pointed the wrong way
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   29 Jul 2026
+
+REQUIRES mvp-rfq-1's migration (072_rfq_cycle.sql) TO BE APPLIED FIRST.
+Nothing in this batch works without it — the RPCs it calls do not exist yet.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-api  (branch: main)   4 new files + 2 hand edits to index.ts
+  contractnest-ui   (branch: main)   3 new files, 2 modified, 2 hand edits
+
+
+WHAT THIS COMPLETES
+───────────────────
+  Batch 1 closed the four server breaks. This is the half a person touches.
+
+    7.  Vendor quote page ......... DONE  the one genuinely new screen
+    8.  Buyer comparison + award .. DONE
+    9.  Delivery .................. PARTIAL — see "STILL OPEN" below
+    11. Buyer onboarding copy ..... DONE
+    10. Award -> contract ......... STILL YOUR DECISION (unchanged)
+
+
+1. THE VENDOR QUOTE PAGE   /quote/:cnak/:secret
+───────────────────────────────────────────────
+  Public, no auth, outside the app shell. The vendor is a CONTACT, not a
+  tenant — there is no account to log into, now or later.
+
+  Built dependency-light on purpose: no ThemeContext, no admin components,
+  bare axios with no auth interceptors. That is the same call SessionCheckinPage
+  made for logged-out members on a phone, and this is the second surface of
+  exactly that kind. Same palette, same shell proportions.
+
+  The vendor sees: what is being asked for, the line items, the term, and the
+  nomenclature (AMC / CMC / …).
+  The vendor does NOT see: the buyer's own prices, or the other vendors.
+  Both are withheld SERVER-side in rfq_resolve_for_vendor — the page could not
+  leak them even if it wanted to.
+
+  They answer one of three ways:
+    * one total figure
+    * a price per line (total computed live, and it is what gets sent)
+    * "I'm not quoting on this", with an optional reason
+
+  Revising is a first-class action, not an edge case. A vendor who already
+  quoted lands on the page with their figure, notes, validity date and any
+  per-line prices pre-filled, and the button reads "Update my quote". Making
+  them retype a quote they already gave is the fastest way to lose one.
+
+
+2. THE BUYER'S SIDE — RfqQuotesPanel
+────────────────────────────────────
+  The read side already half-existed: VendorsCard rendered name, status and
+  quoted_amount. What was missing was ordering, the breakdown, and the act of
+  choosing. This is a separate component so VendorsCard is untouched for
+  ordinary contracts, which still just list vendors.
+
+    * cheapest quote first, then unanswered, then declines; an awarded vendor
+      always leads regardless of price
+    * a "lowest" tag when more than one vendor has quoted
+    * "opened the link" on a vendor who has viewed but not answered — that is
+      the viewed_at column batch 1 added, and it is the difference between
+      "they are ignoring me" and "it never reached them"
+    * per-line breakdowns expand inline
+    * decline reasons shown, because "outside our area" is worth knowing
+
+  THE CONFIRM STEP SAYS WHAT AWARDING ACTUALLY DOES:
+
+    "This does not create a contract. The vendor raises the contract from
+     their side, and it will carry the figure you just agreed."
+
+  A buyer clicking a button labelled "Award" will otherwise assume a contract
+  now exists. It does not, and that is deliberate — your model is that the
+  vendor initiates. This is the one place a user could form a wrong belief
+  about it, so the sentence is on the confirm step rather than in a doc.
+
+
+3. BUYER ONBOARDING — two things that were live and wrong
+─────────────────────────────────────────────────────────
+  a) /start/serve asked a buyer "What do you service?" and promised to
+     "pre-build your catalog with market-reference prices". A buyer services
+     nothing and gets no sellable catalog.
+
+       title    -> "What do you own?"
+       subtitle -> "...They go into your registries, and they're what you'll
+                    ask vendors to quote against."
+       buckets  -> "Machines you own — each goes into your equipment registry"
+
+     Only for persona 'buyer'. 'both' keeps the seller wording, because they
+     do both and the catalog half is the half that needs explaining.
+
+  b) VaniDoneStep sent EVERY persona to /start/contract — my Sprint 3 change.
+     /start/contract authors a contract from the tenant's own catalog, and a
+     buyer has neither. Buyers now go to /contracts/create/vendor, whose first
+     step offers the RFQ path, and the button reads "Send your first request →".
+
+  c) While in that file: Screen9B's "I have a contract code (CNAK) →" button
+     had an EMPTY onClick and has since it shipped, while /contracts/claim has
+     been routed at App.tsx:682 all along. Now wired.
+
+
+FILES
+─────
+  contractnest-api
+    NEW  src/services/rfqService.ts
+    NEW  src/controllers/rfqController.ts
+    NEW  src/routes/rfqPublicRoutes.ts        -> /api/quote   (NO AUTH)
+    NEW  src/routes/rfqRoutes.ts              -> /api/rfq     (authenticated)
+
+  contractnest-ui
+    NEW  src/pages/quote/useVendorQuote.ts
+    NEW  src/pages/quote/VendorQuotePage.tsx
+    NEW  src/components/contracts/RfqQuotesPanel.tsx
+    MOD  src/lite/onboarding/ServiceableStep.tsx        (on top of sprint 2d)
+    MOD  src/pages/onboarding/steps/VaniDoneStep.tsx    (on top of sprint 3)
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  # API
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-api\src\services\rfqService.ts"       -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-api\src\controllers\rfqController.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-api\src\routes\rfqPublicRoutes.ts"    -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-api\src\routes\rfqRoutes.ts"          -Destination "contractnest-api\src\routes\" -Force
+
+  # UI
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\quote" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-ui\src\pages\quote\*"                 -Destination "contractnest-ui\src\pages\quote\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-ui\src\components\contracts\RfqQuotesPanel.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-ui\src\lite\onboarding\ServiceableStep.tsx"     -Destination "contractnest-ui\src\lite\onboarding\" -Force
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-2\contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+  Write-Host "RFQ batch 2 copied - 4 hand edits still needed" -ForegroundColor Yellow
+
+
+FOUR HAND EDITS — index.ts and App.tsx are too large to ship wholesale
+──────────────────────────────────────────────────────────────────────
+  Copying a 1400-line index.ts or a 950-line App.tsx over yours would clobber
+  anything you have changed since. These are small and explicit instead.
+
+  ── EDIT 1 · contractnest-api/src/index.ts  (near line 426) ──
+     Beside the existing sessionCheckin requires, add:
+
+       let rfqPublicRoutes, rfqRoutes;
+       try {
+         rfqPublicRoutes = require('./routes/rfqPublicRoutes').default;
+         rfqRoutes       = require('./routes/rfqRoutes').default;
+       } catch (e) {
+         console.warn('RFQ routes not available:', e.message);
+         rfqPublicRoutes = null;
+         rfqRoutes = null;
+       }
+
+  ── EDIT 2 · contractnest-api/src/index.ts  (near line 936) ──
+     Beside where /api/checkin is registered, add:
+
+       if (rfqPublicRoutes) {
+         app.use('/api/quote', rfqPublicRoutes);
+         console.log('✅ RFQ vendor quote (public) routes registered at /api/quote');
+       }
+       if (rfqRoutes) {
+         app.use('/api/rfq', rfqRoutes);
+         console.log('✅ RFQ (buyer) routes registered at /api/rfq');
+       }
+
+     ORDER MATTERS: /api/quote must NOT sit behind any global authenticate.
+     Register it where /api/checkin is, which is already outside that.
+
+  ── EDIT 3 · contractnest-ui/src/App.tsx  (beside line 361) ──
+     Next to the public check-in route, OUTSIDE ProtectedRoute:
+
+       import VendorQuotePage from './pages/quote/VendorQuotePage';
+       ...
+       {/* [rfq] public vendor quote response */}
+       <Route path="/quote/:cnak/:secret" element={<VendorQuotePage />} />
+
+     If it lands inside ProtectedRoute the vendor is bounced to login and the
+     whole feature is dead, so check which block you pasted into.
+
+  ── EDIT 4 · contractnest-ui/src/pages/contracts/detail/index.tsx ──
+     `isRfq` already exists at line 2064 and `vendorsCount` at 2161, so both
+     facts are on hand. Where <VendorsCard vendors={contract.vendors} … /> is
+     rendered, swap in the RFQ panel:
+
+       import RfqQuotesPanel from '@/components/contracts/RfqQuotesPanel';
+       ...
+       {isRfq ? (
+         <RfqQuotesPanel
+           contractId={contract.id}
+           vendors={contract.vendors as any}
+           currency={contract.currency}
+           rfqStatus={contract.status}
+           colors={colors}
+           formatCurrency={formatCurrency}
+           onAwarded={() => refetch()}
+         />
+       ) : (
+         <VendorsCard vendors={contract.vendors} colors={colors} />
+       )}
+
+     Use whatever the detail page's existing refetch is called — do not add a
+     new query. If there isn't one to hand, onAwarded is optional; omit it and
+     the panel simply won't self-refresh.
+
+
+PRODUCTION CHECKLIST
+────────────────────
+  Transaction management ... every write is a single RPC call; rfq_award does
+                             winner + losers + status inside one function, so a
+                             half-award cannot exist.
+  Race conditions .......... rfq_submit_quote takes FOR UPDATE on the vendor
+                             row AND the contract before writing, so two
+                             submits from the same phone cannot interleave.
+                             UI side: `submitting` and `awarding` guards.
+  Error handling ........... the RPCs return their own {success,error,error_code}
+                             envelope; rfqService turns success:false into a
+                             real failure rather than a 200 the caller must
+                             remember to check, and the controller maps each
+                             error_code to a real HTTP status. Vendor-facing
+                             messages are passed through verbatim — they were
+                             written for the vendor to read.
+  Toasts ................... useVaNiToast on the buyer side (existing
+                             component). The vendor page has no toast provider
+                             — it is outside the app shell — so it uses inline
+                             notices, same as SessionCheckinPage.
+  Loaders .................. inline "Opening the request…" on the vendor page;
+                             Loader2 (existing) on the award button.
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * Followed the public check-in pattern rather than inventing one: read
+    sessionCheckinPublicRoutes / Controller / Service and useSessionCheckin
+    first, and matched their structure, their no-store headers and their
+    bare-axios choice.
+  * No-store headers carried over deliberately — one RFQ link is opened on many
+    devices by different vendors, and a cached resolve would show one vendor
+    another's state. Same reasoning as the check-in fix on 24 Jul.
+  * Confirmed /contracts/claim is routed (App.tsx:682) before wiring the CNAK
+    button to it.
+  * Confirmed /contracts/create/:contractType is routed (App.tsx:515) and takes
+    client|vendor|partner before pointing buyers at it.
+  * RFQ mode is chosen INSIDE the wizard (index.tsx:1301), not by URL — so the
+    buyer CTA goes to the vendor wizard whose first step offers it, rather than
+    to a query param that does not exist.
+  * contractnest-ui and contractnest-api working trees left pristine.
+
+  NOT VERIFIED — say so plainly:
+  * tsc / eslint were NOT run on this batch. src/lite does not exist in the
+    checkout (the sprint work is still staged, not copied in), so a full app
+    typecheck would fail on missing imports for reasons unrelated to this code.
+    Typecheck after you copy sprints 2b-3d in.
+
+
+TESTING CHECKLIST
+─────────────────
+  PREREQUISITE
+  [ ] 072_rfq_cycle.sql applied, and its own checklist passed
+
+  VENDOR PAGE
+  [ ] Create an RFQ with 2+ vendors; read cnak + each vendor's secret from
+      t_contract_vendors.access_secret
+  [ ] Open /quote/<cnak>/<secret-A> in a PRIVATE window (proves no auth)
+  [ ] The RFQ, its line items, term and nomenclature all render
+  [ ] NO buyer price appears anywhere on the page
+  [ ] Vendor B is not mentioned anywhere
+  [ ] "One total price" -> enter a figure -> Send -> success state
+  [ ] Reopen the same link -> figure pre-filled, button says "Update my quote"
+  [ ] "Price each line" -> price 2 of 5 lines -> the total is the sum of those
+      2, and only those 2 are sent
+  [ ] Reopen -> it comes back in per-line mode with those prices
+  [ ] "I'm not quoting on this" + reason -> declined state
+  [ ] Open with a WRONG secret -> "This link didn't open", no partial data
+  [ ] Open vendor B's link -> vendor B's own state, not A's
+
+  BUYER SIDE
+  [ ] Contract detail for the RFQ shows Quotes (N of M), cheapest first
+  [ ] The cheapest carries a "lowest" tag
+  [ ] A vendor who opened but did not answer shows "opened the link"
+  [ ] A per-line quote expands to show the priced lines
+  [ ] Award -> the confirm dialog SAYS no contract is created
+  [ ] Confirm -> winner "Awarded", others "Declined", RFQ status 'awarded'
+  [ ] The vendor page for a LOSER now says the request is closed
+  [ ] The vendor page for the WINNER says their quote was accepted
+  [ ] Award a vendor who never quoted -> refused, nothing changes
+
+  BUYER ONBOARDING
+  [ ] Onboard a NEW BUYER -> /start/serve says "What do you own?"
+  [ ] The buckets talk about registries, not priced service blocks
+  [ ] Finish -> the CTA reads "Send your first request →"
+  [ ] It lands on the vendor wizard, whose first step offers the RFQ path
+  [ ] "I have a contract code (CNAK) →" now goes to /contracts/claim
+  [ ] Onboard a SELLER -> "What do you service?" and /start/contract, unchanged
+  [ ] Onboard BOTH -> seller wording, /start/contract, unchanged
+
+  REGRESSION
+  [ ] An ordinary contract's detail page still shows the plain VendorsCard
+  [ ] /checkin/:token still works (the public route neighbourhood was touched)
+  [ ] BBB unchanged
+
+
+STILL OPEN
+──────────
+  * DELIVERY is half done. The vendor link is /quote/:cnak/:secret and every
+    piece of it now exists in t_contract_vendors, but nothing SENDS it. The
+    MSG91/WhatsApp path already used for contract delivery is the obvious
+    carrier. Until that is wired, an RFQ is sent by copying each vendor's link
+    out of the database — fine for testing, not for a tenant.
+  * AWARD -> CONTRACT, still your decision (a: vendor issues from the awarded
+    RFQ, needs source_rfq_id; or b: flip the RFQ row). The confirm copy already
+    promises (a), so if you pick (b) that sentence has to change with it.
+  * CATALOG STUDIO should be hidden for buyers — a persona rule, distinct from
+    the contract-count rule unwired in 2f. Not in this batch.
+═══════════════════════════════════════════════════
