@@ -1,0 +1,51 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-9 — HOTFIX: "No contract types configured yet" on the Type step
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx, no API/edge, no migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+────────────────────────────────────────────────────────────
+ROOT CAUSE
+────────────────────────────────────────────────────────────
+The new "What kind of contract is this?" step showed "No contract types
+configured yet" even though 21 nomenclature types exist. useNomenclatureTypes
+fetched with a raw fetch() gated on `user.token` and sent `Bearer ${user.token}`
+— but the auth user field is `access_token`, not `token`. So `user?.token` was
+always undefined → the query's `enabled` was false → it NEVER fetched → empty
+list. (This is also why earlier RFQs like PRJ-1004 saved a null nomenclature —
+the picker was silently empty the whole time, not "skipped".)
+
+────────────────────────────────────────────────────────────
+FIX (2 files)
+────────────────────────────────────────────────────────────
+1. contractnest-ui/src/hooks/queries/useNomenclatureTypes.ts   ← the real fix
+   Now fetches via the shared `api` client (auth + tenant headers via the axios
+   interceptor) and is gated only on the tenant — exactly like useResources /
+   useGlobalMasterData (the hook the contract detail page already uses
+   successfully). No more user.token gate. Returns the 21 types.
+
+2. contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx   ← supersedes mvp-rfq-7
+   Defensive: the Type step now REQUIRES a pick only when types exist; if a
+   workspace genuinely has none, it no longer traps the user (they can continue
+   and set it later). Copy softened accordingly. (Otherwise identical to the
+   mvp-rfq-7 builder — safe to copy over it.)
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-9\contractnest-ui\src\hooks\queries\useNomenclatureTypes.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-9\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST
+────────────────────────────────────────────────────────────
+  [ ] /contracts/rfq/new → select Equipment → "What kind of contract is this?"
+      now shows the contract types (chips), not "No contract types configured yet"
+  [ ] Picking one lets you Continue; the choice flows through to the saved RFQ
+  [ ] (Also fixes the same picker anywhere else useNomenclatureTypes is used)
