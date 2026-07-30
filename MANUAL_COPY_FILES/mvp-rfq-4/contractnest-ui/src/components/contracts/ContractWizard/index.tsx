@@ -23,6 +23,7 @@ import ReviewSendStep from './steps/ReviewSendStep';
 import EventsPreviewStep from './steps/EventsPreviewStep';
 import EvidencePolicyStep, { type EvidencePolicyType, type SelectedForm } from './steps/EvidencePolicyStep';
 import AssetSelectionStep, { type EquipmentDetailItem, type CoverageTypeItem } from './steps/AssetSelectionStep';
+import RfqAssetStep from './steps/RfqAssetStep';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { categoryHasPricing, getCategoryById } from '@/utils/catalog-studio/categories';
 import { useCatBlocksTest } from '@/hooks/queries/useCatBlocksTest';
@@ -1598,6 +1599,18 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         );
       }
       case 'assetSelection': {
+        // RFQ picks from the buyer's OWN registry (no counterparty); a contract
+        // picks from the client's assets. Two different steps, one slot.
+        if (isRfqMode) {
+          return (
+            <RfqAssetStep
+              equipmentDetails={wizardState.equipmentDetails}
+              onEquipmentDetailsChange={(items) =>
+                updateWizardState('equipmentDetails', items)
+              }
+            />
+          );
+        }
         return (
           <AssetSelectionStep
             contactId={wizardState.buyerId || ''}

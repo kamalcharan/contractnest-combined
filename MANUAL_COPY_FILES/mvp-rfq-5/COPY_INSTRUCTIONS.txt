@@ -1,0 +1,166 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — MVP RFQ batch 5 (Path 2)
+The dedicated, product-led RFQ builder
+Branch: claude/contractnest-launch-strategy-aad14f
+Date:   30 Jul 2026
+
+This is the flow you asked for: a purpose-built, single-column,
+self-explaining RFQ request — NOT the shared contract wizard. New UX,
+same API. Meant to become the reference the contract/template flows
+graduate onto later.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+───────────────────
+  contractnest-ui  (branch: main)   1 new file + 2 small hand-edits
+  No API / edge / DB changes — it writes the payload the RFQ API already
+  accepts (proven by PRJ-1001 and the batch-2 work).
+
+
+WHAT IT IS
+──────────
+  A full-page, one-question-per-screen RFQ builder that follows your sequence
+  exactly and stays loose (the buyer gives a FLAVOUR, not a registry record):
+
+    1. What for ...... Equipment / Facility / Service  (Service skips step 4)
+    2. Request ....... heading + contract type (nomenclature, prefills term)
+    3. Timing ........ start, term, and "last date to apply"
+    4. What it covers  pick type + quantity + an OPTIONAL flavour line
+                       ("2 DG sets, ~500kVA"). Skipped entirely for a service.
+    5. Services ...... flyby lines, each with a cadence (monthly, on-call…)
+    6. Vendors ....... your vendor contacts, one or many
+    7. Review ........ summary + Send. (Save-as-template shown, disabled —
+                       "coming soon", see note below.)
+
+  On send it creates the RFQ and transitions it to 'sent' (the same two calls
+  the wizard makes), then shows the request number + CNAK and "sent to N
+  vendors". Each vendor still gets their own private link (batch-1 grants).
+
+
+HOW IT HONOURS "ONLY UX CHANGES"
+────────────────────────────────
+  Same data, same API, new screens only. It writes:
+    * coverage_types + equipment_details  — the flavour (placeholder-flagged,
+      added_by_role 'buyer', flavour text in item_name/notes)
+    * blocks  — flyby service lines with billing_cycle
+    * vendors[]  — {vendor_id, vendor_name, vendor_company, vendor_email}
+    * response_deadline, nomenclature_id, start_date, duration
+  All of which create_contract_transaction already inserts. Reuses useResources
+  (types), useNomenclatureTypes, useContactList (vendors), useContractOperations
+  (create + updateStatus). No RfqAssetStep, no shared-wizard changes — the
+  contract wizard is untouched.
+
+  Why a flavour, not the registry: the tenant registry is empty platform-wide
+  and a buyer describes loosely by nature. Type + quantity + free-text is the
+  right level; it lands as placeholder equipment_details, exactly the wizard's
+  "add later" model, but purpose-built instead of bent.
+
+
+REFERENCE-PATTERN NOTE
+──────────────────────
+  Built clean and self-contained on purpose. The single-column shell (progress
+  rail, sticky action bar, one-question screens) is the piece contracts and
+  templates will eventually adopt — but only AFTER this proves out in use, so
+  we copy from something real rather than a premature abstraction.
+
+
+FILES
+─────
+  NEW  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+
+TWO HAND-EDITS (large/shared files — not shipped wholesale)
+──────────────────────────────────────────────────────────
+  EDIT 1 · contractnest-ui/src/App.tsx
+    Add the route INSIDE the authenticated contracts block (the buyer is a
+    tenant). Next to the existing contracts routes (near "contracts/claim"):
+
+       import RfqBuilderPage from './pages/contracts/rfq/RfqBuilderPage';
+       ...
+       <Route path="rfq/new" element={<RfqBuilderPage />} />
+
+    (So it resolves at /contracts/rfq/new. If your contracts routes are nested
+    under a path="contracts" parent, the child path is "rfq/new" as shown;
+    otherwise use path="/contracts/rfq/new".)
+
+  EDIT 2 · contractnest-ui/src/pages/contracts/hub/index.tsx
+    Point "New Request" at the new flow. handleCreateClick currently reads:
+
+       const handleCreateClick = () => {
+         const type = activePerspective === 'revenue' ? createRelationship : 'vendor';
+         openWizard(type as ContractType);
+       };
+
+    Change it to:
+
+       const handleCreateClick = () => {
+         if (isRfqView) { navigate('/contracts/rfq/new'); return; }
+         const type = activePerspective === 'revenue' ? createRelationship : 'vendor';
+         openWizard(type as ContractType);
+       };
+
+    `navigate` and `isRfqView` already exist in the hub (batch 3). No other
+    change.
+
+
+POWERSHELL — copy
+─────────────────
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/contractnest-launch-strategy-aad14f
+
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\contracts\rfq" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-5\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+
+  # then apply the two hand-edits above, and Ctrl+F5
+
+
+VERIFIED BEFORE HANDOVER
+────────────────────────
+  * tsc (tsconfig.check.json): 50 WITH the new page, 50 WITHOUT — zero added.
+  * contractnest-ui working tree restored pristine after the check.
+  * Payload shape checked field-by-field against create_contract_transaction
+    (coverage_types, equipment_details, blocks, vendors, response_deadline,
+    nomenclature_id, start_date, duration) and ContractEquipmentDetail.
+
+
+TESTING CHECKLIST
+─────────────────
+  [ ] Hub → Expense → Requests → "New Request" opens the full-page builder
+  [ ] Step 1: pick Equipment → steps include "What it covers"
+  [ ] Step 1: pick Service → "What it covers" is SKIPPED
+  [ ] Step 2: name required; nomenclature chips load; picking one prefills term
+  [ ] Step 3: start, term, and "last date to apply" all settable
+  [ ] Step 4 (equipment): pick a type, set quantity, type a flavour
+  [ ] Step 5: add service lines with cadence; unnamed line blocks Continue
+  [ ] Step 6: pick vendor(s); Send
+  [ ] Success screen shows request number + CNAK + "sent to N vendors"
+  [ ] The new RFQ appears in Hub → Requests with its row (start, vendors,
+      deadline + aging chip from batch 3/4)
+  [ ] Open a vendor's /quote/CNAK/secret link → sees the request + line items
+  [ ] Pure-service RFQ (no equipment) sends fine
+  [ ] Contract creation via the old wizard is completely unchanged
+  [ ] BBB unchanged
+
+
+KNOWN / DEFERRED (flagged, not silent)
+──────────────────────────────────────
+  * SAVE-AS-TEMPLATE is shown on Review but DISABLED ("coming soon"). Real
+    template persistence for requests is a separate slice (needs a template
+    write path); the control is present as honest intent, not a dead button.
+  * If the create succeeds but the 'sent' transition fails, the RFQ is kept as
+    a draft and a toast says so — it is never lost.
+  * This does not YET replace the RFQ path inside the shared wizard; that path
+    still exists. Once you're happy with this flow we can retire the wizard's
+    RFQ mode (and later graduate contracts/templates onto this shell).
+
+
+WHERE THIS SITS IN THE PLAN
+───────────────────────────
+  1. RFQ home + row .......................... done (batch 3)
+  2. Deadline input .......................... done (batch 4a)
+  2. Equipment step + flyby gate ............. done (batch 4b) — superseded for
+     RFQ by this dedicated flow; harmless to keep
+  ►  Dedicated product-led RFQ builder ....... THIS BATCH
+  3. Award → vendor issues draft contract .... next big one (needs source_rfq_id)
+  4. Save-as-template for requests ........... after award
+═══════════════════════════════════════════════════
