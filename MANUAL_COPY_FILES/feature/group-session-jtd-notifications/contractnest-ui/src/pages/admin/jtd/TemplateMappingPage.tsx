@@ -17,6 +17,7 @@ import {
 } from './hooks/useJtdAdmin';
 import { VaNiLoader } from '@/components/common/loaders';
 import { vaniToast } from '@/components/common/toast';
+import TenantPicker, { type TenantOption } from '@/components/common/TenantPicker';
 import type { CreateTemplatePayload, JtdTemplateRecord } from './types/jtdAdmin.types';
 
 const emptyForm: CreateTemplatePayload = {
@@ -34,9 +35,11 @@ const TemplateMappingPage: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const { currentTenant } = useAuth();
 
+  const [filterTenant, setFilterTenant] = useState<TenantOption | undefined>(undefined);
   const [filterSourceType, setFilterSourceType] = useState('');
   const [filterChannel, setFilterChannel] = useState('');
   const { templates, loading, error, refresh } = useJtdTemplates({
+    tenant_id: filterTenant?.id,
     source_type_code: filterSourceType || undefined,
     channel_code: filterChannel || undefined,
   });
@@ -45,6 +48,7 @@ const TemplateMappingPage: React.FC = () => {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CreateTemplatePayload>(emptyForm);
+  const [formTenant, setFormTenant] = useState<TenantOption | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingProviderId, setEditingProviderId] = useState('');
 
@@ -68,14 +72,15 @@ const TemplateMappingPage: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!form.tenant_id || !form.source_type_code || !form.channel_code || !form.provider_template_id || !form.content) {
+    if (!formTenant?.id || !form.source_type_code || !form.channel_code || !form.provider_template_id || !form.content) {
       vaniToast.error('Tenant, source type, channel, MSG91 template name, and content are all required');
       return;
     }
-    const created = await createTemplate(form);
+    const created = await createTemplate({ ...form, tenant_id: formTenant.id });
     if (created) {
       vaniToast.success('Template mapping created');
       setForm(emptyForm);
+      setFormTenant(undefined);
       setShowForm(false);
       refresh();
     } else {
@@ -138,7 +143,7 @@ const TemplateMappingPage: React.FC = () => {
             <RefreshCw size={16} /> Refresh
           </button>
           <button
-            onClick={() => { setShowForm((v) => !v); setForm(emptyForm); }}
+            onClick={() => { setShowForm((v) => !v); setForm(emptyForm); setFormTenant(undefined); }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-colors"
             style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
           >
@@ -152,16 +157,11 @@ const TemplateMappingPage: React.FC = () => {
         <div className="rounded-lg shadow-sm border p-5 space-y-4 transition-colors" style={cardStyle}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                Tenant ID (UUID) <span style={{ color: colors.semantic.error }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. dd194710-92b4-4110-80eb-0b492a0d2c1f"
-                value={form.tenant_id}
-                onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2"
-                style={inputStyle}
+              <TenantPicker
+                label="Tenant *"
+                value={formTenant}
+                onChange={setFormTenant}
+                placeholder="Search tenant by name..."
               />
             </div>
             <div>
@@ -237,7 +237,14 @@ const TemplateMappingPage: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-start">
+        <div className="w-64">
+          <TenantPicker
+            value={filterTenant}
+            onChange={setFilterTenant}
+            placeholder="Filter by tenant..."
+          />
+        </div>
         <select
           value={filterSourceType}
           onChange={(e) => setFilterSourceType(e.target.value)}
@@ -261,6 +268,18 @@ const TemplateMappingPage: React.FC = () => {
           ))}
         </select>
       </div>
+
+      {filterTenant && (
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm w-fit"
+          style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}
+        >
+          Showing mappings for <strong>{filterTenant.name}</strong>
+          <button onClick={() => setFilterTenant(undefined)} className="hover:opacity-70">
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {loading && <VaNiLoader size="md" message="Loading template mappings..." />}
 
@@ -290,7 +309,11 @@ const TemplateMappingPage: React.FC = () => {
               )}
               {templates.map((row) => (
                 <tr key={row.id} className="border-t" style={{ borderColor: colors.utility.primaryText + '10' }}>
-                  <td className="px-4 py-2 font-mono text-xs" style={{ color: colors.utility.primaryText }}>{row.tenant_id}</td>
+                  <td className="px-4 py-2 text-xs" style={{ color: colors.utility.primaryText }}>
+                    {filterTenant && filterTenant.id === row.tenant_id
+                      ? filterTenant.name
+                      : <span className="font-mono">{row.tenant_id}</span>}
+                  </td>
                   <td className="px-4 py-2" style={{ color: colors.utility.primaryText }}>{row.source_type_code}</td>
                   <td className="px-4 py-2" style={{ color: colors.utility.primaryText }}>{row.channel_code}</td>
                   <td className="px-4 py-2" style={{ color: colors.utility.primaryText }}>

@@ -10,6 +10,18 @@ reachable by direct URL. Added one file:
 If you already copied everything else, you only need this one file —
 see the STEP 3 copy command for it below (added at the end of the block).
 
+UPDATE 2 (post-testing fix): Template Mapping page had no way to view
+mappings for a specific tenant, and the "New mapping" form required pasting
+a raw tenant UUID. Added one new file, changed one existing file:
+  contractnest-ui/src/components/common/TenantPicker.tsx  (NEW FILE)
+    - Search-by-name autocomplete (3-char trigger, debounced), same pattern
+      as the existing ContactPicker.tsx.
+  contractnest-ui/src/pages/admin/jtd/TemplateMappingPage.tsx  (UPDATED)
+    - Replaced the raw tenant-UUID input with TenantPicker in the "New
+      mapping" form, and added a tenant filter to the mappings list
+      (shows "Showing mappings for: <name>" once one is picked).
+See the two extra STEP 2 copy commands below.
+
 Scope: Foundation work for the 5 Group Session WhatsApp notification triggers
 (attendance ack, no-show regret, looking-forward, payment thank-you, absentee
 reminder). No triggers actually fire yet — this sprint only lays the ground:
@@ -117,6 +129,8 @@ Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\pages\admin\jtd\hooks\u
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\pages\admin\jtd\types\jtdAdmin.types.ts" -Destination "contractnest-ui\src\pages\admin\jtd\types\jtdAdmin.types.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\common" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\components\common\TenantPicker.tsx" -Destination "contractnest-ui\src\components\common\TenantPicker.tsx" -Force
 
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-api\src\middleware\auth.ts" -Destination "contractnest-api\src\middleware\auth.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-api\src\routes\adminJtdRoutes.ts" -Destination "contractnest-api\src\routes\adminJtdRoutes.ts" -Force
@@ -173,10 +187,15 @@ TESTING CHECKLIST
 - [ ] As an admin user, confirm /admin/jtd/events, /admin/jtd/worker,
       /admin/jtd/queue, /admin/jtd/tenants all still work exactly as before
       (the auth fix should be invisible to legitimate admin usage)
-- [ ] Open /admin/jtd/templates as an admin, create a new mapping (any
-      tenant_id UUID, pick a source type + whatsapp channel, enter a
-      provider_template_id + content), confirm it saves and appears in the
-      list
+- [ ] Open /admin/jtd/templates as an admin (now also reachable from the
+      JTD Admin menu, not just direct URL), create a new mapping: search
+      for a tenant by name (type 3+ characters, pick from the dropdown —
+      no more pasting a UUID), pick a source type + whatsapp channel, enter
+      a provider_template_id + content, confirm it saves and appears in
+      the list
+- [ ] Use the new tenant filter above the list to search for that same
+      tenant by name and confirm the list narrows to just their mappings,
+      with a "Showing mappings for: <name>" chip — click the X to clear it
 - [ ] Click an existing mapping's MSG91 template name to edit it inline,
       save, confirm it updates
 - [ ] Toggle a mapping's Active/Inactive badge, confirm it flips
