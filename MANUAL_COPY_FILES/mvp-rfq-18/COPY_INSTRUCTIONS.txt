@@ -1,0 +1,93 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-18 — Group Session as a real FlyBy type (RFQ + Contract)
+════════════════════════════════════════════════════════════
+Date: 31 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodules affected: contractnest-ui + contractnest-edge (migration RECORD only —
+already applied live, see below)
+tsc: clean (only the 3 pre-existing env errors).
+
+────────────────────────────────────────────────────────────
+⚠️ DB MIGRATION — ALREADY APPLIED LIVE, do not re-run manually
+────────────────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/contracts/075_flyby_type_add_session.sql
+
+t_contract_blocks.flyby_type had a CHECK constraint allowing only
+service/spare/text/document. Applied directly to uwyqhzotluikawcboldr via
+Supabase MCP (owner explicitly approved: "extend it, don't drop it" — kept the
+guardrail against typo/garbage values, just added the one new allowed value):
+  CHECK (flyby_type = ANY (ARRAY['service','spare','text','document','session']))
+Verified live afterward (pg_get_constraintdef). This .sql file is the repo
+record of that change for history/parity with 072-074 — it is NOT something
+you need to run; it's already live. (The DROP uses IF EXISTS + the ADD is the
+same statement either way, so re-running it is harmless if you ever do.)
+
+────────────────────────────────────────────────────────────
+FILES (5) — contractnest-ui
+────────────────────────────────────────────────────────────
+1. components/catalog-studio/BlockLibraryMini.tsx
+   FlyByCategoryId extended: 'service'|'spare'|'text'|'document'|'session'
+2. components/catalog-studio/FlyByBlockCard.tsx
+   FLYBY_TYPE_CONFIG (the shared icon/label/color source both Contract and RFQ
+   read) gets a 'session' entry: Users icon, 'Group Session', color #DA6410,
+   bg #FBEEE1 — SAME color as the catalog session category, so it reads
+   identically wherever it appears.
+3. components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   Contract wizard's own FlyBy add-menu gets a 5th button: Group Session.
+   handleAddFlyByBlock marks config.audience='group' for it (matching how a
+   real catalog session block is marked) on top of categoryId='session'.
+4. components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+   THE KEY FIX: priced is now computed internally as
+     const priced = pricedProp && !(flyBy && instance.flyByType === 'session')
+   — Group Session is NEVER priced, enforced inside the component regardless
+   of what either caller passes, mirroring the catalog rule
+   (categoryHasPricing('session') === false, no CATEGORY_METADATA entry).
+   Result: Group Session flyby gets Visits/quantity + the full Service Cycle
+   redesign (Yes/No toggle, weekday anchor, first-occurrence date, grace
+   period, description) — everything a Service flyby has — MINUS price,
+   billing cycle, and the Advanced (tax/billing-only) section. Exactly "mostly
+   a clone of Service, minus pricing."
+5. pages/contracts/rfq/RfqBuilderPage.tsx
+   RFQ's own FlyBy add-menu gets the same 5th button; addFlyby() marks
+   config.audience='group' the same way.
+
+────────────────────────────────────────────────────────────
+VERIFIED — real transaction, both the constraint AND the data
+────────────────────────────────────────────────────────────
+Ran create_contract_transaction live (setup tenant) with a session block
+(flyby_type='session', quantity=2, config.audience='group',
+config.serviceCycles={days:14, anchorWeekday:6}), read it back via
+get_contract_by_id — exact round trip confirmed:
+  "flyby_type":"session","category_name":"Group Session",
+  "custom_fields":{"config":{"audience":"group","serviceCycles":{...}}}
+Test row deleted immediately after — zero residue in the tenant's data.
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\src\components\catalog-studio\BlockLibraryMini.tsx" -Destination "contractnest-ui\src\components\catalog-studio\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\src\components\catalog-studio\FlyByBlockCard.tsx" -Destination "contractnest-ui\src\components\catalog-studio\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+
+(migration file is a record only — no action needed, already live)
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST
+────────────────────────────────────────────────────────────
+  [ ] RFQ builder → Scope → "Add Group Session" button appears (5th, Users icon)
+  [ ] Its card: name, Visits/Unlimited, full Service Cycle box (toggle/weekday/
+      first-occurrence/grace period), description — NO price, NO billing
+      cycle, NO Advanced section
+  [ ] Contract wizard → Add Service Blocks → "+ Add a custom line" → Group
+      Session option now present too, same card
+  [ ] Send/save with a Group Session line — confirm it persists and reads back
+      correctly (flyby_type='session', config.audience='group')
+  [ ] Regression: catalog "Group Sessions — from your catalog" section
+      (admin-defined session blocks) still renders exactly as before —
+      untouched, since all changes are gated on flyBy
