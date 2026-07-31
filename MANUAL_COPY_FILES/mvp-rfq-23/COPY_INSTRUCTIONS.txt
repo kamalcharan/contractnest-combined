@@ -1,0 +1,130 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-23
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18 THROUGH mvp-rfq-22 — apply all five first, in
+order, then this batch on top.
+
+WHAT THIS ADDS
+─────────────────────────────────────────────────
+Two things requested on top of the KT recommender:
+  1. Spare parts alongside services in the suggestion sidebar.
+  2. A type tag (Service / Spare Part) on every suggestion card, so it's
+     obvious at a glance which kind you're looking at.
+
+Deliberately NOT attempted: variant-aware filtering. KT models multiple
+equipment variants per resource template (e.g. DG Set has 10, by capacity
+range — "DG Set — Portable/Inverter 1-10kVA" through "DG Set — High-
+Capacity Industrial 500-2500kVA"), and some checkpoints/spare parts are
+variant-specific (CheckpointVariantMap / SparePartVariantMap). Checked
+whether the tenant's own registry records which variant a resource
+actually is — it doesn't: t_category_resources_master (the table behind
+/api/resources) has no variant_id or anything like it. So there is no
+reliable signal to filter suggestions by variant even if we wanted to.
+This batch shows every service/spare for the matched resource_template_id,
+unfiltered — flagged in-code as a known limitation, not silently ignored.
+Whether/how to add variant capture to the registry is a separate,
+bigger decision for later.
+
+Files Changed:
+  - contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+      Added config.ktSparePartId (parallel to config.ktCycleId, but for
+      spares — no cadence, so no cycle id to key off) and config.ktPriceUnit
+      (spare parts are priced "per unit" / "per set", not a flat figure,
+      so the unit travels with the price range for reference display).
+  - contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+      - KTSuggestionsForCoverage now builds spareSuggestions from
+        summary.spare_parts_by_group (already returned by the same KT
+        summary call, no new backend read) alongside the existing service
+        suggestions, and merges them into one list, services first then
+        spares (matches the Contract wizard's own section ordering).
+      - Every suggestion card now shows a small colored tag (Service /
+        Spare Part), reusing FLYBY_TYPE_CONFIG's existing colors so it's
+        visually consistent with the FlyBy add-menu elsewhere.
+      - addFromKT() now takes the discriminated KTSuggestion (kind:
+        'service' | 'spare') and creates the right FlyBy block type. Spare
+        part suggestions map KT's component_group onto the RFQ's 4 fixed
+        spare categories (Filters/Gases/Parts/Accessories) — only
+        "filters" has a clean match; controls/electrical/mechanical/
+        safety/water_side all default to "Parts", which is approximate
+        but honest rather than guessing a wrong specific bucket.
+      - addedKtIds (renamed from addedKtCycleIds) now dedupes against
+        BOTH config.ktCycleId and config.ktSparePartId, so an added spare
+        suggestion also stops re-showing.
+
+Submodules Affected: contractnest-ui only. No DB/API change — spare parts
+were already part of the same GET /knowledge-tree/summary response used
+since mvp-rfq-20, just not read until now.
+
+Production Checklist:
+  ✅ Transaction Management / Race Conditions: N/A, no new writes.
+  ✅ Error Handling: a coverage line with no spare parts (or no services)
+     in KT simply contributes nothing to that half of the list — never
+     blank-screens or throws.
+  ✅ Toasts / Loaders: unchanged from prior batches.
+
+Verification done this batch:
+  - Live SQL: confirmed m_equipment_spare_parts has real priced data for
+    DG Set (e.g. "Automatic Voltage Regulator (AVR)" INR 4,500-28,000 per
+    unit, "Air Filter Element" INR 350-2,000 per unit).
+  - Live SQL: confirmed t_category_resources_master (the registry table)
+    has no variant-related column at all — grounds the "not variant-aware
+    yet" limitation in an actual check, not an assumption.
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    errors only, zero new errors (one real TS syntax slip caught and fixed
+    along the way: a discriminated union needs `type X = A | B`, not two
+    `interface` bodies joined with `|`).
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18 through 22 are already applied
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-20\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-21\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-22\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-23 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-23\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] New RFQ → Equipment → add DG Set (or Elevator/Lift) as coverage →
+        Scope step.
+  - [ ] Confirm the sidebar now shows BOTH Service-tagged and Spare Part-
+        tagged suggestion cards, services listed first.
+  - [ ] Confirm each card's tag color matches the FlyBy add-menu's own
+        colors for Service vs Spare Part.
+  - [ ] Add a spare part suggestion — confirm it lands as a real Spare
+        Part FlyBy block (category chip says "Spare Part"), with its KT
+        price range shown as reference, quantity defaulting to 1.
+  - [ ] Confirm that added spare suggestion disappears from the sidebar
+        (dedup works the same as it does for services).
+  - [ ] Confirm adding a Service suggestion still works exactly as in
+        mvp-rfq-20/21/22 — no regression there.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
