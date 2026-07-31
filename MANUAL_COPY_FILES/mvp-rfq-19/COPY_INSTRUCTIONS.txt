@@ -1,0 +1,165 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-19
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18 — apply that batch FIRST (or together with this one).
+This batch edits files that only make sense on top of mvp-rfq-18's Group
+Session FlyBy work (ChecklistRow's mode="rfq"/flyBy machinery, the
+FLYBY_TYPE_CONFIG session entry, etc.). If mvp-rfq-18 hasn't been copied
+into your local checkout yet, copy it in full first, THEN copy this batch
+on top. Do not skip straight to mvp-rfq-19 alone.
+
+WHAT THIS SOLVES
+─────────────────────────────────────────────────
+Compliance gap found in conversation: when a coverage item has more than one
+unit (e.g. "DG Set ×2") and a FlyBy/catalog service block has a recurring
+Service Cycle, "Visits" reads as ambiguous — a reader could assume N visits
+means N visits PER unit, when the system actually means N visits covering
+ALL units of that coverage group together, per visit. Confirmed by reading
+contractEventsDerivationService.ts: quantity is the block's total visit
+count, spaced serviceCycleDays apart — it has no concept of "per unit."
+
+Investigated whether a real per-asset audit trail already exists (Sprint 3
+scaffolding: EventAssetProgress.tsx / useContractEventAssets /
+ContractEventAssetRow) — it does NOT: the UI calls
+GET /api/contracts/:id/event-assets, which has no backend route anywhere in
+contractnest-api. That's tracked separately now in CLAUDE.md under Future
+Review Items ("Sprint 3 — per-asset event proof") for whenever Sprint 3 is
+picked up — NOT part of this batch.
+
+Per explicit scope decision ("for now, we will have it UX level"), this
+batch is a UX-only fix: make the ambiguity impossible to miss, and give an
+escape hatch to split into independent per-unit schedules when that's what
+the user actually means. No DB schema change, no new endpoint.
+
+Files Changed:
+  - contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+      Added two optional ConfigurableBlock.config fields: splitUnitIndex,
+      splitUnitTotal — marks a block produced by "Split into N independent
+      schedules" as already representing exactly ONE unit, so the ambiguity
+      banner never re-shows on it.
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+      New props: coverageUnitCount (resolved by the caller from the coverage
+      group's unit_count), onSplitByUnits (offered on FlyBy rows only). When
+      coverageUnitCount > 1 and a Service Cycle is set, both the FlyBy and
+      catalog Service Cycle sections now show a one-line disambiguation
+      ("N visits cover all M units of X together, per visit — not N visits
+      for each unit") plus a "Split into M independent schedules instead"
+      action on FlyBy rows.
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+      New handleSplitByUnits(blockId): clones a FlyBy block into
+      coverageTypes[...].unit_count copies (one per unit, each named
+      "<name> — Unit i of N", each keeping the same Visits/Cycle to edit
+      independently), removes the original. Wired coverageUnitCount into
+      BOTH the catalog and FlyBy ChecklistRow call sites; onSplitByUnits only
+      into the FlyBy call site (catalog blocks are reusable master-data
+      items — splitting those per-unit is a bigger structural change,
+      deliberately deferred, not snuck into this UX-only batch).
+  - contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+      RFQ's "services" blocks previously had NO link to "coverage" lines at
+      all (two fully separate arrays). Added:
+        - An "Applies to" dropdown above each FlyBy card in the Scope step
+          (only shown when coverage.length > 0) — lets the buyer tie a
+          block to a specific coverage line (e.g. "DG Set ×2"), or leave it
+          General.
+        - setFlybyCoverage / splitFlybyByUnits helpers (same split logic as
+          the Contract wizard).
+        - coverageUnitCount + onSplitByUnits wired into the RFQ's single
+          ChecklistRow call site.
+        - The submit() payload now also persists coverageTypeId/
+          coverageTypeName inside custom_fields.config (was previously
+          computed client-side only and would have been silently dropped on
+          submit — same JSONB column already used for flyby_type/
+          serviceCycleDays/unlimited, no backend change).
+
+Submodules Affected: contractnest-ui only (no DB migration, no API change)
+
+Production Checklist:
+  ✅ Transaction Management: N/A — no new DB writes, purely additive JSONB
+     keys inside the existing custom_fields.config blob already proven to
+     round-trip verbatim (mvp-rfq-18 verification).
+  ✅ Race Condition Handling: N/A — client-side state only.
+  ✅ Error Handling: Split guards on unitCount <= 1 / missing block, no-ops
+     silently rather than throwing.
+  ✅ Toasts: Split action confirms via the existing VaNiToast
+     (addToast success message), same pattern as every other block action.
+  ✅ Loaders: N/A — no async operation introduced.
+
+Verification done this batch:
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    environment errors only (node/vite type defs, deprecated baseUrl),
+    zero new errors across all 4 files.
+  - Manually traced: split clones get unique ids (`${id}-unit${i}-${Date.now()}`),
+    inherit isFlyBy so they don't trip the catalog duplicate-add check,
+    keep coverageTypeId so they still show under the right coverage tab in
+    ServiceBlocksStep, and carry splitUnitIndex so the ambiguity banner
+    doesn't re-show on them.
+  - Did NOT re-run a live create_contract_transaction / get_contract_by_id
+    round-trip for this batch specifically — the JSONB passthrough behavior
+    for custom_fields.config was already live-verified end-to-end in
+    mvp-rfq-18 for sibling keys (flyby_type, serviceCycleDays, unlimited);
+    coverageTypeId/coverageTypeName are two more keys in that same already-
+    proven object, no new backend code path.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18 is already applied (if not, copy it first)
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-19 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Contract wizard:
+  - [ ] Add a coverage type with unit count > 1 (e.g. "DG Set" ×2) in Asset
+        Selection.
+  - [ ] Add a Service catalog block or a FlyBy Service line under that
+        coverage tab, turn on a Service Cycle (e.g. every 4 days).
+  - [ ] Confirm the new banner appears: "N visits cover all 2 units of
+        DG Set together, per visit — not N visits for each unit."
+  - [ ] On the FlyBy line only, confirm "Split into 2 independent schedules
+        instead" appears and works: the one block becomes two
+        ("<name> — Unit 1 of 2" / "Unit 2 of 2"), each independently
+        editable, and the banner does NOT reappear on the split copies.
+  - [ ] Confirm the catalog (non-FlyBy) block shows the same banner text but
+        has NO split button.
+  - [ ] Confirm a coverage type with unit count 1 (or no coverage types at
+        all) shows nothing new — zero regression on the existing behavior.
+
+RFQ builder:
+  - [ ] In "What does this cover?", add a coverage line with count > 1.
+  - [ ] In "What should vendors quote for?", add a Service or Group Session
+        FlyBy block, set an "Applies to" value pointing at that coverage
+        line, turn on a Service Cycle.
+  - [ ] Confirm the same banner + split action appears and works.
+  - [ ] Send the request, then re-check in Supabase (t_contract_blocks /
+        custom_fields.config) that coverageTypeId/coverageTypeName were
+        persisted — belt-and-suspenders check since this batch didn't
+        re-run the live round-trip test itself.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
