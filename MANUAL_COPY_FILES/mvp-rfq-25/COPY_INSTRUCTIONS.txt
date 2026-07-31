@@ -1,0 +1,153 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-25
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18 THROUGH mvp-rfq-24 — apply all seven first, in
+order (24 is what wires the /quote route at all — without it this batch
+has nothing to run against).
+
+⚠️ DB CHANGE ALREADY LIVE — 076_rfq_resolve_vendor_add_cadence.sql has
+already been applied to project uwyqhzotluikawcboldr via the Supabase MCP
+tool. Do NOT re-run it as a "new" migration — it's included here purely to
+keep contractnest-edge's migration history in the repo matching what's
+actually live, same as 075 before it.
+
+WHAT THIS FIXES
+─────────────────────────────────────────────────
+Two issues found testing the vendor quote page live (mvp-rfq-24):
+
+1. "Cycles are not showing in RFQ" — the vendor never saw how often a
+   visit repeats. Traced this to rfq_resolve_for_vendor's block SELECT:
+   it only ever returned quantity + billing_cycle. billing_cycle
+   (prepaid/postpaid/monthly/...) is a BUYER PAYMENT TERMS concept — it
+   describes when the buyer pays, which means nothing before a vendor is
+   even chosen — and the vendor UI's CYCLE_LABEL map didn't even have
+   entries for prepaid/postpaid, so it printed the raw enum string
+   ("prepaid") verbatim. The thing a vendor actually needs — how often the
+   visit repeats — lives in custom_fields.config.serviceCycleDays and was
+   never selected by the RPC at all. Verified live against PRJ-1005: after
+   the fix, "Door System Inspection & Adjustment" correctly shows
+   service_cycle_days: 30, "Safety Devices Inspection" shows 180, spares
+   correctly show null (no cadence).
+
+2. Formatting issue (the pasted stock-analysis HTML) — traced to the exact
+   same live RFQ: a "Text Block" line (position 5) had that content as its
+   block_description, stored as real HTML from the buyer's RichTextEditor
+   (<p><span style="color: rgb(...)">...</span></p>). Two places rendered
+   this as a bare JSX text node instead of real HTML, so the tags showed
+   literally: VendorQuotePage.tsx's per-line description, AND ChecklistRow
+   .tsx's own collapsed summary row (so the buyer would see this on their
+   own card too, not just the vendor). Fixed both using SafeHtml.tsx — an
+   existing sanitized-HTML-render component already used elsewhere in the
+   codebase, not a new pattern.
+
+Explicitly NOT done (per the third discussion point, still open): did not
+change the vendor's quote UI to go through the Contract Wizard/FlyBy flow.
+That's a bigger tradeoff (dependency-light public page vs. richer
+structured quotes) that hasn't been decided yet — see conversation.
+
+Also NOT attempted: a full sweep of every {description}-shaped render in
+the codebase. Only fixed the two spots proven (via the live PRJ-1005 data)
+to actually carry RichTextEditor HTML and render it raw. If the same
+symptom shows up elsewhere, it's the same fix (swap for SafeHtml) but
+each spot should be confirmed first, not blanket-changed.
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/contracts/
+    076_rfq_resolve_vendor_add_cadence.sql (ALREADY LIVE)
+      rfq_resolve_for_vendor now also returns, per block:
+      service_cycle_days ((custom_fields#>>'{config,serviceCycleDays}')::int)
+      and unlimited (same path, ::boolean, defaults false). Everything else
+      in the function is byte-identical to before — additive only.
+  - contractnest-ui/src/pages/quote/useVendorQuote.ts
+      Added service_cycle_days / unlimited to the QuoteBlock type.
+  - contractnest-ui/src/pages/quote/VendorQuotePage.tsx
+      - Removed the billing_cycle display and the now-dead CYCLE_LABEL map
+        entirely. Replaced with: "Unlimited" / "Every N days · M visits" /
+        "Qty N" (in that priority) — the actual cadence, not payment terms.
+      - block_description now renders via <SafeHtml> instead of a bare
+        {b.block_description} — real formatting instead of literal tags.
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/
+    serviceBlocksChecklist/ChecklistRow.tsx
+      The collapsed (not-expanded) summary line now renders description
+      via <SafeHtml stripTags maxLength={140}> instead of a bare
+      {description} — same bug, same fix, on the buyer's own card.
+
+Production Checklist:
+  ✅ Transaction Management / Race Conditions: N/A — the RPC change is
+     read-only (SELECT list addition), no write-path touched.
+  ✅ Error Handling: (custom_fields#>>'{config,serviceCycleDays}')::int
+     returns NULL safely for any block without that config key (JSONB path
+     extraction on a missing key is NULL, not an error) — no new failure
+     mode for existing blocks that predate this field.
+  ✅ Toasts / Loaders: unchanged — no new async operations.
+
+Verification done this batch:
+  - Called rfq_resolve_for_vendor('CNAK-B5B46D', '<secret>') directly
+    against the live RFQ (PRJ-1005) both to diagnose the bug and to
+    confirm the fix — service_cycle_days and unlimited now appear
+    correctly per block, and this is also where the exact pasted HTML
+    description was found (confirming which surface to fix).
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    errors only, zero new errors.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18 through 24 are already applied
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-20\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-21\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-22\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-23\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-24\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-24\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-25 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-25\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-25\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Restart dev servers
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+# separate terminal:
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] Reopen PRJ-1005's vendor link:
+        /quote/CNAK-B5B46D/116bd1d264a4a41fc2bae99cbbe05d34
+  - [ ] "Door System Inspection & Adjustment" now shows "Every 30 days"
+        (not "prepaid").
+  - [ ] "Safety Devices Inspection" shows "Every 180 days".
+  - [ ] The spare parts (Buffer, Car Operating Panel, Controller Board)
+        show "Qty 1" as before — unaffected, no cadence to show.
+  - [ ] The "text" block's description now renders as properly formatted
+        text (colors/bold), not literal <p><span style="..."> tags.
+  - [ ] Back in the RFQ builder itself, collapse that same Text Block's
+        card — confirm the summary line also shows clean truncated text,
+        not raw tags.
+  - [ ] Submit a quote on this RFQ — confirm nothing about submission
+        itself changed (this batch only touched the resolve/display side).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
