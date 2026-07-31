@@ -1,0 +1,191 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-24
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+WHAT THIS IS
+─────────────────────────────────────────────────
+Wires the vendor quote page's route on BOTH ends. This was left as "hand
+edits" back in mvp-rfq-2 because App.tsx/index.ts are too large to ship
+wholesale without risking clobbering other work — that guidance still
+applies in general, which is why this batch gives you BOTH ways to apply
+it (pick whichever you trust more for your local copy):
+
+  A) Copy the two files below wholesale (fastest, but only safe if your
+     local App.tsx / index.ts haven't diverged much from what's in the
+     contractnest-ui / contractnest-api submodule repos right now).
+  B) Apply the exact 2 small edits by hand, anchored on real existing
+     lines (see "PRECISE HAND EDITS" below) — safer if you're not sure,
+     since you're touching only a few lines either way.
+
+Checked before writing anything: the actual page/controller/service files
+for the vendor quote flow already exist in both submodules
+(contractnest-ui/src/pages/quote/{VendorQuotePage.tsx,useVendorQuote.ts},
+contractnest-api/src/{controllers/rfqController.ts,services/rfqService.ts,
+routes/rfqPublicRoutes.ts}) — they were just never REGISTERED. Confirmed
+via grep that neither rfqPublicRoutes nor the /quote route existed
+anywhere in index.ts or App.tsx before this batch. Nothing else needed
+building — this really is just the missing wiring.
+
+Files Changed:
+  - contractnest-api/src/index.ts
+      Added a "Load RFQ public (vendor quote) routes" block (mirrors the
+      Session Check-in public-route pattern immediately above it — same
+      lazy require() + try/catch, same production-exit / dev-warn
+      fallback) and a matching registration block
+      (app.use('/api/quote', rfqPublicRoutes)) right after the Session
+      Check-in registration block. No global auth middleware exists in
+      this file (checked — there's no blanket app.use(authenticate) at
+      all), so route placement doesn't matter for auth purposes; grouped
+      next to Session Check-in because it's the same "public, token-
+      gated" pattern.
+  - contractnest-ui/src/App.tsx
+      Added `import VendorQuotePage from './pages/quote/VendorQuotePage';`
+      next to the Session Check-in imports, and
+      `<Route path="/quote/:cnak/:secret" element={<VendorQuotePage />} />`
+      immediately after the existing `/checkin/:token` route (same public-
+      route grouping).
+
+Production Checklist:
+  ✅ Transaction Management / Race Conditions: N/A — pure routing wiring,
+     no new logic. rfqController/rfqService already existed and are
+     untouched.
+  ✅ Error Handling: the API-side load follows the exact same try/catch +
+     production-exit-vs-dev-warn pattern already used for every other
+     route module in this file — a missing rfqPublicRoutes.ts fails the
+     same way a missing sessionCheckinPublicRoutes.ts would.
+  ✅ Toasts / Loaders: N/A, backend routing + a top-level route addition.
+
+Verification done this batch:
+  - Read contractnest-api/src/routes/rfqPublicRoutes.ts directly — it's a
+    real, already-written public router (cache-control headers matching
+    the check-in public route's own reasoning, GET/POST at /:cnak/:secret
+    calling rfqController.resolve/etc.) — just never mounted.
+  - npx tsc -p tsconfig.app.json --noEmit (contractnest-ui) — clean,
+    baseline 3 pre-existing errors only.
+  - npx tsc --noEmit (contractnest-api) — clean, baseline 2 pre-existing
+    deprecation-only errors (tsconfig moduleResolution/baseUrl), zero new
+    errors — confirms rfqController.ts/rfqService.ts/rfqPublicRoutes.ts
+    themselves compile cleanly too, not just the two edited files.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1 — OPTION A: COPY FILES WHOLESALE
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-24\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-24\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart both dev servers
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+# separate terminal:
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+✂️  PHASE 1 — OPTION B: PRECISE HAND EDITS (if your files have diverged)
+═══════════════════════════════════════════════════
+If Option A's copy looks like it would drop other local changes, apply
+just these instead — both are additions only, nothing is removed or moved.
+
+── contractnest-ui/src/App.tsx ──
+
+1. Find this existing line (search for it, don't rely on a line number —
+   it will have shifted if you've added other imports):
+     import ChairCheckinPage from './pages/session-checkin/ChairCheckinPage'; // [batch3-checkin]
+   Add immediately after it:
+     import VendorQuotePage from './pages/quote/VendorQuotePage'; // [rfq] public vendor quote response
+
+2. Find this existing line (the check-in route, near the TOP of the
+   <Routes> block):
+     <Route path="/checkin/:token" element={<SessionCheckinPage />} />
+   Add immediately after it:
+     {/* [rfq] public vendor quote response — no auth, gated by (cnak, secret) in the URL */}
+     <Route path="/quote/:cnak/:secret" element={<VendorQuotePage />} />
+
+── contractnest-api/src/index.ts ──
+
+3. Find this existing block (the Session Check-in route LOADER — search
+   for the unique text, not the line number):
+     // Load VaNi Composer routes with error handling
+     let vaniComposerRoutes;
+   Insert this whole new block IMMEDIATELY BEFORE that comment (i.e.
+   between the end of the Session Check-in load try/catch and the VaNi
+   Composer comment):
+
+     // Load RFQ public (vendor quote) routes with error handling — mirrors the
+     // Session Check-in public-route pattern directly above: NO authenticate,
+     // gated by the (cnak, secret) pair in the URL instead of a tenant session.
+     let rfqPublicRoutes;
+     try {
+       rfqPublicRoutes = require('./routes/rfqPublicRoutes').default;
+       console.log('✅ RFQ public (vendor quote) routes loaded');
+     } catch (error) {
+       console.error('❌ Failed to load RFQ public routes:', error);
+       if (process.env.NODE_ENV === 'production') {
+         process.exit(1);
+       } else {
+         console.warn('⚠️  Continuing without RFQ public routes...');
+         rfqPublicRoutes = null;
+       }
+     }
+
+4. Find the Session Check-in REGISTRATION block (search for this exact
+   closing brace pattern):
+     } catch (error) {
+       console.error('❌ Failed to register Session Check-in routes:', error);
+       captureException(error instanceof Error ? error : new Error(String(error)), {
+         tags: { source: 'route_registration', route_type: 'session_checkin' }
+       });
+     }
+   Insert this whole new block IMMEDIATELY AFTER that closing `}`:
+
+     // Register RFQ public (vendor quote) routes with error handling — must NOT
+     // sit behind any global authenticate; a vendor answering a quote has no
+     // tenant account, only the (cnak, secret) pair in the URL.
+     try {
+       if (rfqPublicRoutes) {
+         app.use('/api/quote', rfqPublicRoutes);
+         console.log('✅ RFQ public (vendor quote) routes registered at /api/quote');
+       } else {
+         console.log('⚠️  RFQ public (vendor quote) routes skipped (not loaded)');
+       }
+     } catch (error) {
+       console.error('❌ Failed to register RFQ public routes:', error);
+       captureException(error instanceof Error ? error : new Error(String(error)), {
+         tags: { source: 'route_registration', route_type: 'rfq_public' }
+       });
+     }
+
+Then restart both dev servers as in Option A step 3.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] Backend console on startup shows:
+        "✅ RFQ public (vendor quote) routes loaded"
+        "✅ RFQ public (vendor quote) routes registered at /api/quote"
+  - [ ] Open the vendor URL for PRJ-1005 in a private/incognito window
+        (proves no auth is required):
+        http://localhost:<your-ui-port>/quote/CNAK-B5B46D/116bd1d264a4a41fc2bae99cbbe05d34
+  - [ ] Page loads the RFQ's scope (services/spares) instead of a 404 or
+        blank screen.
+  - [ ] Confirm a normal authenticated page (e.g. /contracts) still loads
+        fine — the new route shouldn't affect anything else.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
