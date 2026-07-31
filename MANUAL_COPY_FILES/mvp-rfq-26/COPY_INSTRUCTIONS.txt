@@ -1,0 +1,85 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-26
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DB-ONLY BATCH — both migrations are ALREADY APPLIED LIVE on project
+uwyqhzotluikawcboldr. No frontend/API file changes, nothing to copy into
+your local checkout — these two .sql files exist purely to keep
+contractnest-edge's migration history matching what's actually live, same
+as every other already-applied migration this session.
+
+BUG FIXED: "Failed to submit quote"
+─────────────────────────────────────────────────
+Reported after mvp-rfq-24/25 wired the vendor route end-to-end: submitting
+a quote on the vendor page always failed with the generic
+"Failed to submit quote" message.
+
+Reproduced directly by calling rfq_submit_quote against the live PRJ-1005
+RFQ. Two CHECK constraints, back to back, both predating rfq_submit_quote
+(added in migration 072) and never updated to match it:
+
+  1. t_contract_history_action_check didn't allow the action values
+     rfq_submit_quote actually inserts: 'rfq_quoted' (on a quote) and
+     'rfq_declined' (on a decline). Error: 23514 on that constraint.
+  2. After fixing (1), the SAME insert still failed —
+     t_contract_history_performed_by_type_check only allowed
+     'user' / 'system' / 'vani', but a vendor answering an RFQ is a
+     contact, not a tenant user, so rfq_submit_quote stamps
+     performed_by_type = 'vendor'. Error: 23514 on that constraint too.
+
+Same "extend it, don't drop it" pattern as 075_flyby_type_add_session.sql
+earlier this session — both guardrails are real and stay in place, they
+were just missing values for a feature (RFQ vendor responses) that was
+built after they were written.
+
+Verified live end-to-end: called rfq_submit_quote directly, confirmed it
+now returns success (response_status: 'quoted'), then reverted every
+change the test call made — t_contract_vendors, t_contract_access,
+t_contracts.status, and the two t_contract_history rows it created — so
+PRJ-1005 was left exactly as you'll find it, ready for you to submit a
+real quote through the actual vendor page.
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/contracts/
+    077_contract_history_action_add_rfq_quote.sql (ALREADY LIVE)
+      Extends t_contract_history_action_check to also allow 'rfq_quoted'
+      and 'rfq_declined'.
+  - contractnest-edge/supabase/migrations/contracts/
+    078_contract_history_performed_by_type_add_vendor.sql (ALREADY LIVE)
+      Extends t_contract_history_performed_by_type_check to also allow
+      'vendor'.
+
+Production Checklist:
+  ✅ Transaction Management: N/A — constraint definition change only, no
+     data touched by the migrations themselves.
+  ✅ Race Conditions: N/A.
+  ✅ Error Handling: both are pure ALLOW-list extensions (DROP + ADD the
+     same constraint with two more values) — nothing that was previously
+     rejected is now silently accepted; nothing previously accepted
+     changes behavior.
+  ✅ Toasts / Loaders: N/A — no frontend change in this batch.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: NOTHING TO COPY — VERIFY ONLY
+═══════════════════════════════════════════════════
+No files to copy this batch. Just re-test the vendor page:
+
+  - [ ] Open PRJ-1005's vendor link again:
+        /quote/CNAK-B5B46D/116bd1d264a4a41fc2bae99cbbe05d34
+  - [ ] Submit a real quote (single total or per-line) — confirm it
+        succeeds this time and shows "Quote sent" / "Update my quote"
+        instead of the error.
+  - [ ] Try "I'm not quoting on this one" (decline) on a different vendor
+        link if you have one, or re-test decline after reversing your
+        quote — confirm decline also succeeds (same underlying fix).
+  - [ ] Refresh the page — confirm your submitted quote pre-fills
+        correctly (existing "revise" behavior, unaffected by this fix).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test and confirm:
+  → "Tested, working"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
