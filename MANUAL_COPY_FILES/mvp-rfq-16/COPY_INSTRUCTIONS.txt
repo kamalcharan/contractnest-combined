@@ -1,0 +1,66 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-16 — Service Cycle: add First Occurrence Date + Grace Period
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-15 ChecklistRow.tsx
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+RfqBuilderPage.tsx is UNCHANGED from mvp-rfq-15 — do not re-copy it, nothing
+to update there (see "Persistence" below for why).
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED
+────────────────────────────────────────────────────────────
+The flyBy Service Cycle redesign shipped in mvp-rfq-15 had 2 of the 4 fields
+catalog-studio's "Delivery Settings → Cycle Configuration" defines (Cycle
+Period, Repeat on a fixed weekday). This batch adds the other 2, in the same
+order/copy as the source:
+
+  3. First occurrence date (optional) — date picker. "Set this when the real
+     first visit doesn't match the computed date — overrides the weekday
+     anchor above for the first occurrence only." Persists to
+     config.serviceCycles.anchorDate.
+  4. Grace period — number + "days — buffer before marking overdue".
+     Persists to config.serviceCycles.gracePeriod.
+
+Both live in the SAME config.serviceCycles cluster as the existing
+days/anchorWeekday fields (co-located, matching how ChecklistRow already reads
+anchorWeekday from there). The "Next occurrences" preview now honors an
+explicit First occurrence date as the starting point when set.
+
+────────────────────────────────────────────────────────────
+PERSISTENCE — confirmed wired to API/DB, verified against the actual RPC
+────────────────────────────────────────────────────────────
+Checked supabase/migrations/contracts/041_rpc_equipment_details_support.sql:
+create_contract_transaction stores `custom_fields` VERBATIM —
+COALESCE(v_block->'custom_fields', '{}'::JSONB) — and returns it the same way
+on get_contract_by_id. RfqBuilderPage.tsx's payload already does
+`config: { ...(b.config || {}), ... }`, which spreads the full serviceCycles
+object (days/anchorWeekday/anchorDate/gracePeriod) through automatically.
+So these two new fields persist through the SAME already-proven path —
+NO backend/API/migration change was needed, and none was made.
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-16\contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\" -Force
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST — do a REAL transaction, not just a UI look
+────────────────────────────────────────────────────────────
+  [ ] RFQ builder → Scope → Add Service → "Yes, repeats" → set days + a
+      weekday + a First occurrence date + a Grace period value
+  [ ] Continue through to Send — actually submit the RFQ (real transaction)
+  [ ] Open the sent RFQ (RFQ report / detail) or query the contract's blocks
+      and confirm custom_fields.config.serviceCycles.anchorDate and
+      .gracePeriod are present and correct on the saved row
+  [ ] Contract wizard (regression) — same fields now available there too on a
+      FlyBy Service line; verify unaffected catalog-block rows still show the
+      OLD simple Service Cycle box (no behavior change there)
