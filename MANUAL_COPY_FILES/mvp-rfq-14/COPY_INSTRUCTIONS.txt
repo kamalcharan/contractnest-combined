@@ -1,0 +1,40 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-14 — RFQ Scope now REUSES the real ServiceBlocksStep (replica retired)
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-13 builder:
+  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+WHAT CHANGED
+Deleted the hand-rolled flyby controls entirely and reuse the real component:
+the Scope step now renders <ServiceBlocksStep rfqMode /> — the SAME service-
+blocks surface the contract wizard uses, in its built-in RFQ mode (no catalog
+library, no pricing). You get the real "+ Add a custom line" dropdown
+(Service / Spare Part / Text Block / Document) and the real block cards
+(service cycle, quantity/unlimited, description) — not a copy.
+
+- RFQ state is now ConfigurableBlock[] (the component's own model), mapped to
+  the existing payload blocks[] on send (source_type 'flyby', flyby_type,
+  block_name/description, quantity, billing_cycle, serviceCycles in config).
+- Removed: my FlyByLine model, add/update/remove helpers, BILLING_CYCLES,
+  FLYBY_ADD_ORDER, SESSION_CFG, flybyCfg. One source of truth now.
+
+KNOWN GAP (honest): Group Session is a CATALOG block, and rfqMode hides the
+catalog library — so it isn't surfaced here yet. Enabling group-session in
+rfqMode is a small, targeted follow-up to ServiceBlocksStep (next increment),
+not another replica.
+
+COPY (PowerShell, from repo root)
+  git pull origin claude/rfq-handover-facilities-i4w7mt
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-14\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+  cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+TEST
+  [ ] Scope step shows the real "+ Add a custom line" dropdown (Service/Spare/Text/Document)
+  [ ] Cards are the real ServiceBlocksStep cards (service cycle, qty/unlimited, description); no price
+  [ ] Add a couple, name them, Continue → Review lists them; Send persists as flyby blocks
+  [ ] It renders acceptably inside the RFQ single-column page (report if layout is off)
