@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-21
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18, mvp-rfq-19 AND mvp-rfq-20 — apply all three first,
+in order, then this batch on top (single-file fix on top of mvp-rfq-20's
+RfqBuilderPage.tsx).
+
+BUG FIXED
+─────────────────────────────────────────────────
+Reported: clicking a Knowledge Tree suggestion added the block, but its
+Description field came in empty.
+
+Root cause: mvp-rfq-20's addFromKT() literally hardcoded
+`description: ''` — it never attempted to populate it from anything. Not a
+missing-data problem: checked the description field IS rendered
+unconditionally in ChecklistRow whenever a FlyBy block is expanded
+(`{flyBy && <RichTextEditor .../>}`, no gate on config.showDescription —
+that flag only controls whether the description shows in the generated
+contract document, a separate concern), so the field was always there and
+always empty, purely because nothing was ever written into it.
+
+Checked what KT data was actually available to fill it: m_service_cycles
+rows have no description column of their own (confirmed by reading the
+edge function's query). m_equipment_checkpoints.description exists but is
+populated on only 23 of 543 rows across the whole KT dataset (~4%) — too
+sparse to rely on. What IS reliably populated is checkpoint.name, the
+granular technical detail (e.g. "Output Voltage — L-N (V)", "Load Current —
+Phase R (A)", "Alternator Output Terminals Condition").
+
+Fix: KTSuggestionsForCoverage now groups ALL checkpoint rows that share a
+suggestion's catalog_name+cadence (previously only the first row of the
+dedup was kept, discarding the others), looks each one up in
+summary.checkpoints_by_section, and builds a description from their names
+- "Covers: <name1>, <name2>, ... (+N more)" (capped to 4 named, then a
+count). addFromKT() now takes that built description instead of a
+hardcoded empty string. Also shown in the sidebar suggestion card itself,
+so what you see before adding is what lands in the block.
+
+Files Changed:
+  - contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+      - KTSuggestionsForCoverage: suggestions are now { cycle, description }
+        pairs (was bare cycle objects) built from grouped checkpoint names.
+      - addFromKT(coverageLine, { cycle, description }): writes the real
+        description onto the new block instead of ''.
+      - Sidebar suggestion cards show the same "Covers: ..." text before
+        you add, so there's no surprise between preview and result.
+
+Submodules Affected: contractnest-ui only. No DB/API change — same
+useKnowledgeTreeSummary query as mvp-rfq-20, just reading more of its
+response (checkpoints_by_section, already returned, previously unused).
+
+Production Checklist:
+  ✅ Transaction Management: N/A — client-side only, description flows
+     through the same submit() -> custom_fields path already verified.
+  ✅ Race Condition Handling: N/A.
+  ✅ Error Handling: falls back to an empty description (today's behavior)
+     when a package has zero named checkpoints — never throws.
+  ✅ Toasts / Loaders: unchanged from mvp-rfq-20.
+
+Verification done this batch:
+  - Live SQL: confirmed m_equipment_checkpoints.description is populated on
+    only 23/543 rows tenant-wide (not just DG Set) — this is why the fix
+    uses checkpoint.name (broadly populated) rather than leaning on
+    .description alone.
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    errors only, zero new errors.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18, 19 and 20 are already applied
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-20\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-21 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-21\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] New RFQ → Equipment → add DG Set as coverage → Scope step.
+  - [ ] Confirm each suggestion card in the sidebar now shows a "Covers:
+        ..." line (checkpoint names), not just name + cadence + price.
+  - [ ] Click "Add to request" — open the newly-added block (it
+        auto-expands) — confirm the Description field is now populated with
+        that same "Covers: ..." text, not blank.
+  - [ ] Confirm the description is real, editable text (RichTextEditor) —
+        you can still edit/clear it manually after it's added.
+  - [ ] Regression: manually adding a Service/Spare/Text/Document/Group
+        Session block still starts with an empty description as before
+        (only KT-sourced blocks should pre-fill).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
