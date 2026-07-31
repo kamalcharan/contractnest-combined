@@ -2,6 +2,36 @@
 COPY INSTRUCTIONS — feature/group-session-jtd-notifications (Sprint 1 / Phase 1)
 ═══════════════════════════════════════════════════
 
+UPDATE 4 (Sprint 2 — the two triggers are LIVE): Added the actual attendance-
+ack and payment-thankyou WhatsApp sends. Three new/changed files:
+  contractnest-edge/supabase/migrations/jtd-framework/009_seed_bbb_group_session_templates.sql  (NEW FILE)
+    - Maps BBB's tenant_id to the two approved MSG91 templates
+      (group_session_attendance_ack, group_session_payment_thankyou) via
+      n_jtd_templates. Tenant-specific data, not a schema change.
+  contractnest-edge/supabase/migrations/bbb-foundation/053_group_session_whatsapp_triggers.sql  (NEW FILE)
+    - CREATE OR REPLACE on gs_submit_checkin and gs_confirm_declaration:
+      each now inserts into n_jtd (status_code defaults to 'created', which
+      fires the existing jtd_enqueue_on_insert trigger immediately) right
+      after the attendance/payment write it belongs to, in the SAME
+      transaction — a failure on one rolls back the other. Defensive no-op
+      when there's no phone to send to.
+  contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts  (UPDATED)
+    - Added explicit variable-order branches for group_session_attendance_ack
+      and group_session_payment_thankyou. n_jtd.template_variables round-trips
+      through a jsonb column, which does NOT preserve key insertion order —
+      without an explicit branch, the generic Object.values() fallback would
+      have silently sent the variables in the wrong positions.
+
+*** IMPORTANT: all three files were already applied/deployed directly to the
+live Supabase project via MCP during this session (migrations 009 + 053 ran;
+jtd-worker was redeployed with the whatsapp.ts fix). Nothing further needs to
+be applied or deployed for these to work — BBB's next real check-in or
+payment confirmation will already send. The copy commands below are ONLY so
+these files land in your real local git checkout / history, since this
+session cannot push to contractnest-edge's remote directly (see repo scope
+note in COPY_INSTRUCTIONS below) — skip STEP 3/4-style "now apply this"
+instructions for these three specifically.
+
 UPDATE (post-testing fix): Template Mapping page had no menu entry — only
 reachable by direct URL. Added one file:
   contractnest-ui/src/utils/constants/industryMenus.ts
@@ -119,6 +149,15 @@ contractnest-edge/
       these — see the comment in the file for why (mandatory-tenant model,
       doubles as a natural per-tenant rollout gate).
 
+  supabase/migrations/jtd-framework/009_seed_bbb_group_session_templates.sql  (NEW FILE, Sprint 2, ALREADY APPLIED LIVE)
+    - Maps BBB to group_session_attendance_ack + group_session_payment_thankyou.
+
+  supabase/migrations/bbb-foundation/053_group_session_whatsapp_triggers.sql  (NEW FILE, Sprint 2, ALREADY APPLIED LIVE)
+    - Wires the actual n_jtd insert into gs_submit_checkin + gs_confirm_declaration.
+
+  supabase/functions/jtd-worker/handlers/whatsapp.ts  (UPDATED, Sprint 2, ALREADY DEPLOYED LIVE)
+    - Explicit variable ordering for the two new templates.
+
 ───────────────────────────────────────────────────
 STEP 1: Navigate to Project
 ───────────────────────────────────────────────────
@@ -150,6 +189,10 @@ Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-api\src\validators\adminJtdVal
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\functions\admin-jtd-management\index.ts" -Destination "contractnest-edge\supabase\functions\admin-jtd-management\index.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\functions\cat-blocks\index.ts" -Destination "contractnest-edge\supabase\functions\cat-blocks\index.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\migrations\jtd-framework\008_seed_group_session_source_types.sql" -Destination "contractnest-edge\supabase\migrations\jtd-framework\008_seed_group_session_source_types.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\migrations\jtd-framework\009_seed_bbb_group_session_templates.sql" -Destination "contractnest-edge\supabase\migrations\jtd-framework\009_seed_bbb_group_session_templates.sql" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\bbb-foundation" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\migrations\bbb-foundation\053_group_session_whatsapp_triggers.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\053_group_session_whatsapp_triggers.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-edge\supabase\functions\jtd-worker\handlers\whatsapp.ts" -Destination "contractnest-edge\supabase\functions\jtd-worker\handlers\whatsapp.ts" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
@@ -161,6 +204,11 @@ against your Supabase project (local or dev), same as any other migration —
 copying the file alone does not apply it. Use whatever you normally use
 (supabase db push / your Supabase dashboard SQL editor / migration runner).
 
+009_seed_bbb_group_session_templates.sql and 053_group_session_whatsapp_triggers.sql
+are ALREADY applied directly to the live project (same one contractnest-api
+points at) — do not re-run them, they're idempotent-safe if you do (CREATE OR
+REPLACE FUNCTION / straightforward INSERTs) but there's no need.
+
 ───────────────────────────────────────────────────
 STEP 4: Deploy the two changed edge functions
 ───────────────────────────────────────────────────
@@ -169,6 +217,8 @@ checkout does not deploy it. Redeploy both:
   - admin-jtd-management
   - cat-blocks
 (via `supabase functions deploy <name>` or your usual deploy flow)
+
+jtd-worker (whatsapp.ts change) is ALREADY deployed live — no action needed.
 
 ───────────────────────────────────────────────────
 STEP 5: Start Dev Servers & Test
@@ -212,6 +262,18 @@ TESTING CHECKLIST
       group_session_noshow_regret, group_session_looking_forward,
       group_session_payment_thankyou, group_session_absentee_reminder)
       appear in the "Source type" dropdown after the migration is applied
+- [ ] Sprint 2 (already live — real-world test, not a "does it apply" test):
+      have a real BBB member check in to a live Group Session occurrence via
+      the public check-in link, confirm they get a WhatsApp attendance-ack
+      message with their name / the session name / today's date filled in
+      correctly (not swapped — this is exactly what the jsonb key-order fix
+      protects against)
+- [ ] Have a chair confirm a pending payment declaration for a BBB member
+      with a phone on file, confirm that member gets a WhatsApp thank-you
+      with their name / amount / session name filled in correctly
+- [ ] If either doesn't arrive, check Event Explorer (/admin/jtd/events) for
+      a 'failed' row — most likely cause is the member has no phone on file,
+      or (for a different tenant) no n_jtd_templates mapping yet
 
 ═══════════════════════════════════════════════════
 WAITING FOR CONFIRMATION
