@@ -1,0 +1,38 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-13 — RFQ FlyBy: add Group Session (controlled increment)
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-12 builder:
+  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+WHAT CHANGED
+Group Session had no FlyBy type, so it couldn't be requested in an RFQ. Added it
+as a 5th flyby kind in the Scope step (kept RFQ-LOCAL for now — a controlled step;
+promoting 'session' into the shared FLYBY_TYPE_CONFIG is a later increment):
+  • New "Add Group Session" button (Users icon).
+  • Card: name + "Group session · held every N days" (occurrence cadence, default 7)
+    + optional description. No pricing (vendor quotes it).
+  • Persists as a flyby block with a KNOWN-GOOD flyby_type ('service') marked
+    config.audience = 'group' + config.flyby_type = 'session' + serviceCycles.days —
+    so nothing new hits the DB in this first pass.
+  • Review shows it as GROUP SESSION · every Nd.
+Everything else from mvp-rfq-12 (billing cycle, service cycle, description) unchanged.
+
+DEFERRED (per your call — controlled test cycles, not big-bang):
+  • Reusing the real BlockCardConfigurable (hide price + bill-only via an opt-in
+    flag) — parked; revisit after this increment tests clean.
+
+COPY (PowerShell, from repo root)
+  git pull origin claude/rfq-handover-facilities-i4w7mt
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-13\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+  cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+TEST
+  [ ] Scope step now has 5 add buttons incl. "Add Group Session"
+  [ ] Group Session card: name + "held every N days" + description, no price
+  [ ] Review shows it; Send persists it (block with audience=group, serviceCycles.days)
+  [ ] The other four (service/spare/text/document) unchanged
