@@ -1,0 +1,111 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-15 — FlyBy card made mode-aware (contract vs rfq); RFQ Scope rewired
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+⚠️ IMPORTANT — one of these two files is SHARED with the live Contract wizard.
+Please test BOTH surfaces before merging (checklist below).
+
+────────────────────────────────────────────────────────────
+FILES (2)
+────────────────────────────────────────────────────────────
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+   — the shared FlyBy card. Used by BOTH the contract wizard's "Add Service
+   Blocks" step AND (as of this batch) the RFQ builder directly.
+2. contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+   — supersedes mvp-rfq-14. Moved OFF <ServiceBlocksStep rfqMode> (which also
+   pulls in catalog browsing/VaNi recommender machinery the RFQ never needs)
+   and now renders <ChecklistRow mode="rfq" /> directly for each FlyBy line,
+   with its own compact 4-button add menu (Service/Spare/Text/Document —
+   same icons/colors ServiceBlocksStep itself uses).
+
+────────────────────────────────────────────────────────────
+WHY — root cause of "Service Cycle missing" and "Group Session gone"
+────────────────────────────────────────────────────────────
+ServiceBlocksStep.tsx hard-codes, for FlyBy lines:
+  priced={!rfqMode && (fb.flyByType === 'service' || fb.flyByType === 'spare')}
+So in rfqMode, `priced` was ALWAYS false — which killed Visits/Unlimited/
+Billing Cycle/Service Cycle together with the price field (they were wrongly
+bundled under one flag). Separately, the ENTIRE catalog-blocks section
+(which is the only place Group Session lives) is wrapped in `{!rfqMode && (...)}`
+— so it can never show in rfqMode, and Group Session was never one of the 4
+FlyBy types to begin with. Neither of these are ChecklistRow bugs — they were
+in ServiceBlocksStep's RFQ wiring, which this batch stops using for RFQ.
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED — ChecklistRow.tsx (new `mode?: 'contract'|'rfq'` prop)
+────────────────────────────────────────────────────────────
+EVERYTHING below is gated on `flyBy` (custom lines only) — catalog
+(non-flyBy) rows are 100% untouched, byte-for-byte, in every mode. Default
+mode is 'contract' — existing callers that don't pass `mode` are unaffected.
+
+  • Visits / Unlimited — now shows for a flyBy Service/Spare line in BOTH
+    modes (previously bundled under the same flag as price, so it silently
+    disappeared whenever price was hidden).
+  • Billing Cycle chips — same fix, shows in both modes.
+  • Service Cycle — REDESIGNED for flyBy rows only (catalog rows keep the
+    exact previous design, unchanged), to match catalog-studio's Delivery
+    Settings "Service Cycles" section: RefreshCw icon, explicit "Does this
+    repeat?" Yes/No toggle, then days input + optional weekday-anchor chips +
+    a live "next occurrences" date preview (6 dates). Applies to BOTH
+    contract-flyby and rfq-flyby — one design, not two.
+  • Price amount — hidden ONLY when mode='rfq' (replaced with "Quote pending"
+    header text + a "The vendor sets the price when they quote this request"
+    note). Contract mode: unchanged, still shows the real price field.
+  • Advanced disclosure (tax / billing-only) — hidden ONLY when mode='rfq'
+    (nothing to configure pre-quote). Contract mode: unchanged.
+  • Description — swapped the plain <input> for the real RichTextEditor
+    component, for flyBy rows in BOTH modes. This also fixes a real display
+    bug: descriptions are rendered as HTML elsewhere (dangerouslySetInnerHTML
+    in BlockCardConfigurable), but the old flyBy input only ever captured
+    plain text — so typed HTML showed as literal "<p>text</p>" on screen.
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED — RfqBuilderPage.tsx
+────────────────────────────────────────────────────────────
+Scope step now renders <ChecklistRow mode="rfq" flyBy checked .../> directly
+per line, with a local 4-button "Add Service / Spare / Text / Document" menu
+(state + add/update/remove handlers mirror ServiceBlocksStep's own
+handleAddFlyByBlock exactly, so blocks are shaped identically). No more
+<ServiceBlocksStep> import/usage in this file.
+
+Group Session is still NOT in scope for this batch (it's a catalog-only
+category with no flyBy type — out of scope per the table you gave; not
+touched here).
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-15\contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\" -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-15\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST — RFQ (the fix)
+────────────────────────────────────────────────────────────
+  [ ] /contracts/rfq/new → Scope step → Add Service
+  [ ] Visits/Unlimited shows; Billing Cycle chips show (PrePaid…Custom)
+  [ ] Service Cycle: "Does this repeat?" Yes/No toggle; Yes reveals days +
+      weekday-anchor chips + "Next occurrences" date preview
+  [ ] NO price field, NO Advanced section; header shows "Quote pending"
+  [ ] Description is a rich-text box (bold/list/etc toolbar), not a plain input
+  [ ] Add Spare/Text/Document too; Review lists them; Send persists correctly
+
+────────────────────────────────────────────────────────────
+TEST — CONTRACT (regression check — please verify unaffected)
+────────────────────────────────────────────────────────────
+  [ ] Open the contract wizard's "Add Service Blocks" step, add a catalog
+      Service/Spare block — card looks EXACTLY as before (Visits, Your price,
+      Billing Cycle, old-style Service Cycle box, Advanced) — no visual change
+  [ ] Add a FlyBy custom line (Service) from the contract wizard — price field
+      still present (contract mode keeps pricing); Service Cycle now shows the
+      new toggle+anchor+preview design (intentional improvement, same as RFQ);
+      Description is now a rich-text box (intentional improvement)
+  [ ] Global-designer's ServiceBlocksStep usage (Settings > Catalog Studio >
+      Global Templates) — unaffected, still calls the same component the same way
