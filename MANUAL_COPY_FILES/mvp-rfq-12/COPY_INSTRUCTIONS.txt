@@ -1,0 +1,37 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-12 — RFQ FlyBy service: proper Billing Cycle + Service Cycle + Description
+════════════════════════════════════════════════════════════
+Date: 30 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-11 builder:
+  contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+
+WHAT CHANGED — aligned the FlyBy "Service" block with the real service-block model
+Previously the RFQ invented its own cadence chips (Monthly/Quarterly/Half-yearly/
+Annual/On call/One-time). That mixed up two different things. Now it uses the
+SAME model as the service blocks:
+  • BILLING CYCLE — the proper cards: PrePaid · PostPaid · Monthly · Fortnightly ·
+    Quarterly · Custom (mirrors the canonical CYCLE_OPTIONS, with icons). This is
+    what `billing_cycle` carries.
+  • SERVICE CYCLE (frequency) — "Performed every N days from start" numeric input
+    (default 30). Frequency is managed here, NOT by the billing label. Persists in
+    custom_fields.config.serviceCycles.days.
+  • DESCRIPTION — an optional description on every block (service/spare/document;
+    text already has its content). Persists to block_description (+ config.notes).
+Still no pricing (no visits/price) — the vendor fills price when quoting.
+
+COPY (PowerShell, from repo root)
+  git pull origin claude/rfq-handover-facilities-i4w7mt
+  Copy-Item "MANUAL_COPY_FILES\mvp-rfq-12\contractnest-ui\src\pages\contracts\rfq\RfqBuilderPage.tsx" -Destination "contractnest-ui\src\pages\contracts\rfq\" -Force
+  cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+TEST
+  [ ] Scope step → Add Service → shows Billing cycle cards (PrePaid…Custom) +
+      "Performed every N days from start" + an optional Description
+  [ ] No 'On call'/'One-time' invented labels anymore; billing ids match the blocks
+  [ ] Add Spare/Document → each has an optional Description too
+  [ ] Review shows e.g. "PrePaid · 30d" for a service; Send persists billing_cycle,
+      serviceCycles.days and block_description
