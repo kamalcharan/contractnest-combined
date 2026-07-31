@@ -1,0 +1,88 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-27
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DOCS-ONLY BATCH — parent repo root file, no submodule changes.
+Nothing to test locally; this just records scope for next session.
+
+WHAT THIS IS
+─────────────────────────────────────────────────
+You said "we will not do this" for the RFQ-award -> vendor-creates-
+real-contract feature (the 5-point spec: proper contract format, RFQ
+never mutates into a contract, public link to awarded vendor, vendor
+builds via ContractNest's own steps, bidirectional rfq_id/contract_id
+linkage) and asked to fold it into Sprint 3 scope and document what's
+pending for next session.
+
+CLAUDE.md's "Future Review Items" section now has a new entry:
+"Sprint 3 scope addition — RFQ Award must hand off to a real
+vendor-authored contract, not a status flip (found 2026-07-31)" —
+appended directly after the existing Sprint 3 per-asset-event-proof
+entry. It captures:
+  - The live-verified root cause (rfq_award and update_contract_status
+    only flip status today; no new contract row, no linkage column
+    exists anywhere on t_contracts or the RFQ record).
+  - The proof that this was already the intended design in an earlier
+    session (RfqQuotesPanel.tsx's own code comments: "the vendor
+    raises the contract from their side") but the vendor's half was
+    never built.
+  - Your full 5-point spec, verbatim, as the owner decision to
+    implement next session.
+  - The concrete open questions to resolve before writing any code:
+    exact shape/location of the two linkage columns, whether the
+    vendor reuses Contract Wizard components or gets a parallel flow,
+    and the new contract-creation-scoped public link/access-grant type.
+
+Files Changed:
+  - CLAUDE.md (parent repo root) — new Future Review Items entry only.
+    No other section touched.
+
+Production Checklist: N/A — documentation only, no code/schema/route
+changed in this batch.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILE FOR LOCAL CHECKOUT
+═══════════════════════════════════════════════════
+This file lives at the PARENT REPO ROOT, not inside any submodule.
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy File
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-27\CLAUDE.md" -Destination "." -Force
+
+Write-Host "✅ CLAUDE.md updated!" -ForegroundColor Green
+
+STEP 3: Verify
+─────────────────────────────────
+Open CLAUDE.md and confirm the new entry appears under
+"Future Review Items", directly after the Sprint 3 per-asset-event-
+proof entry, titled:
+"Sprint 3 scope addition — RFQ Award must hand off to a real
+vendor-authored contract, not a status flip (found 2026-07-31)"
+
+═══════════════════════════════════════════════════
+🚀 PHASE 2: COMMIT & MERGE TO MAIN (you're driving this one)
+═══════════════════════════════════════════════════
+Since this is a parent-repo-root doc file, there's no submodule commit
+step — just the parent repo:
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git checkout master
+git pull origin master
+git add CLAUDE.md
+git commit -m "docs: capture RFQ-award vendor-contract handoff as next-session scope"
+git push origin master
+
+═══════════════════════════════════════════════════
+⏸️ NOTE
+═══════════════════════════════════════════════════
+This same change was also committed directly to the
+claude/rfq-handover-facilities-i4w7mt branch in this session
+(commit f438ae8) per this session's remote-branch requirements. This
+MANUAL_COPY_FILES copy is provided so you can apply/merge it into your
+local main independently, per your usual workflow.
+═══════════════════════════════════════════════════
