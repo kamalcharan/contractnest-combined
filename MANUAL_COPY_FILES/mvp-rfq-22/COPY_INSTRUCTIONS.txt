@@ -1,0 +1,139 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-22
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18 THROUGH mvp-rfq-21 — apply all four first, in
+order, then this batch on top.
+
+BUG FIXED (real fix this time, not a patch on the last one)
+─────────────────────────────────────────────────
+User pushed back on mvp-rfq-21's fix after testing an Elevator/Lift
+coverage line and seeing the suggestion's description read
+"Covers: Hydraulic Oil Temperature" — correctly called this out as wrong:
+"KT should generate description right." They were right. mvp-rfq-21's
+"Covers: <checkpoint names>" was a client-side stand-in I built because I
+hadn't found the real source — it was never meant to be the final answer,
+but I should have kept looking before shipping it as the fix.
+
+Went back and searched the KT schema properly this time (not just the
+tables I'd already looked at) and found m_kt_service_definitions — a table
+that exists SPECIFICALLY for this: one row per "sellable service"
+(resource_template_id + service_name + description), explicitly commented
+in the edge function as a founder decision ("description stored ONCE —
+m_kt_service_definitions, not repeated on checkpoints"). It's already
+queried and returned by GET /knowledge-tree/summary
+(`service_definitions: serviceDefs || []`) — I just never noticed because
+the frontend KnowledgeTreeSummary TypeScript type didn't declare that
+field, even though the edge function has always returned it.
+
+Verified live: for Elevator/Lift's "Hydraulic System Check"
+(checkpoint "Hydraulic Oil Temperature", resource_template_id
+598f5591-...), m_kt_service_definitions has a real authored paragraph:
+"Covers monitoring of hydraulic oil temperature and fluid level to ensure
+the system operates within designed parameters. Low oil or overheating
+leads to sluggish performance, seal damage, or sudden shutdown. Essential
+for hydraulic elevator reliability and long-term cylinder and pump
+health." That is what should have shown up, and now does.
+
+Files Changed:
+  - contractnest-ui/src/pages/service-contracts/templates/admin/
+    knowledge-tree/types.ts
+      Added KnowledgeTreeServiceDefinition interface and
+      service_definitions: KnowledgeTreeServiceDefinition[] to
+      KnowledgeTreeSummary — the type now matches what the edge function
+      has always actually returned.
+  - contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+      KTSuggestionsForCoverage: looks up each suggestion's real description
+      from summary.service_definitions (keyed by checkpoint.service_name,
+      which matches m_kt_service_definitions.service_name exactly) instead
+      of concatenating checkpoint names. The mvp-rfq-21 "Covers: ..." text
+      is now ONLY a fallback for a package KT hasn't authored a service
+      definition for yet (so a gap in KT's own data still shows something
+      useful instead of a blank).
+      Also fixed the suggestion's TITLE the same way: previously fell back
+      to the raw checkpoint name ("Hydraulic Oil Temperature", "Alternator
+      Output Terminals Condition") when there was no catalog_name; now
+      falls back to the checkpoint's service_name ("Hydraulic System
+      Check", "Alternator & AVR Inspection") — the human-readable service
+      label, matching what the description is actually about.
+      addFromKT() takes the suggestion's title/description directly
+      instead of recomputing name from catalog_name/checkpoint_name.
+
+Submodules Affected: contractnest-ui only. No DB/API change — same
+GET /knowledge-tree/summary call as before; this batch just reads a field
+of its response (service_definitions) that was already being returned and
+was simply missing from the frontend type.
+
+Production Checklist:
+  ✅ Transaction Management / Race Conditions: N/A, no new writes.
+  ✅ Error Handling: falls back to the mvp-rfq-21 checkpoint-name summary
+     when KT has no authored service_definitions row yet for a package —
+     never blank, never throws.
+  ✅ Toasts / Loaders: unchanged.
+
+Verification done this batch:
+  - Live SQL: confirmed m_kt_service_definitions has real, well-written
+    descriptions for both DG Set (Generator) and Elevator/Lift — spot-
+    checked "Hydraulic System Check" end to end (service_name match,
+    frequency_unit='days', catalog_name null so it exercises the fallback-
+    title path too).
+  - Read contractnest-edge's knowledge-tree/index.ts getSummary() directly
+    to confirm service_definitions really is already in the response
+    (`service_definitions: serviceDefs || []`), not something needing a
+    backend change.
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    errors only, zero new errors.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18 through 21 are already applied
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-20\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-21\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-22 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-22\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] New RFQ → Equipment → add "Elevator / Lift" (or whatever it's named
+        in your tenant's resource list) as coverage → Scope step.
+  - [ ] Confirm a "Hydraulic System Check" suggestion (or similarly-named
+        one) shows a real, professionally-written paragraph description —
+        NOT "Covers: <checkpoint name>".
+  - [ ] Click Add — open the new block — confirm the same real paragraph
+        is in the Description field.
+  - [ ] Re-test DG Set too — confirm its suggestions (e.g. "Alternator &
+        AVR Inspection") also show real authored paragraphs now, not
+        checkpoint-name lists.
+  - [ ] If you have any coverage type in your tenant with KT checkpoints
+        but NO service_definitions rows authored yet, confirm it still
+        falls back to the old "Covers: ..." text rather than showing
+        nothing.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
