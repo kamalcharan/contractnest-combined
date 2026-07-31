@@ -1,0 +1,193 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — mvp-rfq-20
+═══════════════════════════════════════════════════
+Branch: claude/rfq-handover-facilities-i4w7mt
+
+⚠️ DEPENDS ON mvp-rfq-18 AND mvp-rfq-19 — apply both first, in order, then
+this batch on top. This batch's RfqBuilderPage.tsx builds on mvp-rfq-19's
+version (Applies-to picker, split-by-units).
+
+WHAT THIS SOLVES
+─────────────────────────────────────────────────
+User's correction on the earlier "recommender" plan: the Contract wizard
+recommends from the TENANT'S OWN catalog (VaNi/recommend.ts — a seller
+reusing their own priced service blocks). An RFQ is the buyer asking an
+EXTERNAL VENDOR to quote — recommending the tenant's own catalog doesn't
+apply there. What RFQ should recommend from is the Knowledge Tree (KT) —
+admin-curated master data per equipment type.
+
+Researched KT properly using DG Set (Generator) as the concrete example
+(m_catalog_resource_templates id d8a5de1b-e110-4b70-8542-081e56ecba1e):
+  - m_equipment_variants: 10 capacity-based variants (1-10 kVA up to
+    500-2500 kVA industrial).
+  - m_equipment_checkpoints: 95 checkpoints across ~30 sections
+    (Battery & Starting System, Cooling System, Power & Electrical, etc.),
+    each tagged with a service_activity (pm / repair / inspection / install
+    / decommission).
+  - m_service_cycles: the useful layer for this feature — named, cadenced,
+    PRICED service packages via catalog_name, e.g. "DG Set Preventive
+    Maintenance — Standard Scope" every 30 days, INR 1,500-6,000 median
+    3,000; "...Electrical Systems" every 90 days, 2,500-11,000; "...Output &
+    Performance" every 90 days, 3,000-12,000; "...Comprehensive Scope"
+    every 365 days, 8,000-40,000. Plus finer per-section cycles (some
+    hour-based, e.g. Cooling System every 250 hours) and one-off visit-based
+    checkpoints (install/repair/decommission, frequency_unit='visits').
+
+Two things verified before writing any code:
+  1. Access — the knowledge-tree edge function's GET routes (summary,
+     cycles, variants, coverage, etc.) do NOT check isAdmin; only the
+     POST/write routes (save, delete, tag-compliance, equipment-meta,
+     snapshot) do. Confirmed by reading contractnest-edge's
+     supabase/functions/knowledge-tree/index.ts directly, and separately
+     confirmed by the user: onboarding already reads KT data with no admin
+     requirement.
+  2. The missing link — a tenant's own Resource (what fills the RFQ's
+     "What does this cover?" coverage list) has NO real foreign key to
+     m_catalog_resource_templates. t_tenant_selected_resources only records
+     which templates a tenant bulk-selected at onboarding, not a per-resource
+     mapping (checked live: joining by tenant_id alone fans out to every
+     selected template, not a 1:1 link). So resolving "this coverage line's
+     resource -> which KT template" is done by NAME MATCH (case-insensitive,
+     bidirectional substring) — the same fuzzy approach the Contract
+     wizard's own recommend.ts already uses for its VaNi banner. Not a new
+     pattern, but not a clean FK either — flagging so it isn't assumed to be
+     more precise than it is.
+
+Layout, per explicit direction this session: the RFQ builder's Scope step
+was a single centered column (max-width 640px). Restructured to two columns
+for that step only (other steps unchanged): main request content on the
+left (flex '1 1 480px'), Knowledge Tree suggestions sidebar on the right
+(flex '0 1 300px', sticky), wrapped in a flex-wrap row so it naturally
+stacks on narrow viewports (no media query needed, this file uses inline
+styles throughout, not Tailwind). Outer container widens from 640px to
+980px only when stepId === 'services'.
+
+Files Changed:
+  - contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+      Added optional ConfigurableBlock.config fields: ktCycleId,
+      ktPriceMin/Median/Max, ktPriceCurrency — tags a block as created from
+      a specific m_service_cycles row (dedupes "already added" suggestions)
+      and carries the KT price range for reference display. Never written
+      into price/totalPrice — the vendor still quotes that.
+  - contractnest-ui/src/pages/contracts/rfq/RfqBuilderPage.tsx
+      - New imports: useResourceTemplates (existing hook, GET /api/resources/
+        resource-templates), useKnowledgeTreeSummary (existing hook, GET
+        /knowledge-tree/summary), getCurrencySymbol.
+      - matchTemplateFor(resourceName): resolves a coverage line to a KT
+        resource_template_id by fuzzy name match against up to 100
+        templates for the tenant's resource_type_id (equipment/asset).
+      - addedKtCycleIds: a Set derived from services[].config.ktCycleId, so
+        an added suggestion stops showing.
+      - addFromKT(coverageLine, cycle): adds a real Service FlyBy block
+        immediately (same shape as any manually-added block, no
+        preview/staging) — name = catalog_name (fallback checkpoint_name),
+        serviceCycleDays = frequency_value, coverageTypeId linked to the
+        coverage line, price 0 (vendor quotes), KT price range carried in
+        config for reference only.
+      - New KTSuggestionsForCoverage component (same file, defined after the
+        page component): one per coverage line, calls
+        useKnowledgeTreeSummary for that line's matched template, filters to
+        frequency_unit==='days' only (hour/visit-based cycles don't map to
+        a days field, so they're skipped rather than mismapped), dedupes by
+        catalog_name+frequency (or checkpoint_name+frequency when
+        catalog_name is null), sorts by cadence, renders a compact card per
+        suggestion with an "Add to request" action.
+      - Scope step restructured into the two-column layout described above.
+
+Submodules Affected: contractnest-ui only (no DB migration, no API change —
+both hooks/endpoints used already exist and are already used elsewhere:
+useResourceTemplates by onboarding's resource picker, useKnowledgeTreeSummary
+by the KT admin pages).
+
+Production Checklist:
+  ✅ Transaction Management: N/A — no new DB writes; blocks created from a
+     suggestion go through the exact same submit() payload path as any
+     other FlyBy block.
+  ✅ Race Condition Handling: N/A — client-side state only; KT fetch is a
+     plain read query per coverage line, no concurrent-write surface.
+  ✅ Error Handling: no template match -> sidebar says so instead of a
+     silent blank; useKnowledgeTreeSummary's own loading/error states show
+     a "Checking Knowledge Tree..." spinner while fetching.
+  ✅ Toasts: N/A for this addition — adding a suggestion behaves exactly
+     like adding any other block (no toast on manual add either, existing
+     pattern unchanged).
+  ✅ Loaders: yes — KTSuggestionsForCoverage shows a spinner line while its
+     useKnowledgeTreeSummary query is in flight.
+
+Verification done this batch:
+  - Live SQL against project uwyqhzotluikawcboldr: pulled DG Set's real
+    variants/checkpoints/cycles to ground the whole design in actual data,
+    not assumptions (see numbers above).
+  - Confirmed live that t_tenant_selected_resources has no per-resource
+    link (only tenant_id + resource_template_id), forcing the name-match
+    approach — documented here so it isn't mistaken for a precise mapping.
+  - Read contractnest-edge's knowledge-tree/index.ts directly: GET routes
+    have no isAdmin gate; only POST routes do.
+  - npx tsc -p tsconfig.app.json --noEmit — clean, baseline 3 pre-existing
+    environment errors only, zero new errors.
+  - Did NOT re-run a live create_contract_transaction round-trip this
+    batch — a block added from a KT suggestion is structurally identical to
+    a manually-added Service FlyBy block (same submit() mapping, same
+    custom_fields.config passthrough already verified in mvp-rfq-18/19);
+    the only new persisted keys are inside that same already-proven JSONB
+    object.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Make sure mvp-rfq-18 and mvp-rfq-19 are already applied
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-18\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-19\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: Copy mvp-rfq-20 on top
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-20\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] New RFQ → pick Equipment → add "DG Set" (or however it's named in
+        your tenant's resource list) as coverage.
+  - [ ] Go to the Scope step — confirm the layout is now two columns: your
+        request on the left, "Suggested from Knowledge Tree" on the right.
+  - [ ] Confirm suggestions appear for DG Set — e.g. "DG Set Preventive
+        Maintenance — Standard Scope · Every 30 days · market reference
+        price range".
+  - [ ] Click "Add to request" on one — confirm it appears INSTANTLY in the
+        left column as a normal Service block, already expanded, with the
+        Service Cycle pre-filled (repeats, N days) and price blank/0.
+  - [ ] Confirm that suggestion disappears from the sidebar once added
+        (doesn't stay clickable / duplicate-addable).
+  - [ ] Add a coverage item your tenant has no KT data for — confirm the
+        sidebar says "No Knowledge Tree data yet for what you're covering"
+        instead of showing nothing / erroring.
+  - [ ] Narrow the browser window — confirm the sidebar stacks below the
+        main column rather than squeezing/overlapping.
+  - [ ] Confirm every other step (kind/type/basics/timing/covers/vendors/
+        review) still renders as the original single centered column —
+        only the Scope step widened.
+  - [ ] Regression: manually adding a Service/Spare/Text/Document/Group
+        Session block (the dashed "Add X" buttons) still works exactly as
+        before, unaffected by the sidebar.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
