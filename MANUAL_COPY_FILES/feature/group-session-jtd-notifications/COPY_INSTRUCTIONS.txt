@@ -10,6 +10,15 @@ reachable by direct URL. Added one file:
 If you already copied everything else, you only need this one file —
 see the STEP 3 copy command for it below (added at the end of the block).
 
+UPDATE 3 (post-testing fix): Session timing fields were on their own card
+near Attendance Policy — well above the actual "Service Cycle" section, so
+easy to miss if you went looking for it there (as you should expect to).
+Moved into the Cycle Configuration card itself, right after Grace Period.
+Same file as before, already covered by the STEP 2 copy command:
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx
+No new copy command needed — re-running the existing one for this file
+picks up the fix.
+
 UPDATE 2 (post-testing fix): Template Mapping page had no way to view
 mappings for a specific tenant, and the "New mapping" form required pasting
 a raw tenant UUID. Added one new file, changed one existing file:

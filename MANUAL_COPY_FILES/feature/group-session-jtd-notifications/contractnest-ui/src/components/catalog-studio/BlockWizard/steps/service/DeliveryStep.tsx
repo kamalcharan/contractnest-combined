@@ -268,46 +268,6 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
           </div>
         )}
 
-        {/* Session timing — Group Session only. Start time + duration for each
-            occurrence, so downstream automation (e.g. a no-show follow-up)
-            can compute when a session actually concludes. Same for every
-            occurrence of this block — not editable per contract. */}
-        {audience === 'group' && (
-          <div className="p-6 rounded-xl border animate-in fade-in slide-in-from-top-2 duration-200" style={cardStyle}>
-            <label className="block text-sm font-semibold mb-1" style={labelStyle}>
-              Session timing
-            </label>
-            <p className="text-xs mb-4" style={{ color: colors.utility.secondaryText }}>
-              What time does each session start, and how long does it run? Used to work out when a
-              session has concluded — leave blank if this isn&apos;t known yet.
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2" style={labelStyle}>Start time</label>
-                <input
-                  type="time"
-                  value={sessionStartTimeForDisplay ?? ''}
-                  onChange={(e) => onChange('sessionStartTime', e.target.value === '' ? undefined : e.target.value)}
-                  className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
-                  style={{ ...inputStyle, borderRadius: '0.75rem' }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={labelStyle}>Duration (minutes)</label>
-                <input
-                  type="number"
-                  min="1"
-                  placeholder="e.g., 60"
-                  value={sessionDurationMinutesForDisplay ?? ''}
-                  onChange={(e) => onChange('sessionDurationMinutes', e.target.value === '' ? undefined : parseInt(e.target.value))}
-                  className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
-                  style={{ ...inputStyle, borderRadius: '0.75rem' }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Billing-only toggle — fees/dues blocks that never create service visits */}
         <div className="p-6 rounded-xl border" style={cardStyle}>
           <div className="flex items-start justify-between gap-4">
@@ -729,6 +689,47 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
                         Buffer time before marking as overdue
                       </p>
                     </div>
+
+                    {/* Session timing — Group Session only. Start time + duration
+                        for each occurrence, so downstream automation (e.g. a
+                        no-show follow-up) can compute when a session actually
+                        concludes. Same for every occurrence of this block —
+                        not editable per contract. */}
+                    {audience === 'group' && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2" style={labelStyle}>
+                          Session timing
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>Start time</label>
+                            <input
+                              type="time"
+                              value={sessionStartTimeForDisplay ?? ''}
+                              onChange={(e) => onChange('sessionStartTime', e.target.value === '' ? undefined : e.target.value)}
+                              className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+                              style={{ ...inputStyle, borderRadius: '0.75rem' }}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>Duration (minutes)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="e.g., 60"
+                              value={sessionDurationMinutesForDisplay ?? ''}
+                              onChange={(e) => onChange('sessionDurationMinutes', e.target.value === '' ? undefined : parseInt(e.target.value))}
+                              className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+                              style={{ ...inputStyle, borderRadius: '0.75rem' }}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs mt-2" style={{ color: colors.utility.secondaryText }}>
+                          What time does each session start, and how long does it run? Used to work out
+                          when a session has concluded — leave blank if this isn&apos;t known yet.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
