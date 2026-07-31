@@ -1,0 +1,63 @@
+════════════════════════════════════════════════════════════
+mvp-rfq-17 — Spare Part FlyBy: Category dropdown (Filters/Gases/Parts/Accessories)
+════════════════════════════════════════════════════════════
+Date: 31 Jul 2026
+Branch: claude/rfq-handover-facilities-i4w7mt
+Submodule affected: contractnest-ui ONLY (no App.tsx / API / edge / migration)
+tsc: clean (only the 3 pre-existing env errors).
+
+FILE (1) — supersedes the mvp-rfq-16 ChecklistRow.tsx
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+
+────────────────────────────────────────────────────────────
+BACKGROUND — the gap analysis (Spare Part: catalog-studio vs FlyBy)
+────────────────────────────────────────────────────────────
+Checked catalog-studio's Spare Part definition (BasicInfoStep/InventoryStep/
+FulfillmentStep) against the FlyBy card. Inventory/Fulfillment fields (stock,
+warehouse, lead time, shipping) are catalog/master-data only — confirmed they
+appear NOWHERE in the per-contract block editor (BlockCardConfigurable), so
+correctly out of scope for a FlyBy line. SKU was flagged as a possible gap but
+owner decided AGAINST adding it — a loose FlyBy/RFQ line asks by CATEGORY +
+quantity, not a tracked SKU. This batch adds exactly that.
+
+────────────────────────────────────────────────────────────
+WHAT CHANGED
+────────────────────────────────────────────────────────────
+Spare Part FlyBy lines (Contract AND RFQ, both use this same card) now have a
+Category selector — the SAME 4 options catalog-studio's Basic Info step offers
+when an admin defines a spare part block: Filters / Gases / Parts / Accessories
+(ids: filter/gas/parts/accessories — matched exactly so a value written here
+reads identically to the catalog side). Placed right after Visits/Price, chip-
+style like Billing Cycle. Also shown as a chip in the collapsed summary line.
+No SKU field — deliberately not added.
+Persists to custom_fields.config.spareCategory.
+
+────────────────────────────────────────────────────────────
+VERIFIED — real transaction, not just code review
+────────────────────────────────────────────────────────────
+Ran create_contract_transaction live (setup tenant) with a spare block
+(quantity=5, config.spareCategory='filter'), then read it back via
+get_contract_by_id (the same RPC the UI calls). Confirmed exact round trip:
+  "quantity":5, "custom_fields":{"config":{"flyby_type":"spare","spareCategory":"filter"}}
+Test row deleted immediately after — zero residue left in the tenant's data.
+
+────────────────────────────────────────────────────────────
+COPY (PowerShell, from repo root)
+────────────────────────────────────────────────────────────
+git pull origin claude/rfq-handover-facilities-i4w7mt
+
+Copy-Item "MANUAL_COPY_FILES\mvp-rfq-17\contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\" -Force
+
+cd contractnest-ui ; npm run dev   (Ctrl+F5)
+
+────────────────────────────────────────────────────────────
+TEST
+────────────────────────────────────────────────────────────
+  [ ] RFQ builder → Scope → Add Spare Part → Category chips appear
+      (Filters/Gases/Parts/Accessories), default "Parts"
+  [ ] Pick a category, set a quantity, collapse the row — category shows as
+      a chip in the summary line
+  [ ] Contract wizard (regression) — FlyBy Spare line also gets the Category
+      selector now (same card); catalog (non-flyBy) spare rows unaffected
+  [ ] Send an RFQ with a spare line — confirm the category survives on the
+      saved/viewed RFQ
