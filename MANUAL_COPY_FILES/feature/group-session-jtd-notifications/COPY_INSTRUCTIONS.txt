@@ -2,6 +2,14 @@
 COPY INSTRUCTIONS — feature/group-session-jtd-notifications (Sprint 1 / Phase 1)
 ═══════════════════════════════════════════════════
 
+UPDATE (post-testing fix): Template Mapping page had no menu entry — only
+reachable by direct URL. Added one file:
+  contractnest-ui/src/utils/constants/industryMenus.ts
+    - New "Template Mapping" entry under the JTD Admin submenu, alongside
+      Queue Monitor / Tenant Operations / Event Explorer / Worker Health.
+If you already copied everything else, you only need this one file —
+see the STEP 3 copy command for it below (added at the end of the block).
+
 Scope: Foundation work for the 5 Group Session WhatsApp notification triggers
 (attendance ack, no-show regret, looking-forward, payment thank-you, absentee
 reminder). No triggers actually fire yet — this sprint only lays the ground:
@@ -108,6 +116,7 @@ Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\pages\admin\jtd\Templat
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\pages\admin\jtd\hooks\useJtdAdmin.ts" -Destination "contractnest-ui\src\pages\admin\jtd\hooks\useJtdAdmin.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\pages\admin\jtd\types\jtdAdmin.types.ts" -Destination "contractnest-ui\src\pages\admin\jtd\types\jtdAdmin.types.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
 
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-api\src\middleware\auth.ts" -Destination "contractnest-api\src\middleware\auth.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\$branch\contractnest-api\src\routes\adminJtdRoutes.ts" -Destination "contractnest-api\src\routes\adminJtdRoutes.ts" -Force
