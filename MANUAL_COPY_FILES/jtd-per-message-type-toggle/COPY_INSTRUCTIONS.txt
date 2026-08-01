@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+FEATURE: Per-tenant, per-message-type JTD notification toggle
+═══════════════════════════════════════════════════
+
+Submodules affected: contractnest-edge, contractnest-api, contractnest-ui
+(Not touched: ClaudeDocumentation, ContractNest-Mobile, FamilyKnows)
+
+Base state assumption: your local main branches already contain the
+Sprint 1/2 group-session work (JTD admin template mapping, admin auth
+fix, group-session timing fields, Sprint 2 WhatsApp triggers). All
+files below stack cleanly on top of that.
+
+Nothing here overlaps any file changed by the Sprint 1/2 work — pure
+add for 8 files, small append/import edit for 3 files (index.ts,
+integrations/index.tsx, serviceURLs.ts).
+
+───────────────────────────────────────────────────
+FILE MANIFEST — exact source → destination paths
+───────────────────────────────────────────────────
+
+contractnest-edge (2 files):
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-edge\supabase\functions\jtd-worker\index.ts
+    → contractnest-edge\supabase\functions\jtd-worker\index.ts
+    (MODIFIED — adds GATE_EXEMPT_SOURCE_TYPES + third gate check on
+     n_jtd_tenant_source_config; identity messages skip all gates.)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-edge\supabase\functions\jtd-tenant-settings\index.ts
+    → contractnest-edge\supabase\functions\jtd-tenant-settings\index.ts
+    (NEW folder + file — GET /message-types, PATCH /message-types/:code.)
+
+contractnest-api (4 files):
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-api\src\index.ts
+    → contractnest-api\src\index.ts
+    (MODIFIED — imports jtdTenantSettingsRoutes and registers under /api.)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-api\src\controllers\jtdTenantSettingsController.ts
+    → contractnest-api\src\controllers\jtdTenantSettingsController.ts    (NEW)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-api\src\routes\jtdTenantSettingsRoutes.ts
+    → contractnest-api\src\routes\jtdTenantSettingsRoutes.ts             (NEW)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-api\src\services\jtdTenantSettingsService.ts
+    → contractnest-api\src\services\jtdTenantSettingsService.ts          (NEW)
+
+contractnest-ui (4 files):
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-ui\src\pages\settings\integrations\index.tsx
+    → contractnest-ui\src\pages\settings\integrations\index.tsx
+    (MODIFIED — imports MessageTypeSettingsSection and renders it.)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-ui\src\services\serviceURLs.ts
+    → contractnest-ui\src\services\serviceURLs.ts
+    (MODIFIED — adds JTD_MESSAGE_TYPES endpoint block.)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-ui\src\components\integrations\MessageTypeSettingsSection.tsx
+    → contractnest-ui\src\components\integrations\MessageTypeSettingsSection.tsx   (NEW)
+
+  MANUAL_COPY_FILES\jtd-per-message-type-toggle\contractnest-ui\src\hooks\useJtdTenantMessageSettings.ts
+    → contractnest-ui\src\hooks\useJtdTenantMessageSettings.ts           (NEW)
+
+───────────────────────────────────────────────────
+IMPORTANT NOTES
+───────────────────────────────────────────────────
+
+1. The edge function jtd-tenant-settings is ALREADY DEPLOYED LIVE to
+   Supabase (project uwyqhzotluikawcboldr, v1, verify_jwt=true, ACTIVE).
+   You do NOT need to redeploy from your local checkout unless you're
+   changing it — this file copy is just so your repo matches production.
+
+2. The updated jtd-worker (with GATE_EXEMPT_SOURCE_TYPES + third gate)
+   is NOT yet deployed to Supabase. Deploy after copying if you want the
+   new gate live. Until then, the per-message-type toggle in the UI will
+   save to n_jtd_tenant_source_config but the worker won't consult it.
+
+3. Table n_jtd_tenant_source_config already exists in Supabase (dead
+   schema until this feature — no rows yet). No DB migration needed.
+
+4. Global message types that always bypass every gate:
+   user_invite, user_created, contract_signoff.
+   Kept in sync between jtd-worker/index.ts (GATE_EXEMPT_SOURCE_TYPES)
+   and jtd-tenant-settings/index.ts (GLOBAL_SOURCE_TYPES).
