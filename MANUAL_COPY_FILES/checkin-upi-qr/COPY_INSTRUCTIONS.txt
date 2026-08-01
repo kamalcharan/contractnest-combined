@@ -1,0 +1,56 @@
+checkin-upi-qr - In-app UPI QR on the check-in page
+
+WHY
+---
+Deep-link upi:// intents built by our page are unsigned. GPay rejects
+personal-VPA payments arriving that way ("Payments to this receiver
+are not allowed by UPI network"). The same VPA works when paid via a
+scanned QR. This adds a QR render of the same upi:// URL to the page
+so users can scan it with any UPI app instead of tapping the intent.
+Still keeps the existing "Open UPI app" button + manual reference
+fallback so nothing is lost.
+
+Note: even the scanned QR carries the same unsigned URL, so GPay may
+still refuse it on personal-account VPAs. The reason we're shipping
+this anyway: it costs nothing to try, replaces the "type VPA and amount
+manually" flow with "scan and confirm" for the UPI apps that do accept
+it (PhonePe / Paytm / BHIM in most cases), and doesn't remove any
+existing option.
+
+FILES CHANGED
+-------------
+  - contractnest-ui/package.json
+      Adds qrcode.react ^4.2.0 dependency (~10KB gzipped, MIT, React 19).
+  - contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+      - Import QRCodeSVG from qrcode.react.
+      - Inside renderPayBlock, build the full upi://pay?pa=&pn=&am=&cu=&tn=&mc=0000 URL.
+      - Render QR above the "Open UPI app" button as primary CTA.
+      - Tapping the QR after scanning flips paymentAttempted so the
+        reference-input step appears exactly as with the "Open UPI app" tap.
+      - "Open UPI app" demoted to outline-style secondary button below an "or" divider.
+
+COPY + INSTALL DEP + RUN
+------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-qr\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+cd contractnest-ui
+npm install
+npm run dev
+
+TESTING CHECKLIST
+-----------------
+- [ ] Open /checkin/<token> for a member with an open due -> Payment step
+      renders a QR above "Open UPI app".
+- [ ] QR is scannable: pull it up on the trainer/front-desk screen and
+      scan with a member's phone camera or GPay/PhonePe scan.
+- [ ] After scanning: the UPI app should prefill payee VPA + payee name
+      + amount + note.
+- [ ] If GPay accepts the payment (personal VPA quirk): great.
+      If GPay rejects (same "receiver not allowed"): user can try
+      PhonePe/Paytm/BHIM which usually accept unsigned QRs, or fall
+      back to the "Open UPI app" button + manual entry.
+- [ ] Tap the QR (or the "Open UPI app" button) -> paymentAttempted
+      flips -> reference-input field appears -> enter ref -> Confirm payment.
+- [ ] Verify the check-in still records with the payment in pending state.
+- [ ] For members without an amount due, the payment card should not render at all (unchanged).
