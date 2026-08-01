@@ -1,0 +1,48 @@
+admin-jtd-is-live-filter - Migration 024 (already applied live, needs to be committed)
+
+WHY
+---
+This migration was applied to Supabase live on 2026-08-01 to fix the
+admin JTD Event Explorer (get_admin_jtd_events RPC used to hard-code
+WHERE is_live=true, hiding all TEST-env records). It was applied via
+the Supabase MCP but the SQL file was never committed to git. It only
+exists in the developer's sandbox until this bundle lands in the repo.
+
+This is a git-hygiene fix. No behavior change - the RPC on Supabase
+is already using this definition. Committing the file just makes the
+repo an honest mirror of what's live.
+
+FILES
+-----
+  - contractnest-edge/supabase/migrations/operations-loop/024_admin_jtd_events_is_live_filter.sql (NEW)
+
+COPY
+----
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\admin-jtd-is-live-filter\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TEST
+----
+No local test needed - already applied live. Just verify the file lands:
+  Get-ChildItem contractnest-edge\supabase\migrations\operations-loop\024*
+Should show 024_admin_jtd_events_is_live_filter.sql.
+
+PHASE 2 - COMMIT (only after copy is in place)
+-----------------------------------------------
+cd contractnest-edge
+git add supabase/migrations/operations-loop/024_admin_jtd_events_is_live_filter.sql
+git commit -m "feat: admin JTD Event Explorer shows TEST-env records
+
+get_admin_jtd_events used to hard-code WHERE is_live=true, hiding
+every TEST-env record from the tenant admin debug surface. RPC now
+takes p_is_live (default NULL = both envs) so debugging tenants can
+actually see what enqueued.
+
+Applied live on 2026-08-01 as part of the BBB WhatsApp diagnosis
+session; this commit brings the repo in sync with the live RPC."
+git push origin feature/group-session-jtd-notifications
+
+cd ..
+git add contractnest-edge
+git commit -m "chore: bump contractnest-edge with migration 024"
+git push origin claude/init-submodules-imgxp5
