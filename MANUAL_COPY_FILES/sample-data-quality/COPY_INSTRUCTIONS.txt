@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════════════════════
+SAMPLE DATA QUALITY — contacts classified + channels + RFQ CTA re-aim
+(Root fix for "expense onboarding ends at Ask-vendors-to-quote but
+does not create an RFQ")
+Branch folder: sample-data-quality (2026-08-01)
+Submodules affected: contractnest-api (2 files), contractnest-ui (1 file)
+LIVE DATA: backfill ALREADY APPLIED (see below) — no SQL left to run.
+═══════════════════════════════════════════════════════════════════
+
+ROOT CAUSES FIXED
+─────────────────
+1. Seeded sample contacts were UNCLASSIFIED (classifications: [] hard-
+   coded) → the RFQ builder's vendor filter (classifications=['vendor'])
+   found ZERO sample vendors even in test mode.
+2. Seeded contacts had NO channels → "no email on file" in every picker,
+   nothing to address an RFQ to.
+3. The done screen's buyer CTA pointed at /contracts/create/vendor (the
+   vendor CONTRACT wizard, where RFQ is a buried mode toggle) — and the
+   buyer was still in LIVE env, where sample vendors don't exist at all.
+4. Done screen claimed things the DB doesn't have ("5 sample clients",
+   "Compliance defaults Active", "Facility hierarchy Campus→…→Unit").
+
+WHAT CHANGED
+────────────
+contractnest-api/src/services/seedSampleContactsService.ts
+  • classifications now follow the tenant persona:
+      buyer → ['vendor'] · seller → ['client'] · both → both tags
+  • each seeded contact gets sample channels: email (@example.com —
+    IANA-reserved, undeliverable) + mobile (+91 90000000NN placeholder),
+    inserted via the same service-role client. Non-fatal.
+    (Double-safe: jtd-worker blocks ALL real sends for test-env records.)
+contractnest-api/src/services/seedTenantTemplatesService.ts
+  • passes businessType through to the contacts seed.
+  ⚠️ SUPERSET: also contains the sequence-seed-hardening changes
+    (synced into that folder too — copy order safe).
+contractnest-ui/src/pages/onboarding/steps/VaniDoneStep.tsx
+  • Buyer CTA "Ask vendors to quote (RFQ)" now: writes
+    is_live_environment=false (sample vendors are test-only; buyers never
+    pass FirstContractStep which does this for sellers) and HARD-navigates
+    to /contracts/rfq/new — the real RFQ builder, not the wizard. Hard nav
+    keeps the header env badge honest (AuthContext reads the key at init).
+  • Honest copy: sample-contact counts now come from the actual seed
+    result; the fictional "Compliance … Active" and "Facility hierarchy
+    Campus → Building → Floor → Unit" rows are REMOVED (nothing behind
+    them in the DB — flat registry, no compliance seeding).
+  ⚠️ SUPERSET: also contains expense-side-activation + lite-fixes changes
+    (synced into those folders too — copy order safe).
+
+LIVE BACKFILL — ALREADY APPLIED (2026-08-01, via Supabase)
+──────────────────────────────────────────────────────────
+Existing seed contacts are idempotency-skipped and would never have been
+reclassified, so the live rows were fixed directly:
+  • 60 seed contacts across 20 tenants: classifications set from each
+    tenant's persona (buyer→vendor, seller→client, both→both).
+  • 120 channel rows inserted (email + mobile) for seed contacts that
+    had none.
+Verified: tenant "setup" now shows JLL India + 2 people, classified,
+with channels — the RFQ builder will list them in test mode.
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\sample-data-quality\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sample-data-quality\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: RUN & TEST
+──────────────────
+cd contractnest-ui  && npm run dev      (Ctrl+F5)
+cd contractnest-api && npm run dev      (API restart needed)
+
+TESTING CHECKLIST
+─────────────────
+[ ] EXISTING buyer tenant (e.g. setup@s.com): log in → go to
+    /contracts/rfq/new in TEST mode → vendor step lists the sample
+    contacts WITH emails → build + send an RFQ end to end  ← the fix
+[ ] FRESH buyer signup → done screen: real contact count (no fake "5"),
+    no Compliance/hierarchy rows → "Ask vendors to quote (RFQ)" → lands
+    in the RFQ BUILDER, header badge shows TEST, vendors present →
+    create the RFQ
+[ ] Fresh SELLER signup → sample contacts classified 'client', visible
+    in FirstContractStep picker as before (no filter there — regression
+    check only)
+[ ] Contact pickers show sample emails (…@example.com), not
+    "no email on file"
+[ ] No real messages go anywhere: channels are example.com/placeholder
+    numbers AND test-env sends are blocked by the jtd-worker guardrail
+
+STILL OPEN FROM THE DATA AUDIT (next batches, by your priority)
+───────────────────────────────────────────────────────────────
+• Buyer registry quality: flat template dump → coherent sample site
+  (Campus→Building→Floor + attributes on assets)
+• Guided "first RFQ" rehearsal screen (buyer twin of FirstContractStep)
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transactions: RPC unchanged (idempotent); channel insert is a single
+   batched INSERT, non-fatal
+✅ Race conditions: channels only inserted for freshly seeded contacts
+   (skipped-flag guard); backfill used NOT EXISTS guards
+✅ Error handling: channel failures logged, never block contact seeding
+✅ Toasts/Loaders: n/a (copy + data changes)
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════

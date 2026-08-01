@@ -218,15 +218,14 @@ const Screen9A: React.FC<{ state: DoneState; onDashboard: () => void }> = ({ sta
     <div style={{ background: SURFACE, border: `1px solid ${EDGE}`, borderRadius: 8, padding: '6px 0', marginBottom: 28, textAlign: 'left' }}>
       <DoneItem name="Service catalog" val={`${state.catalogBlocksSeeded} blocks · ${state.industryNames.join(', ')}`} delay={0.1} />
       <DoneItem name="Pricing" val="Pending — set your prices on the next screen" delay={0.2} warn />
-      <DoneItem name="Sample contacts" val={`${state.sampleContactsSeeded || 5} ready · test mode`} delay={0.3} />
-      <DoneItem name="Compliance" val="Industry defaults applied · Active" delay={0.4} />
+      <DoneItem name="Sample contacts" val={`${state.sampleContactsSeeded || 0} ready · test mode`} delay={0.3} />
     </div>
 
-    <VaniSignoff message="Try it in test mode — <strong>5 sample clients</strong> are ready to go. Switch to live anytime from the header." />
+    <VaniSignoff message={`Try it in test mode — <strong>${state.sampleContactsSeeded || 'sample'} sample clients</strong> are ready to go. Switch to live anytime from the header.`} />
 
     <CtaButton label="Create your first contract →" primary onClick={onDashboard} />
     <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', marginTop: -6, marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace" }}>
-      5 sample clients ready · switch to live anytime from the header
+      {state.sampleContactsSeeded || ''} sample clients ready · switch to live anytime from the header
     </div>
 
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '20px 0', color: FAINT, fontSize: 11, fontWeight: 600 }}>
@@ -258,8 +257,6 @@ const Screen9B: React.FC<{ state: DoneState; onDashboard: () => void; onClaim: (
 
       <div style={{ background: SURFACE, border: `1px solid ${EDGE}`, borderRadius: 8, padding: '6px 0', marginBottom: 28, textAlign: 'left' }}>
         <DoneItem name="Equipment registry" val={`${state.facilityNodesSeeded || 0} assets confirmed · ${state.industryNames.join(', ')}`} delay={0.1} />
-        <DoneItem name="Facility hierarchy" val="Campus → Building → Floor → Unit" delay={0.2} />
-        <DoneItem name="Compliance standards" val="Industry defaults applied · Active" delay={0.3} />
       </div>
 
       <div style={{ background: SURFACE, border: `1px solid ${EDGE}`, borderRadius: 8, padding: '16px 20px', marginBottom: 16, textAlign: 'left' }}>
@@ -282,11 +279,11 @@ const Screen9B: React.FC<{ state: DoneState; onDashboard: () => void; onClaim: (
         </div>
       </div>
 
-      <VaniSignoff message="Two ways to start: <strong>ask your vendors to quote</strong> (an RFQ — 5 sample vendors are ready in test mode), or <strong>pull in a contract a vendor already sent you</strong> using its CNAK code." />
+      <VaniSignoff message={`Two ways to start: <strong>ask your vendors to quote</strong> (an RFQ — ${state.sampleContactsSeeded || 'sample'} sample vendors are ready in test mode), or <strong>pull in a contract a vendor already sent you</strong> using its CNAK code.`} />
 
       <CtaButton label="Ask vendors to quote (RFQ) →" primary onClick={onDashboard} />
       <div style={{ fontSize: 11, color: FAINT, textAlign: 'center', marginTop: -6, marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace" }}>
-        one or more vendors · 5 sample vendor contacts ready · test mode
+        one or more vendors · {state.sampleContactsSeeded || ''} sample vendor contacts ready · test mode
       </div>
 
       <CtaButton label="I have a contract code (CNAK) →" onClick={onClaim} />
@@ -349,8 +346,6 @@ const Screen9C: React.FC<{ state: DoneState; onDashboard: () => void }> = ({ sta
       {activeTab === 'buyer' && (
         <div style={{ background: SURFACE, border: `1px solid ${EDGE}`, borderRadius: 8, padding: '6px 0', marginBottom: 28, textAlign: 'left' }}>
           <DoneItem name="Equipment registry" val={`${state.facilityNodesSeeded || 0} assets · ${state.industryNames.join(', ')}`} delay={0.1} />
-          <DoneItem name="Facility hierarchy" val="Campus → Building → Floor → Unit" delay={0.2} />
-          <DoneItem name="Compliance standards" val="Industry defaults applied · Active" delay={0.3} />
         </div>
       )}
 
@@ -414,11 +409,29 @@ const VaniDoneStep: React.FC = () => {
   // BUT NOT FOR A PURE BUYER. /start/contract authors a contract from the
   // tenant's own catalog, and a buyer has no catalog to author from — in this
   // product the VENDOR issues the contract. A buyer's first act is a request
-  // for quotation, so they go to the vendor-side wizard, whose first step
-  // offers exactly that choice. 'both' keeps the seller path: they can author,
-  // and the catalog they just built is the thing worth rehearsing with.
+  // for quotation, so they go STRAIGHT TO THE RFQ BUILDER (/contracts/rfq/new)
+  // — not the vendor contract wizard this used to target, where RFQ was a
+  // buried mode toggle nobody four minutes old would find.
+  //
+  // Two mechanics matter for the buyer hop:
+  //   1. TEST ENVIRONMENT FIRST. Sample vendors are seeded test-only (zero
+  //      live contacts on every onboarded tenant, by design), and the buyer
+  //      path never passes FirstContractStep, which is where sellers get
+  //      switched to test. Without this write the RFQ builder's vendor list
+  //      is empty and the advertised first action dead-ends.
+  //   2. HARD NAVIGATION, same reason as PlanStep: api.ts reads the env key
+  //      per request but AuthContext only reads it at init — a router push
+  //      would leave the header badge saying "Live" while every request went
+  //      to test. A full load keeps the badge honest.
+  // 'both' keeps the seller path: they can author, and the catalog they just
+  // built is the thing worth rehearsing with.
   const handleDashboard = () => {
-    navigate(persona === 'buyer' ? '/contracts/create/vendor' : '/start/contract');
+    if (persona === 'buyer') {
+      window.localStorage.setItem('is_live_environment', 'false');
+      window.location.assign('/contracts/rfq/new');
+      return;
+    }
+    navigate('/start/contract');
   };
 
   // Screen9B's CNAK button shipped with an empty onClick while the page it
