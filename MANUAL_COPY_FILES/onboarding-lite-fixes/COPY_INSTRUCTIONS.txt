@@ -1,0 +1,94 @@
+═══════════════════════════════════════════════════════════════════
+ONBOARDING LITE FIXES — audit items 1, 2, 3, 8 (2026-08-01)
+Branch folder: onboarding-lite-fixes
+Submodules affected: contractnest-ui, contractnest-edge (migration only)
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS BATCH FIXES
+─────────────────────
+#1  Lite onboarding now introduces VaNi explicitly as an AI agent
+    ("VaNi Agent · AI · Active" badge + AI-agent copy on /start).
+#2  Theme consistency: VaniDoneStep (/onboarding/done) converted from the
+    near-black dark card to the same light VaNi paper palette every
+    neighbouring screen uses. The lite journey is now light end to end.
+#3  Onboarding completion actually lands in the DB:
+      - VaniDoneStep persists 'done' + POST /api/onboarding/complete on
+        mount (the one screen ALL personas reach — buyers never reached
+        PlanStep, so they could never complete before).
+      - PlanStep now AWAITS its completion writes (bounded 4s) instead of
+        fire-and-forget + 250ms + hard navigation that cancelled the POST.
+      - completeVaniStep.ts gains markOnboardingComplete().
+      - SQL migration (see DB step below): tenant-creation trigger seeds
+        the VaNi 13-step model instead of the legacy 6-step one, and
+        backfills is_completed for tenants who already finished
+        ('done' or 'lov-setup' in completed_steps).
+#8  "Prefer the detailed setup? Use the full form →" link removed from the
+    lite intro; ServiceableStep's empty-catalog prose no longer points to
+    the full form. The long form stays ROUTED at /onboarding/* (for anyone
+    mid-flight + support), it just is not offered.
+
+FILES
+─────
+contractnest-ui/src/lite/onboarding/IntroStep.tsx          #1 #8 AI identity, link removed
+contractnest-ui/src/lite/onboarding/express.css            #1 agent badge styles
+contractnest-ui/src/lite/onboarding/ServiceableStep.tsx    #8 empty-state reword
+contractnest-ui/src/lite/onboarding/PlanStep.tsx           #3 awaited completion
+contractnest-ui/src/utils/onboarding/completeVaniStep.ts   #3 markOnboardingComplete()
+contractnest-ui/src/pages/onboarding/steps/VaniDoneStep.tsx#2 #3 light restyle + completion on mount
+contractnest-edge/supabase/migrations/onboarding/008_vani_onboarding_init_and_backfill.sql
+                                                           #3 trigger + backfill (DB — see below)
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\onboarding-lite-fixes\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-lite-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: DB MIGRATION (required for the full #3 fix — run against Supabase)
+───────────────────────────────────────────────────────────────────────────
+The UI fixes work without it, but new tenants keep getting the legacy
+6-step record and already-stuck tenants stay stuck until this runs.
+Apply contractnest-edge/supabase/migrations/onboarding/008_vani_onboarding_init_and_backfill.sql
+via the Supabase SQL editor (or supabase db push). It:
+  a) replaces initialize_tenant_onboarding() → seeds 'vani', 13 steps
+  b) backfills is_completed=true where completed_steps has 'done' or
+     'lov-setup' (live check 2026-08-01: this flips tenants like
+     "setup" and "set"; leaves genuine mid-flow abandoners incomplete)
+NOTHING has been applied to the live DB from this session.
+
+STEP 3: RUN & TEST
+──────────────────
+cd contractnest-ui && npm run dev     (hard refresh: Ctrl+F5)
+
+TESTING CHECKLIST
+─────────────────
+[ ] /start shows "VaNi Agent · AI · Active" badge + AI-agent copy,
+    and NO "full form" link at the bottom
+[ ] Register a fresh SELLER → finish lite flow → /onboarding/done is
+    LIGHT (white card on paper, not dark) → continue to plan screen →
+    land in cockpit → LOG OUT, LOG IN → goes to /ops/cockpit,
+    NOT back to /start          ← the core #3 check
+[ ] Same for a fresh BUYER (leaves onboarding from the done screen via
+    "Send your first request") → log out / in → NOT forced to onboarding
+[ ] DB spot-check: select is_completed, completed_steps from
+    t_tenant_onboarding where tenant_id='<new tenant>' → is_completed=true
+[ ] "Skip — decide later" on the plan screen also completes (no regression)
+[ ] Empty-catalog case on /start/serve shows the new wording (no
+    "full form" mention)
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transaction Management: single-row UPDATE/UPSERTs via existing edge
+   endpoints; migration backfill is one bounded UPDATE
+✅ Race Condition Handling: PlanStep leaving-guard kept; VaniDoneStep
+   completion ref-guarded vs StrictMode double-mount; both endpoints
+   idempotent
+✅ Error Handling: completion writes are try/caught + bounded (4s race)
+   so a dead network can never trap the tenant; failures logged
+✅ Toasts: existing vaniToast only (no new toast component)
+✅ Loaders: existing Loader2/leaving state only (no new loader)
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════
