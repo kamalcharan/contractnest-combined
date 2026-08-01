@@ -1,0 +1,64 @@
+harden-vani-rule-enabled - Migration 025 (already applied live, needs to be committed)
+
+WHY
+---
+vani_rule_enabled was introduced in migration 022 without the hardening
+that every other function in this area uses (SECURITY DEFINER + REVOKE
+FROM PUBLIC + GRANT TO service_role). Postgres default granted EXECUTE
+to PUBLIC, which was inconsistent with get_vani_rules / update_vani_rule /
+start_vani_trial / get_vani_briefing all of which are service_role-only.
+
+Practical impact of the miss was minimal - function is read-only and
+returns a boolean - but any authenticated user could enumerate which
+notification rules were enabled for any tenant they named. This closes
+that inconsistency.
+
+Callers verified safe before revoke:
+  - jtd-worker/index.ts:84 uses SUPABASE_SERVICE_ROLE_KEY (grant hit).
+  - No other repo callers.
+
+APPLIED-LIVE STATUS
+-------------------
+  Applied to Supabase project uwyqhzotluikawcboldr on 2026-08-01.
+  Verified grants now show only postgres + service_role, prosecdef=true.
+  Sanity call vani_rule_enabled(unknown_tenant, ...) still returns true
+  (fail-open default preserved).
+
+FILES
+-----
+  - contractnest-edge/supabase/migrations/operations-loop/025_harden_vani_rule_enabled.sql (NEW)
+
+COPY
+----
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\harden-vani-rule-enabled\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TEST
+----
+Nothing to test locally - already applied live and verified. Just check
+the file lands:
+  Get-ChildItem contractnest-edge\supabase\migrations\operations-loop\025*
+Should show 025_harden_vani_rule_enabled.sql.
+
+PHASE 2 - COMMIT (only after copy is in place)
+-----------------------------------------------
+cd contractnest-edge
+git add supabase/migrations/operations-loop/025_harden_vani_rule_enabled.sql
+git commit -m "fix: harden vani_rule_enabled grants (SECURITY DEFINER + service_role only)
+
+vani_rule_enabled shipped in 022 without the SECURITY DEFINER +
+REVOKE FROM PUBLIC + GRANT TO service_role hardening every other
+vani_* function uses. Postgres default granted PUBLIC EXECUTE,
+letting any authenticated user query whether a given rule was
+enabled for any tenant they named.
+
+Restores the codebase convention. jtd-worker (only in-repo caller)
+uses SUPABASE_SERVICE_ROLE_KEY so its call path still works.
+
+Applied live on 2026-08-01."
+git push origin feature/group-session-jtd-notifications
+
+cd ..
+git add contractnest-edge
+git commit -m "chore: bump contractnest-edge with migration 025"
+git push origin claude/init-submodules-imgxp5
