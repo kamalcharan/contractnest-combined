@@ -1,0 +1,88 @@
+═══════════════════════════════════════════════════
+📦 retire-message-type-settings — Phase 1 cleanup
+═══════════════════════════════════════════════════
+
+WHAT THIS BUNDLE DOES
+─────────────────────
+Removes the parallel per-message-type toggle surface (Settings →
+Integrations → MessageTypeSettingsSection) now that the same
+functionality lives under Settings → Automation Rules → Notifications
+(unified vani_rules system, shipped in bundle "unify-notif-rules").
+
+FILES DELETED FROM THE REPO (do a git rm-equivalent on your side)
+─────────────────────────────────────────────────────────────────
+UI:
+  - contractnest-ui/src/components/integrations/MessageTypeSettingsSection.tsx
+  - contractnest-ui/src/hooks/useJtdTenantMessageSettings.ts
+
+API:
+  - contractnest-api/src/routes/jtdTenantSettingsRoutes.ts
+  - contractnest-api/src/controllers/jtdTenantSettingsController.ts
+  - contractnest-api/src/services/jtdTenantSettingsService.ts
+
+Edge:
+  - contractnest-edge/supabase/functions/jtd-tenant-settings/  (whole folder)
+
+FILES MODIFIED (in this bundle)
+───────────────────────────────
+  - contractnest-ui/src/services/serviceURLs.ts
+      Removed the JTD_MESSAGE_TYPES block (LIST + TOGGLE endpoints).
+  - contractnest-ui/src/pages/settings/integrations/index.tsx
+      Removed the MessageTypeSettingsSection import and its render site
+      at the bottom of the page.
+  - contractnest-api/src/index.ts
+      Removed the jtdTenantSettingsRoutes import and the try/catch that
+      registered them at /api.
+
+LEFT ALONE (INTENTIONAL)
+────────────────────────
+  - DB table n_jtd_tenant_source_config
+      No data loss. jtd-worker stopped reading it as of v29
+      (unify-notif-rules batch). Safe to drop later; not touched now.
+  - jtd-tenant-settings edge function on Supabase
+      Redeployed as a 410-Gone stub (version 2 live). Delete it
+      manually from the Supabase dashboard when convenient.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY + DELETE FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy modified files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\retire-message-type-settings\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\retire-message-type-settings\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+STEP 3: Delete the retired files
+─────────────────────────────────
+Remove-Item "contractnest-ui\src\components\integrations\MessageTypeSettingsSection.tsx" -Force
+Remove-Item "contractnest-ui\src\hooks\useJtdTenantMessageSettings.ts" -Force
+Remove-Item "contractnest-api\src\routes\jtdTenantSettingsRoutes.ts" -Force
+Remove-Item "contractnest-api\src\controllers\jtdTenantSettingsController.ts" -Force
+Remove-Item "contractnest-api\src\services\jtdTenantSettingsService.ts" -Force
+Remove-Item "contractnest-edge\supabase\functions\jtd-tenant-settings" -Recurse -Force
+
+Write-Host "✅ Retired." -ForegroundColor Green
+
+STEP 4: Test
+─────────────────────────────────
+# Restart API + UI dev servers.
+cd contractnest-api && npm run dev  # separate terminal
+cd contractnest-ui  && npm run dev
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Settings → Integrations page still renders (channel toggles, provider
+      cards). The "Message types" section at the bottom is gone.
+- [ ] API starts without errors (no missing-import complaint).
+- [ ] Settings → Configure → VaNi → Automation Rules → Notifications
+      section still works (that's the replacement surface).
+- [ ] Toggling notif_group_session_looking_forward off there still causes
+      the jtd-worker to block that source type at send time (same behavior
+      verified in the unify-notif-rules bundle).
+
+═══════════════════════════════════════════════════
