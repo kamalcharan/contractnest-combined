@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+📦 fix-integration-toggle-route
+═══════════════════════════════════════════════════
+
+WHY
+───
+Diagnosed while investigating BBB's "ContractNest WhatsApp (Built-in)"
+toggle not working. The UI has always called
+  PUT /api/integrations/{id}/status
+but the API had the route mounted at
+  PUT /api/integrations/status/{id}
+so every click 404'd silently. This is why BBB's WhatsApp stayed at
+n_jtd_tenant_config.channels_enabled.whatsapp = false since 2026-07-21
+even though the toggle was visible and clickable.
+
+Live fix already applied to BBB: called toggle_integration_status RPC
+directly for both is_live rows; BBB's whatsapp channel is now = true.
+This bundle fixes the route so future toggles land for every tenant.
+
+FILE CHANGED
+────────────
+  - contractnest-api/src/routes/integrationRoutes.ts
+      Route path corrected to /integrations/:id/status (matches UI +
+      the sibling /service-catalog/services/:id/status convention).
+
+═══════════════════════════════════════════════════
+💻 COPY + TEST
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\fix-integration-toggle-route\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Restart API
+cd contractnest-api && npm run dev
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Sign in as BBB (or any tenant) and go to Settings → Integrations.
+- [ ] "ContractNest WhatsApp (Built-in)" shows the toggle switch.
+- [ ] Toggle OFF → API returns 200 (Network tab). Refresh: state persists.
+- [ ] SELECT channels_enabled FROM n_jtd_tenant_config
+      WHERE tenant_id = 'dd194710-...' → whatsapp=false on both rows.
+- [ ] Toggle ON → same, whatsapp=true.
+- [ ] Send an attendance-ack / payment-thankyou → JTD row status_code = 'sent'.
+═══════════════════════════════════════════════════
