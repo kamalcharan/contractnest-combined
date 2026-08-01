@@ -1,0 +1,127 @@
+═══════════════════════════════════════════════════
+📦 unify-notif-rules — Phase 1 (partial)
+═══════════════════════════════════════════════════
+
+WHAT THIS BUNDLE DOES
+─────────────────────
+Collapses per-tenant notification-type toggles onto the existing VaNi
+rules system (t_vani_rules / m_vani_rule_templates) instead of the
+parallel n_jtd_tenant_source_config table. Tenants now see and control
+message-type toggles from Settings → Automation Rules → Notifications.
+
+APPLIED-LIVE STATUS (already run on Supabase project uwyqhzotluikawcboldr)
+──────────────────────────────────────────────────────────────────────────
+  ✅ Migration 022 applied (notif_* rule templates seeded, including the
+     5 group-session templates from Sprint 2, and the 3 scalar-array
+     reminder-schedule rules).
+  ✅ jtd-worker deployed as version 29 (per-message-type gate now reads
+     vani_rule_enabled(tenant, 'notif_' || source_type_code) instead of
+     n_jtd_tenant_source_config).
+  ⏸️  UI (Automation Rules extension) NOT deployed to prod — that's what
+     you're testing locally with this bundle.
+
+FILES CHANGED
+─────────────
+Modified:
+  - contractnest-edge/supabase/functions/jtd-worker/index.ts
+      Third gate rewired to vani_rule_enabled RPC. Fails open on RPC
+      error (logged) so a rules-lookup outage never silently stops sends.
+  - contractnest-ui/src/hooks/queries/useVaniDeskQueries.ts
+      VaniRule types widened: config values are now number | number[].
+      Existing scalar callers still compile.
+  - contractnest-ui/src/pages/settings/automation-rules/index.tsx
+      Adds Notifications domain with Bell icon. Renders array-value
+      rules with a comma-separated text input; toggle-only rules show
+      just the on/off toggle in edit mode.
+
+New:
+  - contractnest-edge/supabase/migrations/operations-loop/022_vani_notification_rules.sql
+      Idempotent seed of notif_* rules in m_vani_rule_templates.
+      Already applied live — kept in the repo so a fresh local supabase
+      db reset picks it up.
+
+PRODUCTION CHECKLIST
+────────────────────
+  ✅ Transaction Management: N/A for read/toggle flows; RPC handles its own writes.
+  ✅ Race Condition Handling: existing update_vani_rule expected_version gate.
+  ✅ Error Handling: worker fails open on rules RPC error; UI shows existing vaniToast on 409/403.
+  ✅ Toasts: reused vaniToast from useUpdateVaniRule (unchanged).
+  ✅ Loaders: reused existing LoadingSpinner + Loader2 in the page (unchanged).
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\unify-notif-rules\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\unify-notif-rules\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+# UI only — no API changes in this bundle
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+# Sign in as a BBB (or any live) tenant with a VaNi trial/subscription.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Navigate: Settings → Configure → VaNi → Automation Rules
+
+  Read-mode:
+  - [ ] "Notifications" section appears below Services and Finance, with a Bell icon.
+  - [ ] All notif_* rules are listed (group_session_looking_forward,
+        no_show, before_days, attendance_ack, payment_thankyou, etc.),
+        each showing "On" (default) and "default" chips.
+  - [ ] The 3 scalar-array rules show comma-separated values as chips
+        (e.g. "Days before: 2, 1", "Reminder days before: 7, 3, 1",
+        "Days after no-show: 2, 4").
+  - [ ] The toggle-only rules (attendance_ack, payment_thankyou) show
+        no config chips — just the Edit button.
+
+  Edit-mode (VaNi entitlement required):
+  - [ ] Click Edit on a toggle-only rule → only the "Active" toggle shows.
+        Flip off, Save → rule now shows "Off" + "customized".
+  - [ ] Trigger a message of that type (group session payment thank-you,
+        etc.) — jtd-worker should block it. Check n_jtd row's
+        status_code = 'failed' with error_message referencing the source
+        type disabled. (Or watch supabase edge logs for the "blocked"
+        line.)
+  - [ ] Turn the rule back on → next trigger sends normally.
+
+  Edit-mode array field:
+  - [ ] Click Edit on notif_group_session_looking_forward → text input
+        pre-filled "2, 1".
+  - [ ] Change to "3, 2, 1", Save → chip now reads "Days before: 3, 2, 1"
+        and "customized" appears.
+  - [ ] Reset to default → chip reads "2, 1" and "default" restored.
+
+  Aligned-line check (free tenant):
+  - [ ] Sign in as a tenant with NO VaNi entitlement → Notifications section
+        renders read-only chips + "Edit" button that navigates to
+        /vani/landing (same as Services/Finance today).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with cleanup"
+  → "Issue found: [describe problem]"
+
+STILL OPEN (not in this bundle):
+  - #17: Decide whether to hard-delete the parallel MessageTypeSettings
+         system (UI page + API routes + jtd-tenant-settings edge fn) or
+         soft-deprecate with a "moved to Automation Rules" banner.
+         Waiting on your call.
+
+═══════════════════════════════════════════════════
