@@ -6,7 +6,8 @@ import { API_ENDPOINTS } from '../services/serviceURLs';
 import { vaniToast } from '../components/common/toast';
 import { setUserContext } from '../utils/sentry';
 import { sessionService } from '../services/sessionService';
-import { isRevenueSideReady } from '../utils/perspective/sideReadiness';
+import { isRevenueSideReady, isExpenseSideReady } from '../utils/perspective/sideReadiness';
+import { setPendingSideActivation } from '../utils/perspective/sideActivation';
 
 // Constants for storage keys
 const STORAGE_KEYS = {
@@ -911,30 +912,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ── Perspective toggle (Revenue/Expense) ──────────────────────────
   //
-  // GATED SWITCH. Switching into Revenue is only offered as a plain
-  // confirm when the Revenue side actually has data behind it (≥1 catalog
-  // block). An expense-onboarded tenant has none — the old blind switch
-  // dropped them into empty catalog/contract screens with no explanation.
-  // Now the modal opens in 'checking', resolves to 'ready' (normal confirm)
-  // or 'activation_needed' (empty-state that offers to run the lite
-  // onboarding for the Revenue side). Expense targets are always 'ready'
-  // for now — the mirror gate ships with the buyer-side batch.
+  // GATED SWITCH, both directions. Switching is only offered as a plain
+  // confirm when the target side actually has data behind it:
+  //   → Revenue: ≥1 catalog block (an expense-onboarded tenant has none)
+  //   → Expense: ≥1 OWN registry asset (a revenue-onboarded tenant has none;
+  //     their CLIENTS' assets don't count — see sideReadiness.ts)
+  // The modal opens in 'checking', resolves to 'ready' (normal confirm) or
+  // 'activation_needed' (empty-state offering to run the lite onboarding
+  // for the missing side).
   const requestPerspectiveSwitch = (target: Perspective) => {
     const seq = ++perspectiveCheckSeqRef.current;
     setPendingPerspective(target);
+    setPendingPerspectiveReadiness('checking');
+    setShowPerspectiveSwitchModal(true);
 
-    if (target === 'revenue') {
-      setPendingPerspectiveReadiness('checking');
-      setShowPerspectiveSwitchModal(true);
-      isRevenueSideReady(currentTenant?.id || '', isLive).then((ready) => {
-        // A newer request/cancel/confirm supersedes this probe's result.
-        if (perspectiveCheckSeqRef.current !== seq) return;
-        setPendingPerspectiveReadiness(ready ? 'ready' : 'activation_needed');
-      });
-    } else {
-      setPendingPerspectiveReadiness('ready');
-      setShowPerspectiveSwitchModal(true);
-    }
+    const probe = target === 'revenue' ? isRevenueSideReady : isExpenseSideReady;
+    probe(currentTenant?.id || '', isLive).then((ready) => {
+      // A newer request/cancel/confirm supersedes this probe's result.
+      if (perspectiveCheckSeqRef.current !== seq) return;
+      setPendingPerspectiveReadiness(ready ? 'ready' : 'activation_needed');
+    });
   };
 
   const togglePerspective = () => {
@@ -981,15 +978,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Activate the side behind the pending (unready) perspective: hand off to
   // the lite onboarding flow, which is idempotent end to end — the seeder
   // skips whatever already exists, so re-entering it as an existing tenant
-  // only ADDS the missing side. BusinessPersonaStep reads activateSide from
-  // route state and pre-selects "Both" so the tenant keeps their existing
-  // side. Perspective is NOT switched here — after activation the flow's
-  // final hard reload re-derives it from the updated persona.
+  // only ADDS the missing side. The sessionStorage hand-off makes that run
+  // side-aware: /start/serve asks the target side's question and the seeder
+  // runs ONLY the target leg (see utils/perspective/sideActivation.ts).
+  // BusinessPersonaStep pre-selects "Both" so the tenant keeps their
+  // existing side. Perspective is NOT switched here — after activation the
+  // flow's final hard reload re-derives it from the updated persona.
   const activatePendingPerspective = () => {
+    const side = pendingPerspective;
+    if (side !== 'revenue' && side !== 'expense') return;
     perspectiveCheckSeqRef.current++;
     setShowPerspectiveSwitchModal(false);
     setPendingPerspective(null);
-    navigate('/start/business', { state: { activateSide: 'revenue' } });
+    setPendingSideActivation(side);
+    navigate('/start/business', { state: { activateSide: side } });
   };
 
   // Update user preferences
