@@ -1,0 +1,57 @@
+═══════════════════════════════════════════════════
+📦 msg91-named-params — WhatsApp handler supports named template vars
+═══════════════════════════════════════════════════
+
+WHY
+───
+BBB's group_session_attendance_ack template registered on MSG91 uses
+NAMED placeholders ({{member_name}}, {{session_name}}, {{occurrence_date}}).
+Meta added named parameters in 2024; BBB's WABA namespace enforces named
+ONLY — MSG91 dashboard actively rejects {{1}}, {{2}} for this template.
+
+Our worker was only sending POSITIONAL components (body_1, body_2). MSG91
+accepted the request (returned success + request_id, JTD status_code went
+to 'sent'), but WhatsApp itself rejected on delivery: "Parameter name is
+missing or empty". Message never landed on the tester's phone despite
+looking successful in the JTD table.
+
+FIX
+───
+whatsapp.ts now supports both styles per template:
+  - user_invitation, contract_signoff → positional (unchanged, still works)
+  - group_session_attendance_ack, group_session_payment_thankyou → named
+
+Named format matches MSG91's exact spec:
+  components: {
+    "body_member_name": { "type": "text", "value": "...", "parameter_name": "member_name" },
+    ...
+  }
+
+APPLIED-LIVE STATUS
+───────────────────
+  ✅ jtd-worker deployed as version 30 (Supabase project uwyqhzotluikawcboldr).
+  ✅ Existing user_invitation / contract_signoff pathway unchanged.
+
+FILE CHANGED
+────────────
+  - contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+
+═══════════════════════════════════════════════════
+💻 COPY + TEST
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\msg91-named-params\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+(No dev-server restart needed — the worker runs on Supabase, not locally.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Sign in as LIVE BBB, check in as a member with your own phone number.
+- [ ] Wait ~15 min for jtd-worker cron OR trigger manually if you have a way.
+- [ ] Check n_jtd row status = 'sent'.
+- [ ] WhatsApp message actually arrives on your phone this time.
+- [ ] Confirm text renders correctly: "Hi <name>, your attendance for
+      <session> on <date> has been recorded. Thank you!"
+═══════════════════════════════════════════════════
