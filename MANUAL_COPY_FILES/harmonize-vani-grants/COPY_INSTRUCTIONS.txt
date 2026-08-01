@@ -1,0 +1,73 @@
+harmonize-vani-grants - Migration 026 (already applied live)
+
+WHY THIS IS THE REAL FIX
+------------------------
+The Railway "Automation rules could not be loaded" error was caused by
+a pre-existing deviation in the vani_* function grants, NOT the code
+we wrote today, and NOT a missing env var on Railway.
+
+The codebase convention for RPC grants is:
+  GRANT EXECUTE ON FUNCTION ... TO PUBLIC, anon, authenticated, service_role
+
+Every other RPC the API calls follows this pattern (get_tenant_cadence_settings,
+upsert_tenant_cadence_settings, materialize_tenant_resources, icp_similar_tenants,
+insert_audit_logs_batch, seed_sample_contacts, and dozens more). Safety
+is enforced by SECURITY DEFINER + explicit p_tenant_id parameter inside
+the function body, not at the grant boundary.
+
+The four pre-existing vani_* functions were the outliers - granted only
+to postgres + service_role. This worked in dev (where SUPABASE_SERVICE_ROLE_KEY
+env var was set, masking the deviation for a year) but failed on Railway
+(which only has SUPABASE_KEY = anon, matching every other API service).
+
+I compounded the deviation earlier today in migration 025 by "hardening"
+vani_rule_enabled to the same wrong precedent instead of the codebase's
+actual convention. This migration undoes 025 and brings all five vani_*
+functions in line.
+
+Applied live 2026-08-01. Verified all five now grant to
+PUBLIC + anon + authenticated + postgres + service_role.
+
+FILES
+-----
+  - contractnest-edge/supabase/migrations/operations-loop/026_harmonize_vani_function_grants.sql (NEW)
+
+Note: leave migration 025 in the repo as-is - it's already committed
+and applied. 026 supersedes its REVOKE cleanly (via the new GRANT).
+
+COPY
+----
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\harmonize-vani-grants\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TEST
+----
+1. Reload Automation Rules on Railway - should render 28 rules across
+   Services / Finance / Notifications domains.
+2. Toggle a rule - the update should succeed (update_vani_rule was in
+   the same fix batch).
+3. Both without touching Railway env vars.
+
+PHASE 2 - COMMIT (only after copy is in place)
+-----------------------------------------------
+cd contractnest-edge
+git add supabase/migrations/operations-loop/026_harmonize_vani_function_grants.sql
+git commit -m "fix: harmonize vani_* function grants with codebase convention
+
+Every RPC the API calls is granted to PUBLIC/anon/authenticated/service_role
+with SECURITY DEFINER + p_tenant_id doing the safety enforcement. The four
+pre-existing vani_* functions plus the vani_rule_enabled introduced today
+were the outliers, granted only to postgres/service_role. Broke on Railway
+where SUPABASE_KEY is the anon key (matches every other API service).
+
+Grants all five functions to match the codebase convention. Local dev
+happened to work because dev had SUPABASE_SERVICE_ROLE_KEY set, masking
+this for the year the vani_* functions have existed.
+
+Applied live 2026-08-01."
+git push origin feature/group-session-jtd-notifications
+
+cd ..
+git add contractnest-edge
+git commit -m "chore: bump contractnest-edge with migration 026"
+git push origin claude/init-submodules-imgxp5
