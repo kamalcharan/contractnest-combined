@@ -75,3 +75,17 @@ NOTES / DECISIONS
     ee/ef/ea/eb/ec…  contacts, f<seller>…<nn> contracts.
   N: 1 Trinity, 2 Value, 3 Freedom, 4 Hygene, 5 Pulse, 6 Complex, 7 Gold.
 ═══════════════════════════════════════════════════════════════════
+
+POST-SETUP FIX (2026-08-02) — 09_fix_profile_type_perspective.sql
+───────────────────────────────────────────────────────────────────
+Symptom: buyer tenants (Pulse/Complex/Gold) landed on the Revenue
+side with no vendor contracts visible; switching sides prompted
+onboarding/activation.
+Root cause: the tenant-profile edge function serves API field
+business_type_id from the legacy profile_type COLUMN (not the
+business_type_id column), and TenantContext only calls
+initializePerspective() when that field is truthy. Scripts 01/07
+left profile_type NULL.
+Fix: profile_type := persona for all 7 demo tenants (mirrors what
+real onboarding POST writes). Applied live 2026-08-02. Users must
+re-login (or wait out the 30s edge profile cache) to see it.
