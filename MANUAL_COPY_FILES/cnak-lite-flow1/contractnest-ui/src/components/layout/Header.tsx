@@ -49,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const [themeMenuOpen, setThemeMenuOpen] = useState<boolean>(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState<boolean>(false);
   const { isDarkMode, toggleDarkMode, currentThemeId, setTheme, currentTheme } = useTheme();
-  const { user, currentTenant, tenants, logout, isLive, toggleEnvironment, perspective, setPerspectiveDirectly, updateUserPreferences, liteTier } = useAuth();
+  const { user, currentTenant, tenants, logout, isLive, toggleEnvironment, perspective, setPerspectiveDirectly, updateUserPreferences } = useAuth();
 
   // Get theme colors
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -244,10 +244,8 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <TenantSwitcher showFullName={true} className="mr-4" />
           )}
 
-          {/* Perspective Switcher (Revenue / Expense) — segmented pill.
-              Hidden for lite tenants: their tier fixes the side (cnak→expense,
-              rfq→revenue) and the other side is empty by definition. */}
-          {currentTenant && !liteTier && (
+          {/* Perspective Switcher (Revenue / Expense) — segmented pill */}
+          {currentTenant && (
             <div className={`inline-flex rounded-lg p-0.5 gap-0.5 ${
               isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
             }`}>

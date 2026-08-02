@@ -95,10 +95,13 @@ registry intelligence, claim entry points, walkover
      default and won → buyer stranded on Revenue with zero contracts.
    - initializePerspective now returns early while liteTierRef is set
      (covers the race in both directions).
-   - Header.tsx: Revenue/Expense pill HIDDEN for lite tenants — the tier
-     fixes the side; the other side is empty by definition. Pill returns
-     on upgrade. (Persona note: onboarding_type='cnak' set at signup IS
-     the captured buyer persona — no extra capture step needed.)
+   - Header.tsx: UNCHANGED (owner call 2026-08-02: toggle stays VISIBLE
+     for lite tenants — only the DEFAULT side changes; tapping the other
+     side goes through the existing gated-switch/activation modal, which
+     doubles as cross-sell). File is still in the batch so a re-copy
+     overwrites any earlier copy that had the pill hidden.
+     (Persona note: onboarding_type='cnak' set at signup IS the captured
+     buyer persona — no extra capture step needed.)
 2. REGISTRY INTELLIGENCE (LiteRegistryIntel, buyers only):
    - Reads the claimed contract's equipment_details (seller-entered
      coverage), diffs against the buyer's own registry (name/serial
