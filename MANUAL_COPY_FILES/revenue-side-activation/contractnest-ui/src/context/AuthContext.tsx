@@ -749,6 +749,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Initialize auth state from storage
   useEffect(() => {
     const initAuth = async () => {
+      // Heal the register-flow store mismatch for sessions created before
+      // the register() fix: tokens were parked in sessionStorage while
+      // remember_me=true points every read at localStorage — the reload
+      // then found nothing and logged the brand-new tenant out. If the
+      // flag says localStorage but only sessionStorage has a token, move
+      // the whole auth set up before anything reads it.
+      if (
+        localStorage.getItem(STORAGE_KEYS.REMEMBER_ME) === 'true' &&
+        !localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) &&
+        sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
+      ) {
+        console.log('[AuthContext] Reconciling auth storage (session → local, remember_me=true)');
+        [
+          STORAGE_KEYS.AUTH_TOKEN,
+          STORAGE_KEYS.REFRESH_TOKEN,
+          STORAGE_KEYS.TENANT_ID,
+          STORAGE_KEYS.CURRENT_TENANT,
+          STORAGE_KEYS.USER_ID,
+          STORAGE_KEYS.USER_DATA,
+          STORAGE_KEYS.IS_ADMIN,
+        ].forEach((key) => {
+          const value = sessionStorage.getItem(key);
+          if (value !== null && localStorage.getItem(key) === null) {
+            localStorage.setItem(key, value);
+          }
+          sessionStorage.removeItem(key);
+        });
+      }
+
       const token = storage.getAuthToken();
       if (token) {
         try {
@@ -1187,11 +1216,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       storage.setRememberMe(true);
-      storage.setAuthToken(data.access_token, data.refresh_token);
+      setRememberMe(true);
+
+      // REGISTER-FLOW STORE MISMATCH FIX. The storage helper picks its store
+      // from THIS RENDER's rememberMe state — still false during a fresh
+      // registration — so storage.setAuthToken() would park the tokens in
+      // sessionStorage while the remember_me=true flag written above makes
+      // every RELOAD read localStorage. Result: the first hard navigation
+      // after signup (PlanStep → cockpit, or the buyer's RFQ hop) found no
+      // token and dumped the brand-new tenant on /login — the "system logged
+      // off after creating contract / opening the RFQ builder" bug. SPA
+      // navigation never noticed because the request interceptor checks both
+      // stores. Write the register session to localStorage DIRECTLY, matching
+      // the flag; initAuth also heals pre-fix sessions (see reconciliation).
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      }
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
 
       setUser(data.user);
-      storage.setUserData(data.user);
-      storage.setUserId(data.user.id);
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(data.user));
+      localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id);
       setRegistrationStatus('complete');
 
       const activeSessionKey = `active_session_${data.user.id}`;
@@ -1217,7 +1263,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.tenant) {
         setTenants([data.tenant]);
         setCurrentTenantState(data.tenant);
-        storage.setCurrentTenant(data.tenant);
+        // Same store-mismatch fix as the tokens above: write directly to
+        // localStorage (remember_me was just set true) instead of the
+        // render-stale storage helper.
+        localStorage.setItem(STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(data.tenant));
+        localStorage.setItem(STORAGE_KEYS.TENANT_ID, data.tenant.id);
+        localStorage.setItem(STORAGE_KEYS.IS_ADMIN, String(data.tenant.is_admin || false));
+        api.defaults.headers.common['x-tenant-id'] = data.tenant.id;
       }
 
       setIsAuthenticated(true);
