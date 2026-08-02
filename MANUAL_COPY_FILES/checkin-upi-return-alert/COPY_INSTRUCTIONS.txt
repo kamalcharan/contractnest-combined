@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: checkin-upi-return-alert
+Pre-departure "come back" alert on the check-in UPI pay flow
+═══════════════════════════════════════════════════════════════════
+
+WHAT
+----
+Owner-flagged risk (2026-08-02): a member taps "Open UPI app", GPay
+swallows them, and they never return to enter the UPI reference — the
+payment happens but the check-in has nothing to reconcile. The
+return-nudge banner only fires IF they come back; nothing warned them
+BEFORE leaving.
+
+Now, tapping "Open UPI app" first raises a bottom-sheet alert:
+  Pay, then come back here 👋
+  1. Your UPI ID is copied — pay ₹X in your UPI app ("Pay to UPI ID")
+  2. Note the UPI reference number from the payment screen
+  3. Return to this page and enter it — your check-in is not recorded
+     until you do
+  [Got it — open UPI app]   [Cancel]
+
+Only the confirm button copies the VPA, marks the attempt and fires the
+bare upi:// launch (same behavior as before, just gated). Cancel/tap-
+outside backs out cleanly. Existing "Back from paying?" return nudge is
+untouched — the two bracket the round trip.
+
+FILES
+-----
+contractnest-ui/
+  src/pages/checkin/SessionCheckinPage.tsx   (based on current main —
+    identical on origin/main 3f7d077; no other changes in this batch)
+
+COPY
+----
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-return-alert\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+# UI restart + Ctrl+F5. No API/edge/DB change.
+
+TEST
+----
+- [ ] Pay step → "Open UPI app" → alert appears (does NOT leave yet)
+- [ ] Cancel / tap outside → stays, nothing marked attempted
+- [ ] "Got it" → VPA copied, UPI app opens, reference field appears on return
+- [ ] Return to tab without entering reference → "Back from paying?" nudge still fires
