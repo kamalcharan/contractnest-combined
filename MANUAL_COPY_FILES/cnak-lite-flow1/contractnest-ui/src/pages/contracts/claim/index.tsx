@@ -458,6 +458,27 @@ const ClaimContractPage: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Registry nudge: the dashboard's registry-intel card
+                          lists the assets this contract covers and adds them
+                          to the buyer's registry in one tap. */}
+                      {!claimResult.already_claimed && (
+                        <button
+                          onClick={() => navigate('/ops/cockpit')}
+                          className="w-full mb-3 px-4 py-3 rounded-lg text-left text-sm transition-all hover:opacity-90"
+                          style={{
+                            backgroundColor: colors.brand.primary + '10',
+                            border: `1px dashed ${colors.brand.primary}66`,
+                            color: colors.utility.primaryText
+                          }}
+                        >
+                          <span className="font-semibold" style={{ color: colors.brand.primary }}>
+                            Next:
+                          </span>{' '}
+                          this contract lists the equipment it covers — add them to your
+                          registry from your dashboard in one tap.
+                        </button>
+                      )}
+
                       <div className="flex gap-3">
                         <button
                           onClick={handleViewContract}

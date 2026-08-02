@@ -511,29 +511,33 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
         <>
           <div className="p-2 flex-1 overflow-y-auto">
             <nav className="py-4">
-              {!collapsed && (
-                <div
-                  className="px-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: colors.utility.secondaryText }}
-                >
-                  Your workspace
-                </div>
-              )}
-              {LITE_MENUS[liteTier].workspace.map((entry) => (
-                <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} />
-              ))}
+              <div data-walkover="nav-workspace">
+                {!collapsed && (
+                  <div
+                    className="px-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Your workspace
+                  </div>
+                )}
+                {LITE_MENUS[liteTier].workspace.map((entry) => (
+                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} />
+                ))}
+              </div>
 
-              {!collapsed && (
-                <div
-                  className="px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: colors.utility.secondaryText }}
-                >
-                  Grow with ContractNest
-                </div>
-              )}
-              {LITE_MENUS[liteTier].grow.map((entry) => (
-                <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} restricted />
-              ))}
+              <div data-walkover="nav-grow">
+                {!collapsed && (
+                  <div
+                    className="px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Grow with ContractNest
+                  </div>
+                )}
+                {LITE_MENUS[liteTier].grow.map((entry) => (
+                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} restricted />
+                ))}
+              </div>
 
               <div className="mt-2">
                 <LiteNavItem
@@ -548,6 +552,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
           {!collapsed && (
             <div className="p-3">
               <div
+                data-walkover="trial"
                 className="rounded-xl p-3 text-center"
                 style={{
                   border: `1.5px dashed ${colors.brand.primary}66`,

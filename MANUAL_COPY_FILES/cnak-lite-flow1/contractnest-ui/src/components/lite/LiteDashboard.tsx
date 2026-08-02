@@ -11,14 +11,17 @@
 // Read-only + existing hooks only (useContracts / useContractEvents), so it
 // works with exactly the data a lite tenant has: the claimed contract(s).
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, CalendarClock, Wallet, Layers, ArrowRight } from 'lucide-react';
+import { FileText, CalendarClock, Wallet, Layers, ArrowRight, KeyRound, HelpCircle } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { useContracts } from '../../hooks/queries/useContractQueries';
 import { useContractEvents } from '../../hooks/queries/useContractEventQueries';
 import { VaNiLoader } from '../../components/common/loaders';
 import { LiteFlavor, LITE_TRIAL } from '../../utils/constants/liteAccess';
+import LiteRegistryIntel from './LiteRegistryIntel';
+import LiteWalkover, { resetWalkover } from './LiteWalkover';
 import type { ContractEvent } from '../../types/contractEvents';
 
 interface LiteDashboardProps {
@@ -38,8 +41,12 @@ const fmtMoney = (n: number, currency?: string | null) =>
 const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
+  const { currentTenant } = useAuth();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const brand = colors.brand.primary;
+  // Bumping this replays the walkover (the component also auto-runs once
+  // per tenant on first visit).
+  const [walkoverRun, setWalkoverRun] = useState(0);
 
   const { data: contractsData, isLoading: contractsLoading } = useContracts({ page: 1, per_page: 25 });
   const { data: eventsData, isLoading: eventsLoading } = useContractEvents({
@@ -123,7 +130,7 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
   return (
     <div className="p-5 flex flex-col gap-4 max-w-6xl mx-auto">
       {/* ── Stat row ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div data-walkover="stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map((s, i) => {
           const Icon = s.icon;
           return (
@@ -155,10 +162,41 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
         })}
       </div>
 
+      {/* ── Registry intelligence (buyers): assets the claimed contract
+             covers that aren't in the buyer's own registry yet ─────── */}
+      {isBuyer && contracts.length > 0 && (
+        <LiteRegistryIntel contractIds={contracts.map((c: any) => c.id)} />
+      )}
+
+      {/* ── Claim another contract — the core lite-buyer loop ─────── */}
+      {isBuyer && (
+        <button
+          data-walkover="claim"
+          onClick={() => navigate('/contracts/claim')}
+          className="flex items-center gap-2.5 rounded-xl px-4 py-3 text-left transition-colors hover:opacity-90"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            border: `1px dashed ${brand}66`
+          }}
+        >
+          <KeyRound size={15} className="flex-none" style={{ color: brand }} />
+          <span className="text-[13px] font-semibold" style={{ color: colors.utility.primaryText }}>
+            Got another contract code from a vendor?
+          </span>
+          <span
+            className="ml-auto inline-flex items-center gap-1 text-[11px] font-bold"
+            style={{ color: brand }}
+          >
+            Claim it <ArrowRight size={11} />
+          </span>
+        </button>
+      )}
+
       {/* ── What needs you + hero cross-sell ─────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr] gap-4 items-start">
         {/* What needs you */}
         <div
+          data-walkover="needs-you"
           className="rounded-xl overflow-hidden"
           style={{
             backgroundColor: colors.utility.secondaryBackground,
@@ -269,6 +307,21 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
           </span>
         </div>
       </div>
+
+      {/* ── Walkover: auto-runs once per tenant, replayable ────────── */}
+      <button
+        onClick={() => {
+          resetWalkover(currentTenant?.id);
+          setWalkoverRun((n) => n + 1);
+        }}
+        className="self-end inline-flex items-center gap-1.5 text-[11px] font-semibold"
+        style={{ color: colors.utility.secondaryText }}
+      >
+        <HelpCircle size={12} /> Show me around
+      </button>
+      {currentTenant?.id && (
+        <LiteWalkover flavor={flavor} tenantId={currentTenant.id} runToken={walkoverRun} />
+      )}
     </div>
   );
 };

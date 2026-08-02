@@ -235,10 +235,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const applyLiteTier = (tier: LiteTier) => {
     liteTierRef.current = tier;
     setLiteTier(tier);
-    // A CNAK buyer's world is vendor contracts — land them on the Expense
-    // side by default (only if nothing else initialized perspective yet).
-    if (tier === 'cnak' && !perspectiveInitialized) {
+    // The lite tier IS the persona: a CNAK buyer's world is vendor contracts
+    // (Expense), an RFQ seller's is client contracts (Revenue). Force the
+    // matching side UNCONDITIONALLY — a lite tenant that started normal
+    // onboarding before converting may have a saved business profile whose
+    // initializePerspective(business_type) races this call and would
+    // otherwise strand a buyer on the Revenue side with zero contracts.
+    if (tier === 'cnak') {
       setPerspective('expense');
+      setPerspectiveInitialized(true);
+    } else if (tier === 'rfq') {
+      setPerspective('revenue');
       setPerspectiveInitialized(true);
     }
   };
@@ -985,6 +992,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ── Initialize perspective from tenant profile (no modal, called once) ──
   const initializePerspective = (businessTypeId: string) => {
     if (perspectiveInitialized) return;
+    // Lite tenants: the tier owns the perspective (cnak→expense, rfq→revenue,
+    // set in applyLiteTier). A leftover business profile from an abandoned
+    // normal-onboarding run must not override it — checked via ref because
+    // this can race applyLiteTier within the same render cycle.
+    if (liteTierRef.current) return;
     // 'buyer' → expense view. 'seller' or 'both' → revenue view.
     // 'both' defaults to revenue: seller side is the major persona entry point.
     const defaultPerspective: Perspective = businessTypeId.toLowerCase() === 'buyer' ? 'expense' : 'revenue';

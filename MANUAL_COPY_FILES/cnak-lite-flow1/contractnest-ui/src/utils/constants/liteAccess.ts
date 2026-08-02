@@ -242,6 +242,7 @@ export const LITE_MENUS: Record<LiteFlavor, LiteMenuConfig> = {
     workspace: [
       { id: 'lite-dashboard', label: 'Dashboard', icon: 'Gauge', path: '/ops/cockpit' },
       { id: 'lite-contracts', label: 'Contracts', icon: 'FileText', path: '/contracts' },
+      { id: 'lite-claim', label: 'Claim a Contract', icon: 'KeyRound', path: '/contracts/claim' },
       { id: 'lite-service-events', label: 'Service Events', icon: 'CalendarClock', path: '/ops/services' },
       { id: 'lite-contacts', label: 'Contacts', icon: 'Building2', path: '/contacts' },
       { id: 'lite-equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
@@ -384,4 +385,86 @@ export const LITE_TRIAL = {
   // Where every trial CTA goes: the express (lite) onboarding. Completing it
   // flips is_completed=true, which clears the tier — that IS the upgrade.
   route: '/start'
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Walkover (first-visit guided tour) — steps per flavor. Each step targets
+// a [data-walkover="<target>"] element; LiteWalkover skips any step whose
+// target isn't in the DOM (collapsed sidebar, empty registry card, etc.),
+// so this list is the superset. Same copy rule as everything lite: talk
+// about THEIR world, not our features.
+// ─────────────────────────────────────────────────────────────────────────
+export interface LiteWalkoverStep {
+  target: string; // data-walkover attribute value
+  title: string;
+  body: string;
+}
+
+export const LITE_WALKOVER_VERSION = 1; // bump to re-show the tour after big changes
+
+export const LITE_WALKOVER: Record<LiteFlavor, LiteWalkoverStep[]> = {
+  cnak: [
+    {
+      target: 'stats',
+      title: 'Your contract, at a glance',
+      body: 'Everything from the contract you claimed — next service visit, dues this month, total value — stays current here without you chasing anyone.'
+    },
+    {
+      target: 'needs-you',
+      title: 'What needs you',
+      body: 'Upcoming service visits and payments from your contracts, in date order. When something is due or overdue, it shows up here first.'
+    },
+    {
+      target: 'registry',
+      title: 'The assets behind this contract',
+      body: 'Your vendor listed the equipment this contract covers. Add them to your own registry in one tap — service history and expiry tracking start from there.'
+    },
+    {
+      target: 'nav-workspace',
+      title: 'Your workspace',
+      body: 'Contracts, service events, contacts and your registries — everything unlocked for you lives here.'
+    },
+    {
+      target: 'claim',
+      title: 'Got another contract code?',
+      body: 'Any vendor on ContractNest can hand you a CNAK code. Claim it here and it joins this same dashboard.'
+    },
+    {
+      target: 'nav-grow',
+      title: 'When you want more',
+      body: 'The ✦ items — vendor RFQs, payables, appointments — show you what they solve before you switch anything on.'
+    },
+    {
+      target: 'trial',
+      title: 'Your first 3 contracts are free',
+      body: 'When you are ready to run your own contracts, a ~6-minute setup with VaNi opens the full workspace. No card needed.'
+    }
+  ],
+  rfq: [
+    {
+      target: 'stats',
+      title: 'Your work, at a glance',
+      body: 'The contracts you have won — next visits, billing due, total value — tracked here without a notebook.'
+    },
+    {
+      target: 'needs-you',
+      title: 'What needs you',
+      body: 'Service visits and payments from your contracts, in date order. Due or overdue — it surfaces here first.'
+    },
+    {
+      target: 'nav-workspace',
+      title: 'Your workspace',
+      body: 'Your contracts and contacts live here — everything already unlocked for you.'
+    },
+    {
+      target: 'nav-grow',
+      title: 'When you want more',
+      body: 'The ✦ items — finance, catalog, registries — show you what they solve before you switch anything on.'
+    },
+    {
+      target: 'trial',
+      title: 'Your first 3 contracts are free',
+      body: 'A ~6-minute setup with VaNi opens the full workspace. No card needed.'
+    }
+  ]
 };

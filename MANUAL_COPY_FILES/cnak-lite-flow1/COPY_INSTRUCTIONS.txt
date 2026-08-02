@@ -84,6 +84,56 @@ contractnest-ui/
   src/components/lite/LiteDashboard.tsx          (NEW)
   src/pages/ops/cockpit/index.tsx                (wrapper: lite → LiteDashboard)
 
+PHASE E ADDITIONS (2026-08-02, same batch folder) — perspective fix,
+registry intelligence, claim entry points, walkover
+--------------------------------------------------------------------
+1. PERSPECTIVE (the "buyer lands on Revenue" bug):
+   - AuthContext.applyLiteTier now forces the side UNCONDITIONALLY
+     (cnak→expense, rfq→revenue). Root cause: a lite tenant that had
+     started normal onboarding before converting has a saved business
+     profile whose initializePerspective(business_type) raced the lite
+     default and won → buyer stranded on Revenue with zero contracts.
+   - initializePerspective now returns early while liteTierRef is set
+     (covers the race in both directions).
+   - Header.tsx: Revenue/Expense pill HIDDEN for lite tenants — the tier
+     fixes the side; the other side is empty by definition. Pill returns
+     on upgrade. (Persona note: onboarding_type='cnak' set at signup IS
+     the captured buyer persona — no extra capture step needed.)
+2. REGISTRY INTELLIGENCE (LiteRegistryIntel, buyers only):
+   - Reads the claimed contract's equipment_details (seller-entered
+     coverage), diffs against the buyer's own registry (name/serial
+     match), and lists what's missing: "covers N assets — K not in your
+     registry yet". Quantity fans out to per-unit rows (#1, #2 …).
+   - One tap creates the asset (ownership self, no contact needed,
+     make/model/serial/condition/warranty carried over) AND links it to
+     the contract via the existing contract-assets endpoint (link
+     failure non-fatal). "Add all" runs sequentially; per-row pending
+     state blocks double-taps. All toasts/invalidations come from the
+     existing registry hooks.
+   - Claim page success now nudges: "Next: add the covered equipment to
+     your registry from your dashboard."
+3. CLAIM ENTRY POINTS (was: URL-only):
+   - LITE_MENUS.cnak gets "Claim a Contract" (→ /contracts/claim).
+   - LiteDashboard gets a dashed "Got another contract code?" row.
+4. WALKOVER (LiteWalkover, both flavors):
+   - Zero-dependency spotlight tour; steps live in liteAccess.ts
+     (LITE_WALKOVER, per flavor) and target [data-walkover] attributes on
+     the dashboard cards + lite sidebar sections + trial bar. Missing
+     targets are skipped automatically.
+   - Auto-runs ONCE per tenant per LITE_WALKOVER_VERSION (localStorage);
+     "Show me around" on the dashboard replays it; Esc/Skip closes.
+
+Additional files (Phase E):
+contractnest-ui/
+  src/components/lite/LiteRegistryIntel.tsx      (NEW — coverage → registry card)
+  src/components/lite/LiteWalkover.tsx           (NEW — spotlight tour)
+  src/components/layout/Header.tsx               (hide perspective pill when lite)
+  src/context/AuthContext.tsx                    (lite owns perspective — both race legs)
+  src/utils/constants/liteAccess.ts              (claim menu entry + LITE_WALKOVER steps)
+  src/components/lite/LiteDashboard.tsx          (registry card + claim row + walkover mount)
+  src/components/layout/Sidebar.tsx              (data-walkover targets on lite nav)
+  src/pages/contracts/claim/index.tsx            (post-claim registry nudge)
+
 WHAT THIS PHASE DOES
 --------------------
 1. SECURE CLAIM (migration 010): claim_contract_by_cnak v2.
