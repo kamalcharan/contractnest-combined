@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════════════════════
+CHANNELS DISABLED BY DEFAULT — audit item #7
+(email, WhatsApp AND SMS off at onboarding; enable via Integrations)
+Branch folder: channels-off-by-default (2026-08-02)
+Submodules affected: contractnest-edge ONLY (1 SQL migration)
+No UI/API changes · NOT applied to live DB · no backfill (tenants
+being wiped EOD per owner decision)
+═══════════════════════════════════════════════════════════════════
+
+WHAT IT FIXES
+─────────────
+• Tenant-creation trigger seeded email+WhatsApp ACTIVE — now all
+  three built-ins (email, WhatsApp, **SMS — previously never seeded
+  at all, so no toggle could even render**) are created DISABLED,
+  both environments. connection_status stays 'Connected' (built-ins
+  need no setup; disabled ≠ disconnected).
+• n_jtd_tenant_config — the table the jtd-worker actually checks
+  before sending — now gets rows at tenant creation (both envs) with
+  every outbound channel OFF (inapp stays true). Previously only
+  1/117 tenants had rows, and the column default said email:true.
+• toggle_integration_status(): learns the SMS mapping; its
+  create-if-missing fallback template becomes all-off (was email:true
+  — toggling WhatsApp could silently side-enable email).
+• Enable path unchanged and already complete: the same RPC syncs
+  t_tenant_integrations.is_active ↔ channels_enabled, both envs.
+
+STEP 1: PULL THE FILE INTO YOUR REPO
+────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\channels-off-by-default\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STEP 2: RUN THE MIGRATION (Supabase SQL editor / supabase db push)
+──────────────────────────────────────────────────────────────────
+contractnest-edge\supabase\migrations\integrations-messaging-visibility\004_channels_disabled_by_default.sql
+
+TESTING CHECKLIST
+─────────────────
+[ ] Fresh tenant signup → Settings → Integrations shows Email,
+    WhatsApp AND SMS built-ins, all toggled OFF
+[ ] DB: select is_active from t_tenant_integrations where tenant_id='<new>'
+    → 6 rows (3 providers × 2 envs), all false
+[ ] DB: select channels_enabled from n_jtd_tenant_config where
+    tenant_id='<new>' → 2 rows, email/whatsapp/sms all false
+[ ] Toggle Email ON in the UI → both t_tenant_integrations rows AND
+    both n_jtd_tenant_config rows flip email:true; toggle off reverses
+[ ] Toggling WhatsApp does NOT change email's state (fallback fix)
+[ ] Contract send in a fresh tenant produces NO outbound email/WhatsApp
+    (jtd-worker blocks on channels_enabled) until toggled on
+
+⏸️ WAITING FOR CONFIRMATION before Phase 2 merge commands.
+═══════════════════════════════════════════════════════════════════
