@@ -64,6 +64,26 @@ contractnest-ui/
   src/components/layout/Sidebar.tsx              (lite branch: 2-section nav + trial bar)
   src/pages/settings/index.tsx                   (✦ TRIAL badges + modal interception)
 
+PHASE D ADDITIONS (2026-08-02, same batch folder) — lite dashboard
+------------------------------------------------------------------
+/ops/cockpit now renders a LiteDashboard for lite tenants (full cockpit
+untouched for everyone else — gated by a wrapper component so hook order
+is preserved per component):
+  1. Stat row: active contracts / next service visit / due this month /
+     total contract value — from the claimed contract(s) via the existing
+     useContracts + useContractEvents hooks, read-only.
+  2. "What needs you": next 5 open service/billing events, overdue in
+     amber, one-tap Open → the contract.
+  3. Hero cross-sell card (dark VaNi + orb), flavor-specific problem copy:
+     buyer  → "This contract is covered. Who's watching everything else?"
+     seller → "You've won the work. Now who runs it?"
+     CTA → /start (express onboarding), "first 3 contracts free" fine print.
+
+Additional files (Phase D):
+contractnest-ui/
+  src/components/lite/LiteDashboard.tsx          (NEW)
+  src/pages/ops/cockpit/index.tsx                (wrapper: lite → LiteDashboard)
+
 WHAT THIS PHASE DOES
 --------------------
 1. SECURE CLAIM (migration 010): claim_contract_by_cnak v2.
