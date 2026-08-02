@@ -29,6 +29,41 @@ contractnest-ui/
   src/context/AuthContext.tsx                    (same superset file as Phase A, now with liteTier;
                                                   re-synced into all carrying batch folders)
 
+PHASE C ADDITIONS (2026-08-02, same batch folder) — lite access system
+----------------------------------------------------------------------
+One config file rules everything: src/utils/constants/liteAccess.ts
+  - LITE_MENUS: per-flavor sidebar (workspace + ✦ "Grow with ContractNest")
+  - LITE_RESTRICTED_ROUTES: route prefixes → restricted page (deep links too)
+  - LITE_RESTRICTED_SETTINGS: settings tile ids → ✦ TRIAL badge + modal
+  - LITE_CROSS_SELL copy registry: {icon, question, outcomes[3]} per surface
+    (copy rule: question the problem, show the outcome — no feature names)
+  - LITE_CAPABILITIES: create-contract/rfq/invoice/contact flags
+  - LITE_TRIAL: trial strip copy + CTA route (/start = express onboarding)
+
+Behavior:
+  - Sidebar (lite): flat "Your workspace" + ✦ grow items + trial bar.
+    Buyer (cnak): Dashboard, Contracts, Service Events, Contacts, both
+    Registries open; RFQs/Finance/Appointments/Group Sessions = ✦.
+    Seller (rfq): Dashboard, Contracts, Contacts open; Finance/Events/
+    Catalog/Registries/Appointments/Group Sessions = ✦.
+  - LiteRouteGate wraps MainLayout's Outlet: restricted route → problem-led
+    empty state with trial CTA. Menu clicks and deep links behave the same.
+  - Settings page: restricted tiles get ✦ TRIAL badge; clicking opens
+    TrialCrossSellModal (dark VaNi header + orb, 3 outcomes, trial strip).
+  - Every CTA → /start (express onboarding). Completing it clears the tier.
+  - Revenue/Expense toggle already forces activation via the existing
+    perspective modal — zero new work needed there.
+
+Additional files (Phase C):
+contractnest-ui/
+  src/utils/constants/liteAccess.ts              (NEW — the single source of truth)
+  src/components/lite/TrialCrossSellModal.tsx    (NEW — one modal, N copy configs)
+  src/components/lite/LiteRestrictedPage.tsx     (NEW — problem-led page state)
+  src/components/lite/LiteRouteGate.tsx          (NEW — route interception)
+  src/components/layout/MainLayout.tsx           (wrap Outlet in LiteRouteGate)
+  src/components/layout/Sidebar.tsx              (lite branch: 2-section nav + trial bar)
+  src/pages/settings/index.tsx                   (✦ TRIAL badges + modal interception)
+
 WHAT THIS PHASE DOES
 --------------------
 1. SECURE CLAIM (migration 010): claim_contract_by_cnak v2.
