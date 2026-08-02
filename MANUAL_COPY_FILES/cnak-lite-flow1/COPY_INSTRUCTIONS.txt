@@ -1,7 +1,33 @@
 ═══════════════════════════════════════════════════════════════════
-BATCH: cnak-lite-flow1  —  PHASE A (DB + API foundation)
+BATCH: cnak-lite-flow1  —  PHASE A (DB + API) + PHASE B (lite gate)
 CNAK-Lite Flow 1: Seller → Buyer signup becomes a "lite buyer" tenant
 ═══════════════════════════════════════════════════════════════════
+
+PHASE B ADDITIONS (2026-08-02, same batch folder)
+-------------------------------------------------
+NOTE: migrations 010 (claim v2) and 004 (channels-off) are ALREADY
+APPLIED to the live database — do NOT run 010 again. Only file copy +
+edge deploys + restarts remain.
+
+New in this phase:
+5. LITE TIER IN THE UI: AuthContext derives liteTier ('cnak'|'rfq'|null)
+   from the status endpoint's onboarding_type + is_completed.
+   - Lite tenants are NEVER forced to /onboarding: SmartHomePage (App.tsx),
+     the login() flow, and LoginPage's already-authed redirect all send
+     them to /ops/cockpit instead.
+   - CNAK signup lands directly on /ops/cockpit, in the ENVIRONMENT of
+     the auto-claimed contract (cnak_claim.contract.is_live), with
+     perspective defaulted to EXPENSE.
+   - Completing/skipping onboarding clears the tier (upgrade to full);
+     logout / session-expiry / tenant-switch all reset it; a status-check
+     error resets it too (fail-safe: full gate, never a stale lite pass).
+
+Additional files (Phase B):
+contractnest-ui/
+  src/App.tsx                                    (SmartHomePage: third state — lite enters app)
+  src/pages/auth/LoginPage.tsx                   (already-authed redirect honors liteTier)
+  src/context/AuthContext.tsx                    (same superset file as Phase A, now with liteTier;
+                                                  re-synced into all carrying batch folders)
 
 WHAT THIS PHASE DOES
 --------------------
