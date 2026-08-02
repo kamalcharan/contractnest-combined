@@ -89,3 +89,13 @@ left profile_type NULL.
 Fix: profile_type := persona for all 7 demo tenants (mirrors what
 real onboarding POST writes). Applied live 2026-08-02. Users must
 re-login (or wait out the 30s edge profile cache) to see it.
+
+SAFETY FIX (2026-08-02) — 10_depersonalize_channels.sql
+───────────────────────────────────────────────────────────────────
+All demo contact emails got 'm' appended (.comm/.inm — undeliverable)
+and all phones/mobiles/whatsapps got '0' appended (11 digits —
+invalid), so no notification flow can ever reach a real person.
+Covers t_contact_channels (139+139), t_tenant_profiles business
+email/phone/whatsapp, t_user_profiles mobile numbers. Login emails
+(trinity@t.com … gold@g.com) untouched — needed for sign-in.
+RUN ONCE ONLY (re-running double-appends).
