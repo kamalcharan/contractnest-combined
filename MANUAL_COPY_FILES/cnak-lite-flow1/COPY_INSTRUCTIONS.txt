@@ -148,6 +148,12 @@ Write-Host "Files copied" -ForegroundColor Green
 
 DEPLOY ORDER (matters!)
 -----------------------
+>>> STATUS 2026-08-02: steps 1 and 2 are ALREADY DONE (applied directly
+>>> to prod via Supabase MCP this session): migration 010 applied,
+>>> onboarding v26, auth v83, contracts redeployed. Do NOT re-run the
+>>> SQL or redeploy — only the local copy (above) + API/UI restarts
+>>> (steps 3-4) are still needed for local testing.
+
 1. RUN MIGRATION FIRST: contractnest-edge/supabase/migrations/010_cnak_lite_claim_v2.sql
    in the Supabase SQL editor (project uwyqhzotluikawcboldr).
    NOTE: the moment this runs, bare-CNAK claims fail everywhere until the
