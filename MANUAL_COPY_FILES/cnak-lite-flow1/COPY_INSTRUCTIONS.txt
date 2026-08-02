@@ -157,14 +157,32 @@ buyer". t_contract_access.accessor_role already records the truth.
    get_contract_stats is own-contracts-only and untouched.)
 4. Test tenant "new vendor" (ba29159c…) repaired to 'cnak_vendor'.
 
-KNOWN GAP (decision pending): the two test records (CNAK-89424C,
-CNAK-808F38) are record_type='rfq' (created via the RFQ builder), so
-even with all of the above the claimed record does NOT appear in the
-vendor's Contracts list (lists filter record_type='contract'). A
-vendor-lite tenant from an RFQ hand-off currently lands on an empty
-dashboard. Options discussed: minimal "RFQs received" surface on
-seller-lite vs. the parked Sprint-3 award→vendor-authored-contract
-flow. See session notes.
+5. REQUESTS RECEIVED (vendor's view of RFQs sent to them) — owner rule:
+   "RFQ response is always by Vendor and for vendor it is Revenue."
+   - Contract Hub: the Contracts ⇄ Requests toggle now shows on BOTH
+     sides. Expense · Requests = sent (unchanged). Revenue · Requests =
+     RECEIVED — RFQ records another tenant sent us, claimed via CNAK
+     (the contracts edge list already flips claimed records onto the
+     right side; no list plumbing needed).
+   - Row click on a received request → fetches OUR OWN grant secret from
+     the new authenticated endpoint and opens the existing vendor quote
+     page (/quote/:cnak/:secret). "New Request" button hidden on the
+     received view (you respond to these, not create them).
+   - NEW API endpoint: GET /api/contracts/my-access/:cnak — returns the
+     calling tenant's own t_contract_access row (incl. secret_code),
+     hard-scoped to accessor_tenant_id = caller. Registered before
+     GET /:id (route-order trap, same as credit-pending).
+
+Additional files (Phase F):
+contractnest-api/
+  src/controllers/contractController.ts          (getMyContractAccess)
+  src/routes/contractRoutes.ts                   (GET /my-access/:cnak)
+contractnest-ui/
+  src/context/AuthContext.tsx                    (onboardingTypeToLiteTier map)
+  src/services/serviceURLs.ts                    (CONTRACTS.MY_ACCESS)
+  src/pages/contracts/hub/index.tsx              (Requests toggle both sides +
+                                                  received-request row action)
+NOTE: API restart required this phase (controller/route changed).
 
 WHAT THIS PHASE DOES
 --------------------
