@@ -213,14 +213,33 @@ export async function handleRegister(supabase: any, data: RegisterData) {
     // user can always claim manually later from /contracts/claim.
     // ═══════════════════════════════════════════════════════════════════
     let cnakClaim: any = null;
+    let cnakOnboardingType: string | null = null;
     if (cnakRef && typeof cnakRef === 'string' && cnakRef.trim() !== '') {
       try {
+        // Which side of the contract is this signup? The access grant records
+        // the recipient's role: 'vendor' means the CNAK was sent to the
+        // SELLER of an expense-side contract → seller-lite ('cnak_vendor',
+        // rendered with the rfq/seller UI flavor). Anything else (client/
+        // buyer, or grant not found) → buyer-lite ('cnak', the default).
+        cnakOnboardingType = 'cnak';
+        const { data: grantRow } = await supabase
+          .from('t_contract_access')
+          .select('accessor_role')
+          .eq('global_access_id', cnakRef.trim())
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if ((grantRow?.accessor_role || '').toLowerCase() === 'vendor') {
+          cnakOnboardingType = 'cnak_vendor';
+        }
+
         const { error: onbError } = await supabase
           .from('t_tenant_onboarding')
-          .update({ onboarding_type: 'cnak', updated_at: new Date().toISOString() })
+          .update({ onboarding_type: cnakOnboardingType, updated_at: new Date().toISOString() })
           .eq('tenant_id', tenant.id);
         if (onbError) {
-          console.error('CNAK-lite: failed to set onboarding_type=cnak:', onbError.message);
+          console.error(`CNAK-lite: failed to set onboarding_type=${cnakOnboardingType}:`, onbError.message);
         }
 
         // p_is_live: null → the RPC adopts the contract's own environment
@@ -260,9 +279,13 @@ export async function handleRegister(supabase: any, data: RegisterData) {
         ...tenant,
         is_admin: tenant.is_admin || false
       },
-      ...(cnakClaim ? { cnak_claim: cnakClaim } : {})
+      ...(cnakClaim ? { cnak_claim: cnakClaim } : {}),
+      // Lets the client pick the right lite flavor immediately after signup
+      // ('cnak' buyer / 'cnak_vendor' seller) without waiting for a status
+      // round-trip.
+      ...(cnakOnboardingType ? { onboarding_type: cnakOnboardingType } : {})
     }, 201);
-    
+
   } catch (error: any) {
     console.error('Registration process error:', error.message);
     return errorResponse(error.message);

@@ -88,6 +88,16 @@ export type Perspective = 'revenue' | 'expense';
 // and completing the (lite) onboarding upgrades them to full automatically.
 export type LiteTier = 'cnak' | 'rfq' | null;
 
+// Map a t_tenant_onboarding.onboarding_type to the UI's lite flavor.
+// 'cnak' (CNAK sent to the buyer) → buyer-lite; 'cnak_vendor' (CNAK sent to
+// the vendor of an expense-side contract) and 'rfq' both render the seller
+// flavor. Anything else (vani/business/…) is not lite.
+export const onboardingTypeToLiteTier = (onboardingType: string | null | undefined): LiteTier => {
+  if (onboardingType === 'cnak') return 'cnak';
+  if (onboardingType === 'cnak_vendor' || onboardingType === 'rfq') return 'rfq';
+  return null;
+};
+
 // Readiness of the perspective being switched INTO (see requestPerspectiveSwitch)
 export type PerspectiveReadiness = 'checking' | 'ready' | 'activation_needed';
 
@@ -531,14 +541,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           response.data.needs_onboarding === false;
         setHasCompletedOnboarding(isComplete);
 
-        // CNAK/RFQ-lite: incomplete + onboarding_type 'cnak'/'rfq' = lite
-        // tenant — allowed into the app with restricted menus instead of
-        // being bounced to /onboarding.
+        // CNAK/RFQ-lite: incomplete + a lite onboarding_type = lite tenant —
+        // allowed into the app with restricted menus instead of being
+        // bounced to /onboarding. Flavor mapping:
+        //   'cnak'        → buyer-lite  (CNAK sent to the contract's client)
+        //   'cnak_vendor' → seller-lite (CNAK sent to the contract's vendor —
+        //                   rendered with the same 'rfq' seller UI flavor)
+        //   'rfq'         → seller-lite (future RFQ hand-off entry path)
         const onboardingType: string =
           response.data.onboarding_type || response.data.data?.onboarding_type || 'business';
         applyLiteTier(
-          !isComplete && (onboardingType === 'cnak' || onboardingType === 'rfq')
-            ? (onboardingType as LiteTier)
+          !isComplete
+            ? onboardingTypeToLiteTier(onboardingType)
             : null
         );
 
@@ -1354,11 +1368,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!data.tenant) {
         navigate('/create-tenant');
       } else if (userData.cnakRef) {
-        // CNAK-lite signup (Flow 1): the backend flagged this tenant
-        // onboarding_type='cnak' and auto-claimed the contract. Do NOT send
-        // them to onboarding — they land straight on the (restricted) app.
+        // CNAK-lite signup: the backend flagged this tenant with the right
+        // lite onboarding_type ('cnak' buyer / 'cnak_vendor' seller, echoed
+        // in the register response) and auto-claimed the contract. Do NOT
+        // send them to onboarding — they land straight on the (restricted)
+        // app in the flavor matching their side of the contract.
         setHasCompletedOnboarding(false);
-        applyLiteTier('cnak');
+        applyLiteTier(onboardingTypeToLiteTier(data.onboarding_type) || 'cnak');
 
         // Land in the environment the claimed contract lives in, so the
         // contract is actually visible on first paint.

@@ -137,6 +137,35 @@ contractnest-ui/
   src/components/layout/Sidebar.tsx              (data-walkover targets on lite nav)
   src/pages/contracts/claim/index.tsx            (post-claim registry nudge)
 
+PHASE F ADDITIONS (2026-08-02, same batch folder) — CNAK sent to the
+VENDOR (seller side), discovered live-testing CNAK-808F38
+----------------------------------------------------------------------
+The CNAK travels BOTH directions; Flow 1 had hardcoded "recipient =
+buyer". t_contract_access.accessor_role already records the truth.
+
+1. auth edge fn (registration.ts): after signup, the grant's
+   accessor_role decides the flavor — 'vendor' → onboarding_type=
+   'cnak_vendor' (seller-lite), else 'cnak' (buyer-lite). The register
+   response now echoes onboarding_type. REDEPLOYED to prod.
+2. AuthContext: onboardingTypeToLiteTier() — 'cnak'→buyer flavor;
+   'cnak_vendor' + 'rfq'→seller flavor. Register flow uses the echoed
+   type instead of hardcoding 'cnak'.
+3. Migration 011 (APPLIED TO PROD, do not re-run): get_contracts_list
+   now classifies CLAIMED contracts viewer-relatively — accessor_role
+   'vendor' → shows on the claimant's REVENUE side, otherwise Expense.
+   (Perspective-scoped stats go through the same function; the global
+   get_contract_stats is own-contracts-only and untouched.)
+4. Test tenant "new vendor" (ba29159c…) repaired to 'cnak_vendor'.
+
+KNOWN GAP (decision pending): the two test records (CNAK-89424C,
+CNAK-808F38) are record_type='rfq' (created via the RFQ builder), so
+even with all of the above the claimed record does NOT appear in the
+vendor's Contracts list (lists filter record_type='contract'). A
+vendor-lite tenant from an RFQ hand-off currently lands on an empty
+dashboard. Options discussed: minimal "RFQs received" surface on
+seller-lite vs. the parked Sprint-3 award→vendor-authored-contract
+flow. See session notes.
+
 WHAT THIS PHASE DOES
 --------------------
 1. SECURE CLAIM (migration 010): claim_contract_by_cnak v2.
