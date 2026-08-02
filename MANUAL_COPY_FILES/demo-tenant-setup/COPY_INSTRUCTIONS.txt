@@ -115,3 +115,14 @@ types from t_category_resources_master (Settings→Resources), which
 onboarding normally seeds and the demo seed missed entirely. Seeded
 31 resources across all 7 tenants matching their registries/industry.
 Applied live; idempotent.
+
+DATA + PLATFORM FIX (2026-08-02 evening) — 13_sequence_counters_and_stats.sql
+───────────────────────────────────────────────────────────────────
+A) RFQ save 502: create_contract_transaction needs per-tenant
+sequence counters (RFQ number = PROJECT/PRJ); demo tenants were
+missing most of the 8 standard counters. Seeded all missing
+(code x live/test) for the 7 tenants; RFQ create verified working.
+B) Contacts chips vs list mismatch ("Vendors 11" vs 7 rows):
+get_contact_stats now counts only top-level contacts
+(parent_contact_id IS NULL), matching the list RPC. Applied as
+supabase migration contact_stats_top_level_only — platform-wide.
