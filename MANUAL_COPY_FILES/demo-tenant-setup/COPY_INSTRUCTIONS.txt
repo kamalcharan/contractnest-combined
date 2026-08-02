@@ -99,3 +99,11 @@ Covers t_contact_channels (139+139), t_tenant_profiles business
 email/phone/whatsapp, t_user_profiles mobile numbers. Login emails
 (trinity@t.com … gold@g.com) untouched — needed for sign-in.
 RUN ONCE ONLY (re-running double-appends).
+
+DATA FIX (2026-08-02) — 11_classify_contact_persons.sql
+───────────────────────────────────────────────────────────────────
+Contact persons were seeded with empty classifications, so contacts
+filter chips didn't sum to "All" (Pulse: 13 vs 6+3). Production
+contact persons carry classifications, so each demo contact person
+now inherits its parent company's classification (49 rows: sellers'
+persons -> client, buyers' persons -> vendor). Applied live.
