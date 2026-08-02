@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════════════════════
+SIGNUP SESSION FIX — "logged off at the RFQ step" root cause
+Branch folder: signup-session-fix (2026-08-02)
+Submodules affected: contractnest-ui ONLY (1 file: AuthContext.tsx)
+═══════════════════════════════════════════════════════════════════
+
+ROOT CAUSE (proven from tenant border@b.com, 03:12 UTC logs)
+────────────────────────────────────────────────────────────
+register() called storage.setRememberMe(true) — writing the
+remember_me=true FLAG — but then storage.setAuthToken() picked its
+store from the CURRENT RENDER's rememberMe state (still false), so
+the tokens landed in sessionStorage. On the next HARD RELOAD the flag
+says "read localStorage" → no token found → /login. Server logs show
+ZERO auth failures — the browser never even tried.
+
+This is why the logout always struck at the flow's first hard
+navigation: the buyer's RFQ hop now, and the seller's PlanStep →
+cockpit hop originally. SPA navigation never noticed because the
+request interceptor checks BOTH stores.
+
+FIX (both ends)
+───────────────
+• register(): tokens, user data and tenant are written DIRECTLY to
+  localStorage (matching the remember_me=true flag it just set), and
+  the rememberMe state is updated.
+• initAuth(): boot-time reconciliation — if remember_me=true but the
+  token is only in sessionStorage (any session created before this
+  fix), the whole auth set is moved up to localStorage before
+  anything reads it. Heals in-flight browsers instead of logging out.
+
+The AuthContext superset was synced into auth-401-refresh /
+revenue-side-activation / expense-side-activation folders too.
+
+COPY
+────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\signup-session-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+# COLD restart dev server, Ctrl+F5
+
+TEST
+────
+[ ] Fresh buyer signup end to end → done screen → "Ask vendors to
+    quote (RFQ)" → RFQ builder opens, STILL SIGNED IN, test badge on,
+    vendors listed → create + send the RFQ
+[ ] Fresh seller signup → first contract → plan → cockpit → still
+    signed in (the original report, same root cause)
+[ ] Existing browser session from before the fix → reload → stays
+    signed in (reconciliation log line in console)
+[ ] Normal login (with and without Remember me) unchanged
+
+⏸️ WAITING FOR CONFIRMATION before any merge commands.
+═══════════════════════════════════════════════════════════════════

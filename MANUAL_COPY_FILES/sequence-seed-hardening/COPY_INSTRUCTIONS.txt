@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════════════════════
+SEQUENCE SEEDING HARDENED — audit item #6
+("during onboarding — is the sequence number getting generated?"
+Answer was: usually, but unverified, and skippable — now: always
+attempted on every path, verified, retried, and never faked)
+Branch folder: sequence-seed-hardening (2026-08-01)
+Submodules affected: contractnest-api (1 file), contractnest-ui (1 file)
+No DB/edge changes.
+═══════════════════════════════════════════════════════════════════
+
+WHAT WAS WRONG (verified live 2026-08-01)
+─────────────────────────────────────────
+• Sequences were seeded as non-fatal "Step 4" INSIDE the template seed,
+  positioned AFTER the industry-resolution-error and no-coverage early
+  returns — exactly the tenants whose catalog seed bailed also silently
+  lost their sequences (e.g. tenant "finally": 0 counter rows).
+• VaniWorkingStep's "Configuring sequence numbers" task waited 500ms and
+  painted the tick GREEN WITHOUT CHECKING ANYTHING.
+• A tenant without counters then creates contacts/contracts with NULL
+  numbers, silently: get_next_formatted_sequence_v2 RAISES when no
+  counter row exists, and callers (auto_generate_contact_number) swallow
+  the exception with a WARNING.
+• Live state: 84 of 119 tenants have ZERO counter rows (most are
+  pre-sequence-era test tenants; 3 are recent). See "LIVE DATA" below.
+
+WHAT CHANGED
+────────────
+contractnest-api/src/services/seedTenantTemplatesService.ts
+  • Sequences seeding hoisted to "Step -2" — runs FIRST, on EVERY path
+    (helper seedSequencesBothEnvs, both environments, canonical
+    SEQUENCE_SEED_DATA). The no-coverage and resolution-error early
+    returns now report the real sequencesSeeded value instead of a
+    hardcoded false. Still non-fatal there (a sequences hiccup must not
+    block the catalog seed) because the UI now verifies and retries.
+
+contractnest-ui/src/pages/onboarding/steps/VaniWorkingStep.tsx
+  • The sequences task now: check /api/seeds/status → if missing, call
+    the dedicated POST /api/seeds/tenant/sequences (seeds BOTH envs) →
+    re-check → only then green. If still missing: honest ERROR state
+    with the standard Retry button and a pointer to Settings →
+    Sequencing. No green tick without a verified counter, ever.
+  ⚠️ SUPERSET: this file also contains the expense-side-activation
+    changes (effectivePersona etc.). It was synced into that folder too,
+    so copy order between the two batches is safe.
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\sequence-seed-hardening\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sequence-seed-hardening\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: RUN & TEST
+──────────────────
+cd contractnest-ui  && npm run dev      (Ctrl+F5)
+cd contractnest-api && npm run dev      (API change — restart the API)
+
+TESTING CHECKLIST
+─────────────────
+[ ] Fresh signup (any persona) → vani-working shows "Configuring
+    sequence numbers" → tick only after real rows exist:
+    select count(*) from t_sequence_counters where tenant_id='<new>' → 16
+[ ] Onboard a tenant into a NO-COVERAGE industry (the path that used to
+    skip sequences entirely) → sequences still seeded (API hoist) and
+    tick still green
+[ ] Existing tenant re-entering the flow (side activation) → sequences
+    task shows "Already configured · N sequences" (skipped state)
+[ ] Create a contact on the new tenant → contact_number populated
+    (CT-1001…), NOT NULL
+[ ] Settings → Sequencing still lists/seeds/resets normally
+
+LIVE DATA — decision for owner (nothing was changed)
+────────────────────────────────────────────────────
+84/119 tenants have zero counters. Only 3 are recent (vani, finally, +1);
+the rest predate the sequence-numbers feature. Options:
+  a) leave them — each tenant self-heals via Settings → Sequencing →
+     Seed Defaults, and any future re-entry of the seeding flow now
+     fixes it automatically; or
+  b) one-time backfill (I can run inserts from SEQUENCE_SEED_DATA for
+     all 84, both envs, on your go-ahead).
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transactions: seeding endpoints unchanged (edge upserts, idempotent)
+✅ Race conditions: verify-after-seed; idempotent seed safe on retry
+✅ Error handling: explicit error state + Retry instead of fake success;
+   API helper bounded (15s/env) and non-fatal to the catalog seed
+✅ Toasts: n/a (task list has its own status UI)
+✅ Loaders: existing task spinner states
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════
