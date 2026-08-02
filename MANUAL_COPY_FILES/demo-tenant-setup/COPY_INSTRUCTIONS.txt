@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════════════════════
+DEMO TENANT SETUP — 7 demo tenants (4 sellers + 3 buyers)
+═══════════════════════════════════════════════════════════════════
+Batch: demo-tenant-setup
+Date: 2026-08-02
+Target: Supabase project uwyqhzotluikawcboldr (ContractNest, live DB)
+
+⚠️ STATUS: ALL SCRIPTS 01–06 HAVE ALREADY BEEN EXECUTED LIVE against
+the production Supabase project in this session (2026-08-02), per
+owner instruction ("I script everything", live environment, heavy
+volume). The files here are the audit record + re-run/rollback path.
+Nothing needs to be copied into a submodule — this is data setup,
+not application code. No app code, migration stream, or edge
+function was modified.
+
+───────────────────────────────────────────────────────────────────
+LOGINS (email / password — workspace)
+───────────────────────────────────────────────────────────────────
+SELLERS
+  trinity@t.com  / trinity2025  — Trinity Tecnitions (HVAC), tri418
+  value@v.com    / value2025    — Value Elevators (Lifts), val519
+  freedom@f.com  / freedom2025  — Freedom Services (Pest Control), fre304
+  hygene@h.com   / hygene2025   — Hygene Services (Housekeeping), hyg761
+BUYERS
+  pulse@p.com    / pulse2025    — Pulse Hospital (Healthcare), pul228
+  complex@c.com  / complex2025  — Complex Pharma (Pharma), com915
+  gold@g.com     / gold2025     — Gold Fusionn (Manufacturing), gol647
+
+All 7: onboarding complete, is_test=true, data in the LIVE environment.
+
+───────────────────────────────────────────────────────────────────
+SCRIPTS (in order — each is idempotent)
+───────────────────────────────────────────────────────────────────
+01_provision_tenants.sql      auth users + tenants + LOVs + roles +
+                              profiles + served industries + resource
+                              picks + onboarding-complete + sequences
+02_seller_catalog_blocks.sql  KT blocks cloned from sharma elevators'
+                              real onboarding seed (Trinity 129/env,
+                              Value 80/env) + 10 priced service blocks
+                              each for Freedom & Hygene (both envs)
+03_buyer_asset_registries.sql Pulse 14 / Complex 10 / Gold 10 assets
+                              with make, model, serial, warranty
+04_contacts.sql               25 contacts per seller, 13 per buyer,
+                              with channels + office addresses,
+                              CT-numbers via the real sequence RPC
+05_contracts_events.sql       16 contracts per seller (64 total),
+                              blocks + calendar-aligned billing events
+                              + service visits + paid/overdue history
+06_cnak_claims.sql            t_contract_access rows + 12 CNAK claims
+                              → each buyer tenant shows its 4 vendor
+                              contracts in ContractHub
+99_rollback.sql               removes everything above (all demo rows
+                              carry fixed UUID prefixes a0/c0/e*/f*)
+
+───────────────────────────────────────────────────────────────────
+NOTES / DECISIONS
+───────────────────────────────────────────────────────────────────
+- KT blocks were cloned from tenant "sharma elevators" (ae85acfe-…)
+  because that tenant's blocks were produced by the real Sprint-1
+  seeder (ktCatBlockMapperService → cat-blocks/bulk) — identical
+  output to running onboarding, without needing the HMAC'd API path.
+- Pest control & housekeeping have no KT master data (Stream 1
+  decision) — their catalog blocks are authored service blocks with
+  realistic INR prices (SAC 998531 / 998533, GST 18%).
+- Billing events were generated CALENDAR-ALIGNED (start + N months),
+  deliberately avoiding the known day-count drift bug in the
+  derivation engine (see CLAUDE.md "Billing cadence dates drift").
+- Every 3rd active contract's most recent past billing event is
+  'overdue' (receivables realism); other past cycles are 'paid' with
+  amount_settled = amount; past service visits are 'completed'.
+- Draft/sent contracts carry no events (matches real behavior —
+  events derive on activation).
+- Fixed UUID scheme for cleanup & cross-referencing:
+    a0…N auth users, b0…N user profiles, c0…N tenants, d0…N links,
+    ee/ef/ea/eb/ec…  contacts, f<seller>…<nn> contracts.
+  N: 1 Trinity, 2 Value, 3 Freedom, 4 Hygene, 5 Pulse, 6 Complex, 7 Gold.
+═══════════════════════════════════════════════════════════════════
+
+POST-SETUP FIX (2026-08-02) — 09_fix_profile_type_perspective.sql
+───────────────────────────────────────────────────────────────────
+Symptom: buyer tenants (Pulse/Complex/Gold) landed on the Revenue
+side with no vendor contracts visible; switching sides prompted
+onboarding/activation.
+Root cause: the tenant-profile edge function serves API field
+business_type_id from the legacy profile_type COLUMN (not the
+business_type_id column), and TenantContext only calls
+initializePerspective() when that field is truthy. Scripts 01/07
+left profile_type NULL.
+Fix: profile_type := persona for all 7 demo tenants (mirrors what
+real onboarding POST writes). Applied live 2026-08-02. Users must
+re-login (or wait out the 30s edge profile cache) to see it.
+
+SAFETY FIX (2026-08-02) — 10_depersonalize_channels.sql
+───────────────────────────────────────────────────────────────────
+All demo contact emails got 'm' appended (.comm/.inm — undeliverable)
+and all phones/mobiles/whatsapps got '0' appended (11 digits —
+invalid), so no notification flow can ever reach a real person.
+Covers t_contact_channels (139+139), t_tenant_profiles business
+email/phone/whatsapp, t_user_profiles mobile numbers. Login emails
+(trinity@t.com … gold@g.com) untouched — needed for sign-in.
+RUN ONCE ONLY (re-running double-appends).
+
+DATA FIX (2026-08-02) — 11_classify_contact_persons.sql
+───────────────────────────────────────────────────────────────────
+Contact persons were seeded with empty classifications, so contacts
+filter chips didn't sum to "All" (Pulse: 13 vs 6+3). Production
+contact persons carry classifications, so each demo contact person
+now inherits its parent company's classification (49 rows: sellers'
+persons -> client, buyers' persons -> vendor). Applied live.
+
+DATA FIX (2026-08-02) — 12_seed_resources_catalog.sql
+───────────────────────────────────────────────────────────────────
+Buyers couldn't build RFQs: the "What it covers" step lists resource
+types from t_category_resources_master (Settings→Resources), which
+onboarding normally seeds and the demo seed missed entirely. Seeded
+31 resources across all 7 tenants matching their registries/industry.
+Applied live; idempotent.

@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════════════════════
+FIX: buyer view of a claimed contract showed the BUYER as Service
+Provider (both parties rendered as the same company)
+Branch folder: fix-buyer-view-provider
+Submodules affected: contractnest-ui ONLY
+═══════════════════════════════════════════════════════════════════
+
+ROOT CAUSE
+The contract detail page's Document tab reuses the wizard's
+ReviewSendStep, which always renders the VIEWING tenant's own
+business profile (useTenantProfile) as "Service Provider". Correct
+in the wizard (author IS the seller); wrong when a buyer opens a
+claimed cross-tenant contract — e.g. Pulse Hospital appeared as both
+Service Provider and Customer on Freedom Services' pest contract.
+This affects production buyers too, not just demo tenants.
+
+FILES
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   - New optional prop `providerOverride?: { name; logoUrl?; lines? }`.
+   - documentData uses the override for providerName/LogoUrl/Lines
+     when present; otherwise identical behavior to before (wizard,
+     RFQ mode, templates all unchanged — they pass no override).
+2. contractnest-ui/src/pages/contracts/detail/index.tsx
+   - When useContractRole resolves the viewer as buyer, builds the
+     override from contract.seller_company/seller_name (already
+     resolved by the API on buyer access) + phone/email channels of
+     the seller's vendor contact (useContact(seller_contact_id)).
+   - Passes it to <ReviewSendStep providerOverride={...}> in the
+     Document tab. Sellers/draft viewers pass null → no change.
+
+VERIFICATION DONE
+tsc --noEmit before/after: identical error set for both files
+(24 pre-existing, 0 new).
+
+COPY COMMANDS (PowerShell)
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\fix-buyer-view-provider\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+TEST CHECKLIST
+- [ ] Login pulse@p.com → open a vendor contract → Document tab:
+      Service Provider = the seller (e.g. Freedom Services), Customer
+      = Pulse Hospital.
+- [ ] Login as a seller (trinity@t.com) → same contract → Document
+      tab unchanged: provider = seller's own profile with full
+      address/GSTIN lines.
+- [ ] Contract wizard (create new contract) → Review step: provider
+      block unchanged.
+- [ ] PDF export from buyer view carries the corrected provider.
+═══════════════════════════════════════════════════════════════════
