@@ -200,10 +200,52 @@ interface EmptyStateProps {
   perspective: Perspective;
   colors: any;
   onCreateType: (type: ContractType) => void;
+  /** Received requests waiting for a quote — shown as the primary pointer
+      instead of "create your first contract" when > 0 (CNAK-vendor case). */
+  pendingRequests?: number;
+  onShowRequests?: () => void;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateType }) => {
+const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateType, pendingRequests = 0, onShowRequests }) => {
   const label = perspective === 'revenue' ? 'client' : 'vendor';
+
+  if (pendingRequests > 0 && onShowRequests) {
+    return (
+      <div
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', padding: '80px 40px', textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 72, height: 72, borderRadius: 16, display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            background: colors.brand.primary + '14', marginBottom: 20,
+          }}
+        >
+          <FileText size={32} style={{ color: colors.brand.primary, opacity: 0.6 }} />
+        </div>
+        <h3 style={{ fontSize: 18, fontWeight: 600, color: colors.utility.primaryText, marginBottom: 8 }}>
+          No contracts yet — but you have {pendingRequests} request{pendingRequests === 1 ? '' : 's'} waiting
+        </h3>
+        <p style={{ fontSize: 13.5, color: colors.utility.secondaryText, marginBottom: 20, maxWidth: 380 }}>
+          A contract starts here: respond to the request with your quote, and when it's
+          awarded it becomes a tracked contract in this list.
+        </p>
+        <button
+          onClick={onShowRequests}
+          style={{
+            padding: '10px 22px', borderRadius: 10, border: 'none',
+            background: colors.brand.primary, color: '#fff',
+            fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          View request{pendingRequests === 1 ? '' : 's'} →
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -553,6 +595,32 @@ const ContractsHubPage: React.FC = () => {
   const totalCount = viewMode === 'flat'
     ? (contractsData?.total_count || 0)
     : (groupedData?.total_count || 0);
+
+  // ── Pending-requests probe (seamless landing) ──
+  // One-row query for RFQ records on this perspective. Powers two things:
+  // auto-opening the Requests view when a tenant has no contracts but a
+  // request is waiting (the CNAK-vendor signup case: accept → sign up →
+  // the request must be the first thing they see, not an empty contracts
+  // list), and the "N requests waiting" pointer in the empty state.
+  const { data: rfqProbeData } = useContracts(
+    { record_type: 'rfq' as any, contract_type: perspectiveTypeFilter as any, per_page: 1, page: 1 },
+    { enabled: effectiveRecordType === 'contract' }
+  );
+  const pendingRequestsCount = effectiveRecordType === 'contract'
+    ? (rfqProbeData?.total_count || 0)
+    : 0;
+
+  // Auto-land once per mount, and never override an explicit ?record= choice.
+  const autoLandedRef = useRef(false);
+  useEffect(() => {
+    if (autoLandedRef.current) return;
+    if (searchParams.get('record')) { autoLandedRef.current = true; return; }
+    if (isLoading) return;
+    if (effectiveRecordType === 'contract' && totalCount === 0 && pendingRequestsCount > 0) {
+      autoLandedRef.current = true;
+      handleRecordTypeChange('rfq');
+    }
+  }, [isLoading, totalCount, pendingRequestsCount, effectiveRecordType, searchParams]);
 
   // ── Pagination info ──
   const pageInfo = viewMode === 'flat' ? contractsData?.page_info : groupedData?.page_info;
@@ -1048,6 +1116,8 @@ const ContractsHubPage: React.FC = () => {
               perspective={activePerspective}
               colors={colors}
               onCreateType={() => handleCreateClick()}
+              pendingRequests={pendingRequestsCount}
+              onShowRequests={() => handleRecordTypeChange('rfq')}
             />
           </div>
         ) : viewMode === 'grouped' ? (

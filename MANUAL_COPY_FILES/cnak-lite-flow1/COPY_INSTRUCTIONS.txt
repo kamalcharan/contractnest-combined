@@ -277,3 +277,22 @@ NOT IN THIS PHASE (Phase B+)
   still be routed to /onboarding after signup for now. Phase A only makes
   the DATA correct (onboarding_type='cnak', contract claimed).
 - Lite dashboard, menu whitelist, TrialCrossSellModal, restricted pages.
+
+PHASE G (2026-08-02) — seamless vendor landing ("CNAK accepted → signup
+→ the request is the first thing you see")
+----------------------------------------------------------------------
+1. Sidebar (seller-lite): new "Requests" workspace item → /contracts?record=rfq
+   (hub already honors ?record=rfq).
+2. Hub auto-lands on Requests: 0 contracts + ≥1 received request (1-row
+   probe query) → view flips once per visit; explicit ?record= in the URL
+   always wins; user can still toggle back.
+3. Hub empty state (contracts view): with requests pending it now says
+   "No contracts yet — but you have N requests waiting" + button, instead
+   of "create your first contract".
+4. LiteDashboard stops conflating record kinds: "Active contracts" counts
+   only real contracts; claimed RFQs surface as "+N requests awaiting
+   your quote" on the stat card AND as "Request awaiting your quote →
+   Respond" rows at the top of "What needs you". Contract-value sum
+   excludes RFQ records.
+Files: liteAccess.ts, pages/contracts/hub/index.tsx,
+       components/lite/LiteDashboard.tsx (UI only — no API/DB change).

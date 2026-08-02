@@ -260,6 +260,7 @@ export const LITE_MENUS: Record<LiteFlavor, LiteMenuConfig> = {
     workspace: [
       { id: 'lite-dashboard', label: 'Dashboard', icon: 'Gauge', path: '/ops/cockpit' },
       { id: 'lite-contracts', label: 'Contracts', icon: 'FileText', path: '/contracts' },
+      { id: 'lite-requests', label: 'Requests', icon: 'Inbox', path: '/contracts?record=rfq' },
       { id: 'lite-contacts', label: 'Contacts', icon: 'Building2', path: '/contacts' }
     ],
     grow: [

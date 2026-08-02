@@ -56,7 +56,17 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
     sort_order: 'asc'
   });
 
-  const contracts = contractsData?.items || [];
+  // The workspace can hold two record kinds: real contracts and RFQ records
+  // claimed via CNAK (a vendor's received requests). They must never be
+  // conflated — "1 active contract" while the contracts list shows zero is
+  // the contradiction that confused the first vendor tester.
+  const allRecords = contractsData?.items || [];
+  const contracts = allRecords.filter((c: any) => c.record_type !== 'rfq');
+  const pendingRequests = allRecords.filter(
+    (c: any) =>
+      c.record_type === 'rfq' &&
+      !['awarded', 'converted_to_contract', 'cancelled', 'expired'].includes((c.status || '').toLowerCase())
+  );
   const events: ContractEvent[] = eventsData?.items || [];
 
   const { openEvents, nextVisit, dueThisMonth, contractValue } = useMemo(() => {
@@ -88,8 +98,10 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
     {
       icon: FileText,
       label: 'Active contracts',
-      value: String(contractsData?.total_count ?? contracts.length),
-      hint: isBuyer ? 'claimed via CNAK' : 'in your workspace'
+      value: String(contracts.length),
+      hint: pendingRequests.length > 0
+        ? `+ ${pendingRequests.length} request${pendingRequests.length === 1 ? '' : 's'} awaiting your quote`
+        : isBuyer ? 'claimed via CNAK' : 'in your workspace'
     },
     {
       icon: CalendarClock,
@@ -209,11 +221,37 @@ const LiteDashboard: React.FC<LiteDashboardProps> = ({ flavor }) => {
           >
             What needs you
             <span className="ml-auto text-[10px] font-mono" style={{ color: colors.utility.secondaryText }}>
-              {openEvents.length} item{openEvents.length === 1 ? '' : 's'}
+              {pendingRequests.length + openEvents.length} item{pendingRequests.length + openEvents.length === 1 ? '' : 's'}
             </span>
           </div>
 
-          {openEvents.length === 0 ? (
+          {/* Received requests first — responding is the vendor's one job */}
+          {pendingRequests.map((r: any) => (
+            <div
+              key={r.id}
+              className="px-4 py-3 flex items-center gap-3 border-b"
+              style={{ borderColor: `${colors.utility.primaryText}08` }}
+            >
+              <span className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: brand }} />
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                  Request awaiting your quote
+                </div>
+                <div className="text-[11px] truncate" style={{ color: colors.utility.secondaryText }}>
+                  {r.name || r.rfq_number || 'Request for quote'}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/contracts?record=rfq')}
+                className="ml-auto flex-none text-[11px] font-bold rounded-lg px-2.5 py-1.5"
+                style={{ color: brand, backgroundColor: `${brand}12`, border: `1px solid ${brand}40` }}
+              >
+                Respond
+              </button>
+            </div>
+          ))}
+
+          {pendingRequests.length === 0 && openEvents.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm" style={{ color: colors.utility.secondaryText }}>
               Nothing due right now — you're all caught up.
             </div>
