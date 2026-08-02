@@ -107,3 +107,11 @@ filter chips didn't sum to "All" (Pulse: 13 vs 6+3). Production
 contact persons carry classifications, so each demo contact person
 now inherits its parent company's classification (49 rows: sellers'
 persons -> client, buyers' persons -> vendor). Applied live.
+
+DATA FIX (2026-08-02) — 12_seed_resources_catalog.sql
+───────────────────────────────────────────────────────────────────
+Buyers couldn't build RFQs: the "What it covers" step lists resource
+types from t_category_resources_master (Settings→Resources), which
+onboarding normally seeds and the demo seed missed entirely. Seeded
+31 resources across all 7 tenants matching their registries/industry.
+Applied live; idempotent.
