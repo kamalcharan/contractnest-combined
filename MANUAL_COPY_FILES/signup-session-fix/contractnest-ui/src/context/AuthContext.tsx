@@ -152,6 +152,11 @@ export interface RegisterFormData {
   workspaceName: string;
   countryCode?: string;
   mobileNumber?: string;
+  // CNAK-lite signup (Flow 1): set when the signup arrived from a contract
+  // review hand-off — backend flags the tenant onboarding_type='cnak' and
+  // auto-claims the contract with the review-link secret.
+  cnakRef?: string;
+  cnakSecret?: string;
 }
 
 // User preferences interface
@@ -1212,7 +1217,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastName: userData.lastName,
         workspaceName: userData.workspaceName,
         countryCode: userData.countryCode,
-        mobileNumber: userData.mobileNumber
+        mobileNumber: userData.mobileNumber,
+        ...(userData.cnakRef ? { cnakRef: userData.cnakRef, cnakSecret: userData.cnakSecret } : {})
       });
 
       storage.setRememberMe(true);

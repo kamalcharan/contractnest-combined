@@ -1,0 +1,92 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: cnak-lite-flow1  —  PHASE A (DB + API foundation)
+CNAK-Lite Flow 1: Seller → Buyer signup becomes a "lite buyer" tenant
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS PHASE DOES
+--------------------
+1. SECURE CLAIM (migration 010): claim_contract_by_cnak v2.
+   - Bare-CNAK claiming is REJECTED (code VERIFICATION_REQUIRED).
+   - AUTO-CLAIM  : CNAK + secret_code (from the review link).
+   - MANUAL CLAIM: CNAK + registered mobile (last-10-digit match against
+     the access grant's contact channels).
+   - p_is_live NULL = adopt the contract's environment (used by the
+     server-side signup auto-claim). Explicit true/false keeps today's
+     strict environment check.
+   - Old 4-arg signature DROPPED first (avoids PostgREST overload trap).
+   - Forward-only, no backfill.
+
+2. LITE-BUYER SIGNUP: review page → /register?ref=CNAK already existed
+   but the CNAK died at the API. Now it flows end-to-end:
+   RegisterPage recovers the review-link secret from the stored redirect
+   → AuthContext sends cnakRef+cnakSecret → API forwards → edge register
+   marks t_tenant_onboarding.onboarding_type='cnak' (is_completed stays
+   false — that incompleteness IS the lite tier flag) and AUTO-CLAIMS the
+   contract (non-fatal: signup never fails because a claim did; response
+   carries cnak_claim result).
+
+3. TIER VISIBILITY: GET /api/onboarding/status now returns
+   onboarding_type (top-level + inside data) so Phase B can derive the
+   lite tier in the UI.
+
+4. CLAIM PAGE kept working under v2: /contracts/claim now has a
+   "Registered Mobile Number" field (hidden if ?secret= is in the URL)
+   and sends secret/mobile with the claim.
+
+FILES IN THIS BATCH
+-------------------
+contractnest-edge/
+  supabase/migrations/010_cnak_lite_claim_v2.sql        (NEW - run in Supabase)
+  supabase/functions/contracts/index.ts                 (claim handler: +secret/+mobile passthrough)
+  supabase/functions/auth/handlers/registration.ts      (CNAK-lite hook: onboarding_type + auto-claim)
+  supabase/functions/auth/types/index.ts                (RegisterData: +cnakRef/+cnakSecret)
+  supabase/functions/onboarding/index.ts                (status response: +onboarding_type)
+
+contractnest-api/
+  src/controllers/authController.ts                     (register: forward cnakRef/cnakSecret)
+  src/controllers/contractController.ts                 (claim: accept secret/mobile)
+  src/services/contractService.ts                       (claim: pass secret/mobile to edge)
+
+contractnest-ui/
+  src/context/AuthContext.tsx                           (SUPERSET - register sends cnakRef/cnakSecret;
+                                                         also synced into auth-401-refresh,
+                                                         expense-side-activation, revenue-side-activation,
+                                                         signup-session-fix folders — all identical)
+  src/pages/auth/RegisterPage.tsx                       (recover secret from stored review redirect)
+  src/pages/contracts/claim/index.tsx                   (mobile verification field + secret param)
+
+COPY COMMANDS (PowerShell)
+--------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cnak-lite-flow1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cnak-lite-flow1\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cnak-lite-flow1\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Files copied" -ForegroundColor Green
+
+DEPLOY ORDER (matters!)
+-----------------------
+1. RUN MIGRATION FIRST: contractnest-edge/supabase/migrations/010_cnak_lite_claim_v2.sql
+   in the Supabase SQL editor (project uwyqhzotluikawcboldr).
+   NOTE: the moment this runs, bare-CNAK claims fail everywhere until the
+   edge functions below are redeployed — do 1+2 back to back.
+
+2. DEPLOY EDGE FUNCTIONS (all three touched):
+   supabase functions deploy contracts
+   supabase functions deploy auth
+   supabase functions deploy onboarding
+
+3. Restart API:  cd contractnest-api && npm run dev
+4. Restart UI:   cd contractnest-ui  && npm run dev   (cold restart — AuthContext changed; Ctrl+F5)
+
+SUBMODULES AFFECTED
+-------------------
+contractnest-edge, contractnest-api, contractnest-ui
+
+NOT IN THIS PHASE (Phase B+)
+----------------------------
+- The lite gate itself (App.tsx third state) — a fresh CNAK signup will
+  still be routed to /onboarding after signup for now. Phase A only makes
+  the DATA correct (onboarding_type='cnak', contract claimed).
+- Lite dashboard, menu whitelist, TrialCrossSellModal, restricted pages.
