@@ -1,0 +1,116 @@
+═══════════════════════════════════════════════════════════════════
+REVENUE → EXPENSE SHIFT + BUYER SIGNUP POLISH
+(Perspective gate part 2 — completes audit item #5 in both directions)
+Branch folder: expense-side-activation (2026-08-01)
+Submodules affected: contractnest-ui ONLY (no API/edge/DB changes)
+SUPERSEDES: revenue-side-activation (all its files are included here in
+newer form; shared files were also synced back into the older folders,
+so copy order between batches cannot break anything)
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+
+1) REVENUE → EXPENSE SHIFT (mirror of the Expense→Revenue gate)
+   • Toggle to Expense now probes readiness: ≥1 OWN registry asset
+     (ownership_type='self'; a seller's CLIENT assets deliberately don't
+     count). Lazy, limit-1, cached, fail-open — same as the revenue probe.
+   • Empty side → the same empty-state modal, direction-aware copy:
+     "Expense is your buying side… tell VaNi what you own and she builds
+     your registry." CTA → onboarding lite; Cancel keeps Revenue.
+
+2) SIDE-AWARE ACTIVATION (the important semantic fix, BOTH directions)
+   Activation runs seed ONLY the activated side's leg, and /start/serve
+   asks that side's question:
+   • Expense activation: "What do you own?" (buyer wording), seeds
+     businessType='buyer' → own registry only. WITHOUT this, persona
+     'both' would trigger the dual-intent rule and seed everything the
+     tenant SERVICES into what they OWN — wrong data.
+   • Revenue activation: seller wording, seeds businessType='seller' →
+     catalog only (also stops the previous batch's mild side effect of
+     adding serviced picks to a buyer's own registry).
+   • Hand-off via sessionStorage ('cn_activate_side'): written when the
+     activation CTA is clicked, read by BusinessPersonaStep (pre-selects
+     "Both") and ServiceableStep (wording + seed leg), threaded to
+     VaniWorkingStep (tasks, seed call, tail route, copy), cleared at the
+     done screen. Fresh signups never set it → behave exactly as before.
+   • Activation tails: expense → equipment-confirm → lov-setup → done;
+     revenue → pricing-review → terms → (assets) → lov-setup → done.
+
+3) BUYER SIGNUP POLISH (Expense onboarding at signup)
+   • journey.ts: buyer rail no longer promises "First contract" and
+     "Your plan" — steps a buyer never reaches (the VENDOR authors
+     contracts; /start/contract cannot work without a catalog). Buyer
+     rail: Business → What you own → Building → Your assets → Your
+     lists → Workspace ready.
+   • VaniDoneStep 9B: RFQ and CNAK now read as the buyer's two equal
+     first actions — primary CTA "Ask vendors to quote (RFQ) →", plus
+     "I have a contract code (CNAK) →"; signoff copy explains both.
+   • Deferred on purpose: guided first-RFQ rehearsal, CNAK-lite
+     workspace (#4), plan screen for buyers.
+
+FILES (9)
+─────────
+src/utils/perspective/sideActivation.ts        NEW — activation hand-off
+src/utils/perspective/sideReadiness.ts         + isExpenseSideReady
+src/context/AuthContext.tsx                    both directions gated; superset
+                                               (includes 401-expiry listener +
+                                               revenue-gate from prior batches)
+src/components/PerspectiveSwitchModal.tsx      direction-aware empty state
+src/components/onboarding/journey.ts           buyer rail fix
+src/lite/onboarding/BusinessPersonaStep.tsx    pre-select Both, either side
+src/lite/onboarding/ServiceableStep.tsx        side-aware question + seed leg
+src/pages/onboarding/steps/VaniWorkingStep.tsx effectivePersona: tasks/seed/tail
+src/pages/onboarding/steps/VaniDoneStep.tsx    9B copy + hand-off cleanup
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\expense-side-activation\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+# (api.ts, if not copied earlier, still comes from auth-401-refresh:)
+Copy-Item "MANUAL_COPY_FILES\auth-401-refresh\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: RUN & TEST  (cold restart — context files don't HMR cleanly)
+──────────────────
+cd contractnest-ui && npm run dev     (Ctrl+F5 in browser)
+
+TESTING CHECKLIST
+─────────────────
+Revenue→Expense direction:
+[ ] SELLER tenant, Revenue mode → tap Expense → checking → EMPTY STATE
+    ("Expense is your buying side", Revenue row marked "where you are now")
+[ ] "Set up my Expense side" → /start/business, "Both" pre-selected →
+    Continue → /start/serve asks "What do you OWN?" (buyer wording)
+[ ] Complete → working screen shows "Setting up your asset registry" /
+    "Nodes Created" → equipment-confirm → lists → done → cockpit
+[ ] Seller's CATALOG UNCHANGED afterwards (no new blocks from activation) —
+    and their own registry now has the picked assets (ownership self)
+[ ] Toggle Expense now → plain confirm (readiness true)
+[ ] Seller who already tracks CLIENT assets but owns nothing → STILL gets
+    the empty state (client assets must not count)
+
+Expense→Revenue (regression of prior batch, now leg-scoped):
+[ ] BUYER tenant → tap Revenue → empty state → activate → serve asks
+    "What do you SERVICE?" → catalog seeds; buyer's OWN registry gains
+    NOTHING new from this walk
+Buyer signup:
+[ ] Fresh buyer signup → rail shows 6 steps ending "Workspace ready"
+    (no "First contract"/"Your plan") → done screen shows "Ask vendors
+    to quote (RFQ) →" + CNAK button → completion lands (login loops stay
+    fixed)
+Fresh signups (no activation): seller / buyer / both → all behave exactly
+as before (hand-off key never set).
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transactions: n/a client-side; seeding reuses existing idempotent
+   endpoints, single-leg scoped
+✅ Race conditions: same seq-token modal guard; sessionStorage hand-off is
+   tab-scoped, cleared at done screen; positive-only readiness cache
+✅ Error handling: both probes fail-open; activation flow inherits the
+   lite flow's existing error/toast handling
+✅ Toasts / Loaders: existing components only (vaniToast, Loader2)
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════

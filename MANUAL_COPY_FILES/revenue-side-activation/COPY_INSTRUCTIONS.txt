@@ -1,0 +1,92 @@
+═══════════════════════════════════════════════════════════════════
+EXPENSE → REVENUE SWITCH — empty state + activation via lite onboarding
+(Audit item #5, first direction only)
+Branch folder: revenue-side-activation (2026-08-01)
+Submodules affected: contractnest-ui ONLY (no API/edge/DB changes)
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS DOES
+──────────────
+When a tenant in Expense mode taps Revenue on the header toggle:
+  1. The modal opens in a brief "Checking your Revenue side…" state while
+     a lazy readiness probe runs (≥1 catalog block via the existing
+     catalog-studio blocks endpoint, limit 1, cached per tenant+env).
+  2. Revenue side HAS data  → the original confirm dialog, unchanged.
+  3. Revenue side is EMPTY  → a proper empty state: inline illustration
+     (the toggle with the Revenue pill dashed/waiting), a plain-language
+     explanation of both sides (Revenue = contracts you send: catalog,
+     prices, receivables · Expense = contracts you receive: assets, dues,
+     payables), and two actions:
+       "Set up my Revenue side · ~6 min"  → routes into ONBOARDING LITE
+       "Not now — stay in Expense"        → closes, nothing switches
+  4. The activation CTA lands on /start/business with persona pre-selected
+     to "Both" (they keep their buyer half; still changeable). The lite
+     flow is idempotent end to end — the seeder skips whatever exists, so
+     re-running it as an existing tenant only ADDS the catalog side. After
+     the flow's final hard reload, perspective re-derives from the updated
+     persona and the tenant lands in Revenue with a real catalog.
+
+Blind switches into an empty Revenue side are no longer possible.
+Revenue→Expense stays ungated for now (buyer-side batch, per discussion).
+Readiness probe FAILS OPEN: if it errors, the normal switch is allowed —
+a wrongly blocked seller is worse than a wrongly allowed empty screen.
+
+FILES
+─────
+contractnest-ui/src/utils/perspective/sideReadiness.ts   NEW — lazy probe + cache
+contractnest-ui/src/context/AuthContext.tsx              gated switch, readiness
+                                                         state, activation nav
+contractnest-ui/src/components/PerspectiveSwitchModal.tsx three modes: confirm /
+                                                         checking / empty state
+contractnest-ui/src/lite/onboarding/BusinessPersonaStep.tsx pre-select "Both" on
+                                                         activation arrivals
+
+⚠️ AUTHCONTEXT SUPERSET NOTE
+────────────────────────────
+AuthContext.tsx here INCLUDES the auth-401-refresh batch's session-expiry
+listener (both batches touch this file, so both staged copies were synced
+to the identical superset — copy order between the two batches no longer
+matters). api.ts still comes ONLY from MANUAL_COPY_FILES\auth-401-refresh\.
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\revenue-side-activation\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+# If not already copied earlier (for api.ts):
+Copy-Item "MANUAL_COPY_FILES\auth-401-refresh\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: RUN & TEST
+──────────────────
+cd contractnest-ui && npm run dev     (hard refresh: Ctrl+F5)
+
+TESTING CHECKLIST
+─────────────────
+[ ] BUYER tenant (e.g. "setup"/"sell"), Expense mode → tap Revenue →
+    brief check → EMPTY STATE modal (illustration + both-sides explainer),
+    NOT the plain confirm; Cancel keeps Expense
+[ ] "Set up my Revenue side" → lands on /start/business with "Both"
+    pre-selected and business name pre-filled
+[ ] Complete the lite flow → catalog seeds (existing pieces skip) →
+    ends in cockpit, Revenue perspective, catalog visible
+[ ] After activation: toggle Expense ↔ Revenue → plain confirm both ways
+    (no more empty state; readiness now true)
+[ ] SELLER tenant → tap Expense → plain confirm, unchanged (ungated
+    direction); tap back to Revenue → plain confirm (has catalog)
+[ ] Dark mode: empty-state modal renders correctly (theme-aware)
+[ ] Backdrop click / "Not now" → modal closes, perspective unchanged
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transaction Management: n/a (no direct writes; seeding reuses the
+   existing idempotent onboarding endpoints)
+✅ Race Condition Handling: monotonic seq token kills stale readiness
+   probes on cancel/confirm/re-open; confirm hard-blocked unless 'ready';
+   positive-only caching so post-activation state is never stale
+✅ Error Handling: probe failure → fail-open to the normal confirm path
+✅ Toasts: existing vaniToast on actual switch (unchanged)
+✅ Loaders: existing Loader2 spinner pattern for the checking state
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════

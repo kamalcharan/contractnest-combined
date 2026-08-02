@@ -1,0 +1,96 @@
+═══════════════════════════════════════════════════════════════════
+AUTH 401 / TOKEN-REFRESH FIX — "logged off after creating contract"
+Branch folder: auth-401-refresh (2026-08-01)
+Submodules affected: contractnest-ui ONLY (no API/edge/DB changes —
+the refresh endpoint POST /api/auth/refresh-token already existed
+end-to-end and was simply never called by the UI)
+═══════════════════════════════════════════════════════════════════
+
+ROOT CAUSE (recap)
+──────────────────
+1. Supabase access token expires (~1h); login stored refresh_token but
+   NOTHING ever used it.
+2. api.ts's 401 handler silently wiped auth storage — no logout, no
+   redirect. The app kept working on axios's in-memory Authorization
+   header (a zombie session).
+3. The zombie died at the next HARD reload — which in the express flow
+   is PlanStep → /ops/cockpit, i.e. immediately after creating the
+   first contract. Hence "after creating contract, system logged off".
+
+WHAT CHANGED
+────────────
+contractnest-ui/src/services/api.ts
+  • New: single-flight refreshAuthToken() → POST /api/auth/refresh-token
+    (bare axios, no interceptors), stores the rotated token pair in
+    whichever storage held it (localStorage w/ remember-me, else
+    sessionStorage), updates axios defaults.
+  • 401 handling rewritten: non-credential endpoints get ONE refresh +
+    retry (guarded by _authRetry so a request can never loop).
+    /api/auth/user IS refreshable now — so a hard reload with an
+    expired access token recovers instead of logging out.
+    Credential endpoints (login, refresh-token, register, signout,
+    reset/verify-password) are excluded — a 401 there is a real failure.
+  • Only when refresh itself fails: storage cleared, axios header
+    dropped, and a 'cn:auth-expired' event dispatched (skipped if
+    already on a public auth page).
+  • SESSION_CONFLICT 401 branch untouched.
+
+contractnest-ui/src/context/AuthContext.tsx
+  • New effect: listens for 'cn:auth-expired' → clean state logout
+    (timers, sessionService, storage.clearAuth, all auth state),
+    toast "Your session has expired — please sign in again.",
+    navigate('/login'). No API signout call (token already dead).
+
+STEP 1: COPY FILES
+──────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\auth-401-refresh\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+STEP 2: RUN & TEST
+──────────────────
+cd contractnest-ui && npm run dev     (hard refresh: Ctrl+F5)
+
+TESTING CHECKLIST
+─────────────────
+[ ] Normal login/logout still works (both with and without Remember me)
+[ ] Wrong password on login still shows the error (no refresh loop)
+[ ] Expiry simulation A (fastest): log in, then in DevTools console run
+      localStorage.setItem('auth_token','corrupted') ||
+      sessionStorage.setItem('auth_token','corrupted')
+    (whichever holds it), then click around → requests should 401 once,
+    auto-refresh, and KEEP WORKING with no logout
+[ ] Expiry simulation B (dead session): corrupt BOTH auth_token AND
+    refresh_token the same way → next request should log you out
+    VISIBLY: toast "Your session has expired" + land on /login
+    (no zombie: reloading any page also goes to /login immediately)
+[ ] Long-session test: leave a tab logged in for >1h (keep it active
+    enough to dodge the separate 15-min idle logout), then create a
+    contract / navigate to cockpit → no surprise logout
+[ ] Express onboarding end-to-end (the original repro): finish flow,
+    create first contract, continue to cockpit → still signed in
+
+NOTES / OUT OF SCOPE (flagged, not changed)
+───────────────────────────────────────────
+• SESSION_TIMEOUT (15-min absolute, activity-reset) and LOCK_TIMEOUT
+  are untouched — separate discussion. Their constants contradict
+  their comments (LOCK=16min "5 minutes", so the lock screen can never
+  fire before the 15-min session logout); worth a deliberate pass.
+• Supabase rotates refresh tokens on use; the single-flight guard
+  prevents parallel-refresh self-invalidation within one tab. Two
+  BROWSER TABS refreshing simultaneously can still race (rare; the
+  loser gets the clean logged-out path, not a zombie).
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transaction Management: n/a (no DB writes)
+✅ Race Condition Handling: single-flight refresh promise; _authRetry
+   one-retry guard; event listener registered once
+✅ Error Handling: refresh failures caught → clean visible logout path;
+   refresh call has its own 15s timeout
+✅ Toasts: existing vaniToast (session-expired message)
+✅ Loaders: n/a (transparent retry; no UI state added)
+
+⏸️ WAITING FOR CONFIRMATION — no commit/merge commands until
+   "Tested, working - proceed with merge".
+═══════════════════════════════════════════════════════════════════
