@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════════════════════
+BUYER REGISTRY SEEDING — structured, mirroring the user's own pattern
+Branch folder: registry-seed-structured (2026-08-01)
+Submodules affected: contractnest-edge ONLY (1 SQL migration)
+NO API or UI changes — the RPC keeps its signature (new arg is optional)
+NOT applied to the live DB — you run it (DDL stays in your hands)
+═══════════════════════════════════════════════════════════════════
+
+OWNER PRINCIPLE ENCODED
+───────────────────────
+"Registry is by-select — the user selects what he owns, and seeding
+should follow that same pattern." Nothing is invented: one row per
+picked template, exactly as before. What changes is the SHAPE — seeds
+now come out looking like rows the product's own manual add flow
+produces (verified against real manually-created rows):
+
+  BEFORE (live, e.g. tenant "setup"):       AFTER:
+  flat list, no parents, every row           Main Site            (campus)
+  good/medium, no location — the done        └─ Building A        (building)
+  screen's "Campus→Building→Floor→Unit"         ├─ Parking Area   (zone)
+  claim had nothing behind it                   ├─ HVAC System    — medium, located
+                                                └─ DG Set         — HIGH, located
+
+DETAILS
+───────
+• Hierarchy exactly like manual adds: specifications.entity_type
+  ('campus'/'building'/'zone' — valid parents per entityTypeConfig.ts)
+  linked via parent_asset_id. Facility picks ('asset' templates) become
+  zone nodes; equipment attaches under Building A with a location.
+• Criticality varies by equipment class (DG/transformer/lift/UPS/fire →
+  high; parking/washroom/landscaping → low; else medium) instead of a
+  wall of 'medium'. All seeded rows flagged specifications.is_sample.
+• Skeleton (campus+building) created once per tenant, idempotent;
+  template-row idempotency unchanged (same partial unique index).
+• Optional p_site_name param for later ("{Business} — Main Site");
+  the old 3-arg signature is DROPPED first — otherwise CREATE with the
+  new arg would create an ambiguous OVERLOAD and break the API's rpc().
+• is_live=false unchanged (test env, same philosophy as contacts).
+• Part 2 of the migration BACKFILLS existing flat-seeded tenants
+  (setup, ping, sign, final, …) into the same structure — only rows
+  with seeded_from='onboarding' and no parent; manual rows untouched.
+
+STEP 1: APPLY MIGRATION (Supabase SQL editor / supabase db push)
+────────────────────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/onboarding/009_registry_seed_structured.sql
+(Copy the file into contractnest-edge via the command below first if you
+want it in your local repo, then run its contents against the DB.)
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\registry-seed-structured\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TESTING CHECKLIST
+─────────────────
+[ ] Run migration → no errors; SELECT proname FROM pg_proc WHERE
+    proname='seed_onboarding_registry_assets' returns ONE row (no overload)
+[ ] Existing buyer tenant (setup@s.com), test env → Equipment Registry
+    shows Main Site → Building A → their picked assets underneath,
+    DG/Elevator marked HIGH criticality, locations filled
+[ ] Fresh buyer signup → picks equipment → registry comes out structured
+    the same way (campus + building + children)
+[ ] Re-running onboarding/seeding for the same tenant → no duplicates
+    (skeleton reused, template rows skipped)
+[ ] Manually-created assets (any tenant) → completely untouched
+
+PRODUCTION CHECKLIST
+────────────────────
+✅ Transactions: single RPC, per-row exception handling preserved
+✅ Race conditions: idempotent skeleton lookups + existing partial
+   unique index on template rows
+✅ Error handling: unique_violation caught per row, counts returned
+✅ Toasts/Loaders: n/a (DB only)
+
+⏸️ WAITING FOR CONFIRMATION — after you run + test, the migration file
+   gets committed to contractnest-edge main in Phase 2 like the others.
+═══════════════════════════════════════════════════════════════════
