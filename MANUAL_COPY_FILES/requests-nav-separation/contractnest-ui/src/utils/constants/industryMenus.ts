@@ -9,9 +9,6 @@ export interface MenuItem {
   path: string;
   adminOnly?: boolean;
   hasSubmenu?: boolean;
-  /** Only show this item on these perspectives. Omit = both.
-      Requests is expense-only: creating an RFQ is a buyer action. */
-  perspectives?: Array<'revenue' | 'expense'>;
   submenuItems?: MenuItem[];
   defaultOpen?: boolean; // For submenus that should be open by default
 }
@@ -107,18 +104,17 @@ export const defaultMenuItems: MenuItem[] = [
   },
   // Requests (RFQ) — its OWN menu item, not a toggle inside Contracts.
   // An RFQ is a different object with a different lifecycle (draft → sent →
-  // quotes in → awarded → converted), and its meaning follows the perspective
-  // exactly like Receivables/Payables: EXPENSE = requests you sent to vendors,
-  // REVENUE = requests you received and must quote.
+  // quotes in → awarded → converted). Visible on BOTH sides, because the
+  // two halves of an RFQ live on opposite sides:
+  //   EXPENSE → RAISE a request + track the ones you sent
+  //   REVENUE → VIEW requests you received and RESPOND with a quote
+  // The page enforces the difference (the "New Request" button only exists
+  // on expense); the menu must not hide the view/respond half.
   {
     id: 'requests',
     label: 'Requests',
     icon: 'Inbox',
-    path: '/requests',
-    // EXPENSE ONLY. A revenue user cannot raise an RFQ — they can only
-    // receive one, and most never do. Vendors who DO receive requests are
-    // lite tenants and get their own Requests entry via LITE_MENUS.rfq.
-    perspectives: ['expense']
+    path: '/requests'
   },
   // VaNi — the real agent surface: Overview (landing + trial) and Briefing.
   // Autonomy & Credits joins when built (agreed end-state: 3 items).

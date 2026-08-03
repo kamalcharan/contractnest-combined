@@ -371,7 +371,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
   // Get user data and industry from auth context
-  const { user, currentTenant, isAuthenticated, hasCompletedOnboarding, liteTier, perspective } = useAuth();
+  const { user, currentTenant, isAuthenticated, hasCompletedOnboarding, liteTier } = useAuth();
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const [logoError, setLogoError] = useState(false);
@@ -401,11 +401,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
     if (!item.adminOnly) {
       // Hide 'getting-started' if onboarding complete or not owner
       if (item.id === 'getting-started' && !showGettingStarted) {
-        return false;
-      }
-      // Perspective-gated items (Requests = expense only: a revenue user
-      // cannot raise an RFQ, only receive one).
-      if (item.perspectives && !item.perspectives.includes(perspective)) {
         return false;
       }
       return isRevealed(item.id);

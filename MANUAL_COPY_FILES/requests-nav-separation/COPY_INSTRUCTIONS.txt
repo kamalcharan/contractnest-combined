@@ -23,13 +23,17 @@ WHAT CHANGED  (UI only — no API, no RPC, no migration)
      recordType="rfq" (new prop; /contracts passes the default
      'contract'). Record type now comes from the ROUTE, not state.
    - industryMenus.ts: new top-level "Requests" item (icon Inbox),
-     gated to EXPENSE ONLY via a new MenuItem.perspectives field
-     (Sidebar honours it). A revenue user cannot raise an RFQ — they can
-     only receive one, and most never do, so a permanent Requests item
-     on Revenue would point at a page they can only find empty. Vendors
-     who DO receive requests are lite tenants and keep their own entry
-     via LITE_MENUS.rfq. /requests still renders correctly on Revenue
-     when reached that way (received view, no create button).
+     visible on BOTH perspectives.
+     OWNER RULE (2026-08-03): "Raising a request can be done only at
+     Expense. Viewing and responding to a request is done in Revenue."
+     So the two halves of an RFQ live on opposite sides and the menu
+     must show both:
+       EXPENSE → raise a request + track the ones you sent
+       REVENUE → view received requests + respond with a quote
+     The PAGE enforces the difference (the "New Request" button exists
+     only on expense; a received request row opens the quote flow).
+     An earlier build gated the menu item to expense only — that hid the
+     view/respond half and has been removed.
    - Rationale: an RFQ is a different object with its own lifecycle
      (draft → sent → quotes in → awarded → converted). Perspective then
      decides its MEANING, exactly like Receivables/Payables:
