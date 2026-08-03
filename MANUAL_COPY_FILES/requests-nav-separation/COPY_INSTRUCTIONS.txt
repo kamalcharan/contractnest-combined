@@ -34,20 +34,34 @@ WHAT CHANGED  (UI only — no API, no RPC, no migration)
      /requests instead of /contracts?record=rfq.
 
 2. BOTH HEADER TOGGLES REMOVED
-   - Client|Partner segmented control: gone. Relationship is a badge on
-     every row (it always was) — the toggle filtered something already
-     visible, using a control style that read as a mode.
+   - Client|Partner segmented control: gone from the header.
+     FINDING (verified in code): that control NEVER filtered the list.
+     `createRelationship` was used in exactly three places — its own
+     highlight, the create button's label, and the contract type handed
+     to the wizard. The list always fetched 'client,partner' on Revenue.
+     It was a CREATE-TYPE selector wearing a filter's clothing, which is
+     why it read as confusing.
+   - Relationship stays visible as a badge on every row.
    - Contracts|Requests segmented control: gone (now the menu).
    - Header is now: search · Draft with VaNi · New contract.
 
-3. TITLES FOLLOW PERSPECTIVE (the spec's shell discipline)
+3. NEW: CLIENT / PARTNER FILTER CHIPS (Revenue only)
+   Real filtering, which never existed before. Chips sit in the EXISTING
+   controls row beside View mode + Sort (left-aligned), not in the title
+   row: [All] [Clients] [Partners]. Selecting one narrows
+   perspectiveTypeFilter from 'client,partner' to the single type, which
+   scopes BOTH the list and the status-pill counts (they share the same
+   filter), and resets to page 1. Hidden on Expense (all vendor) and on
+   /requests.
+
+4. TITLES FOLLOW PERSPECTIVE (the spec's shell discipline)
    /contracts  revenue → "Contracts"          · Contracts you deliver & bill
                expense → "Vendor contracts"   · Contracts you've hired & pay
    /requests   revenue → "Requests received"  · respond with your quote
                expense → "Requests sent"      · sent to vendors
    Create button is plain "New Contract" — no relationship in the label.
 
-4. RELATIONSHIP BADGE: fallback changed from 'Client' to '—'.
+5. RELATIONSHIP BADGE: fallback changed from 'Client' to '—'.
    A missing contract_type is a data gap; labelling it "Client" hid it.
 
 FILES

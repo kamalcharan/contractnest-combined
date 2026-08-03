@@ -474,6 +474,10 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
   const isRfqView = effectiveRecordType === 'rfq';
   const isReceivedRequestsView = isRfqView && activePerspective === 'revenue';
 
+  // Relationship filter (Revenue only): null = client + partner together.
+  // NEW capability — the removed header toggle never filtered the list.
+  const [relationshipFilter, setRelationshipFilter] = useState<'client' | 'partner' | null>(null);
+
   // ── Filter state — Active is the default status ──
   const [activeStatus, setActiveStatus] = useState<string | null>(
     searchParams.get('status') || 'active'
@@ -500,7 +504,11 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
   const [wizardContractType, setWizardContractType] = useState<ContractType>('client');
   // Revenue relationship chosen for a NEW contract: client (I serve them) or
   // partner (chapter members, associates — dues receivable). Expense is always vendor.
-  const [createRelationship, setCreateRelationship] = useState<'client' | 'partner'>('client');
+  // Contract type handed to the wizard by "New contract". The old header
+  // toggle set this — it was a CREATE-TYPE selector, never a list filter.
+  // With the toggle gone this is fixed at 'client' on Revenue; creating a
+  // PARTNER contract needs its own home (see COPY_INSTRUCTIONS: open decision).
+  const [createRelationship] = useState<'client' | 'partner'>('client');
 
   // ── Draft resume state ──
   const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
@@ -562,7 +570,9 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
   // ── Build API filters ──
   // Revenue mode: client + partner (both receivable — dues owed TO the tenant)
   // Expense mode: vendor (payable)
-  const perspectiveTypeFilter = activePerspective === 'revenue' ? 'client,partner' : 'vendor';
+  const perspectiveTypeFilter = activePerspective === 'revenue'
+    ? (relationshipFilter || 'client,partner')
+    : 'vendor';
   const filters: ContractListFilters = useMemo(() => {
     const f: ContractListFilters = {
       limit: ITEMS_PER_PAGE,
@@ -972,7 +982,7 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
           colors={colors}
         />
 
-        {/* ═══ CONTROLS: View mode + Sort ═══ */}
+        {/* ═══ CONTROLS: Relationship filter + View mode + Sort ═══ */}
         <div
           style={{
             display: 'flex',
@@ -982,6 +992,45 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
             gap: 8,
           }}
         >
+          {/* Relationship chips — REVENUE only (Expense is all vendors, so a
+              filter there would have a single option). This is genuinely new:
+              the old header Client|Partner control never filtered anything, it
+              only chose what the create button would make. Chips sit with the
+              other list controls, not up in the title row. */}
+          {activePerspective === 'revenue' && !isRfqView && (
+            <div style={{ display: 'flex', gap: 6, marginRight: 'auto' }}>
+              {([
+                [null, 'All'],
+                ['client', 'Clients'],
+                ['partner', 'Partners'],
+              ] as const).map(([key, label]) => {
+                const on = relationshipFilter === key;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => { setRelationshipFilter(key); setCurrentPage(1); }}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 20,
+                      border: on
+                        ? `1.5px solid ${colors.brand.primary}`
+                        : `1px solid ${colors.utility.primaryText}20`,
+                      background: on ? `${colors.brand.primary}12` : 'transparent',
+                      color: on ? colors.brand.primary : colors.utility.secondaryText,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <ViewModeToggle
             value={viewMode}
             onChange={setViewMode}
