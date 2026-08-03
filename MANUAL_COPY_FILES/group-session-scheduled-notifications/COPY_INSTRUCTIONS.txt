@@ -3,7 +3,54 @@
 ═══════════════════════════════════════════════════
 Branch: claude/submodule-init-manual-copy-7yhb7h
 
-⚠️ THIS BATCH IS INERT UNTIL YOU SET SESSION TIMING — see BLOCKER below.
+╔═══════════════════════════════════════════════════════════════╗
+║ STATUS — MIGRATION IS ALREADY APPLIED TO PRODUCTION           ║
+║ (applied 3 Aug 2026 on owner instruction "you can run the     ║
+║ migrations", project uwyqhzotluikawcboldr)                    ║
+║                                                               ║
+║   ✅ ux_n_jtd_group_session_reminder    created               ║
+║   ✅ gs_member_whatsapp_phone()         created               ║
+║   ✅ gs_roster_members()                created               ║
+║   ✅ gs_run_session_notifications()     created, returns 0/0  ║
+║   ✅ cron 'group-session-notifications' */15, active, job 9   ║
+║   ✅ 2 BBB template mappings            seeded                ║
+║   ✅ Session timing set by owner        07:30 / 119 min       ║
+║                                                               ║
+║   ❌ jtd-worker edge function           NOT YET DEPLOYED      ║
+║      ↑ THIS IS THE ONLY REMAINING BLOCKER. See below.         ║
+║                                                               ║
+║ The SQL file in this batch is kept as the source-of-record    ║
+║ copy of what was applied. Do NOT re-run it — re-running is    ║
+║ harmless (idempotent) but pointless.                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+╔═══════════════════════════════════════════════════════════════╗
+║ 🛑 STOP — contractnest-edge REPO IS BEHIND PRODUCTION         ║
+║                                                               ║
+║ The DEPLOYED jtd-worker (v30) contains three things that do   ║
+║ NOT exist in the contractnest-edge git checkout:              ║
+║                                                               ║
+║   1. GATE_EXEMPT_SOURCE_TYPES — identity/access messages      ║
+║      (user_invite, user_created, contract_signoff) bypass the ║
+║      TEST guardrail, channel kill switch and per-type toggle. ║
+║   2. A per-message-type toggle calling vani_rule_enabled()    ║
+║      with rule key notif_<source_type_code>.                  ║
+║   3. NAMED WhatsApp template parameters. BBB's WABA namespace ║
+║      enforces named-only; positional {{1}} is silently        ║
+║      accepted by MSG91 then rejected by WhatsApp on delivery  ║
+║      with "Parameter name is missing or empty". That is why   ║
+║      attendance_ack / payment_thankyou previously showed      ║
+║      status='sent' but never arrived on the tester's phone.   ║
+║                                                               ║
+║ ⚠️ Running `supabase functions deploy jtd-worker` from the    ║
+║    current checkout would REGRESS production and re-break     ║
+║    WhatsApp delivery for every group-session message.         ║
+║                                                               ║
+║ The whatsapp.ts in THIS batch is built on the DEPLOYED v30    ║
+║ source (not the stale repo copy) and both new branches use    ║
+║ NAMED params accordingly. Before deploying, sync the repo's   ║
+║ jtd-worker to v30, then apply this file on top.               ║
+╚═══════════════════════════════════════════════════════════════╝
 
 WHAT THIS SOLVES
 ─────────────────────────────────────────────────
