@@ -1,0 +1,238 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — group-session-scheduled-notifications
+═══════════════════════════════════════════════════
+Branch: claude/submodule-init-manual-copy-7yhb7h
+
+⚠️ THIS BATCH IS INERT UNTIL YOU SET SESSION TIMING — see BLOCKER below.
+
+WHAT THIS SOLVES
+─────────────────────────────────────────────────
+Completes the two remaining TIME-DRIVEN Group Session WhatsApp triggers:
+
+  group_session_looking_forward → 3 days out AND 1 day out, to every active
+                                  roster member (49 for BBB = 98/occurrence)
+  group_session_noshow_regret   → session end + 2h, to roster members with no
+                                  'present' attendance row (~15/occurrence)
+
+group_session_absentee_reminder is NOT built — owner decision, on hold. Its
+n_jtd_source_types row from 008 stays seeded and inert: no template, no
+trigger, nothing enqueues it. No action needed to keep it that way.
+
+Unlike migration 053 (where the JTD insert rode the transaction of an RPC that
+was already firing), these have no host transaction, so they need a scheduler.
+That brought four things that did not exist before:
+
+  1. An IST-aware runner  — same class of bug as 048; "today" is Asia/Kolkata,
+                            never the database's UTC current_date.
+  2. An idempotency guard — n_jtd had NO unique index beyond its primary key.
+                            A cron without one re-sends every 15 minutes,
+                            forever.
+  3. gs_roster_members()  — roster enumeration was locked inside
+                            gs_dash_roster; now shared, so the dashboard and
+                            the notifications cannot disagree about who is on
+                            the roster.
+  4. gs_member_whatsapp_phone() — safe phone lookup (see below).
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/bbb-foundation/
+        054_group_session_scheduled_notifications.sql          [NEW — RUN, don't copy]
+      Six sections: dedupe unique index, phone helper, roster helper, the
+      scheduler function, the cron registration, and the two BBB template
+      mappings.
+  - contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+      Two new positional variable-order branches:
+        group_session_looking_forward → [member_name, session_name,
+                                         occurrence_date, start_time]  (4 vars)
+        group_session_noshow_regret   → [member_name, session_name,
+                                         occurrence_date]              (3 vars)
+      Required because the generic Object.values() fallback is explicitly
+      unsafe — template_variables round-trips through a jsonb column and
+      Postgres jsonb does not preserve key insertion order. Existing branches
+      untouched.
+
+Submodules Affected: contractnest-edge only
+  (no API change, no UI change — the Session timing field this depends on
+   already exists in contractnest-ui and needs no work)
+
+═══════════════════════════════════════════════════
+🛑 BLOCKER — SET SESSION TIMING FIRST
+═══════════════════════════════════════════════════
+Saturday Cadence has NO timing values — confirmed empty at the catalog level
+(m_cat_blocks.config->groupSession) AND across all 66 contract blocks. The
+field itself already exists and needs no development:
+
+  Catalog Studio → Saturday Cadence → Block Wizard → Delivery step
+                 → "Session timing" → Start time + Duration (minutes)
+
+Until both are set:
+  - looking_forward sends NOTHING (its approved template carries a start_time
+    variable; a blank would ship an empty placeholder, so the enqueue is gated
+    on startTime being present)
+  - noshow_regret sends NOTHING (cannot compute session end without
+    startTime + durationMinutes)
+
+This is by design — silent-but-correct beats a message with a blank in it.
+Set the two values and both switch on with no code change.
+
+═══════════════════════════════════════════════════
+⚠️ THE GUARD THAT MATTERS MOST
+═══════════════════════════════════════════════════
+Section 4b carries `s.occurrence_date >= v_today - 1`.
+
+Without it, the first cron run after deploy would look back across the whole
+schedule and fire a no-show regret for every past occurrence — for BBB that is
+8 past occurrences x ~15 absentees = ~120 WhatsApps to real members about
+sessions that happened months ago. The guard limits scope to yesterday's and
+today's occurrences only.
+
+Verified: deploying today (3 Aug) enqueues ZERO messages. Last occurrence was
+25 Jul (outside the guard); next is 8 Aug (has not ended yet).
+
+Production Checklist:
+  ✅ Transaction Management: the scheduler is one function = one transaction;
+     both INSERT…SELECT statements commit or roll back together.
+  ✅ Race Condition Handling: ux_n_jtd_group_session_reminder (partial unique
+     index) + ON CONFLICT DO NOTHING. Overlapping cron runs, retries, or a
+     manual invocation cannot double-send. reminder_key ('lf_3' / 'lf_1' /
+     'regret') discriminates the two looking-forward sends for the same
+     occurrence + member, which source_id alone cannot.
+  ✅ Error Handling: phone helper returns NULL rather than guessing on an
+     unrecognised digit count (member is skipped, not mis-delivered); both
+     halves gated on a template mapping existing, so an unmapped tenant is
+     silent instead of manufacturing failed rows + DLQ noise; cron
+     re-registration wrapped in an exception-swallowing DO block so re-running
+     the migration is safe.
+  ✅ Toasts: N/A — backend/scheduler only, no UI surface.
+  ✅ Loaders: N/A — backend/scheduler only.
+
+═══════════════════════════════════════════════════
+🔎 VERIFICATION DONE THIS BATCH
+═══════════════════════════════════════════════════
+Run read-only against LIVE (uwyqhzotluikawcboldr), nothing created or modified:
+
+  ✅ Roster + phone logic dry-run for the 8 Aug occurrence, with both helpers
+     inlined: 49 roster members → 49 resolvable phones → 0 dropped, every
+     number exactly 12 digits. The phone helper loses nobody.
+  ✅ Session-end arithmetic: DATE '2026-08-08' + TIME '07:00'
+     + make_interval(mins => 120) + interval '2 hours' → 2026-08-08 11:00.
+     Correct (07:00 start, 09:00 end, +2h).
+  ✅ Backfill guard: 0 occurrences currently in the looking-forward window
+     (next is 8 Aug = 5 days out, so first sends are 5 Aug and 7 Aug); regret
+     scope excludes 25 Jul. Deploying today sends nothing.
+  ✅ FK/constraint integrity for the rows this inserts: event_type_code
+     'reminder' exists (29 n_jtd rows already use it), channel 'whatsapp'
+     exists, both source_type_codes seeded by 008, and chk_performer permits
+     performed_by_type='system'.
+  ✅ IST expression returns 2026-08-03 23:07 while UTC was still 18:37 —
+     confirms the 048-class timezone handling is right.
+
+  ❌ NOT DONE — the migration itself has not been executed anywhere. No
+     staging database was available, so section syntax was reviewed by eye and
+     every embedded expression was proven individually as a pure SELECT, but
+     the DDL has not been parsed by Postgres. Run it in a transaction first
+     (see STEP 2) so a syntax error rolls back cleanly.
+  ❌ NOT DONE — no end-to-end live send. TEST env cannot prove this: jtd-worker
+     hard-blocks is_live=false for email and WhatsApp unconditionally (that is
+     what the two 'failed' attendance-ack rows on 1 Aug were). First real proof
+     is the 5 Aug looking-forward send.
+  ❌ NOT VERIFIED — provider_template_id. Section 6 seeds both as equal to the
+     source_type_code, following 009's precedent ("MSG91 assigned no separate
+     name"). If MSG91 gave these two different names, correct them in
+     /admin/jtd/templates before 5 Aug or the sends fail template resolution.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: APPLY FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: RUN the migration (this file is executed, NOT copied)
+─────────────────────────────────
+Run in the Supabase SQL editor. Wrap it so a syntax error costs nothing:
+
+    BEGIN;
+    -- paste the full contents of
+    -- 054_group_session_scheduled_notifications.sql
+    COMMIT;      -- change to ROLLBACK; if anything errors
+
+Then confirm it registered:
+
+    SELECT jobname, schedule, active FROM cron.job
+     WHERE jobname = 'group-session-notifications';
+
+STEP 3: Copy the edge function file
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\group-session-scheduled-notifications\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 4: Deploy jtd-worker
+─────────────────────────────────
+The new whatsapp.ts branches only take effect once the edge function is
+redeployed. Without this the sends resolve to the generic Object.values()
+fallback and variables may arrive in the wrong order.
+
+    supabase functions deploy jtd-worker
+
+STEP 5: Set Session timing (the blocker above)
+─────────────────────────────────
+Catalog Studio → Saturday Cadence → Block Wizard → Delivery → Session timing
+Enter Start time and Duration (minutes), save.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Safe to run any time — the function is idempotent:
+
+  - [ ] Manually invoke:  SELECT public.gs_run_session_notifications();
+        BEFORE setting Session timing → expect
+        {"looking_forward_enqueued": 0, "noshow_regret_enqueued": 0}
+  - [ ] Set Session timing, invoke again. Still 0 today (3 Aug) — next
+        occurrence is 8 Aug, which is 5 days out, not 3 or 1.
+  - [ ] Confirm the timing actually saved:
+        SELECT config->'groupSession'->'timing' FROM m_cat_blocks
+         WHERE id = 'c6e86303-4a3c-41fa-8779-e330d5b0574d';
+  - [ ] On 5 Aug: expect 49 looking_forward rows enqueued (3 days out).
+        SELECT status_code, count(*) FROM n_jtd
+         WHERE source_type_code='group_session_looking_forward'
+         GROUP BY 1;
+  - [ ] Verify idempotency — run gs_run_session_notifications() twice in a row
+        on 5 Aug. Second call must report 0 and total row count must not move.
+  - [ ] Check one rendered message end to end in Event Explorer
+        (/admin/jtd) — confirm start_time renders as the value you entered and
+        the four variables are in the right order.
+  - [ ] On 7 Aug: expect a second batch of 49 (1 day out), with
+        reminder_key='lf_1' — distinct rows from 5 Aug's 'lf_3'.
+  - [ ] On 8 Aug, 2h after session end: expect ~15 noshow_regret rows, and
+        confirm nobody who checked in received one.
+  - [ ] Confirm a member who sent a SUBSTITUTE did not get a regret
+        (substitutes are recorded against the member's own contact_id with
+        status='present', so they should be excluded automatically).
+
+═══════════════════════════════════════════════════
+📌 NOT IN THIS BATCH (deliberate)
+═══════════════════════════════════════════════════
+The gs_confirm_declaration payment thank-you bugs found earlier are NOT fixed
+here — you said the base was fine as-is, and this batch is scoped to the two
+new triggers. Both remain live and unexploded:
+
+  1. Session name renders blank — it reads v_d.cat_block_id, which is NULL on
+     all 33 declarations, so the message says "…for ." with nothing after it.
+  2. It builds the phone as coalesce(country_code,'') || value, which doubles
+     the prefix when country_code='+91' (46 of 111 BBB contacts). Currently
+     latent: 0 of the 49 active Saturday Cadence members are affected, so it
+     bites as new members join.
+
+gs_member_whatsapp_phone() from this batch fixes (2) — swapping it into
+gs_confirm_declaration is a one-line change whenever you want it. Flagged, not
+done, since you did not ask for it.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
