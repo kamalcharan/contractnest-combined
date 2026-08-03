@@ -297,7 +297,7 @@ const TeamEditPage = () => <div className="p-8">Edit Team Member Page (Coming So
 
 // Smart Home Page Component - Shows landing page OR redirects based on auth
 const SmartHomePage: React.FC = () => {
-  const { isAuthenticated, isLoading, currentTenant, hasCompletedOnboarding } = useAuth();
+  const { isAuthenticated, isLoading, currentTenant, hasCompletedOnboarding, liteTier } = useAuth();
   const location = useLocation();
 
   // Don't redirect if user is on auth pages or welcome page
@@ -313,8 +313,11 @@ const SmartHomePage: React.FC = () => {
   }
 
   if (isAuthenticated && currentTenant) {
-    // Send to onboarding if not yet complete, otherwise to the main app
-    if (!hasCompletedOnboarding) {
+    // Send to onboarding if not yet complete, otherwise to the main app.
+    // THIRD STATE (CNAK/RFQ-lite): incomplete onboarding of type 'cnak'/'rfq'
+    // enters the app anyway — the incompleteness IS the lite tier, and the
+    // app renders restricted for it. Completing onboarding clears the tier.
+    if (!hasCompletedOnboarding && !liteTier) {
       return <Navigate to="/onboarding" replace />;
     }
     return <Navigate to="/ops/cockpit" replace />;

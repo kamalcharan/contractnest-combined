@@ -5,6 +5,8 @@ import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { getMenuItemsForIndustry, MenuItem } from '../../utils/constants/industryMenus';
+import { useNavigate } from 'react-router-dom';
+import { LITE_MENUS, LITE_TRIAL, LiteMenuEntry } from '../../utils/constants/liteAccess';
 import { useReveals } from '@/components/reveal/useReveal';
 import type { RevealId } from '@/components/reveal/revealRules';
 
@@ -316,13 +318,61 @@ const VaNiNavItem: React.FC<{ item: MenuItem; collapsed: boolean }> = ({ item, c
   );
 };
 
+// ─────────────────────────────────────────────────────────────────────────
+// CNAK/RFQ-lite: flat nav entry. Open items are plain NavLinks; ✦ (grow)
+// items navigate too — LiteRouteGate renders the restricted cross-sell
+// state on those routes, so a menu click and a deep link behave the same.
+// ─────────────────────────────────────────────────────────────────────────
+const LiteNavItem: React.FC<{ entry: LiteMenuEntry; collapsed: boolean; restricted?: boolean }> = ({
+  entry,
+  collapsed,
+  restricted = false
+}) => {
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const iconsMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number }>>;
+  const IconComponent = iconsMap[entry.icon] || LucideIcons.Circle;
+
+  return (
+    <NavLink
+      to={entry.path}
+      className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all sidebar-nav-item mb-1"
+      style={({ isActive }) => ({
+        backgroundColor: isActive ? colors.brand.primary : 'transparent',
+        color: isActive ? 'white' : restricted ? colors.utility.secondaryText : colors.utility.primaryText,
+        fontWeight: isActive ? '500' : 'normal'
+      })}
+    >
+      <IconComponent size={18} />
+      {!collapsed && (
+        <div className="flex justify-between items-center w-full">
+          <span className="text-sm">{entry.label}</span>
+          {restricted && (
+            <span
+              className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
+              style={{
+                color: colors.brand.primary,
+                backgroundColor: `${colors.brand.primary}15`,
+                border: `1px solid ${colors.brand.primary}40`
+              }}
+            >
+              ✦
+            </span>
+          )}
+        </div>
+      )}
+    </NavLink>
+  );
+};
+
 interface SidebarProps {
   collapsed?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
   // Get user data and industry from auth context
-  const { user, currentTenant, isAuthenticated, hasCompletedOnboarding } = useAuth();
+  const { user, currentTenant, isAuthenticated, hasCompletedOnboarding, liteTier, perspective } = useAuth();
+  const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const [logoError, setLogoError] = useState(false);
   const [iconError, setIconError] = useState(false);
@@ -353,7 +403,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
       if (item.id === 'getting-started' && !showGettingStarted) {
         return false;
       }
-      // Perspective-gated items (e.g. Requests = expense only)
+      // Perspective-gated items (Requests = expense only: a revenue user
+      // cannot raise an RFQ, only receive one).
       if (item.perspectives && !item.perspectives.includes(perspective)) {
         return false;
       }
@@ -460,6 +511,75 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
         </div>
       </div>
 
+      {/* ── CNAK/RFQ-lite sidebar: flat workspace + ✦ grow items ─────────── */}
+      {liteTier ? (
+        <>
+          <div className="p-2 flex-1 overflow-y-auto">
+            <nav className="py-4">
+              <div data-walkover="nav-workspace">
+                {!collapsed && (
+                  <div
+                    className="px-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Your workspace
+                  </div>
+                )}
+                {LITE_MENUS[liteTier].workspace.map((entry) => (
+                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} />
+                ))}
+              </div>
+
+              <div data-walkover="nav-grow">
+                {!collapsed && (
+                  <div
+                    className="px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Grow with ContractNest
+                  </div>
+                )}
+                {LITE_MENUS[liteTier].grow.map((entry) => (
+                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} restricted />
+                ))}
+              </div>
+
+              <div className="mt-2">
+                <LiteNavItem
+                  entry={{ id: 'lite-settings', label: 'Settings', icon: 'Settings', path: '/settings' }}
+                  collapsed={collapsed}
+                />
+              </div>
+            </nav>
+          </div>
+
+          {/* Trial bar — every CTA runs the same express onboarding */}
+          {!collapsed && (
+            <div className="p-3">
+              <div
+                data-walkover="trial"
+                className="rounded-xl p-3 text-center"
+                style={{
+                  border: `1.5px dashed ${colors.brand.primary}66`,
+                  background: `linear-gradient(135deg, ${colors.brand.primary}10, transparent)`
+                }}
+              >
+                <p className="text-[11px] leading-snug mb-2" style={{ color: colors.utility.secondaryText }}>
+                  Your first <b style={{ color: colors.utility.primaryText }}>3 contracts are free.</b>
+                  <br />Set up in ~6 minutes with VaNi.
+                </p>
+                <button
+                  onClick={() => navigate(LITE_TRIAL.route)}
+                  className="w-full rounded-lg py-2 text-xs font-bold text-white"
+                  style={{ backgroundColor: colors.brand.primary }}
+                >
+                  {LITE_TRIAL.cta} →
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
       <div className="p-2 flex-1 overflow-y-auto">
         <nav className="py-4 space-y-1">
           {/* Regular menu items with special VaNi highlight */}
@@ -509,6 +629,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
           ))}
         </nav>
       </div>
+      )}
 
       {/* Removed "Need help" section - replaced with VaNi AI card in main menu */}
     </aside>
