@@ -218,62 +218,13 @@ export function getLiteCrossSellCopy(flavor: LiteFlavor, key: string): LiteCross
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Lite sidebar menus — flat "Your workspace" + ✦ "Grow with ContractNest".
-// Restricted entries NAVIGATE normally; LiteRouteGate intercepts the route
-// and renders the problem-led restricted page (so deep links behave
-// identically to menu clicks).
+// LITE_MENUS REMOVED (2026-08-03). There is now ONE menu — see
+// industryMenus.ts: every item declares `section`, `requires`,
+// `perspectives`, and getMenuAccess() decides open / locked / hidden.
+// A lite tenant sees the same menu with more items locked (✦), which is
+// also a better cross-sell than hiding them. This file keeps only the
+// copy + rules the rest of the lite surface still needs.
 // ─────────────────────────────────────────────────────────────────────────
-export interface LiteMenuEntry {
-  id: string;
-  label: string;
-  icon: string; // Lucide icon name
-  path: string;
-  copyKey?: string; // for grow items — which cross-sell copy the page shows
-}
-
-export interface LiteMenuConfig {
-  workspace: LiteMenuEntry[];
-  grow: LiteMenuEntry[];
-}
-
-export const LITE_MENUS: Record<LiteFlavor, LiteMenuConfig> = {
-  // Lite BUYER (came in via a CNAK contract) — expense world
-  cnak: {
-    workspace: [
-      { id: 'lite-dashboard', label: 'Dashboard', icon: 'Gauge', path: '/ops/cockpit' },
-      { id: 'lite-contracts', label: 'Contracts', icon: 'FileText', path: '/contracts' },
-      { id: 'lite-claim', label: 'Claim a Contract', icon: 'KeyRound', path: '/contracts/claim' },
-      { id: 'lite-service-events', label: 'Service Events', icon: 'CalendarClock', path: '/ops/services' },
-      { id: 'lite-contacts', label: 'Contacts', icon: 'Building2', path: '/contacts' },
-      { id: 'lite-equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
-      { id: 'lite-facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry' }
-    ],
-    grow: [
-      { id: 'lite-rfq', label: 'RFQs to Vendors', icon: 'Send', path: '/contracts/rfq/new', copyKey: 'rfq' },
-      { id: 'lite-finance', label: 'Finance · Payables', icon: 'Wallet', path: '/ops/finance', copyKey: 'finance' },
-      { id: 'lite-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments', copyKey: 'appointments' },
-      { id: 'lite-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions', copyKey: 'group-sessions' }
-    ]
-  },
-  // Lite SELLER (came in via an RFQ hand-off) — revenue world
-  rfq: {
-    workspace: [
-      { id: 'lite-dashboard', label: 'Dashboard', icon: 'Gauge', path: '/ops/cockpit' },
-      { id: 'lite-contracts', label: 'Contracts', icon: 'FileText', path: '/contracts' },
-      { id: 'lite-requests', label: 'Requests', icon: 'Inbox', path: '/requests' },
-      { id: 'lite-contacts', label: 'Contacts', icon: 'Building2', path: '/contacts' }
-    ],
-    grow: [
-      { id: 'lite-finance', label: 'Finance · AR/AP', icon: 'Wallet', path: '/ops/finance', copyKey: 'finance' },
-      { id: 'lite-events', label: 'Event Schedule', icon: 'CalendarClock', path: '/ops/services', copyKey: 'events' },
-      { id: 'lite-catalog', label: 'Catalog Studio', icon: 'LayoutGrid', path: '/catalog-studio/configure', copyKey: 'catalog' },
-      { id: 'lite-equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry', copyKey: 'registry' },
-      { id: 'lite-facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry', copyKey: 'registry' },
-      { id: 'lite-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments', copyKey: 'appointments' },
-      { id: 'lite-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions', copyKey: 'group-sessions' }
-    ]
-  }
-};
 
 // ─────────────────────────────────────────────────────────────────────────
 // Restricted ROUTES per flavor — ordered [prefix, copyKey]; first match

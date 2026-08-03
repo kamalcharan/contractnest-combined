@@ -4,9 +4,10 @@ import { NavLink, useLocation } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { getMenuItemsForIndustry, MenuItem } from '../../utils/constants/industryMenus';
+import { getMenuItemsForIndustry, getMenuAccess, MenuItem, MenuSection, MenuAccess } from '../../utils/constants/industryMenus';
 import { useNavigate } from 'react-router-dom';
-import { LITE_MENUS, LITE_TRIAL, LiteMenuEntry } from '../../utils/constants/liteAccess';
+import { LITE_TRIAL, getLiteCrossSellCopy, type LiteCrossSellCopy } from '../../utils/constants/liteAccess';
+import TrialCrossSellModal from '../lite/TrialCrossSellModal';
 import { useReveals } from '@/components/reveal/useReveal';
 import type { RevealId } from '@/components/reveal/revealRules';
 
@@ -183,186 +184,108 @@ const NavItem: React.FC<NavItemProps> = ({ item, collapsed, badge }) => {
 // menu data, since this component (not the generic NavItem) renders id==='vani'.
 // Now mirrors NavItem's toggle/chevron/submenu-list pattern while keeping the
 // distinctive gradient + "AI" badge header.
-const VaNiNavItem: React.FC<{ item: MenuItem; collapsed: boolean }> = ({ item, collapsed }) => {
-  const location = useLocation();
-  const { isDarkMode, currentTheme } = useTheme();
-  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const hasSubmenu = !!(item.hasSubmenu && item.submenuItems && item.submenuItems.length > 0);
-  const [isSubmenuOpen, setIsSubmenuOpen] = useState(item.defaultOpen !== false);
-  const isActive = location.pathname.startsWith('/vani');
-
-  const getIconComponent = (iconName: string) => {
-    const iconsMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number }>>;
-    return iconsMap[iconName] || LucideIcons.Circle;
-  };
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (hasSubmenu) {
-      e.preventDefault();
-      setIsSubmenuOpen(!isSubmenuOpen);
-    }
-  };
-
-  return (
-    <div className="mb-1 mx-1">
-      <NavLink
-        to={hasSubmenu ? '#' : item.path}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group"
-        style={{
-          background: isActive
-            ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-            : 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(124,58,237,0.06))',
-          border: isActive
-            ? '1px solid rgba(139,92,246,0.5)'
-            : '1px solid rgba(139,92,246,0.2)',
-          color: isActive ? '#ffffff' : '#c4b5fd',
-          boxShadow: isActive
-            ? '0 4px 15px rgba(139,92,246,0.3)'
-            : 'none',
-        }}
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.12))';
-            e.currentTarget.style.borderColor = 'rgba(139,92,246,0.35)';
-            e.currentTarget.style.boxShadow = '0 2px 10px rgba(139,92,246,0.15)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(124,58,237,0.06))';
-            e.currentTarget.style.borderColor = 'rgba(139,92,246,0.2)';
-            e.currentTarget.style.boxShadow = 'none';
-          }
-        }}
-        onClick={handleClick}
-      >
-        <div className="relative">
-          <LucideIcons.Sparkles size={20} />
-          <span
-            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full"
-            style={{
-              background: '#10b981',
-              boxShadow: '0 0 4px rgba(16,185,129,0.6)',
-              animation: 'pulse 2s infinite',
-            }}
-          />
-        </div>
-        {!collapsed && (
-          <div className="flex items-center justify-between w-full">
-            <span className="font-semibold text-sm tracking-wide">VaNi</span>
-            <div className="flex items-center gap-1.5">
-              <span
-                className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded"
-                style={{
-                  background: isActive ? 'rgba(255,255,255,0.2)' : 'rgba(139,92,246,0.2)',
-                  color: isActive ? '#ffffff' : '#a78bfa',
-                }}
-              >
-                AI
-              </span>
-              {hasSubmenu && (
-                <LucideIcons.ChevronRight
-                  size={14}
-                  className={`transition-transform ${isSubmenuOpen ? 'rotate-90' : ''}`}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </NavLink>
-
-      {!collapsed && hasSubmenu && isSubmenuOpen && (
-        <div
-          className="ml-5 pl-4 border-l space-y-1 mt-1 transition-colors"
-          style={{ borderColor: `${colors.utility.primaryText}20` }}
-        >
-          {item.submenuItems!.map((subItem) => {
-            const SubIconComponent = getIconComponent(subItem.icon);
-            return (
-              <NavLink
-                key={subItem.id}
-                to={subItem.path}
-                className="flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all"
-                style={({ isActive }) => ({
-                  backgroundColor: isActive ? `${colors.brand.primary}20` : 'transparent',
-                  color: isActive ? colors.brand.primary : colors.utility.secondaryText,
-                  fontWeight: isActive ? '500' : 'normal'
-                })}
-                onMouseEnter={(e) => {
-                  const target = e.currentTarget;
-                  const active = target.getAttribute('aria-current') === 'page';
-                  if (!active) {
-                    target.style.backgroundColor = `${colors.utility.primaryText}10`;
-                    target.style.color = colors.utility.primaryText;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  const target = e.currentTarget;
-                  const active = target.getAttribute('aria-current') === 'page';
-                  if (!active) {
-                    target.style.backgroundColor = 'transparent';
-                    target.style.color = colors.utility.secondaryText;
-                  }
-                }}
-              >
-                <div className="relative">
-                  <SubIconComponent size={16} />
-                </div>
-                <span>{subItem.label}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
+// VaNiNavItem removed — highlight is now a property of a menu item
+// (`highlight: 'vani' | 'brand'`) handled by FlatNavItem below.
 
 // ─────────────────────────────────────────────────────────────────────────
-// CNAK/RFQ-lite: flat nav entry. Open items are plain NavLinks; ✦ (grow)
-// items navigate too — LiteRouteGate renders the restricted cross-sell
-// state on those routes, so a menu click and a deep link behave the same.
+// FLAT NAV ITEM — the single item renderer for the whole menu.
+// `open`   → plain NavLink
+// `locked` → same row + ✦ badge; clicking opens the cross-sell modal
+//            instead of navigating (the upsell IS the menu)
+// A `highlight` item gets an emphasis treatment (VaNi purple, or brand).
 // ─────────────────────────────────────────────────────────────────────────
-const LiteNavItem: React.FC<{ entry: LiteMenuEntry; collapsed: boolean; restricted?: boolean }> = ({
-  entry,
-  collapsed,
-  restricted = false
-}) => {
-  const { isDarkMode, currentTheme } = useTheme();
-  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+const HIGHLIGHT_STYLES = {
+  vani: { from: 'rgba(139,92,246,0.12)', to: 'rgba(124,58,237,0.06)',
+          activeFrom: '#8b5cf6', activeTo: '#7c3aed',
+          border: 'rgba(139,92,246,0.2)', activeBorder: 'rgba(139,92,246,0.5)',
+          text: '#c4b5fd', glow: 'rgba(139,92,246,0.3)' },
+} as const;
+
+const FlatNavItem: React.FC<{
+  item: MenuItem;
+  collapsed: boolean;
+  access: MenuAccess;
+  brand: string;
+  colors: any;
+  onLockedClick: (item: MenuItem) => void;
+}> = ({ item, collapsed, access, brand, colors, onLockedClick }) => {
   const iconsMap = LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number }>>;
-  const IconComponent = iconsMap[entry.icon] || LucideIcons.Circle;
+  const Icon = iconsMap[item.icon] || LucideIcons.Circle;
+  const locked = access === 'locked';
 
-  return (
-    <NavLink
-      to={entry.path}
-      className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all sidebar-nav-item mb-1"
-      style={({ isActive }) => ({
-        backgroundColor: isActive ? colors.brand.primary : 'transparent',
-        color: isActive ? 'white' : restricted ? colors.utility.secondaryText : colors.utility.primaryText,
-        fontWeight: isActive ? '500' : 'normal'
-      })}
-    >
-      <IconComponent size={18} />
+  // Highlighted items (VaNi purple / brand orange) keep their emphasis even
+  // when locked — the point is that they are noticed.
+  const hl = item.highlight === 'vani'
+    ? HIGHLIGHT_STYLES.vani
+    : item.highlight === 'brand'
+      ? { from: `${brand}1A`, to: `${brand}0D`, activeFrom: brand, activeTo: brand,
+          border: `${brand}33`, activeBorder: `${brand}80`, text: brand, glow: `${brand}4D` }
+      : null;
+
+  const rowClass = 'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all sidebar-nav-item mb-1';
+
+  const body = (isActive: boolean) => (
+    <>
+      <Icon size={18} />
       {!collapsed && (
         <div className="flex justify-between items-center w-full">
-          <span className="text-sm">{entry.label}</span>
-          {restricted && (
+          <span className="text-sm">{item.label}</span>
+          {locked && (
             <span
               className="text-[10px] font-bold rounded-full px-1.5 py-0.5"
-              style={{
-                color: colors.brand.primary,
-                backgroundColor: `${colors.brand.primary}15`,
-                border: `1px solid ${colors.brand.primary}40`
-              }}
+              style={{ color: brand, backgroundColor: `${brand}15`, border: `1px solid ${brand}40` }}
             >
               ✦
             </span>
           )}
         </div>
       )}
+    </>
+  );
+
+  const styleFor = (isActive: boolean): React.CSSProperties => {
+    if (hl) {
+      return {
+        background: isActive
+          ? `linear-gradient(135deg, ${hl.activeFrom}, ${hl.activeTo})`
+          : `linear-gradient(135deg, ${hl.from}, ${hl.to})`,
+        border: `1px solid ${isActive ? hl.activeBorder : hl.border}`,
+        color: isActive ? '#ffffff' : hl.text,
+        boxShadow: isActive ? `0 4px 15px ${hl.glow}` : 'none',
+        fontWeight: 600,
+      };
+    }
+    return {
+      backgroundColor: isActive ? colors.brand.primary : 'transparent',
+      color: isActive ? 'white' : locked ? colors.utility.secondaryText : colors.utility.primaryText,
+      fontWeight: isActive ? 500 : 'normal',
+    };
+  };
+
+  if (locked) {
+    return (
+      <button
+        type="button"
+        onClick={() => onLockedClick(item)}
+        className={`${rowClass} w-full text-left`}
+        style={styleFor(false)}
+      >
+        {body(false)}
+      </button>
+    );
+  }
+
+  return (
+    <NavLink to={item.path} className={rowClass} style={({ isActive }) => styleFor(isActive)}>
+      {({ isActive }) => body(isActive)}
     </NavLink>
   );
+};
+
+const SECTION_LABELS: Record<MenuSection, string> = {
+  workspace: 'Your workspace',
+  grow: 'Grow with ContractNest',
+  configure: 'Configure',
 };
 
 interface SidebarProps {
@@ -403,11 +326,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
       if (item.id === 'getting-started' && !showGettingStarted) {
         return false;
       }
-      // Perspective-gated items (Requests = expense only: a revenue user
-      // cannot raise an RFQ, only receive one).
-      if (item.perspectives && !item.perspectives.includes(perspective)) {
-        return false;
-      }
       return isRevealed(item.id);
     }
     return false;
@@ -420,6 +338,30 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
         : item
     );
   const adminMenuItems = menuItems.filter(item => item.adminOnly);
+
+  // ── Access + grouping: ONE pass, ONE rule set (getMenuAccess) ──────────
+  // Replaces the old lite/full branch. A lite tenant sees the SAME menu;
+  // items they have not unlocked render with ✦ and open the cross-sell.
+  const [trialCopy, setTrialCopy] = useState<LiteCrossSellCopy | null>(null);
+  const handleLockedClick = (item: MenuItem) => {
+    const flavor = liteTier || 'cnak';
+    setTrialCopy(getLiteCrossSellCopy(flavor, item.copyKey || item.id));
+  };
+
+  const sectioned = (['workspace', 'grow', 'configure'] as MenuSection[]).map((section) => ({
+    section,
+    items: regularMenuItems
+      .filter((item) => (item.section || 'workspace') === section)
+      .map((item) => ({
+        item,
+        access: getMenuAccess(item, {
+          tier: liteTier,
+          perspective,
+          revealed: isRevealed(item.id),
+        }),
+      }))
+      .filter(({ access }) => access !== 'hidden'),
+  })).filter((g) => g.items.length > 0);
 
   // Badge counts — contracts from real stats, others placeholder
   const { data: contractStats } = useContractStats();
@@ -511,95 +453,37 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
         </div>
       </div>
 
-      {/* ── CNAK/RFQ-lite sidebar: flat workspace + ✦ grow items ─────────── */}
-      {liteTier ? (
-        <>
-          <div className="p-2 flex-1 overflow-y-auto">
-            <nav className="py-4">
-              <div data-walkover="nav-workspace">
-                {!collapsed && (
-                  <div
-                    className="px-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: colors.utility.secondaryText }}
-                  >
-                    Your workspace
-                  </div>
-                )}
-                {LITE_MENUS[liteTier].workspace.map((entry) => (
-                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} />
-                ))}
-              </div>
-
-              <div data-walkover="nav-grow">
-                {!collapsed && (
-                  <div
-                    className="px-4 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: colors.utility.secondaryText }}
-                  >
-                    Grow with ContractNest
-                  </div>
-                )}
-                {LITE_MENUS[liteTier].grow.map((entry) => (
-                  <LiteNavItem key={entry.id} entry={entry} collapsed={collapsed} restricted />
-                ))}
-              </div>
-
-              <div className="mt-2">
-                <LiteNavItem
-                  entry={{ id: 'lite-settings', label: 'Settings', icon: 'Settings', path: '/settings' }}
-                  collapsed={collapsed}
-                />
-              </div>
-            </nav>
-          </div>
-
-          {/* Trial bar — every CTA runs the same express onboarding */}
-          {!collapsed && (
-            <div className="p-3">
-              <div
-                data-walkover="trial"
-                className="rounded-xl p-3 text-center"
-                style={{
-                  border: `1.5px dashed ${colors.brand.primary}66`,
-                  background: `linear-gradient(135deg, ${colors.brand.primary}10, transparent)`
-                }}
-              >
-                <p className="text-[11px] leading-snug mb-2" style={{ color: colors.utility.secondaryText }}>
-                  Your first <b style={{ color: colors.utility.primaryText }}>3 contracts are free.</b>
-                  <br />Set up in ~6 minutes with VaNi.
-                </p>
-                <button
-                  onClick={() => navigate(LITE_TRIAL.route)}
-                  className="w-full rounded-lg py-2 text-xs font-bold text-white"
-                  style={{ backgroundColor: colors.brand.primary }}
-                >
-                  {LITE_TRIAL.cta} →
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
+      {/* ── ONE MENU, ONE RENDER PATH ──────────────────────────────────────
+          Sections from industryMenus (workspace / grow / configure); each
+          item is open, locked (✦ → cross-sell) or hidden, decided by
+          getMenuAccess. There is no separate "lite" sidebar any more. */}
       <div className="p-2 flex-1 overflow-y-auto">
-        <nav className="py-4 space-y-1">
-          {/* Regular menu items with special VaNi highlight */}
-          {regularMenuItems.map((item) => {
-            if (item.id === 'vani') {
-              return (
-                <VaNiNavItem key={item.id} item={item} collapsed={collapsed} />
-              );
-            }
-            return (
-              <NavItem
-                key={item.id}
-                item={item}
-                collapsed={collapsed}
-                badge={notificationCounts[item.id]}
-              />
-            );
-          })}
+        <nav className="py-4">
+          {sectioned.map(({ section, items }) => (
+            <div key={section} data-walkover={section === 'workspace' ? 'nav-workspace' : section === 'grow' ? 'nav-grow' : undefined}>
+              {!collapsed && (
+                <div
+                  className="px-4 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  {SECTION_LABELS[section]}
+                </div>
+              )}
+              {items.map(({ item, access }) => (
+                <FlatNavItem
+                  key={item.id}
+                  item={item}
+                  collapsed={collapsed}
+                  access={access}
+                  brand={colors.brand.primary}
+                  colors={colors}
+                  onLockedClick={handleLockedClick}
+                />
+              ))}
+            </div>
+          ))}
 
-          {/* Admin menu separator - only show if user is admin and there are admin items */}
+          {/* Admin — unchanged, still nested, still admin-only */}
           {isAdmin && adminMenuItems.length > 0 && (
             <div className="my-4 px-4">
               <div className="flex items-center">
@@ -618,18 +502,38 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed = false }) => {
               </div>
             </div>
           )}
-
-          {/* Admin menu items - only show if user is admin */}
           {isAdmin && adminMenuItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              collapsed={collapsed}
-            />
+            <NavItem key={item.id} item={item} collapsed={collapsed} />
           ))}
         </nav>
       </div>
+
+      {/* Trial bar — only for lite tenants; every CTA runs express onboarding */}
+      {liteTier && !collapsed && (
+        <div className="p-3" data-walkover="trial">
+          <div
+            className="rounded-xl p-3 text-center"
+            style={{
+              border: `1.5px dashed ${colors.brand.primary}66`,
+              background: `linear-gradient(135deg, ${colors.brand.primary}10, transparent)`,
+            }}
+          >
+            <p className="text-[11px] leading-snug mb-2" style={{ color: colors.utility.secondaryText }}>
+              Your first <b style={{ color: colors.utility.primaryText }}>3 contracts are free.</b>
+              <br />Set up in ~6 minutes with VaNi.
+            </p>
+            <button
+              onClick={() => navigate(LITE_TRIAL.route)}
+              className="w-full rounded-lg py-2 text-xs font-bold text-white"
+              style={{ backgroundColor: colors.brand.primary }}
+            >
+              {LITE_TRIAL.cta} →
+            </button>
+          </div>
+        </div>
       )}
+
+      <TrialCrossSellModal open={trialCopy !== null} copy={trialCopy} onClose={() => setTrialCopy(null)} />
 
       {/* Removed "Need help" section - replaced with VaNi AI card in main menu */}
     </aside>
