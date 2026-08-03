@@ -1,0 +1,144 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: requests-nav-separation
+Requests becomes its own menu item · header toggles removed
+═══════════════════════════════════════════════════════════════════
+
+WHY
+---
+The Contracts header carried FOUR control groups: search, Draft with
+VaNi, a Client|Partner segmented toggle, a Contracts|Requests segmented
+toggle, and a create button whose LABEL changed with the toggle ("New
+Partner Contract"). Three different kinds of decision looked identical,
+sitting next to the global Revenue/Expense switch.
+
+Owner call (2026-08-03), after reviewing the interactive proposal:
+  • Requests → its own menu item (approved)
+  • Client/vendor segregation in-page → not needed (approved)
+  • Keep the small client/partner tag on each row (approved)
+
+WHAT CHANGED  (UI only — no API, no RPC, no migration)
+------------------------------------------------------
+1. REQUESTS IS ITS OWN ROUTE + MENU ITEM
+   - New route /requests renders the SAME hub component with
+     recordType="rfq" (new prop; /contracts passes the default
+     'contract'). Record type now comes from the ROUTE, not state.
+   - industryMenus.ts: new top-level "Requests" item (icon Inbox),
+     visible on BOTH perspectives.
+     OWNER RULE (2026-08-03): "Raising a request can be done only at
+     Expense. Viewing and responding to a request is done in Revenue."
+     So the two halves of an RFQ live on opposite sides and the menu
+     must show both:
+       EXPENSE → raise a request + track the ones you sent
+       REVENUE → view received requests + respond with a quote
+     The PAGE enforces the difference (the "New Request" button exists
+     only on expense; a received request row opens the quote flow).
+     An earlier build gated the menu item to expense only — that hid the
+     view/respond half and has been removed.
+   - Rationale: an RFQ is a different object with its own lifecycle
+     (draft → sent → quotes in → awarded → converted). Perspective then
+     decides its MEANING, exactly like Receivables/Payables:
+       EXPENSE  → requests you SENT to vendors
+       REVENUE  → requests you RECEIVED and must quote
+     This also deletes the conditional show/hide rule added earlier —
+     no longer needed.
+   - liteAccess.ts: the seller-lite "Requests" menu entry now points at
+     /requests instead of /contracts?record=rfq.
+
+2. BOTH HEADER TOGGLES REMOVED
+   - Client|Partner segmented control: gone from the header.
+     FINDING (verified in code): that control NEVER filtered the list.
+     `createRelationship` was used in exactly three places — its own
+     highlight, the create button's label, and the contract type handed
+     to the wizard. The list always fetched 'client,partner' on Revenue.
+     It was a CREATE-TYPE selector wearing a filter's clothing, which is
+     why it read as confusing.
+   - Relationship stays visible as a badge on every row.
+   - Contracts|Requests segmented control: gone (now the menu).
+   - Header is now: search · Draft with VaNi · New contract.
+
+3. NEW: CLIENT / PARTNER FILTER CHIPS (Revenue only)
+   Real filtering, which never existed before. Chips sit in the EXISTING
+   controls row beside View mode + Sort (left-aligned), not in the title
+   row: [All] [Clients] [Partners]. Selecting one narrows
+   perspectiveTypeFilter from 'client,partner' to the single type, which
+   scopes BOTH the list and the status-pill counts (they share the same
+   filter), and resets to page 1. Hidden on Expense (all vendor) and on
+   /requests.
+
+4. TITLES FOLLOW PERSPECTIVE (the spec's shell discipline)
+   /contracts  revenue → "Contracts"          · Contracts you deliver & bill
+               expense → "Vendor contracts"   · Contracts you've hired & pay
+   /requests   revenue → "Requests received"  · respond with your quote
+               expense → "Requests sent"      · sent to vendors
+   Create button is plain "New Contract" — no relationship in the label.
+
+5. REQUESTS EMPTY STATE (was showing CONTRACT copy — bug):
+   /requests no longer renders "No client contracts yet / New Client
+   Contract". EmptyState takes isRfqView:
+     revenue → "No requests waiting" + explanation, NO create button
+     expense → "No requests sent yet" + "New Request"
+
+6. RELATIONSHIP BADGE: fallback changed from 'Client' to '—'.
+   A missing contract_type is a data gap; labelling it "Client" hid it.
+
+FILES
+-----
+contractnest-ui/
+  src/App.tsx                                        (new /requests route)
+  src/utils/constants/industryMenus.ts               (Requests item + perspectives gate)
+  src/components/layout/Sidebar.tsx                  (honours perspectives gate)
+  src/utils/constants/liteAccess.ts                  (lite Requests → /requests)
+  src/pages/contracts/hub/index.tsx                  (recordType prop, toggles
+                                                      removed, titles)
+  src/components/contracts/list/ContractPortfolioRow.tsx  (badge fallback)
+
+NOTE: the hub + liteAccess files here are built ON TOP of the
+cnak-lite-flow1 versions (received-requests row action, my-access
+endpoint usage, lite menus). Copy cnak-lite-flow1 FIRST if you have not
+already, then this batch.
+
+COPY
+----
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\requests-nav-separation\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+cd contractnest-ui ; npm run dev      # UI restart + Ctrl+F5. No API restart.
+
+⚠️ OPEN DECISION — HOW DOES ONE CREATE A *PARTNER* CONTRACT NOW?
+-----------------------------------------------------------------
+Removing the Client|Partner toggle removed the only way to tell the
+wizard "this is a partner contract". BuyerSelectionStep FILTERS its
+contact list BY the contract type it is given
+(`classifications: [selectedClassification]`) — it does not derive the
+type from the chosen contact. So with the toggle gone, the wizard opens
+on 'client' and a Partner contact cannot be picked.
+
+To avoid a silent regression this batch KEEPS the internal
+`createRelationship` state (defaulting to 'client'); it simply has no
+visible control. BBB's bulk/VaNi path is unaffected — it derives the
+type per contact via contactContractType().
+
+Two ways to close it (owner's call, NOT implemented here):
+  A) Wizard-side (recommended, matches the proposal): let the
+     counterparty step list client + partner together with badges and
+     set contract_type from the selected contact. ~10 lines in
+     BuyerSelectionStep + a callback — but that step is shared with the
+     RFQ multi-select path, so it needs its own test pass.
+  B) Split the create button: "New contract ▾" → Client / Partner.
+     Smaller, but puts a mode back in the header — the thing we set out
+     to remove.
+
+TESTING CHECKLIST
+-----------------
+- [ ] Sidebar shows "Requests" as its own item; /requests loads
+- [ ] Revenue → /requests → "Requests received"; DG Set's claimed RFQ
+      listed; row click opens the quote page (needs cnak-lite-flow1 API)
+- [ ] Expense → /requests → "Requests sent"; sent RFQs listed with the
+      RFQ lifecycle pills; "New Request" present
+- [ ] /contracts on Revenue: no Client|Partner toggle, no Contracts|
+      Requests toggle; title "Contracts"; rows still show the
+      Client/Partner badge
+- [ ] /contracts on Expense: title "Vendor contracts"
+- [ ] Empty contracts list with a waiting request → "you have N requests
+      waiting" → button navigates to /requests
+- [ ] Creating a CLIENT contract from the wizard still works end to end
+- [ ] (Known gap) creating a PARTNER contract — see OPEN DECISION above

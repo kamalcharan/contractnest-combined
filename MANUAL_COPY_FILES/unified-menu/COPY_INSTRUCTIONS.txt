@@ -1,0 +1,78 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: unified-menu
+ONE menu (industryMenus.ts) in the lite look. LITE_MENUS deleted.
+═══════════════════════════════════════════════════════════════════
+
+WHY
+---
+There were TWO menu systems — industryMenus.ts (full, nested submenus)
+and LITE_MENUS in liteAccess.ts (flat, ✦ sections) — rendered by a
+`liteTier ? … : …` branch in Sidebar. Every menu change had to be made
+twice, and they drifted. Four separate mechanisms decided whether an
+item appeared: adminOnly, reveal rules, the lite branch, perspective.
+
+WHAT CHANGED  (UI only — no API, no DB)
+---------------------------------------
+1. ONE MENU — industryMenus.ts, flat, in the lite look.
+   Sections: YOUR WORKSPACE · GROW WITH CONTRACTNEST · CONFIGURE
+     workspace: Dashboard, Contracts, Claim Contract (highlighted),
+                Requests, Service Events, Appointments, Group Sessions,
+                Contacts, Equipment Registry, Facility Registry,
+                Finance (AR/AP)
+     grow:      Catalog Studio, VaNi (purple highlight)
+     configure: Settings
+   Submenus are gone from the regular menu (admin keeps its nesting).
+
+2. MenuItem gains: section, requires (FeatureKey), perspectives,
+   tierOverrides, copyKey, highlight ('vani' | 'brand').
+
+3. ONE ACCESS RULE — getMenuAccess(item, {tier, perspective, revealed})
+   → 'open' | 'locked' | 'hidden'. Replaces all four old mechanisms.
+   A lite tenant sees the SAME menu; unavailable items render with ✦ and
+   open the existing TrialCrossSellModal instead of navigating. Hiding
+   was replaced by locking wherever it makes sense — the upsell IS the
+   menu.
+   Lite-open capabilities: cnak → events, registry.  rfq → rfq.
+   Full tenant → everything open.
+
+4. SIDEBAR — one render path. The lite branch, LiteNavItem and
+   VaNiNavItem are deleted; FlatNavItem renders every item (open /
+   locked / highlighted). Trial bar shows only when a tier is set.
+   Admin block unchanged.
+
+5. liteAccess.ts — LITE_MENUS and LiteMenuEntry DELETED. Cross-sell
+   copy, restricted routes, capabilities, trial copy and LITE_WALKOVER
+   all stay.
+
+6. OWNER CALLS (2026-08-03): "VaNi (old)" (12 reference pages) removed
+   from the menu — routes and files untouched. "Claim Contract" is now a
+   top-level highlighted item (brand orange, like VaNi's purple).
+
+FILES
+-----
+contractnest-ui/
+  src/utils/constants/industryMenus.ts   (flat menu + getMenuAccess)
+  src/utils/constants/liteAccess.ts      (LITE_MENUS removed)
+  src/components/layout/Sidebar.tsx      (single render path)
+
+⚠️ COPY-ORDER SAFETY: these three files are IDENTICAL in cnak-lite-flow1
+and requests-nav-separation (verified by checksum), so any copy order
+lands on the same result.
+
+COPY
+----
+Copy-Item "MANUAL_COPY_FILES\unified-menu\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+cd contractnest-ui ; npm run dev   # restart + Ctrl+F5
+
+TESTING
+-------
+- [ ] Full tenant: sections render; all items open; no submenus except Admin
+- [ ] Claim Contract shows highlighted (brand), VaNi highlighted (purple)
+- [ ] VaNi (old) gone from the menu
+- [ ] Requests visible on Expense only (full tenant)
+- [ ] Lite buyer (cnak): Service Events + both Registries open; Finance,
+      Appointments, Group Sessions, Catalog, VaNi show ✦ and open the modal
+- [ ] Lite seller (rfq): Requests open even on Revenue (tierOverride)
+- [ ] Trial bar only for lite tenants
+- [ ] Admin user still sees the Admin block with nested submenus
+- [ ] Group Sessions reveal rule still gates the item
