@@ -1,0 +1,108 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: event-schedule-adjuster
+Bulk date adjustment for generated event schedules (creation-time only)
+═══════════════════════════════════════════════════════════════════
+
+WHY
+---
+The derivation engine spaces recurring cycles by FIXED DAY COUNTS
+(monthly = 30 days), so a monthly series drifts off the calendar:
+  1 Apr → 1 May → 31 May → 30 Jun → 30 Jul …
+i.e. two bills land in May and June gets none. Until the engine itself
+is reworked (parked), users need to straighten the schedule themselves.
+
+Today they can only edit ONE event date at a time, in the wizard.
+There is no way to adjust the schedule for a BULK assignment at all —
+which is exactly how BBB's 18 member contracts were created.
+
+WHAT THIS ADDS  (UI only — no API, no RPC, no migration, no engine change)
+--------------------------------------------------------------------
+NEW: src/components/contracts/EventScheduleAdjuster.tsx
+  A bar rendered above an events timeline. Actions:
+    • Billing day of month  (1/5/10/15/20/25/last) — the drift fix
+    • Shift dates by ±N days
+    • Apply to: All events | Billing events only | All except the first
+    • Reset all
+  Plus a live status line auditing the schedule: "N calendar months have
+  two billing events …" (amber) or "One billing event per calendar
+  month." (green).
+
+  It writes into the SAME `eventOverrides` map ({ eventId → Date }) the
+  wizard has always used for single-date edits, which mapper.ts applies
+  at save. Nothing new is persisted.
+
+  Two deliberate behaviors:
+    1. Day-of-month only ever touches BILLING events — a service visit
+       keeps its own cadence and must not jump to the 1st.
+    2. After snapping, colliding billing events are pushed to the next
+       month so the series stays one-per-month (that is the point of the
+       action). Loop-guarded.
+
+SURFACE 1 — Contract Wizard (existing "Events Preview" step, NOT a new step)
+  EventsPreviewStep.tsx  — renders the adjuster above the timeline;
+                           new prop `hideScheduleAdjuster`.
+  ContractWizard/index.tsx — passes hideScheduleAdjuster={isTemplateMode}.
+  TEMPLATE MODE: hidden on purpose. Template dates are illustrative
+  (start = today, re-derived per contract), so bulk-adjusting them would
+  be misleading. Per-event edit is untouched everywhere.
+  RFQ wizard has no events step — unaffected.
+
+SURFACE 2 — Bulk Assign (VaNi → BulkAssignDialog)
+  New collapsed "Review schedule" section under the cadence controls:
+  shows the TEMPLATE's computed events (same computeContractEvents call
+  the wizard runs, fed from the assembled draft) + the same adjuster +
+  a compact event list with adjusted rows highlighted.
+  The override map is stamped onto every clone's draft, so all N
+  contracts get the adjusted schedule. This works because every clone
+  shares ONE start date and ONE draft → identical event ids and base
+  dates → one override map applies to all. submitBulk already runs each
+  item through mapWizardToRequest, which applies overrides exactly as
+  for a single wizard contract.
+  Overrides are CLEARED when start date or cadence changes (the series
+  is re-derived, so old keys/dates would be stale).
+
+FILES
+-----
+contractnest-ui/
+  src/components/contracts/EventScheduleAdjuster.tsx              (NEW)
+  src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+  src/components/contracts/ContractWizard/index.tsx
+  src/components/contracts/vani/BulkAssignDialog.tsx
+
+COPY
+----
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\event-schedule-adjuster\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+cd contractnest-ui ; npm run dev      # UI restart + Ctrl+F5. No API restart needed.
+
+TESTING CHECKLIST
+-----------------
+Wizard (single contract)
+- [ ] Create a contract with a Monthly cadence, 12 months → Events Preview
+      shows the amber "two billing events in a month" warning
+- [ ] Billing day of month = 1st → Apply → all bills snap to the 1st,
+      banner turns green, adjusted rows show the "modified" indicator
+- [ ] Service visits did NOT move
+- [ ] "All except the first" → first event stays put
+- [ ] Shift dates +7 → whole series moves
+- [ ] Reset all → back to generated dates
+- [ ] Per-event date edit (click a date) still works as before
+- [ ] Save the contract → t_contract_events.scheduled_date matches the
+      adjusted dates (original_date keeps the generated one)
+- [ ] TEMPLATE wizard → Events Preview shows NO adjuster bar
+
+Bulk assign
+- [ ] VaNi bulk assign → pick members → "Review schedule" appears
+- [ ] Expand → template events listed, adjuster works, note reads
+      "applies to all N contracts"
+- [ ] Change start date → adjustments reset (expected)
+- [ ] Run the batch → EVERY created contract has the adjusted dates
+- [ ] Run a batch WITHOUT touching the schedule → unchanged behavior
+
+NOT IN THIS BATCH (parked by owner)
+-----------------------------------
+- Adjusting a contract that ALREADY exists (bulk PATCH endpoint + UI)
+- Amount changes / adjustments ledger (+/− adjustments)
+- Meeting-anchored billing for group sessions (bill at the Nth meeting
+  rather than a calendar date)
+- Reworking the derivation engine to use calendar-month arithmetic
