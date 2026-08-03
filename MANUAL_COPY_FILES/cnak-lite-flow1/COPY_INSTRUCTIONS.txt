@@ -159,9 +159,11 @@ buyer". t_contract_access.accessor_role already records the truth.
 
 5. REQUESTS RECEIVED (vendor's view of RFQs sent to them) — owner rule:
    "RFQ response is always by Vendor and for vendor it is Revenue."
-   - Contract Hub: the Contracts ⇄ Requests toggle now shows on BOTH
-     sides. Expense · Requests = sent (unchanged). Revenue · Requests =
-     RECEIVED — RFQ records another tenant sent us, claimed via CNAK
+   - Contract Hub: the Contracts ⇄ Requests toggle. EXPENSE: always
+     (sent requests — unchanged). REVENUE: only when the tenant has
+     actually RECEIVED requests, or is already viewing them (owner call
+     2026-08-03: a seller with no received requests must not see an
+     empty Requests tab). Revenue · Requests = RECEIVED — RFQ records another tenant sent us, claimed via CNAK
      (the contracts edge list already flips claimed records onto the
      right side; no list plumbing needed).
    - Row click on a received request → fetches OUR OWN grant secret from

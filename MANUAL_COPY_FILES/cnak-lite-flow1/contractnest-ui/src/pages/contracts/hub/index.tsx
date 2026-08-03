@@ -610,6 +610,12 @@ const ContractsHubPage: React.FC = () => {
     ? (rfqProbeData?.total_count || 0)
     : 0;
 
+  // Expense always offers it; Revenue earns it. `isRfqView` keeps the toggle
+  // on screen once the user is in the Requests view (the probe is disabled
+  // there, so it would otherwise vanish and strand them).
+  const showRecordTypeToggle =
+    activePerspective === 'expense' || isRfqView || pendingRequestsCount > 0;
+
   // Auto-land once per mount, and never override an explicit ?record= choice.
   const autoLandedRef = useRef(false);
   useEffect(() => {
@@ -977,10 +983,14 @@ const ContractsHubPage: React.FC = () => {
               </div>
             )}
 
-            {/* Contracts ⇄ Requests toggle — both sides. Expense: requests
-                you sent. Revenue: requests you received (you are the vendor
-                being asked to quote). */}
-            {(
+            {/* Contracts ⇄ Requests toggle.
+                EXPENSE: always — an RFQ is a buyer asking vendors to quote,
+                which is a normal part of the expense workflow.
+                REVENUE: only when it means something — i.e. this tenant has
+                actually RECEIVED requests (they're the vendor being asked to
+                quote), or is currently looking at them. A seller with no
+                received requests gets no empty tab to wonder about. */}
+            {showRecordTypeToggle && (
               <div
                 style={{
                   display: 'flex',
