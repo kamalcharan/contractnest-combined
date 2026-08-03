@@ -590,6 +590,64 @@ Live-diagnosed while closing the RFQ handover work (branch `claude/rfq-handover-
 **Current state**: pure specification — no research, schema design, migration, route, or UI work has started. Explicitly parked by owner ("we will not do this" this session) and folded into Sprint 3 scope alongside the per-asset event-proof gap above, since both are "the real backend work behind UI/flows that already assume it exists."
 **When to revisit**: next session this is picked up, before writing any code: (a) confirm exact shape of the two new linkage columns (`t_contracts.source_rfq_id`? RFQ-side `contract_id`?) and whether they live on `t_contracts` itself or a join table; (b) read `create_contract_transaction` (or whatever RPC actually creates a normal contract today) to see how much of it a vendor-facing flow can reuse as-is vs. needs a parallel path; (c) decide whether "vendor goes through contractnest steps" means the vendor literally uses (a public-context variant of) the Contract Wizard React components, or a new lighter parallel flow that produces the same `t_contracts` shape; (d) design the new public-link/access-grant type for contract-creation (vs. the existing quote-response grant) — including how the vendor's created contract gets attributed to the buyer's tenant; (e) only then implement, per this repo's usual analysis-first workflow.
 
+### SESSION CLOSE 2026-08-03 — state of play (read before picking anything up)
+
+**LIVE ON PROD (done, nothing to re-run):**
+- Migration `010_cnak_lite_claim_v2` — CNAK claims now require the review-link
+  secret or the seller's on-file mobile.
+- Migration `011_cnak_vendor_side` — `get_contracts_list` classifies CLAIMED
+  contracts viewer-relatively (accessor_role 'vendor' → the claimant's REVENUE).
+- Edge functions: `auth` v84 (derives onboarding_type 'cnak' vs 'cnak_vendor'
+  from the grant's accessor_role, echoes it in the register response),
+  `onboarding` v26 (returns onboarding_type), `contracts` v54 (claim endpoint
+  passes secret/mobile through).
+- Test tenant "new vendor" (ba29159c…) and "DG Set" (a75f2141…) repaired /
+  created as `cnak_vendor` lite sellers.
+
+**STAGED, NOT MERGED — 4 batches on branch `claude/init-submodules-faqqsj`:**
+- `cnak-lite-flow1` — lite tier end-to-end (UI + API: `GET /api/contracts/
+  my-access/:cnak`). ONLY batch needing an API restart.
+- `event-schedule-adjuster` — EventScheduleAdjuster in the wizard's existing
+  Events Preview step + BulkAssignDialog. Creation-time only, UI only.
+- `requests-nav-separation` — `/requests` route + menu item, both header
+  toggles removed, real Client/Partner filter chips, RFQ-aware empty state.
+- `checkin-upi-return-alert` — pre-departure "pay, then come back" sheet.
+
+**OPEN REGRESSION (highest priority):** removing the Client|Partner header
+toggle left "+ New Contract" hardcoded to `client`; `BuyerSelectionStep`
+filters contacts BY the type it is handed, so a Partner contact cannot be
+selected. All 18 BBB contracts are Partner. Fix agreed but NOT built —
+Option A: counterparty step lists client+partner together and sets
+contract_type from the picked contact. Bulk/VaNi path unaffected.
+
+**AGREED, NOT BUILT — remove LITE_MENUS:** one menu from `industryMenus.ts`,
+NESTING PRESERVED (owner explicitly did NOT ask to flatten — an earlier
+flattened build was reverted). Lite becomes locked (✦) items on the same
+menu, not a second sidebar. Lock rules go in `liteAccess.ts` as a
+`MENU_REQUIREMENTS` map keyed by menu-item id so `industryMenus.ts` stays
+untouched and cannot conflict with the Requests batch. Trial bar moves to
+the TOP. Full mapping table (every lite entry → its industryMenus id) was
+produced this session.
+
+**OWNER RULE — Requests:** raising a request is EXPENSE-only; viewing and
+responding is REVENUE. The menu item shows on BOTH sides; the page enforces
+the difference (New Request button on expense only).
+
+**RESOLVED — UPI on the check-in page:** root cause was that a hand-built
+`upi://pay` link is UNSIGNED, so GPay rejects it ("payments to this receiver
+are not allowed"); only the bank/PSP can sign. `mc=0000` could never have
+helped. Flow redesigned to copy-VPA → open UPI app (bare intent) → pay via
+"Pay to UPI ID" → enter reference. Verified working by the owner.
+
+**PROD DEPLOY PENDING (already merged on contractnest-ui main):** the deployed
+check-in page is an OLD build with (a) 51 mojibake sequences (`Γé╣` instead of
+`₹`) from a PowerShell encoding mangle on 25 Jul, (b) no ContractNest branding,
+(c) the old broken UPI flow. One `contractnest-ui` deploy fixes all three.
+Guard: any `Get-Content | Set-Content` on source files can re-mangle encoding —
+use `-Encoding utf8NoBOM`.
+
+**NEXT SESSION: WhatsApp messages — what is integrated vs pending.**
+
 ---
 
 ## ⚠️ Session Reminders
