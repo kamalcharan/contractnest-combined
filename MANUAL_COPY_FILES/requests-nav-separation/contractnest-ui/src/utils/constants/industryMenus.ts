@@ -2,17 +2,6 @@
 import { industries } from '../../lib/constants/industries';
 
 // Menu item interface
-export type MenuSection = 'workspace' | 'grow' | 'configure';
-
-/** Capabilities a menu item can require. A tenant that lacks one sees the
-    item LOCKED (✦ + cross-sell), never missing — the upsell IS the menu. */
-export type FeatureKey =
-  | 'rfq' | 'events' | 'registry' | 'finance'
-  | 'appointments' | 'groupSessions' | 'catalog' | 'vani';
-
-export type MenuAccess = 'open' | 'locked' | 'hidden';
-
-// Menu item interface
 export interface MenuItem {
   id: string;
   label: string;
@@ -20,76 +9,238 @@ export interface MenuItem {
   path: string;
   adminOnly?: boolean;
   hasSubmenu?: boolean;
-  submenuItems?: MenuItem[];
-  defaultOpen?: boolean;
-  // ── single-menu model (replaces LITE_MENUS) ──
-  /** Which group header this sits under. Absent = 'workspace'. */
-  section?: MenuSection;
-  /** Capability needed to USE it. Absent = always open. */
-  requires?: FeatureKey;
-  /** Only show on these perspectives. Absent = both. */
+  /** Only show this item on these perspectives. Omit = both.
+      Requests is expense-only: creating an RFQ is a buyer action. */
   perspectives?: Array<'revenue' | 'expense'>;
-  /** Tier wins over the perspective rule (e.g. an RFQ-lite vendor lives on
-      revenue but Requests is their entire job). */
-  tierOverrides?: Partial<Record<'cnak' | 'rfq', 'open' | 'hidden'>>;
-  /** Which LITE_CROSS_SELL entry the ✦ modal shows when locked. */
-  copyKey?: string;
-  /** Visual emphasis, like VaNi's purple treatment. */
-  highlight?: 'vani' | 'brand';
+  submenuItems?: MenuItem[];
+  defaultOpen?: boolean; // For submenus that should be open by default
 }
 
+// Default menu structure
 export const defaultMenuItems: MenuItem[] = [
+{
+  id: 'getting-started',
+  label: 'Getting Started',
+  icon: 'Compass',
+  path: '/onboarding/welcome',
+  hasSubmenu: false
+},
+  // HIDDEN: Dashboard - login/signup now redirects to /ops/cockpit
+  // {
+  //   id: 'dashboard',
+  //   label: 'Dashboard',
+  //   icon: 'Home',
+  //   path: '/dashboard',
+  //   hasSubmenu: false
+  // },
+  // Operations menu - moved after Dashboard for better UX
   {
-    id: 'getting-started',
-    label: 'Getting Started',
-    icon: 'Compass',
-    path: '/onboarding/welcome',
-    section: 'workspace'
+    id: 'operations',
+    label: 'Operations',
+    icon: 'Activity',
+    path: '/ops/cockpit',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
+      { id: 'ops-finance', label: 'Finance (AR/AP)', icon: 'Wallet', path: '/ops/finance' },
+      { id: 'ops-services', label: 'Event Schedule', icon: 'CalendarClock', path: '/ops/services' },
+      { id: 'ops-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions' },
+      { id: 'ops-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments' },
+      { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
+      { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
+      { id: 'facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry' }
+      // HIDDEN: Activity Feed, Reports - commented out
+      // { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' }
+      // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+    ]
   },
-  // ── YOUR WORKSPACE ──────────────────────────────────────────────
-  { id: 'ops-cockpit', label: 'Dashboard', icon: 'Gauge', path: '/ops/cockpit', section: 'workspace' },
-  { id: 'contracts', label: 'Contracts', icon: 'FileText', path: '/contracts', section: 'workspace' },
+  // REMOVED: Contacts menu - now available under Operations > Entities
+  /*
   {
-    // Highlighted like VaNi — claiming a CNAK is how a contract ARRIVES,
-    // and it is the one action a brand-new tenant most often needs.
-    id: 'contracts-claim',
-    label: 'Claim Contract',
-    icon: 'Download',
-    path: '/contracts/claim',
-    section: 'workspace',
-    highlight: 'brand'
+    id: 'contacts',
+    label: 'Contacts',
+    icon: 'Users',
+    path: '/contacts',
+    hasSubmenu: true,
+    submenuItems: [
+      {
+        id: 'contacts-all',
+        label: 'All Contacts',
+        icon: 'Users',
+        path: '/contacts'
+      },
+      {
+        id: 'contacts-buyers',
+        label: 'Buyers',
+        icon: 'ShoppingCart',
+        path: '/contacts?filter=buyers'
+      },
+      {
+        id: 'contacts-partners',
+        label: 'Partners',
+        icon: 'Handshake',
+        path: '/contacts?filter=partners'
+      },
+      {
+        id: 'contacts-service-providers',
+        label: 'Service Providers',
+        icon: 'Wrench',
+        path: '/contacts?filter=service_providers'
+      }
+    ]
   },
+  */
+  // Contracts menu
   {
-    // Sending an RFQ is a buyer action → expense side. An RFQ-lite vendor
-    // lives on revenue but RECEIVES requests, so the tier overrides that.
+    id: 'contracts',
+    label: 'Contracts',
+    icon: 'FileText',
+    path: '/contracts',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/contracts' },
+      // HIDDEN: Contract Preview, Invite Sellers
+      // { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
+      // { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
+      { id: 'contracts-claim', label: 'Claim Contract', icon: 'Download', path: '/contracts/claim' }
+    ]
+  },
+  // Requests (RFQ) — its OWN menu item, not a toggle inside Contracts.
+  // An RFQ is a different object with a different lifecycle (draft → sent →
+  // quotes in → awarded → converted), and its meaning follows the perspective
+  // exactly like Receivables/Payables: EXPENSE = requests you sent to vendors,
+  // REVENUE = requests you received and must quote.
+  {
     id: 'requests',
     label: 'Requests',
     icon: 'Inbox',
     path: '/requests',
-    section: 'workspace',
-    perspectives: ['expense'],
-    tierOverrides: { rfq: 'open' },
-    requires: 'rfq',
-    copyKey: 'rfq'
+    // EXPENSE ONLY. A revenue user cannot raise an RFQ — they can only
+    // receive one, and most never do. Vendors who DO receive requests are
+    // lite tenants and get their own Requests entry via LITE_MENUS.rfq.
+    perspectives: ['expense']
   },
-  { id: 'ops-services', label: 'Service Events', icon: 'CalendarClock', path: '/ops/services', section: 'workspace', requires: 'events', copyKey: 'events' },
-  { id: 'ops-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments', section: 'workspace', requires: 'appointments', copyKey: 'appointments' },
-  { id: 'ops-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions', section: 'workspace', requires: 'groupSessions', copyKey: 'group-sessions' },
-  { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts', section: 'workspace' },
-  { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry', section: 'workspace', requires: 'registry', copyKey: 'registry' },
-  { id: 'facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry', section: 'workspace', requires: 'registry', copyKey: 'registry' },
-  { id: 'ops-finance', label: 'Finance (AR/AP)', icon: 'Wallet', path: '/ops/finance', section: 'workspace', requires: 'finance', copyKey: 'finance' },
+  // VaNi — the real agent surface: Overview (landing + trial) and Briefing.
+  // Autonomy & Credits joins when built (agreed end-state: 3 items).
+  {
+    id: 'vani',
+    label: 'VaNi',
+    icon: 'Sparkles',
+    path: '/vani/landing',
+    hasSubmenu: true,
+    defaultOpen: false,
+    submenuItems: [
+      { id: 'vani-landing', label: 'Overview', icon: 'Home', path: '/vani/landing' },
+      { id: 'vani-briefing', label: 'Briefing', icon: 'Sunrise', path: '/vani/briefing' }
+    ]
+  },
+  // VaNi (old) — mock/reference pages parked here until the cleanup pass removes them
+  {
+    id: 'vani-old',
+    label: 'VaNi (old)',
+    icon: 'Archive',
+    path: '/vani/dashboard',
+    hasSubmenu: true,
+    defaultOpen: false, // reference only — must not auto-expand and crowd the sidebar
+    submenuItems: [
+      { id: 'vani-dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/vani/dashboard' },
+      { id: 'vani-jobs', label: 'Jobs', icon: 'Briefcase', path: '/vani/jobs' },
+      { id: 'vani-events', label: 'Business Events', icon: 'CalendarClock', path: '/vani/events' },
+      { id: 'vani-templates', label: 'Templates', icon: 'FileText', path: '/vani/templates' },
+      { id: 'vani-channels', label: 'Channels', icon: 'MessageSquare', path: '/vani/channels' },
+      { id: 'vani-bbb-chat', label: 'BBB Chat', icon: 'MessageCircle', path: '/vani/channels/bbb/chat' },
+      { id: 'vani-analytics', label: 'Analytics', icon: 'BarChart2', path: '/vani/analytics' },
+      { id: 'vani-webhooks', label: 'Webhooks', icon: 'Webhook', path: '/vani/webhooks' },
+      { id: 'vani-receivables', label: 'Accounts Receivable', icon: 'Wallet', path: '/vani/finance/receivables' },
+      { id: 'vani-service-schedule', label: 'Service Schedule', icon: 'CalendarCheck', path: '/vani/operations/services' },
+      { id: 'vani-rules', label: 'Process Rules', icon: 'ListChecks', path: '/vani/rules' },
+      { id: 'vani-chat', label: 'Chat', icon: 'MessagesSquare', path: '/vani/chat' }
+    ]
+  },
+  // HIDDEN: Templates, Tasks - commented out for now
+  /*
+  {
+    id: 'templates',
+    label: 'Templates',
+    icon: 'FileTemplate',
+    path: '/service-contracts/templates',
+    hasSubmenu: true,
+    submenuItems: [...]
+  },
+  {
+    id: 'tasks',
+    label: 'Tasks',
+    icon: 'CheckSquare',
+    path: '/tasks',
+    hasSubmenu: false
+  },
+  */
+  // HIDDEN: Appointments — commented out
+  /*
+  {
+    id: 'appointments',
+    label: 'Appointments',
+    icon: 'Calendar',
+    path: '/appointments',
+    hasSubmenu: false
+  },
+  */
+  // Catalog Studio - all submenus visible
+  {
+    id: 'catalog-studio',
+    label: 'Catalog Studio',
+    icon: 'Layers',
+    path: '/catalog-studio',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
+      { id: 'catalog-studio-equipment', label: 'VaNi Seeding', icon: 'Sprout', path: '/catalog-studio/equipment' },
+      { id: 'catalog-studio-templates-list', label: 'Templates', icon: 'List', path: '/catalog-studio/templates-list' }
+    ]
+  },
 
-  // ── GROW WITH CONTRACTNEST ──────────────────────────────────────
-  { id: 'catalog-studio', label: 'Catalog Studio', icon: 'Layers', path: '/catalog-studio/configure', section: 'grow', requires: 'catalog', copyKey: 'catalog' },
-  { id: 'vani', label: 'VaNi', icon: 'Sparkles', path: '/vani/landing', section: 'grow', requires: 'vani', highlight: 'vani' },
-  // HIDDEN (owner call 2026-08-03): "VaNi (old)" — 12 reference/mock pages.
-  // Routes and files untouched; simply no longer in the menu.
-
-  // ── CONFIGURE ───────────────────────────────────────────────────
-  { id: 'settings', label: 'Settings', icon: 'Settings', path: '/settings', section: 'configure' },
-
-  // ── ADMIN (unchanged — rendered by the Sidebar's separate admin block) ──
+  // HIDDEN: Service Catalog - commented out for now
+  /*
+  {
+    id: 'catalog',
+    label: 'Service Catalog',
+    icon: 'Package',
+    path: '/catalog',
+    hasSubmenu: true,
+    submenuItems: [...]
+  },
+  */
+  // Settings menu - simplified (removed Pricing Plans, My Subscription)
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: 'Settings',
+    path: '/settings',
+    hasSubmenu: true,
+    submenuItems: [
+      {
+        id: 'settings-configure',
+        label: 'Configure',
+        icon: 'Sliders',
+        path: '/settings/configure'
+      }
+      // HIDDEN: Pricing Plans, My Subscription - commented out
+      /*
+      {
+        id: 'pricing-plans',
+        label: 'Pricing Plans',
+        icon: 'CreditCard',
+        path: '/businessmodel/tenants/pricing-plans'
+      },
+      {
+        id: 'my-subscription',
+        label: 'My Subscription',
+        icon: 'Package',
+        path: '/businessmodel/tenants/subscription'
+      }
+      */
+    ]
+  },
   // UPDATED: Implementation Toolkit - updated paths for service-contracts structure
   // REMOVED: plan-detail, plan-versions, subscription-management submenus
   // REMOVED: user-management and analytics menu items (moved under toolkit or removed)
@@ -304,50 +455,3 @@ export const getMenuItemsForIndustry = (industryId: string | undefined): MenuIte
 
   return menuItems;
 };
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ACCESS — the ONE place that decides whether a menu item is usable,
-// locked (✦ upsell) or hidden. Replaces the four mechanisms that used
-// to be spread across Sidebar + liteAccess (lite branch, reveal rules,
-// perspective checks, adminOnly).
-// ═══════════════════════════════════════════════════════════════════
-
-export type LiteTier = 'cnak' | 'rfq' | null;
-
-/** Capabilities each lite tier has OPEN. Everything else renders locked.
-    A full tenant (tier === null) has every capability. */
-const LITE_OPEN_FEATURES: Record<'cnak' | 'rfq', FeatureKey[]> = {
-  // Lite BUYER: a contract arrived via CNAK. They can run it and track the
-  // assets it covers — but not raise RFQs, run finance, or book sessions.
-  cnak: ['events', 'registry'],
-  // Lite SELLER: quoting the request they received is the whole job.
-  rfq: ['rfq'],
-};
-
-export interface MenuAccessContext {
-  tier: LiteTier;
-  perspective: 'revenue' | 'expense';
-  /** Progressive-disclosure result for this item id (existing reveal rules). */
-  revealed?: boolean;
-}
-
-export function getMenuAccess(item: MenuItem, ctx: MenuAccessContext): MenuAccess {
-  // 1. Progressive disclosure still wins — not yet earned means not shown.
-  if (ctx.revealed === false) return 'hidden';
-
-  // 2. Tier override beats the perspective rule (RFQ-lite vendor lives on
-  //    revenue, but Requests is precisely what they are here for).
-  const override = item.tierOverrides && ctx.tier ? item.tierOverrides[ctx.tier] : undefined;
-  if (override === 'hidden') return 'hidden';
-
-  // 3. Perspective gate (unless a tier override already said 'open').
-  if (override !== 'open' && item.perspectives && !item.perspectives.includes(ctx.perspective)) {
-    return 'hidden';
-  }
-
-  // 4. Capability → open or locked. No requirement means always open.
-  if (!item.requires) return 'open';
-  if (!ctx.tier) return 'open'; // full tenant
-  return LITE_OPEN_FEATURES[ctx.tier].includes(item.requires) ? 'open' : 'locked';
-}
