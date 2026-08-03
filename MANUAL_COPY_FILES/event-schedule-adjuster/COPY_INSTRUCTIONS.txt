@@ -48,7 +48,14 @@ SURFACE 1 — Contract Wizard (existing "Events Preview" step, NOT a new step)
   RFQ wizard has no events step — unaffected.
 
 SURFACE 2 — Bulk Assign (VaNi → BulkAssignDialog)
-  New collapsed "Review schedule" section under the cadence controls:
+  DIALOG IS NOW NEAR-FULLSCREEN (96vw x 95vh, was 5xl x 90vh) — it carries
+  the member list, batch preferences, per-block cadence AND the schedule,
+  and at the old size everything below the fold was hidden. Member list
+  raised to 32rem. Event list is a 2-up grid on lg+ with its own scroll
+  (18rem) so a 12-event schedule can't push Create off-screen.
+
+  "Review schedule" section under the cadence controls, OPEN BY DEFAULT
+  (still collapsible):
   shows the TEMPLATE's computed events (same computeContractEvents call
   the wizard runs, fed from the assembled draft) + the same adjuster +
   a compact event list with adjusted rows highlighted.

@@ -125,7 +125,10 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
   // applies correctly to all of them, and mapWizardToRequest (used per item in
   // submitBulk) applies it exactly as it does for a single wizard contract.
   const [eventOverrides, setEventOverrides] = useState<Record<string, Date>>({});
-  const [showSchedule, setShowSchedule] = useState(false);
+  // Open by default — the schedule is what the batch actually creates, so it
+  // should be reviewable without hunting for a disclosure control. Still
+  // collapsible for batches that take the generated dates as-is.
+  const [showSchedule, setShowSchedule] = useState(true);
 
   const { data: contacts, loading } = useContactList({
     search: search.trim().length >= 2 ? search.trim() : undefined,
@@ -358,8 +361,11 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
+      {/* Near-fullscreen: this dialog carries a member list, batch preferences,
+          per-block cadence AND the schedule review — at 5xl/90vh everything
+          below the fold was effectively hidden. */}
       <DialogContent
-        className="sm:max-w-5xl rounded-xl max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-[96vw] w-[96vw] rounded-xl h-[95vh] max-h-[95vh] overflow-y-auto"
         style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.border }}
       >
         <DialogHeader>
@@ -431,8 +437,8 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
               ))}
             </div>
 
-            {/* Member list */}
-            <div className="rounded-lg border overflow-y-auto" style={{ borderColor: colors.utility.border, maxHeight: '24rem' }}>
+            {/* Member list — taller now the dialog is near-fullscreen */}
+            <div className="rounded-lg border overflow-y-auto" style={{ borderColor: colors.utility.border, maxHeight: '32rem' }}>
               {loading ? (
                 <div className="flex items-center justify-center py-8 gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.brand.primary }} />
@@ -661,9 +667,13 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
                         appliesToNote={`applies to all ${selectedCount || 0} contract${selectedCount === 1 ? '' : 's'}`}
                       />
 
+                      {/* Two-up on wide screens — the dialog is near-fullscreen
+                          now, so a single column of compact rows wastes it.
+                          Scrolls internally so a 12-event schedule doesn't
+                          push the Create button off-screen. */}
                       <div
-                        className="rounded-lg border overflow-hidden"
-                        style={{ borderColor: colors.utility.border }}
+                        className="grid grid-cols-1 lg:grid-cols-2 gap-1.5 overflow-y-auto pr-1"
+                        style={{ maxHeight: '18rem' }}
                       >
                         {[...templateEvents]
                           .sort((a, b) => {
@@ -678,9 +688,9 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
                             return (
                               <div
                                 key={ev.id}
-                                className="flex items-center gap-2 px-2.5 py-1.5 border-b last:border-b-0 text-[11px]"
+                                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px]"
                                 style={{
-                                  borderColor: colors.utility.border,
+                                  borderColor: moved ? `${colors.brand.primary}40` : colors.utility.border,
                                   backgroundColor: moved ? `${colors.brand.primary}08` : 'transparent',
                                 }}
                               >
