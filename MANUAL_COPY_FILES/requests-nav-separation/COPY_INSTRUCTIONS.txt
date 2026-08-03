@@ -22,7 +22,14 @@ WHAT CHANGED  (UI only — no API, no RPC, no migration)
    - New route /requests renders the SAME hub component with
      recordType="rfq" (new prop; /contracts passes the default
      'contract'). Record type now comes from the ROUTE, not state.
-   - industryMenus.ts: new top-level "Requests" item (icon Inbox).
+   - industryMenus.ts: new top-level "Requests" item (icon Inbox),
+     gated to EXPENSE ONLY via a new MenuItem.perspectives field
+     (Sidebar honours it). A revenue user cannot raise an RFQ — they can
+     only receive one, and most never do, so a permanent Requests item
+     on Revenue would point at a page they can only find empty. Vendors
+     who DO receive requests are lite tenants and keep their own entry
+     via LITE_MENUS.rfq. /requests still renders correctly on Revenue
+     when reached that way (received view, no create button).
    - Rationale: an RFQ is a different object with its own lifecycle
      (draft → sent → quotes in → awarded → converted). Perspective then
      decides its MEANING, exactly like Receivables/Payables:
@@ -61,14 +68,21 @@ WHAT CHANGED  (UI only — no API, no RPC, no migration)
                expense → "Requests sent"      · sent to vendors
    Create button is plain "New Contract" — no relationship in the label.
 
-5. RELATIONSHIP BADGE: fallback changed from 'Client' to '—'.
+5. REQUESTS EMPTY STATE (was showing CONTRACT copy — bug):
+   /requests no longer renders "No client contracts yet / New Client
+   Contract". EmptyState takes isRfqView:
+     revenue → "No requests waiting" + explanation, NO create button
+     expense → "No requests sent yet" + "New Request"
+
+6. RELATIONSHIP BADGE: fallback changed from 'Client' to '—'.
    A missing contract_type is a data gap; labelling it "Client" hid it.
 
 FILES
 -----
 contractnest-ui/
   src/App.tsx                                        (new /requests route)
-  src/utils/constants/industryMenus.ts               (Requests menu item)
+  src/utils/constants/industryMenus.ts               (Requests item + perspectives gate)
+  src/components/layout/Sidebar.tsx                  (honours perspectives gate)
   src/utils/constants/liteAccess.ts                  (lite Requests → /requests)
   src/pages/contracts/hub/index.tsx                  (recordType prop, toggles
                                                       removed, titles)

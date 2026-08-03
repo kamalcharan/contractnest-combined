@@ -9,6 +9,9 @@ export interface MenuItem {
   path: string;
   adminOnly?: boolean;
   hasSubmenu?: boolean;
+  /** Only show this item on these perspectives. Omit = both.
+      Requests is expense-only: creating an RFQ is a buyer action. */
+  perspectives?: Array<'revenue' | 'expense'>;
   submenuItems?: MenuItem[];
   defaultOpen?: boolean; // For submenus that should be open by default
 }
@@ -111,7 +114,11 @@ export const defaultMenuItems: MenuItem[] = [
     id: 'requests',
     label: 'Requests',
     icon: 'Inbox',
-    path: '/requests'
+    path: '/requests',
+    // EXPENSE ONLY. A revenue user cannot raise an RFQ — they can only
+    // receive one, and most never do. Vendors who DO receive requests are
+    // lite tenants and get their own Requests entry via LITE_MENUS.rfq.
+    perspectives: ['expense']
   },
   // VaNi — the real agent surface: Overview (landing + trial) and Briefing.
   // Autonomy & Credits joins when built (agreed end-state: 3 items).

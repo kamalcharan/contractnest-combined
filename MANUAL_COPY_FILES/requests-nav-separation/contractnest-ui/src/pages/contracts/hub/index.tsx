@@ -200,14 +200,52 @@ interface EmptyStateProps {
   perspective: Perspective;
   colors: any;
   onCreateType: (type: ContractType) => void;
+  /** Requests page (record_type='rfq') — different object, different copy,
+      and on Revenue no creation at all (you cannot raise an RFQ for yourself;
+      you can only receive one). */
+  isRfqView?: boolean;
   /** Received requests waiting for a quote — shown as the primary pointer
       instead of "create your first contract" when > 0 (CNAK-vendor case). */
   pendingRequests?: number;
   onShowRequests?: () => void;
 }
 
-const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateType, pendingRequests = 0, onShowRequests }) => {
+const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateType, isRfqView = false, pendingRequests = 0, onShowRequests }) => {
   const label = perspective === 'revenue' ? 'client' : 'vendor';
+
+  // ── Requests page ──────────────────────────────────────────────
+  if (isRfqView) {
+    const received = perspective === 'revenue';
+    return (
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+        justifyContent:'center', padding:'80px 40px', textAlign:'center' }}>
+        <div style={{ width:72, height:72, borderRadius:16, display:'flex',
+          alignItems:'center', justifyContent:'center',
+          background: colors.brand.primary + '14', marginBottom:20 }}>
+          <FileText size={32} style={{ color: colors.brand.primary, opacity:0.6 }} />
+        </div>
+        <h3 style={{ fontSize:18, fontWeight:600, color: colors.utility.primaryText, marginBottom:8 }}>
+          {received ? 'No requests waiting' : 'No requests sent yet'}
+        </h3>
+        <p style={{ fontSize:13.5, color: colors.utility.secondaryText, marginBottom: received ? 0 : 20, maxWidth:400 }}>
+          {received
+            ? 'When a buyer sends you a request for quote, it lands here. Nothing to respond to right now.'
+            : 'Ask several vendors to quote the same scope, then compare their responses side by side.'}
+        </p>
+        {/* No create button on Revenue — raising an RFQ is a buyer action. */}
+        {!received && (
+          <button
+            onClick={() => onCreateType('vendor' as ContractType)}
+            style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px 22px',
+              borderRadius:10, border:'none', background: colors.brand.primary, color:'#fff',
+              fontSize:13.5, fontWeight:700, cursor:'pointer' }}
+          >
+            <Plus size={16} /> New Request
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (pendingRequests > 0 && onShowRequests) {
     return (
@@ -1070,6 +1108,7 @@ const ContractsHubPage: React.FC<ContractsHubPageProps> = ({ recordType = 'contr
             <EmptyState
               perspective={activePerspective}
               colors={colors}
+              isRfqView={isRfqView}
               onCreateType={() => handleCreateClick()}
               pendingRequests={pendingRequestsCount}
               onShowRequests={() => navigate('/requests')}
