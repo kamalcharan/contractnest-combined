@@ -1,0 +1,133 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — msg91-delivery-webhook
+═══════════════════════════════════════════════════
+Branch: claude/submodule-init-manual-copy-7yhb7h
+
+STATUS: DEPLOYED to production as edge function `msg91-webhook` v1
+        (verify_jwt=false). Nothing left to copy or deploy.
+        The remaining work is n8n wiring — see below.
+
+WHAT THIS SOLVES
+─────────────────────────────────────────────────
+Nothing ever moved an n_jtd row past status='sent'. 'sent' only means MSG91
+accepted the request and returned a request_id — it says nothing about whether
+WhatsApp delivered the message. That blind spot let attendance_ack and
+payment_thankyou fail silently from 1–4 Aug 2026: every row read 'sent', every
+message was rejected by WhatsApp on delivery with "Parameter name is missing or
+empty". It surfaced only because a human checked a handset.
+
+Files:
+  - contractnest-edge/supabase/functions/msg91-webhook/index.ts   [NEW]
+
+Submodules Affected: contractnest-edge only (no API, no UI, no DB migration)
+
+═══════════════════════════════════════════════════
+🔌 MSG91 NEEDS NO CHANGE — reports already flow
+═══════════════════════════════════════════════════
+MSG91 already has a WhatsApp webhook registered:
+
+    Name    BBB
+    Event   On Inbound Report Received     ← these ARE the delivery reports
+    URL     https://n8n.srv1096269.hstgr.cloud/webhook/whatsapp-msg91
+
+So MSG91 has been sending delivery reports all along — to n8n, not to us.
+That is the whole reason n_jtd never updated. (The second webhook, VaNi /
+"On Inbound Request Received", is inbound replies from members — a different
+event, leave it alone.)
+
+RECOMMENDED WIRING — forward from n8n, change nothing in MSG91:
+
+  In the n8n workflow behind /webhook/whatsapp-msg91, add an HTTP Request node
+  alongside whatever it already does:
+
+      Method  POST
+      URL     https://uwyqhzotluikawcboldr.supabase.co/functions/v1/msg91-webhook
+      Body    the incoming webhook payload, passed through unchanged
+      Headers Content-Type: application/json
+
+  MSG91 config untouched, n8n keeps doing its existing job, and ContractNest
+  starts seeing delivery status.
+
+ALTERNATIVE (not recommended): repoint the MSG91 URL straight at the endpoint.
+Simpler, but whatever the n8n workflow currently does with these reports stops
+happening. Only do this if that workflow is dead.
+
+OPTIONAL HARDENING: set edge env var MSG91_WEBHOOK_SECRET to any random string,
+then append ?token=<that string> to the forwarding URL. While unset the
+endpoint accepts unauthenticated callbacks and logs a warning on each — chosen
+so it works the moment it is deployed. Blast radius is small either way: it can
+only advance the status of rows that already exist.
+
+═══════════════════════════════════════════════════
+🔎 GET THE REAL PAYLOAD FROM n8n
+═══════════════════════════════════════════════════
+n8n has been receiving genuine MSG91 delivery reports for weeks. Its execution
+history therefore contains exactly the payload shape this endpoint has had to
+guess at. Open any recent execution of the whatsapp-msg91 workflow, copy one
+report body, and the extraction can be tightened from "walk the JSON looking
+for anything id-shaped and status-shaped" to exact paths.
+
+The endpoint works either way — this is a refinement, not a fix.
+
+Production Checklist:
+  ✅ Transaction Management: single-row updates, no multi-statement work to
+     roll back. Each event applied independently.
+  ✅ Race Condition Handling: statuses are RANKED and only ever move forward
+     (created<pending<queued<processing<sent<delivered<read), so out-of-order
+     callbacks — a late 'delivered' arriving after 'read' — cannot walk a row
+     backwards. 'failed' is terminal and always recorded.
+  ✅ Error Handling: always returns HTTP 200, including on unparseable bodies,
+     so a provider retry storm can never be triggered; falls back to
+     form-encoded parsing if the body is not JSON; unmatched provider ids are
+     logged rather than treated as errors (callbacks for messages sent by
+     other systems are expected); recursion depth capped at 8.
+  ✅ Toasts: N/A — server-side endpoint, no UI.
+  ✅ Loaders: N/A — server-side endpoint, no UI.
+
+═══════════════════════════════════════════════════
+🔎 VERIFICATION DONE THIS BATCH
+═══════════════════════════════════════════════════
+Tested against LIVE, driving the deployed endpoint via net.http_post from the
+database (the sandbox's egress proxy blocks supabase.co, so curl was not
+available):
+
+  ✅ Flat shape {"data":[{"message_id":..,"status":"delivered"}]} using the
+     REAL provider id of today's attendance_ack handset test →
+     HTTP 200 {"ok":true,"events":1,"results":{"updated":1}};
+     row moved sent → delivered, completed_at stamped.
+  ✅ Deeply nested shape
+     {"event":"report","payload":{"messages":[{"id":..,"eventType":"read"}]}}
+     using the real payment_thankyou id →
+     HTTP 200, row moved sent → read, completed_at stamped.
+     Confirms extraction is genuinely shape-agnostic, not fitted to one guess.
+  ✅ GET probe returns 200 (some providers probe before enabling a URL).
+
+  ❌ NOT TESTED — a real MSG91 callback. None has reached this endpoint yet;
+     that only happens once the n8n forwarding node is added. The two shapes
+     above are plausible reconstructions, not captured traffic.
+  ❌ NOT TESTED — SMS and Email delivery reports. The status map covers their
+     vocabularies (DELIVRD/UNDELIV/REJECTD, bounced/dropped/spam) but no such
+     callback has been observed.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+  - [ ] Add the HTTP Request node to the n8n whatsapp-msg91 workflow.
+  - [ ] Send yourself a test message (or wait for the 5 Aug batch).
+  - [ ] Watch it move past 'sent':
+        SELECT source_type_code, status_code, completed_at
+          FROM n_jtd
+         WHERE channel_code='whatsapp'
+         ORDER BY created_at DESC LIMIT 10;
+  - [ ] Check the edge logs for the RAW BODY line — that is the real MSG91
+        shape. Paste it back so extraction can be tightened.
+  - [ ] Confirm a message you deliberately do NOT open stops at 'delivered'
+        and does not reach 'read'.
+
+═══════════════════════════════════════════════════
+📌 WHY THIS MATTERS
+═══════════════════════════════════════════════════
+Once wired, "did it actually arrive" becomes a query instead of a phone check.
+Any future template or parameter-style breakage shows up as rows stuck at
+'sent' or flipping to 'failed', within minutes, instead of going unnoticed for
+days.
