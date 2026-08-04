@@ -160,6 +160,19 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
           { name: 'session_name',    value: String(templateData.session_name || '') },
           { name: 'occurrence_date', value: String(templateData.occurrence_date || '') }
         ];
+      } else if (templateName === 'group_session_absentee_reminder') {
+        // Named. Body: Hi {{member_name}}, we have missed you at the last
+        // couple of {{session_name}} sessions. The next one is on
+        // {{occurrence_date}} at {{start_time}}...
+        // Same four variables as looking_forward — this is the "missing you"
+        // variant sent 3 days out to members who missed the previous two
+        // occurrences, in place of that day's looking-forward reminder.
+        namedParams = [
+          { name: 'member_name',     value: String(templateData.member_name || '') },
+          { name: 'session_name',    value: String(templateData.session_name || '') },
+          { name: 'occurrence_date', value: String(templateData.occurrence_date || '') },
+          { name: 'start_time',      value: String(templateData.start_time || '') }
+        ];
       } else {
         // For other templates, use Object.values (positional).
         // NOTE: templateData round-trips through a jsonb column
