@@ -73,32 +73,43 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
 
     // Build components object based on template variables.
     //
-    // THIS ACCOUNT USES POSITIONAL PARAMETERS EXCLUSIVELY.
+    // ⚠️ THIS ACCOUNT CONTAINS BOTH PARAMETER STYLES. Each template branch
+    // below MUST match the style its own template was registered with. There
+    // is no account-wide rule — do not "simplify" this to one style.
     //
-    // MSG91's template editor for this account rejects named placeholders
-    // outright: "Variables parameters must be whole numbers with two sets of
-    // curly brackets, i.e., {{1}} or {{2}}." Every template registered here is
-    // therefore positional, and the send must match: components key "body_1",
-    // "body_2", ..., value shape {type:'text', value:'...'}.
+    //   NAMED      ({{member_name}}): components key "body_<name>", value
+    //              shape {type:'text', value:'...', parameter_name:'<name>'}.
+    //              Used by the templates registered BEFORE Aug 2026:
+    //              group_session_attendance_ack, group_session_payment_thankyou.
     //
-    // HISTORY — do not re-introduce named parameters. An earlier change
-    // switched the group-session templates to Meta's NAMED parameter style
-    // (components key "body_<name>" plus a parameter_name field), on the
-    // theory that this WABA namespace enforced named-only and that this
-    // explained why attendance_ack and payment_thankyou showed status='sent'
-    // but never arrived. That diagnosis was wrong — MSG91 will not even accept
-    // a named placeholder at template-creation time, so no named template
-    // could ever have existed here. Sending named parameters against a
-    // positional template is what actually guaranteed non-delivery.
+    //   POSITIONAL ({{1}}, {{2}}):    components key "body_1", "body_2", value
+    //              shape {type:'text', value:'...'}.
+    //              Used by everything registered from Aug 2026 onward, because
+    //              MSG91's template editor now refuses named placeholders:
+    //              "Variables parameters must be whole numbers with two sets of
+    //              curly brackets, i.e., {{1}} or {{2}}."
+    //              Also user_invitation and contract_signoff.
     //
-    // Note also that status='sent' proves nothing on this stack: it reflects
-    // MSG91 accepting the request, not WhatsApp delivering it. No JTD row has
-    // ever reached 'delivered' or 'read' because the delivery webhook does not
-    // update status. Confirm delivery on a real handset, not in the DB.
-    const components: Record<string, { type: string; value: string; sub_type?: string }> = {};
+    // Established empirically by a handset test on 4 Aug 2026 (all five
+    // group-session templates sent positional to one number): looking_forward
+    // and noshow_regret arrived; attendance_ack and payment_thankyou were
+    // rejected by WhatsApp with "Parameter name is missing or empty", which is
+    // the signature of sending positional against a NAMED template. Sending
+    // named against a POSITIONAL template fails the same silent way.
+    //
+    // The failure mode is why this is easy to get wrong: MSG91 ACCEPTS the
+    // request either way and returns success + a request_id, so the JTD row
+    // reads status='sent'. WhatsApp rejects it later, on delivery. No JTD row
+    // has ever reached 'delivered' or 'read' because the delivery webhook does
+    // not update status. Confirm on a real handset, never in the DB.
+    const components: Record<string, { type: string; value: string; sub_type?: string; parameter_name?: string }> = {};
 
     if (templateData && Object.keys(templateData).length > 0) {
-      let orderedValues: string[];
+      // Exactly one of these is set per template branch, according to how that
+      // template is registered. The emit block after the if-chain reads
+      // whichever was set.
+      let orderedValues: string[] | null = null;
+      let namedParams: Array<{ name: string; value: string }> | null = null;
 
       if (templateName === 'user_invitation') {
         // {{1}}=recipient_name, {{2}}=inviter_name, {{3}}=workspace_name, {{4}}=invitation_link
@@ -129,20 +140,23 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
 
         console.log(`[JTD WhatsApp] contract_signoff body:`, orderedValues, 'button_suffix:', templateData.review_link_suffix);
       } else if (templateName === 'group_session_attendance_ack') {
-        // Hi {{1}}, your attendance for {{2}} on {{3}} has been recorded. Thank you!
-        orderedValues = [
-          String(templateData.member_name || ''),
-          String(templateData.session_name || ''),
-          String(templateData.occurrence_date || '')
+        // NAMED — registered before Aug 2026.
+        // Hi {{member_name}}, your attendance for {{session_name}} on {{occurrence_date}} has been recorded. Thank you!
+        namedParams = [
+          { name: 'member_name',     value: String(templateData.member_name || '') },
+          { name: 'session_name',    value: String(templateData.session_name || '') },
+          { name: 'occurrence_date', value: String(templateData.occurrence_date || '') }
         ];
       } else if (templateName === 'group_session_payment_thankyou') {
-        // Hi {{1}}, we've received your payment of {{2}} for {{3}}. Thank you!
-        orderedValues = [
-          String(templateData.member_name || ''),
-          String(templateData.amount || ''),
-          String(templateData.session_name || '')
+        // NAMED — registered before Aug 2026.
+        // Hi {{member_name}}, we've received your payment of {{amount}} for {{session_name}}. Thank you!
+        namedParams = [
+          { name: 'member_name',  value: String(templateData.member_name || '') },
+          { name: 'amount',       value: String(templateData.amount || '') },
+          { name: 'session_name', value: String(templateData.session_name || '') }
         ];
       } else if (templateName === 'group_session_looking_forward') {
+        // POSITIONAL — registered Aug 2026. Verified arriving 4 Aug 2026.
         // Hi {{1}}, looking forward to seeing you at {{2}} on {{3}} at {{4}}. See you there!
         orderedValues = [
           String(templateData.member_name || ''),
@@ -175,13 +189,24 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
         orderedValues = Object.values(templateData).map(v => String(v));
       }
 
-      // Convert to MSG91 format: body_1, body_2, etc.
-      orderedValues.forEach((value, index) => {
-        components[`body_${index + 1}`] = {
-          type: 'text',
-          value: value
-        };
-      });
+      if (namedParams) {
+        // Named: key becomes body_<param_name>, value carries parameter_name too.
+        namedParams.forEach(({ name, value }) => {
+          components[`body_${name}`] = {
+            type: 'text',
+            value: value,
+            parameter_name: name
+          };
+        });
+      } else if (orderedValues) {
+        // Positional: keys become body_1, body_2, ...
+        orderedValues.forEach((value, index) => {
+          components[`body_${index + 1}`] = {
+            type: 'text',
+            value: value
+          };
+        });
+      }
     }
 
     // Add header component if media URL provided
