@@ -460,30 +460,30 @@ COMMENT ON FUNCTION public.gs_run_session_notifications() IS
 'Cron-driven Group Session WhatsApp reminders: absentee "missing you" (3 days out, missed last two), looking-forward (3 and 1 days out, deferring to absentee on day 3), no-show regret (session end + 2h). Idempotent via ux_n_jtd_group_session_reminder. IST-aware.';
 
 -- ============================================================================
--- NOTE: the absentee TEMPLATE MAPPING is deliberately NOT seeded here.
+-- ABSENTEE TEMPLATE MAPPING
 -- ============================================================================
--- Both halves of the enqueue are gated on an n_jtd_templates row existing, so
--- until one is inserted this new branch computes its cohort and enqueues
--- nothing. That is the same rollout gate 008 established, and it means this
--- migration is safe to apply before MSG91 has approved the template.
---
--- Once approved, add the mapping in /admin/jtd/templates (or insert directly)
--- with source_type_code = channel = as below and the real MSG91 name:
---
---   INSERT INTO public.n_jtd_templates (
---       tenant_id, template_key, name, description, channel_code,
---       source_type_code, content, provider_template_id, is_live, is_active
---   ) VALUES (
---       'dd194710-92b4-4110-80eb-0b492a0d2c1f',
---       'group_session_absentee_reminder',
---       'Group Session Absentee Reminder (BBB)',
---       'Sent 3 days before an occurrence to members who missed the last two',
---       'whatsapp',
---       'group_session_absentee_reminder',
---       'Hi {{member_name}}, we have missed you at the last couple of {{session_name}} sessions. The next one is on {{occurrence_date}} at {{start_time}} — hope to see you there!',
---       '<APPROVED MSG91 TEMPLATE NAME>',
---       true, true
---   );
---
--- Variable ORDER for the named-parameter branch in whatsapp.ts:
---   member_name, session_name, occurrence_date, start_time
+-- Seeded 4 Aug 2026, once MSG91 approved the template. Template is POSITIONAL
+-- ({{1}}..{{4}}) like every other template in this account — see the header of
+-- jtd-worker/handlers/whatsapp.ts for why named parameters must never be used
+-- here. Variable order: member_name, session_name, occurrence_date, start_time.
+
+INSERT INTO public.n_jtd_templates (
+    tenant_id, template_key, name, description, channel_code, source_type_code,
+    content, provider_template_id, is_live, is_active
+) VALUES (
+    'dd194710-92b4-4110-80eb-0b492a0d2c1f',
+    'group_session_absentee_reminder',
+    'Group Session Absentee Reminder (BBB)',
+    'Sent 3 days before an occurrence to members who missed the last two; replaces that day''s looking-forward for them',
+    'whatsapp',
+    'group_session_absentee_reminder',
+    'Hi {{1}}, we have missed you at the last couple of {{2}} sessions. The next one is on {{3}} at {{4}}. Hope to see you there!',
+    'group_session_absentee_reminder',
+    true,
+    true
+)
+ON CONFLICT (tenant_id, template_key, channel_code, is_live) DO UPDATE SET
+    provider_template_id = EXCLUDED.provider_template_id,
+    content              = EXCLUDED.content,
+    is_active            = EXCLUDED.is_active,
+    updated_at           = NOW();
