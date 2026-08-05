@@ -1,0 +1,39 @@
+-- 057_group_session_avoid_phantom_enqueue.sql
+--
+-- APPLIED TO PRODUCTION 5 Aug 2026. Source-of-record copy — do not re-run.
+--
+-- THE BUG
+-- trg_jtd_enqueue is a BEFORE INSERT trigger on n_jtd that calls pgmq.send().
+-- The scheduler's three INSERTs used ON CONFLICT DO NOTHING against
+-- ux_n_jtd_group_session_reminder. Those combine badly in Postgres: the BEFORE
+-- trigger fires and enqueues BEFORE the conflict is detected, then the row is
+-- discarded — but the transaction still commits, so the queue keeps a message
+-- pointing at an n_jtd row that will never exist.
+--
+-- Observed: 19 phantom messages in a single 10:30 IST tick, all
+-- group_session_looking_forward, none with a matching n_jtd row. The cron runs
+-- every 15 minutes and the reminder windows last a whole day, so this repeated
+-- ~49 messages per tick for as long as an occurrence sat in the 3- or 1-day
+-- window.
+--
+-- No member-visible harm — the worker finds no row, logs it and deletes the
+-- message. But it consumed worker capacity, pushed genuine messages behind a
+-- backlog that regenerated every tick, and made queue depth useless as a
+-- health signal.
+--
+-- THE FIX
+-- Never attempt an insert that is certain to conflict. Each SELECT now carries
+-- a NOT EXISTS guard mirroring the unique index exactly (tenant, source type,
+-- source_id, recipient, is_live, reminder_key), so the trigger never fires for
+-- a row that was never going to land. ON CONFLICT DO NOTHING is retained purely
+-- as a backstop for a genuine race between overlapping runs.
+--
+-- GENERAL LESSON: anywhere a BEFORE INSERT trigger has side effects outside the
+-- row itself, ON CONFLICT DO NOTHING is not a safe dedupe on its own. Guard the
+-- SELECT.
+--
+-- Verified after applying: scheduler run inside the reminder window left queue
+-- depth at 0 (previously ~49 phantoms per run).
+--
+-- See the applied migration in Supabase for the full function body — it is
+-- identical to 056 except for the three NOT EXISTS guards.
