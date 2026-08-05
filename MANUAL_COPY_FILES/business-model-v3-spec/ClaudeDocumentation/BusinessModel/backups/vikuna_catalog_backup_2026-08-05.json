@@ -1,0 +1,1407 @@
+{
+  "tenant": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+  "exported_at": "2026-08-05T16:37:22.449688+00:00",
+  "m_cat_blocks": [
+    {
+      "id": "70b4df6d-5421-4875-91de-184cd1c0f1f3",
+      "icon": "\ud83d\udce6",
+      "name": "sdfdsf",
+      "tags": [],
+      "config": {},
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": null,
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-09T10:52:29.192748+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-09T10:52:29.192748+00:00",
+      "updated_by": null,
+      "description": "<p>sdfdfdsfdfdff</p>",
+      "sequence_no": 0,
+      "display_name": "sdfdsf",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "b3e8e40e-43d9-45c2-881c-045ce6649cba",
+      "icon": "\ud83d\udce6",
+      "name": "value test",
+      "tags": [],
+      "config": {},
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": null,
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-09T12:32:59.589552+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-09T12:32:59.589552+00:00",
+      "updated_by": null,
+      "description": "<p>this is for value</p>",
+      "sequence_no": 0,
+      "display_name": "value test",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "5188e7a2-e5c0-4630-aca1-29f66ff25e25",
+      "icon": "UserPlus",
+      "name": "yoga",
+      "tags": [],
+      "config": {
+        "icon": "UserPlus",
+        "status": "active",
+        "evidence": [
+          {
+            "type": "otp",
+            "config": {
+              "required": true
+            }
+          }
+        ],
+        "followup": {
+          "enabled": true,
+          "conditions": [],
+          "freeFollowups": 1,
+          "followupPeriod": 7,
+          "followupPeriodUnit": "days"
+        },
+        "priceType": "fixed",
+        "pricingTiers": [],
+        "serviceCycles": {
+          "days": 150,
+          "enabled": true,
+          "gracePeriod": 3
+        },
+        "evidence_types": [
+          "otp"
+        ],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "amount": 666,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": null,
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 666.0,
+      "created_at": "2026-01-09T12:57:00.812203+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-09T12:57:00.812203+00:00",
+      "updated_by": null,
+      "description": "<p>sdfdsfdfdfdf</p>",
+      "sequence_no": 0,
+      "display_name": "yoga",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "7a340c64-ca50-4b75-807a-11136b07f2e9",
+      "icon": "Lamp",
+      "name": "testing",
+      "tags": [],
+      "config": {
+        "icon": "Lamp",
+        "status": "active",
+        "evidence": [
+          {
+            "type": "upload-form",
+            "config": {
+              "required": true
+            }
+          },
+          {
+            "type": "otp",
+            "config": {
+              "required": true
+            }
+          }
+        ],
+        "followup": {
+          "enabled": true,
+          "conditions": [],
+          "freeFollowups": 2,
+          "followupPeriod": 7,
+          "followupPeriodUnit": "days"
+        },
+        "warranty": {
+          "enabled": true,
+          "warrantyType": "limited",
+          "warrantyTerms": "testing warranty",
+          "warrantyPeriod": 30,
+          "warrantyPeriodUnit": "days"
+        },
+        "priceType": "fixed",
+        "pricingMode": "resource_based",
+        "resourceTypes": [
+          "equipment"
+        ],
+        "serviceCycles": {
+          "days": 90,
+          "enabled": true
+        },
+        "evidence_types": [
+          "upload-form",
+          "otp"
+        ],
+        "selectedResources": [
+          {
+            "quantity": 1,
+            "is_required": true,
+            "resource_id": "8bc72e3b-6bd5-45ba-8214-8abb483b64ec",
+            "resource_name": "tribit",
+            "resource_type_id": "equipment"
+          }
+        ],
+        "resourcePricingRecords": [
+          {
+            "id": "rp-0",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "currency": "INR",
+            "pricePerUnit": 500,
+            "pricingModel": "hourly",
+            "tax_inclusion": "exclusive",
+            "resourceTypeId": "equipment",
+            "resourceTypeName": "Equipment"
+          },
+          {
+            "id": "rp-1767964671205",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "currency": "GBP",
+            "pricePerUnit": 14,
+            "pricingModel": "hourly",
+            "tax_inclusion": "exclusive",
+            "resourceTypeId": "equipment",
+            "resourceTypeName": "Equipment"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-09T13:20:28.075059+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-09T13:20:28.075059+00:00",
+      "updated_by": null,
+      "description": "<p>testing for testing</p>",
+      "sequence_no": 3,
+      "display_name": "testing",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "31fe25e3-9422-47b4-92ad-00bb10c57e31",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": {
+        "label": "Select Resource",
+        "options": [
+          {
+            "name": "tribit",
+            "price": 500,
+            "currency": "INR",
+            "resource_id": "8bc72e3b-6bd5-45ba-8214-8abb483b64ec"
+          }
+        ],
+        "required": true,
+        "allow_any": false,
+        "selection_time": "contract",
+        "resource_type_id": "equipment"
+      },
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "4fbca93e-107c-4fdd-b506-477265f20a24",
+      "icon": "Lamp",
+      "name": "testing (Copy)",
+      "tags": [],
+      "config": {
+        "icon": "Lamp",
+        "status": "active",
+        "evidence": [
+          {
+            "type": "upload-form",
+            "config": {
+              "required": true
+            }
+          },
+          {
+            "type": "otp",
+            "config": {
+              "required": true
+            }
+          }
+        ],
+        "followup": {
+          "enabled": true,
+          "conditions": [],
+          "freeFollowups": 2,
+          "followupPeriod": 7,
+          "followupPeriodUnit": "days"
+        },
+        "warranty": {
+          "enabled": true,
+          "warrantyType": "limited",
+          "warrantyTerms": "testing warranty",
+          "warrantyPeriod": 30,
+          "warrantyPeriodUnit": "days"
+        },
+        "priceType": "fixed",
+        "pricingMode": "resource_based",
+        "resourceTypes": [
+          "equipment"
+        ],
+        "serviceCycles": {
+          "days": 90,
+          "enabled": true
+        },
+        "evidence_types": [
+          "upload-form",
+          "otp"
+        ],
+        "selectedResources": [
+          {
+            "quantity": 1,
+            "is_required": true,
+            "resource_id": "8bc72e3b-6bd5-45ba-8214-8abb483b64ec",
+            "resource_name": "tribit",
+            "resource_type_id": "equipment"
+          }
+        ],
+        "resourcePricingRecords": [
+          {
+            "id": "rp-0",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "currency": "INR",
+            "pricePerUnit": 500,
+            "pricingModel": "hourly",
+            "tax_inclusion": "exclusive",
+            "resourceTypeId": "equipment",
+            "resourceTypeName": "Equipment"
+          },
+          {
+            "id": "rp-1767964671205",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "currency": "GBP",
+            "pricePerUnit": 14,
+            "pricingModel": "hourly",
+            "tax_inclusion": "exclusive",
+            "resourceTypeId": "equipment",
+            "resourceTypeName": "Equipment"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-09T13:53:14.576812+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-09T13:53:14.576812+00:00",
+      "updated_by": null,
+      "description": "<p>testing for testing</p>",
+      "sequence_no": 4,
+      "display_name": "testing",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "31fe25e3-9422-47b4-92ad-00bb10c57e31",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": {
+        "label": "Select Resource",
+        "options": [
+          {
+            "name": "tribit",
+            "price": 500,
+            "currency": "INR",
+            "resource_id": "8bc72e3b-6bd5-45ba-8214-8abb483b64ec"
+          }
+        ],
+        "required": true,
+        "allow_any": false,
+        "selection_time": "contract",
+        "resource_type_id": "equipment"
+      },
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "4c9064bb-6cbe-4455-bd6d-7ad068ee153f",
+      "icon": "CreditCard",
+      "name": "Monthly Plan",
+      "tags": [],
+      "config": {
+        "status": "active",
+        "priceType": "fixed",
+        "auto_invoice": true,
+        "payment_type": "upfront"
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "billing",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-20T18:17:36.764142+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-20T18:17:36.764142+00:00",
+      "updated_by": null,
+      "description": "<p>Monthly Plan</p>",
+      "sequence_no": 0,
+      "display_name": "Monthly Plan",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "c30b81ef-d5ce-4768-8b3c-c2a49f05d55d",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "5877f9b9-8633-4453-9376-1a6f1425e0ce",
+      "icon": "Wrench",
+      "name": "General Service",
+      "tags": [],
+      "config": {
+        "status": "active",
+        "priceType": "fixed",
+        "pricingTiers": [],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [],
+            "amount": 800,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 800.0,
+      "created_at": "2026-01-21T02:58:37.966914+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-21T02:58:37.966914+00:00",
+      "updated_by": null,
+      "description": "<p>This is for General Service</p>",
+      "sequence_no": 0,
+      "display_name": "General Service",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "c79d8a7c-6fda-4b7c-bcf9-5367ac83b382",
+      "icon": "UserCog",
+      "name": "Nutrition Consultation",
+      "tags": [],
+      "config": {
+        "icon": "UserCog",
+        "status": "active",
+        "priceType": "fixed",
+        "pricingTiers": [],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [],
+            "amount": 899,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 899.0,
+      "created_at": "2026-01-21T02:59:54.97881+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-21T02:59:54.97881+00:00",
+      "updated_by": null,
+      "description": "<p>Nutrition Consultation</p>",
+      "sequence_no": 0,
+      "display_name": "Nutrition Consultation",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "03d30487-44db-4cc6-b4d9-7f2e3111d7dc",
+      "icon": "FileText",
+      "name": "text test",
+      "tags": [],
+      "config": {
+        "status": "active",
+        "content": "",
+        "priceType": "fixed",
+        "content_type": "rich"
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "text",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": null,
+      "created_at": "2026-01-23T09:57:00.094116+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-23T09:57:00.094116+00:00",
+      "updated_by": null,
+      "description": "<p>Text Test</p>",
+      "sequence_no": 0,
+      "display_name": "text test",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "db4bf715-dc1a-46f6-94a9-e64429137d3f",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "d505ea5a-6c76-4c8b-a34e-ab6b23c7156a",
+      "icon": "Wrench",
+      "name": "sdfdsfd",
+      "tags": [],
+      "config": {
+        "status": "active",
+        "priceType": "fixed",
+        "pricingTiers": [],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              },
+              {
+                "id": "e156ff83-4fab-4914-9801-291a528389d2",
+                "name": "TEST_CGST (4%)",
+                "rate": 4
+              }
+            ],
+            "amount": 500,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 500.0,
+      "created_at": "2026-02-04T11:09:11.348894+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-04T11:09:11.348894+00:00",
+      "updated_by": null,
+      "description": "<p>sdfdfdf</p>",
+      "sequence_no": 0,
+      "display_name": "sdfdsfd",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "7b2004b4-ba14-40f8-b786-bf98424482f6",
+      "icon": "UserCog",
+      "name": "New Service",
+      "tags": [],
+      "config": {
+        "icon": "UserCog",
+        "status": "active",
+        "evidence": [
+          {
+            "type": "service-form",
+            "config": {
+              "required": true
+            }
+          }
+        ],
+        "priceType": "fixed",
+        "pricingMode": "independent",
+        "pricingTiers": [],
+        "resourceTypes": [],
+        "serviceCycles": {
+          "days": 45,
+          "enabled": true
+        },
+        "evidence_types": [
+          "service-form"
+        ],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "3e7cd1bc-51b4-4c03-af17-a5cd13b74a13",
+                "name": "SGST (5%)",
+                "rate": 5
+              },
+              {
+                "id": "dee2244d-7775-421c-b3b0-ebd5cc380304",
+                "name": "CGST (5%)",
+                "rate": 5
+              }
+            ],
+            "amount": 323434,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          },
+          {
+            "id": "1770223435324",
+            "taxes": [
+              {
+                "id": "3e7cd1bc-51b4-4c03-af17-a5cd13b74a13",
+                "name": "SGST (5%)",
+                "rate": 5
+              }
+            ],
+            "amount": 23,
+            "currency": "USD",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ],
+        "evidenceRequired": true,
+        "selectedResources": []
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 10.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 323434.0,
+      "created_at": "2026-02-04T16:45:48.437168+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-04T16:45:48.437168+00:00",
+      "updated_by": null,
+      "description": "<p>this is about new service</p>",
+      "sequence_no": 0,
+      "display_name": "New Service",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "0e3225d6-8dcc-4513-858d-5db79bb5f112",
+      "icon": "Package",
+      "name": "spare part 1",
+      "tags": [],
+      "config": {
+        "sku": "asdff",
+        "icon": "Package",
+        "inventory": {
+          "track": true,
+          "current": 0,
+          "reorder_qty": 10,
+          "alert_on_low": true,
+          "reorder_level": 5
+        },
+        "priceType": "fixed",
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "3e7cd1bc-51b4-4c03-af17-a5cd13b74a13",
+                "name": "SGST (5%)",
+                "rate": 5
+              },
+              {
+                "id": "18540758-3048-41a7-8a2f-0d80b96bda93",
+                "name": "TEST_CGST (5%)",
+                "rate": 5
+              }
+            ],
+            "amount": 232,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          },
+          {
+            "id": "1770548182141",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "amount": 12,
+            "currency": "EUR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          },
+          {
+            "id": "1770548184944",
+            "taxes": [
+              {
+                "id": "3e7cd1bc-51b4-4c03-af17-a5cd13b74a13",
+                "name": "SGST (5%)",
+                "rate": 5
+              }
+            ],
+            "amount": 16,
+            "currency": "USD",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 2,
+      "visible": true,
+      "category": "spare",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 10.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 232.0,
+      "created_at": "2026-02-08T10:55:36.033194+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-08T10:57:01.340858+00:00",
+      "updated_by": null,
+      "description": "<p>asdffdfdff</p>",
+      "sequence_no": 0,
+      "display_name": "spare part 1",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "1221e2dd-a603-47fb-9063-c393193514b7",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "ff2178df-25d4-4d45-b0b5-0d511bb65717",
+      "icon": "UserPlus",
+      "name": "Equipment Calibration",
+      "tags": [],
+      "config": {
+        "icon": "UserPlus",
+        "image_url": "https://firebasestorage.googleapis.com/v0/b/contractnest-driveapp.firebasestorage.app/o/tenant_70f8eb69_1752782698282%2Fblock_images%2Fb7da75de-cfd4-44fe-9074-de4f4583a94e_WhatsApp_Image_2026-03-02_at_1.00.12_PM.jpeg?alt=media&token=8cb82e2d-e261-4f47-8d1e-1b8eab465d1e",
+        "priceType": "fixed",
+        "pricingMode": "718f839d-9d41-4212-b2b0-553a2198fb86",
+        "pricingTiers": [],
+        "resourceTypes": [],
+        "serviceCycles": {
+          "days": 40,
+          "enabled": true
+        },
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "3e7cd1bc-51b4-4c03-af17-a5cd13b74a13",
+                "name": "SGST (5%)",
+                "rate": 5
+              },
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "amount": 2100,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          },
+          {
+            "id": "1770207600684",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "amount": 5,
+            "currency": "USD",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ],
+        "selectedResources": []
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 8,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 11.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 2100.0,
+      "created_at": "2026-01-21T02:59:22.704337+00:00",
+      "created_by": null,
+      "updated_at": "2026-03-04T16:58:29.987424+00:00",
+      "updated_by": null,
+      "description": "<p>Equipment Calibration - Leader of Opposition Rahul Gandhi on Wednesday cited former Army chief MM Naravane's 'unreleased memoir' to claim that Prime Minister Narendra Modi shed responsibility during the India-China conflict in 2020 and passed the buck on to Naravane.</p><p>Addressing reporters in the premises of Parliament House complex, Gandhi held up Naravane's unreleased memoir and said he would like the youngsters in India to know that this 'book' exists despite the government claiming otherwise.</p><p>\"The Speaker has said this book does not exist, the government has said it does not exist, Defence Minister Rajnath Singh ji has said this book does not exist. Every youngster in India should see this book exists,\" Gandhi said.</p>",
+      "sequence_no": 0,
+      "display_name": "Equipment Calibration",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": null,
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    },
+    {
+      "id": "2221cd6f-6de8-4a29-aedd-6e0ef53ee7c1",
+      "icon": "Wrench",
+      "name": "Treadmill Service",
+      "tags": [],
+      "config": {
+        "status": "active",
+        "priceType": "fixed",
+        "pricingMode": "resource_based",
+        "pricingTiers": [],
+        "resourceTypes": [
+          "equipment"
+        ],
+        "pricingRecords": [
+          {
+            "id": "1",
+            "taxes": [
+              {
+                "id": "e156ff83-4fab-4914-9801-291a528389d2",
+                "name": "TEST_CGST (4%)",
+                "rate": 4
+              }
+            ],
+            "amount": 6000,
+            "currency": "INR",
+            "is_active": true,
+            "price_type": "fixed",
+            "tax_inclusion": "exclusive"
+          }
+        ],
+        "selectedResources": [
+          {
+            "quantity": 1,
+            "is_required": true,
+            "resource_id": "b380b716-5dc0-402b-9fb3-a13cf1556983",
+            "resource_name": "Treadmill (Commercial)",
+            "resource_type_id": "equipment"
+          }
+        ],
+        "resourcePricingRecords": [
+          {
+            "id": "rp-0",
+            "taxes": [
+              {
+                "id": "ad9e2904-3f64-4d20-8888-d09546f488e7",
+                "name": "SGSTt (6%)",
+                "rate": 6
+              }
+            ],
+            "currency": "INR",
+            "pricePerUnit": 500,
+            "pricingModel": "hourly",
+            "tax_inclusion": "exclusive",
+            "resourceTypeId": "equipment",
+            "resourceTypeName": "Equipment"
+          }
+        ]
+      },
+      "is_live": true,
+      "is_seed": false,
+      "version": 1,
+      "visible": true,
+      "category": "service",
+      "currency": "INR",
+      "is_admin": false,
+      "tax_rate": 4.0,
+      "is_active": true,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "base_price": 6000.0,
+      "created_at": "2026-02-17T16:33:29.768011+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-17T16:33:29.768011+00:00",
+      "updated_by": null,
+      "description": "<p>This is for threadmill</p>",
+      "sequence_no": 0,
+      "display_name": "Treadmill Service",
+      "hsn_sac_code": null,
+      "is_deletable": true,
+      "block_type_id": "ae7050b4-3cca-4ed9-aa02-4a1f697b75cc",
+      "price_type_id": null,
+      "pricing_mode_id": "718f839d-9d41-4212-b2b0-553a2198fb86",
+      "variant_pricing": null,
+      "form_template_id": null,
+      "resource_pricing": {
+        "label": "Select Resource",
+        "options": [
+          {
+            "name": "Treadmill (Commercial)",
+            "price": 500,
+            "currency": "INR",
+            "resource_id": "b380b716-5dc0-402b-9fb3-a13cf1556983"
+          }
+        ],
+        "required": true,
+        "allow_any": false,
+        "selection_time": "contract",
+        "resource_type_id": "equipment"
+      },
+      "kt_checkpoint_ids": null,
+      "knowledge_tree_ref": null,
+      "resource_template_id": null
+    }
+  ],
+  "t_cat_templates": [
+    {
+      "id": "e2b6a357-1353-4286-92cf-c3d64b9e8953",
+      "name": "Untitled Template",
+      "tags": [],
+      "total": null,
+      "blocks": [
+        {
+          "order": 0,
+          "config": {
+            "price": 666,
+            "visible": true,
+            "evidenceRequired": {
+              "gps": false,
+              "otp": false,
+              "photo": true,
+              "signature": false
+            }
+          },
+          "block_id": "5188e7a2-e5c0-4630-aca1-29f66ff25e25"
+        }
+      ],
+      "is_live": true,
+      "version": 1,
+      "category": null,
+      "currency": "INR",
+      "settings": {},
+      "subtotal": null,
+      "tax_rate": 18.0,
+      "is_active": true,
+      "is_latest": true,
+      "is_public": false,
+      "is_system": false,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "created_at": "2026-01-09T14:06:42.137939+00:00",
+      "created_by": null,
+      "updated_at": "2026-03-24T13:40:34.22315+00:00",
+      "updated_by": null,
+      "cover_image": null,
+      "description": null,
+      "sequence_no": 0,
+      "display_name": "Untitled Template",
+      "is_deletable": true,
+      "industry_tags": [],
+      "copied_from_id": null,
+      "discount_config": {
+        "allowed": true,
+        "max_percent": 20
+      },
+      "parent_template_id": "e2b6a357-1353-4286-92cf-c3d64b9e8953"
+    },
+    {
+      "id": "f33fbe98-dbe9-4164-b2cf-1d395b39435f",
+      "name": "Untitled Template",
+      "tags": [],
+      "total": null,
+      "blocks": [
+        {
+          "order": 0,
+          "config": {
+            "price": 150000,
+            "visible": true,
+            "evidenceRequired": {
+              "gps": false,
+              "otp": false,
+              "photo": true,
+              "signature": false
+            }
+          },
+          "block_id": "f6a3161d-0b66-42bd-a65c-5b41513c1268"
+        },
+        {
+          "order": 1,
+          "config": {
+            "price": 10000,
+            "visible": true,
+            "evidenceRequired": {
+              "gps": false,
+              "otp": false,
+              "photo": true,
+              "signature": false
+            }
+          },
+          "block_id": "0601561f-27be-4625-910f-83604a5bb890"
+        }
+      ],
+      "is_live": true,
+      "version": 1,
+      "category": null,
+      "currency": "INR",
+      "settings": {},
+      "subtotal": null,
+      "tax_rate": null,
+      "is_active": true,
+      "is_latest": true,
+      "is_public": false,
+      "is_system": false,
+      "status_id": null,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "created_at": "2026-06-09T01:47:03.182341+00:00",
+      "created_by": null,
+      "updated_at": "2026-06-09T01:47:03.254932+00:00",
+      "updated_by": null,
+      "cover_image": null,
+      "description": null,
+      "sequence_no": 0,
+      "display_name": "Untitled Template",
+      "is_deletable": true,
+      "industry_tags": [],
+      "copied_from_id": null,
+      "discount_config": {
+        "allowed": true,
+        "max_percent": 20
+      },
+      "parent_template_id": "f33fbe98-dbe9-4164-b2cf-1d395b39435f"
+    }
+  ],
+  "t_category_resources_master": [
+    {
+      "id": "8bc72e3b-6bd5-45ba-8214-8abb483b64ec",
+      "name": "tribit",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": "#40E0D0",
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2025-08-22T14:12:58.259+00:00",
+      "created_by": null,
+      "updated_at": "2025-08-22T14:12:58.259+00:00",
+      "updated_by": null,
+      "description": null,
+      "sequence_no": 1,
+      "display_name": "tribit",
+      "is_deletable": true,
+      "sub_category": null,
+      "form_settings": {},
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "f09dd0c0-5330-4743-8a90-001d674a375b",
+      "name": "Air Conditioner",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": "#40E0D0",
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2025-11-13T11:44:51.056+00:00",
+      "created_by": null,
+      "updated_at": "2025-11-13T11:44:51.056+00:00",
+      "updated_by": null,
+      "description": null,
+      "sequence_no": 1,
+      "display_name": "AC",
+      "is_deletable": true,
+      "sub_category": null,
+      "form_settings": {},
+      "resource_type_id": "asset"
+    },
+    {
+      "id": "d5ba0867-5359-4233-a275-45892104e7cf",
+      "name": "gas",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": "#4FA437",
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2025-08-22T14:13:25.145+00:00",
+      "created_by": null,
+      "updated_at": "2026-01-14T11:54:23.196+00:00",
+      "updated_by": null,
+      "description": null,
+      "sequence_no": 1,
+      "display_name": "gass",
+      "is_deletable": true,
+      "sub_category": null,
+      "form_settings": {},
+      "resource_type_id": "consumable"
+    },
+    {
+      "id": "b380b716-5dc0-402b-9fb3-a13cf1556983",
+      "name": "Treadmill (Commercial)",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-17T16:28:33.316+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-17T16:28:33.316+00:00",
+      "updated_by": null,
+      "description": "Heavy-duty commercial treadmill",
+      "sequence_no": 6,
+      "display_name": "Treadmill (Commercial)",
+      "is_deletable": true,
+      "sub_category": "Fitness Equipment",
+      "form_settings": null,
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "6404ded8-4130-44d0-a31d-847d9feed0f8",
+      "name": "MRI Scanner",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-14T11:46:07.037+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-14T11:46:07.037+00:00",
+      "updated_by": null,
+      "description": "Magnetic resonance imaging diagnostic system",
+      "sequence_no": 2,
+      "display_name": "MRI Scanner",
+      "is_deletable": true,
+      "sub_category": "Diagnostic Imaging",
+      "form_settings": null,
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "7c19bc7f-0761-47a6-8a9f-71d2aa7e0a18",
+      "name": "CT Scanner",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-14T11:46:39.218+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-14T11:46:39.218+00:00",
+      "updated_by": null,
+      "description": "Computed tomography scanner for cross-sectional imaging",
+      "sequence_no": 3,
+      "display_name": "CT Scanner",
+      "is_deletable": true,
+      "sub_category": "Diagnostic Imaging",
+      "form_settings": null,
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "6fe37b70-538a-4ba7-b2c8-68ddffa78aa0",
+      "name": "X-Ray Machine",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-15T04:24:43.532+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-15T04:24:43.532+00:00",
+      "updated_by": null,
+      "description": "Digital radiography unit for diagnostic imaging",
+      "sequence_no": 4,
+      "display_name": "X-Ray Machine",
+      "is_deletable": true,
+      "sub_category": "Diagnostic Imaging",
+      "form_settings": null,
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "5dcd7708-7835-4739-8e41-84657c95a62e",
+      "name": "Ultrasound Machine",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-15T04:24:46.082+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-15T04:24:46.082+00:00",
+      "updated_by": null,
+      "description": "Portable or stationary ultrasound imaging device",
+      "sequence_no": 5,
+      "display_name": "Ultrasound Machine",
+      "is_deletable": true,
+      "sub_category": "Diagnostic Imaging",
+      "form_settings": null,
+      "resource_type_id": "equipment"
+    },
+    {
+      "id": "dc511df8-def8-4412-b47d-3857e61789cc",
+      "name": "Operation Theatre",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-02-15T04:25:02.698+00:00",
+      "created_by": null,
+      "updated_at": "2026-02-15T04:25:02.698+00:00",
+      "updated_by": null,
+      "description": "Surgical suite with sterile environment",
+      "sequence_no": 2,
+      "display_name": "Operation Theatre",
+      "is_deletable": true,
+      "sub_category": "Clinical Facilities",
+      "form_settings": null,
+      "resource_type_id": "asset"
+    },
+    {
+      "id": "a49d80e9-4ca4-416e-ba93-1bfafe0de241",
+      "name": "Hospital Ward",
+      "tags": null,
+      "is_live": true,
+      "hexcolor": null,
+      "is_active": true,
+      "tenant_id": "70f8eb69-9ccf-4a0c-8177-cb6131934344",
+      "contact_id": null,
+      "created_at": "2026-03-05T18:25:20.282+00:00",
+      "created_by": null,
+      "updated_at": "2026-03-05T18:25:20.282+00:00",
+      "updated_by": null,
+      "description": "Inpatient ward or department floor",
+      "sequence_no": 3,
+      "display_name": "Hospital Ward",
+      "is_deletable": true,
+      "sub_category": "Clinical Facilities",
+      "form_settings": null,
+      "resource_type_id": "asset"
+    }
+  ]
+}
