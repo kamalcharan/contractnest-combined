@@ -1,0 +1,44 @@
+-- 058 + 059 — APPLIED TO PRODUCTION 5 Aug 2026. Source-of-record. Do not re-run.
+--
+-- A. TENANT NAME IN MESSAGES
+-- New helper gs_session_display_name(block, tenant, with_tenant) returns
+-- "<block>, <business_name>", reading t_tenant_profiles.business_name — the
+-- Business Profile field ("BBB Bhagyanagar") — NOT t_tenants.name, which is a
+-- separate shorter value ("BBB") and would silently produce the wrong text.
+--
+-- Wired into four of the five templates:
+--   looking_forward   → "Saturday Network Meeting, BBB Bhagyanagar"
+--   noshow_regret     → same
+--   attendance_ack    → same (gs_submit_checkin)
+--   payment_thankyou  → same (gs_confirm_declaration)
+--   absentee_reminder → PLAIN block name, deliberately. Its template reads
+--                       "the last couple of {{2}} sessions", so the name sits
+--                       mid-sentence as a modifier and a comma inside it breaks
+--                       the grammar. Every other template puts {{2}} at a
+--                       natural phrase boundary.
+--
+-- No MSG91 change and no re-approval: this alters the VALUE of an existing
+-- variable, not the template.
+--
+-- Applied by substituting expressions into each function's live definition
+-- rather than retyping it — the approach migration 048 established. 058's
+-- literal matches failed on whitespace for two of the four; 059 redid those
+-- with anchors verified present, plus a post-check that RAISEs if the rewrite
+-- did not land the expected number of helper calls. Verify after any future
+-- edit; a silent no-op is the failure mode here.
+--
+-- B. TIME NOW LIVES IN EXACTLY ONE PLACE
+-- The block description carried "8.00 AM to 10.00 AM" as free prose while
+-- config.groupSession.timing carried 07:30 — two copies of one fact. They
+-- drifted, and 46 members received a reminder contradicting their own contract.
+--
+-- The time is removed from the prose. config.groupSession.timing is now the
+-- single source, read live at send time by every notification. The description
+-- says WHAT the meeting is; WHEN comes from the structured field. Applied to
+-- the catalog block and all 49 contract snapshots together, so contracts and
+-- messages cannot disagree.
+--
+-- Structural follow-up (NOT done): the Block Wizard still lets a time be typed
+-- into the description, so a future author can reintroduce the duplication.
+-- The durable fix is to compose that sentence from the structured cadence and
+-- timing rather than accept free text. UI work, scoped separately.
