@@ -108,11 +108,11 @@ Step numbering matches the agreed execution order. Status as of 2026-08-05.
 | 2 | **Additive schema** (mig 010) + **Channels LOV** (mig 011) | §5.4, §5.5, §3.3 | ✅ applied & verified |
 | 3 | **RPC rework** — D1 journal writes, D3 trigger column, D4/D5 top-up path (mig 012, 013, 014) | §5.2, §5.2b | ✅ applied |
 | 4 | **Regression tests** for Step 3 — found D7 and the D4 second layer | `SPRINT1_STEP3_4_RESULTS.md` | ✅ 13/13 pass |
-| 5 | **Top-up pack cleanup** — drop the duplicate generation, set `channel`, set `expiry_days = NULL`, delete orphaned seed balances | §10.6 | ⏳ next |
-| 6 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode = 'exempt'`, init context (tenant row already exists) | §2.7 | ⏳ |
-| 7 | **Metering block category** — `sub_cat_name='metering'`, "Credit Pack", platform tenant only | §5.7 | ⏳ |
+| ~~5~~ | ~~Top-up pack cleanup~~ — **REMOVED**. `t_bm_topup_pack` belongs to `/settings/businessmodel/admin/pricing-plans`, which the owner is deprecating once `/contracts` stabilises. Left alone; no SKU or pricing decision needed. | §8 | ❌ dropped |
+| 6 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode = 'exempt'`, init context (tenant row already exists: `70f8eb69…`, `is_admin = true`) | §2.7 | ⏳ |
+| 7 | **Metering block category** in catalog-studio — `sub_cat_name='metering'`, "Credit Pack", platform tenant only. **This is where grant rates and credit-pack pricing are authored by a human.** | §5.7 | ⏳ next |
 | 8 | **Settlement hook** — billing event on a `config.metering` block → `add_credits` / set limits / write `credit_grant_rates`; idempotent on billing-event id | §5.7 | ⏳ |
-| 9 | **Platform contract templates** — Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999, VaNi ₹4,999/mo, Implementation ₹10,000 | §2 | ⏳ |
+| 9 | **Platform contract templates in `/contracts/create/templates/`** — Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999, VaNi ₹4,999/mo, Implementation ₹10,000, Credit Pack. Tenants buy a template and it becomes their contract. | §2, §8 | ⏳ |
 | 10 | **End-to-end proof** — sell one platform contract to a test tenant | §3.2 | ⏳ |
 
 > **FIFO credit lots are no longer in this sprint.** Credits never expire, and the
@@ -163,7 +163,7 @@ but not Step 3.
 | 1 | **Tenant plans page** — current plan, usage vs limits, available plans, upgrade CTA | Replaces the mock `tenants/pricing-plans` + `tenants/Subscription` |
 | 2 | **Subscribe flow** — pick plan → platform contract raised → CNAK review/accept → Razorpay → settlement grants entitlement | Reuses `contracts/review`, `contracts/claim`, `useRazorpayCheckout` |
 | 3 | **Backfill: assign the 21 real active tenants** (+ test tenants on freemium) — write `t_bm_tenant_subscription` + `init_tenant_context` for each | §5.6 — always one subscription row |
-| 4 | **Fix `API_ENDPOINTS.BUSINESS_MODEL` → `BUSINESSMODEL`** or rewrite the hooks | Currently throws at runtime |
+| 4 | ~~Fix `API_ENDPOINTS.BUSINESS_MODEL`~~ — **REMOVED**, belongs to the surface being deprecated | — |
 | 5 | **Cutover rule for 179 existing contracts** | See §4.3 |
 
 ### 4.2 Exit criteria
@@ -236,7 +236,7 @@ test mode is bounded.
 | # | Item | Spec ref |
 |---|---|---|
 | 1 | **Issues raised in Sprints 1–3** — the buffer the owner asked for | — |
-| 2 | **Keep/delete list** — remove plan-authoring UI, mock pages, `useBusinessModelQueries`, `fakejson`, edge `plans`/`plan-versions`, `businessModelRoutes`/controllers/service | §8 |
+| 2 | ~~Delete the plan catalog~~ — **REMOVED**. Owner deprecates `/settings/businessmodel/admin/pricing-plans` on their own timing, once `/contracts` has stabilised into the product. Not part of this work. | §8 |
 | 3 | **Dunning / grace handling** — what happens at `grace_end_date` | §2.1 |
 | 4 | **Invoice + GST presentation** — verify a platform invoice renders correctly with GST | §2.6 |
 | 5 | **POC expiry → reassignment** flow | §2.1 |

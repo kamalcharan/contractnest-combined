@@ -502,35 +502,84 @@ fairness question, not a technical one.
 
 ---
 
-## 8. Keep / delete
+## 8. Keep / deprecate
 
-**Keep** — the metering layer, which has no contract equivalent and is well built:
-`t_bm_credit_balance`, `t_bm_topup_pack`, `t_bm_billing_event`,
-`t_bm_credit_transaction`, `t_bm_subscription_usage`, `t_bm_invoice`,
-`t_bm_tenant_subscription`, `t_tenant_context` + triggers, the `billing` edge
-function and all credit/usage RPCs, `/api/billing/*`, `/api/tenant-context/*`.
+> **CORRECTED 2026-08-05 (owner).** An earlier draft of this section said to
+> **delete** the plan catalog during Sprint 4. That is wrong on timing and on
+> method.
+>
+> Owner's position: **the whole of `/settings/businessmodel/admin/pricing-plans`
+> will be deprecated once `/contracts` has stabilised into the product.** It is
+> not removed as part of this work. Until then it is left completely alone — not
+> extended, not repriced, not cleaned up, not deleted.
+>
+> This also retires the earlier "we cannot delete the plan catalog because
+> `t_bm_tenant_subscription.version_id` is NOT NULL" finding. That was solving
+> the wrong problem: the constraint is real, but it only matters if the plan
+> catalog is the subscription record — and it is not. The **contract** is.
 
-A contract block records the *price* of a credit pack; it cannot hold a *balance*.
+### The business model IS a contract
 
-**Delete** — plan authoring and billing UI, which duplicates the contract engine
-and is largely mock:
-- `contractnest-ui/src/pages/settings/businessmodel/admin/**`
-- `contractnest-ui/src/components/businessmodel/{planform,plandetail,billing}`
-- mock tenant pages (`tenants/pricing-plans`, `tenants/Subscription`)
-- `hooks/queries/useBusinessModelQueries.ts`
-- `utils/fakejson/{PricingPlans,BillingData,PlanVersionsData}`
-- edge functions `plans`, `plan-versions`
-- `businessModelRoutes.ts`, `planController.ts`, `planVersionController.ts`,
-  `businessModelService.ts`
+Vikuna authors **contract templates** in `/contracts/create/templates/` — the
+template designer that already exists (`template-designer`, `my-templates`,
+`preview`, `template-analytics`). A tenant buys a template and it becomes their
+contract, with Vikuna as seller.
 
-Evidence it is not live: admin billing/invoices/versions run on `fakejson`; the
-tenant hooks throw because `useBusinessModelQueries.ts` reads
-`API_ENDPOINTS.BUSINESS_MODEL.*` while `serviceURLs.ts:569` exports
-`BUSINESSMODEL` (no underscore); the only live gate
-(`vaniEntitlementService`) never reads a plan.
+```
+Vikuna authors template in /contracts/create/templates/
+        │   (metering blocks inside carry grant rates + credit-pack pricing,
+        │    authored in catalog-studio by a human)
+        ▼
+Tenant buys the template
+        ▼
+A real contract is created  (Vikuna seller, tenant buyer)
+        ▼
+Payment via Razorpay on the existing contract payment-gateway path
+        ▼
+Settlement hook grants credits / sets limits / writes credit_grant_rates
+        ▼
+t_tenant_context updated — gates read one row
+```
 
-Hard-delete on the branch — git preserves it. An `_archive/` folder in the working
-tree just keeps dead imports discoverable and re-lintable.
+Templates to author: Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999,
+VaNi ₹4,999/mo, Implementation ₹10,000, Credit Pack.
+
+### Leave alone (deprecated later, on the owner's timing)
+
+`/settings/businessmodel/admin/**`, `components/businessmodel/*`, the mock
+tenant pages, `useBusinessModelQueries.ts`, `utils/fakejson/*`, edge functions
+`plans` / `plan-versions`, `businessModelRoutes` / `planController` /
+`planVersionController` / `businessModelService`, and their tables
+`t_bm_pricing_plan`, `t_bm_plan_version`, `t_bm_topup_pack`, plus the
+`purchase_topup` RPC.
+
+**No pricing, SKU or cleanup decisions are needed for any of this.** It is a
+dead surface awaiting deprecation, not an input to the new model.
+
+### Keep — the ledger
+
+`t_bm_credit_balance`, `t_bm_credit_transaction`, `t_bm_billing_event`,
+`t_bm_subscription_usage`, `t_bm_invoice`, `t_tenant_context` + triggers, the
+`billing` edge function and the credit/usage RPCs, `/api/billing/*`,
+`/api/tenant-context/*`.
+
+A contract block records the *price* of a credit pack; it cannot hold a
+*balance*. That is why the ledger stays.
+
+### Open — where the subscription record lives
+
+`t_tenant_context` is populated by triggers on `t_bm_tenant_subscription`. If the
+contract is the subscription, that source is wrong. Two options, **not yet
+decided**:
+
+- **(a)** On platform-contract activation, write a `t_bm_tenant_subscription` row
+  as a *projection*. Contract stays source of truth; every existing trigger,
+  flag and the VaNi gate keep working unchanged. Small change, and compatible
+  with the table surviving until deprecation.
+- **(b)** Repoint the context triggers at `t_contracts` and retire
+  `t_bm_tenant_subscription`. Cleaner end state, more work, touches the VaNi gate.
+
+(a) is the lower-risk fit given the deprecate-later timing.
 
 ---
 
