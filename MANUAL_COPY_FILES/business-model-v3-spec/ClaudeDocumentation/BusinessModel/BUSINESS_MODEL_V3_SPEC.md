@@ -1,0 +1,469 @@
+---
+title: Business Model v3 — Commercial Spec & Implementation Plan
+project: ContractNest
+status: Draft v0.1 — decisions captured, not yet built
+date: 2026-08-05
+supersedes: HANDOVER_CONTEXT.md, BM_delivery.md, BUSINESS_MODEL_AGENT_PRD.md (all Jan 2026)
+---
+
+## 0. Status of prior documents
+
+The Jan-2026 documents in this folder describe a **plan-catalog** business model
+(admin authors pricing plans, tenants self-subscribe) with Phases 1–4 marked
+complete and Phase 5 = Razorpay.
+
+**That direction is superseded.** The 2026-07-12 session
+(`MANUAL_COPY_FILES/ux-metering-handover/HANDOVER_BUSINESS_MODEL_METERING.md`)
+decided that a tenant's subscription **is a contract**, and this document records
+the commercial model agreed on 2026-08-05 plus the implementation consequences.
+
+Read this document first. Treat the Jan-2026 files as history.
+
+---
+
+## 1. The core distinction
+
+Everything in this spec depends on separating two different kinds of contract.
+They live in the same table (`t_contracts`) and use the same engine, but they
+mean opposite things commercially.
+
+| | **Platform contract** | **Tenant contract** |
+|---|---|---|
+| Seller | Vikuna (platform tenant) | The tenant |
+| Buyer | The tenant | The tenant's own customer |
+| Examples | POC ₹1,500, Quarterly plan, VaNi, implementation, wallet top-up | Lift AMC, pest control contract, an RFQ |
+| Money flows | Tenant → Vikuna, via Razorpay on `vikunatech@gmail.com`'s gateway | Tenant's customer → tenant |
+| Metered? | **No** — this *is* the billing | **Yes** — ₹200 / ₹400 each |
+
+A platform contract is never charged ₹200. A tenant contract never bills Vikuna.
+
+### Why contracts and not the plan catalog
+
+The Razorpay integration already exists and is wired **entirely to the contract
+engine** — `payment-gateway` + `payment-webhook` edge functions with
+`providers/razorpay.ts`, `paymentGatewayService.ts`, `useRazorpayCheckout.ts`,
+`RecordPaymentDialog.tsx`, and RPCs `create_payment_request`,
+`verify_gateway_payment`, `process_payment_webhook`.
+
+The plan-catalog side has **no Razorpay code at all** — a single comment in
+`billing.dto.ts:54`. Phase 5 was never built.
+
+Critically, `get_tenant_gateway_credentials(p_tenant_id)` means gateway
+credentials are **per-tenant and encrypted**. Vikuna holds the vikunatech
+credentials; every tenant is a counterparty on a platform contract; Vikuna's
+gateway collects. This is exactly how contract payments already work — **zero
+new payment code**. Going the plan-catalog route would mean building a second,
+parallel Razorpay integration.
+
+Billing cycles, invoicing, tax, EMI, renewals and the public CNAK
+review/claim/accept flow (`contracts/review`, `contracts/claim`, `welcome`) all
+come free from the contract engine. Dogfooding is a bonus: every gap we feel
+billing ourselves is a tenant-facing gap too.
+
+---
+
+## 2. Commercial model
+
+All prices **exclude GST**. GST is applied once, at invoice time (§2.6).
+
+### 2.1 Tenant lifecycle
+
+```
+  Signup
+    │
+    ▼
+  FREEMIUM        3 contracts + 1 RFQ, free. Notification credits granted
+    │             normally. "Let them play."
+    ▼
+  POC (optional)  ₹1,500 — a real platform contract with a 1–2 month term.
+    │             Offered after freemium is used up, for customers who ask.
+    ▼
+  PAID            Per-contract (wallet) or Plan. Tenant chooses.
+```
+
+On POC expiry, a new platform contract is assigned. `grace_end_date` already
+exists on `t_bm_tenant_subscription` and covers the gap so the tenant is not
+locked out the moment it lapses.
+
+### 2.2 Mode A — Per-contract (wallet)
+
+| Item | Value |
+|---|---|
+| Contract | ₹200 |
+| RFQ | ₹400 — covers the RFQ **and** the contract derived from it, charged upfront |
+| Minimum top-up | ₹1,000 |
+| Wallet validity | **1 year from top-up** |
+| Notification credits | 15 per contract, granted to the tenant-level pool |
+
+### 2.3 Mode B — Plans
+
+| Plan | Price | Contracts | Credits per contract |
+|---|---|---|---|
+| Quarterly | ₹5,999 | 50 | 20 |
+| Yearly | ₹19,999 | 200 | 20 |
+
+Effective per-contract cost: ₹200 → ₹120 → ₹100. Consistent ladder.
+
+### 2.4 Add-ons
+
+| Item | Price | Notes |
+|---|---|---|
+| VaNi | ₹4,999 / month | Maps to existing `t_tenant_context.addon_vani_ai` |
+| Implementation (virtual support) | ₹10,000 one-time | Plain one-off block, no metering |
+| Notification top-ups | Per `t_bm_topup_pack` | Above the included pool |
+| Storage | 100 MB free, then ₹250 per 100 MB per year | **Blocked — see §5.3** |
+
+### 2.5 Discount campaigns
+
+Two mechanisms, both already present:
+- `t_bm_topup_pack` has `original_price`, `discount_percentage`, `promotion_text`,
+  `promotion_ends_at` — built for exactly this.
+- Contract templates carry the contract-level discount
+  (`discount_type` / `discount_value` / `discount_total`).
+
+Either amend the existing template's discount or publish a new campaign template.
+
+### 2.6 GST
+
+One invoice at the point of sale, GST as applicable, done. **No per-consumption
+GST** — issuing a tax invoice per ₹200 deduction is not practical.
+
+A ₹1,000 top-up is invoiced as ₹1,000 + GST; the wallet holds ₹1,000 of usable
+value. `t_bm_invoice` already has `subtotal`, `tax_amount`, `discount_amount`.
+
+### 2.7 Vikuna (platform tenant)
+
+No limits, no wallet, no metering. Implement as `limit_* = NULL` — the schema
+already documents `NULL = unlimited` — **not** a large sentinel number. NULL
+avoids "99% used" warnings, arithmetic edge cases and eventual exhaustion.
+Set `billing_mode = 'exempt'` so wallet checks are bypassed entirely.
+
+---
+
+## 3. Notification credits
+
+### 3.1 Channels
+
+Four channels exist: **SMS, email, WhatsApp, in-app**. Only **email and WhatsApp**
+are currently activated.
+
+### 3.2 Pooling — tenant level, not contract level
+
+Credits granted on contract creation go to the **tenant-level pool**. There is no
+per-contract credit bucket. A tenant creating 10 contracts holds 150 pooled
+credits; any of their contracts may draw on them.
+
+Consequence to accept knowingly: a chatty contract can consume another
+contract's allowance. Commercially this reads as generous and is the simpler
+design. Per-contract sub-ledgers would require a `contract_id` dimension on
+`t_bm_credit_balance`, which does not exist.
+
+The **grant is still attributed** to the contract that caused it, via
+`t_bm_credit_transaction.reference_type = 'contract'` / `reference_id` — this is
+what powers "where did my credits come from" in the OPS widget (§6). See §5.2:
+that journal write does not currently happen.
+
+### 3.3 Open — bucket shape and channel cost
+
+`t_bm_credit_balance` supports both shapes: per-channel rows
+(`channel = 'whatsapp' | 'email' | ...`) or a single shared pool
+(`channel IS NULL`, surfaced as `t_tenant_context.credits_pooled`).
+
+**Recommendation: a single shared pool** — one number to communicate, no stranded
+per-channel balances, and it does not multiply as SMS and in-app are activated.
+
+**But note the margin exposure**: a WhatsApp message costs materially more than an
+email, and an in-app notification costs essentially nothing. A flat pooled credit
+means a tenant who sends only WhatsApp costs far more than one who sends only
+email, for the same 15 credits.
+
+Mitigation if adopted: keep one pool but **debit different weights per channel**
+(e.g. in-app 0, email 1, WhatsApp 5). `balance` is `INTEGER`, so integer weights
+work cleanly — define 1 credit as the smallest unit.
+
+Two decisions still required:
+1. Single pool with weights, or per-channel buckets?
+2. Are in-app notifications metered at all? (They cost nothing to send —
+   recommendation: free and unmetered.)
+
+---
+
+## 4. Test environment (`is_live = false`)
+
+### 4.1 Limits
+
+| Resource | Test cap |
+|---|---|
+| Contacts | 20 |
+| Templates | 2 |
+| Contracts | 6 |
+| RFQs / RFPs | 3 |
+| Notifications | None (already restricted) |
+
+### 4.2 Design decision — test mode never touches the ledger
+
+`is_live BOOLEAN DEFAULT true` exists on **32 tables** (including `t_contracts`,
+`t_contacts`, `t_cat_templates`) but on **zero** `t_bm_*` tables and not on
+`t_tenant_context`, whose PK is `(product_code, tenant_id)`.
+
+Rather than adding an environment dimension to the whole metering layer:
+
+- Test limits are **identical for every tenant**, so they are **static config**,
+  not per-tenant rows.
+- Test usage is **counted directly from source tables** (`t_contracts`,
+  `t_contacts`, `t_cat_templates` where `is_live = false`). At these volumes
+  (max 6, 20, 2) a live count is trivially cheap.
+- Test activity **never** deducts the wallet, **never** grants credits, and
+  **never** appears in the ledger or on an invoice.
+
+This keeps the metering layer live-only and adds no `t_bm_*` schema.
+
+### 4.3 Mandatory guard
+
+**Test records must never count toward freemium, plan quota, or the wallet.**
+Every metering hook must filter `is_live = true` before recording usage or
+deducting. There are already 29 test contracts and 1 test RFQ in the database —
+without this filter, real tenants would be billed for practice data on day one.
+
+---
+
+## 5. What must be built
+
+Live state check (2026-08-05): **0** rows in `t_bm_tenant_subscription`, **0** in
+`t_tenant_context`, 4 credit-balance rows, 2 transaction rows. Nothing in
+production depends on current behaviour — this is a clean slate, not a migration.
+
+### 5.1 FIFO credit lots — required by 1-year wallet validity
+
+**Defect.** The current design silently destroys money:
+
+```
+unique_tenant_credit_channel  UNIQUE (tenant_id, credit_type, channel)
+    → exactly ONE balance row per credit type, with ONE expires_at
+
+add_credits()            → balance = balance + qty; never touches expires_at
+process_credit_expiry()  → zeroes the ENTIRE balance when expires_at <= NOW()
+```
+
+Worked example: top up ₹1,000 on 1 Jan 2026 (`expires_at` = 1 Jan 2027). Top up
+₹5,000 on 1 Dec 2026 → balance ₹6,000, `expires_at` **still** 1 Jan 2027. On
+1 Jan 2027 the expiry job wipes all ₹6,000 — including the ₹5,000 bought four
+weeks earlier.
+
+**Required work:**
+- Drop `unique_tenant_credit_channel`; allow multiple lots per
+  `(tenant_id, credit_type, channel)`, each with its own `expires_at`.
+- `add_credits` — insert a **new lot** rather than incrementing.
+- `deduct_credits` — consume **oldest-unexpired-first**, spanning lots, under
+  `FOR UPDATE`.
+- `process_credit_expiry` — expire **per lot**, not per balance row.
+- Balance reads become a sum over unexpired lots; `t_tenant_context` caches the
+  total so gates still read one row.
+
+This is the largest single piece of work the commercial model implies.
+
+### 5.2 Ledger journal writes — currently missing entirely
+
+**Defect.** Neither `add_credits` nor `deduct_credits` writes a
+`t_bm_credit_transaction` row. Verified: both accept `p_reference_id`, echo it
+back in the JSON response, and **discard it**. Only `process_credit_expiry`
+writes to the journal.
+
+Consequence: there is no audit trail for any money movement, and the
+contract-attribution requirement in §3.2 is impossible until this is fixed.
+
+**Required:** both RPCs insert a journal row with `transaction_type`,
+`quantity`, `balance_before`, `balance_after`, `reference_type`, `reference_id`,
+`description`, inside the same transaction as the balance change.
+
+### 5.3 Storage metering — blocked on the Drive decision
+
+`storage_mb` is declared in `billingValidators.ts` and `billing.dto.ts` and is
+*read* in `005_phase2_rpc_functions.sql`, but **nothing writes it**. There is no
+measurement of actual storage anywhere.
+
+It is also blocked on an unresolved contradiction in
+`ContractNest_Evidence_AuditTrail_Spec.md`:
+
+- §2.1 says PAYG storage is the **tenant's own** Google Drive — costs ContractNest
+  nothing, so PAYG tenants should not be charged for it.
+- The accompanying architecture diagram shows a **ContractNest-owned** Workspace
+  with 1–3 Shared Drives serving all tenants — ContractNest carries the cost, so
+  everyone should be charged.
+
+The ₹250 / 100 MB / year rule cannot be written until that is settled. Drive
+methodology is being revised in a following session; storage billing parks with it.
+
+Also note when it resumes: `limit_storage_mb` currently defaults to **40**, and
+needs to be **100**. And sanity-check the margin — ₹250 per 100 MB is
+₹2,500/GB/year, which is far above pooled Workspace storage cost. That is fine as
+a deterrent price, but it is not cost-recovery and should be a deliberate choice.
+
+### 5.4 `billing_mode` discriminator
+
+`t_tenant_context` has no field indicating how a tenant is billed. Every gate
+needs it to know whether to check *wallet balance* or *quota remaining*.
+
+Add `billing_mode`: `'freemium' | 'poc' | 'per_contract' | 'plan' | 'exempt'`,
+plus a cached `wallet_balance_paise` column so the OPS widget and gates read one
+row without touching the ledger.
+
+**Store money in paise.** `balance` is `INTEGER`; ₹1,000 = 100000 paise. Integer
+money is correct practice and avoids float error.
+
+`credit_type` on `t_bm_credit_balance` has **no CHECK constraint** (verified), so
+`credit_type = 'wallet'` needs no schema change, and
+`deduct_credits(tenant, 'wallet', 20000, NULL, 'contract', contract_id, …)` works
+with the existing signature.
+
+### 5.5 New limit columns
+
+`t_tenant_context` has only `limit_users`, `limit_contracts`, `limit_storage_mb`.
+Plans and freemium also need contacts, templates and RFQ counts — add
+`limit_contacts`, `limit_templates`, `limit_rfqs` and their `usage_*`
+counterparts. (Test-mode caps do **not** use these — see §4.2.)
+
+### 5.6 Always write a subscription row
+
+`flag_can_access` defaults FALSE until a subscription is assigned
+(`006_tenant_context.sql:545`). In wallet mode there may be no natural
+subscription row.
+
+**Decision: always write one `t_bm_tenant_subscription` row**, carrying the mode.
+Every existing trigger and flag path then keeps working unchanged, with no
+parallel code path.
+
+### 5.7 Settlement hook
+
+The one genuinely new piece of logic: when a billing event settles for a platform
+contract block carrying `config.metering`, call `add_credits` / `purchase_topup`
+/ set limits. **Idempotent on billing-event id.**
+
+Metering blocks follow the Group Session precedent — a new `m_category_details`
+row (`sub_cat_name='metering'`, display "Credit Pack") stored as `type='service'`,
+`category='metering'`, so pricing and the cadence engine come free. Seed it
+visible to the platform tenant only.
+
+### 5.8 Metering hooks
+
+| Hook | Action |
+|---|---|
+| Tenant contract created (`is_live=true`) | Freemium/quota check → `deduct_credits('wallet', 20000, …)` unless free → `add_credits` 15 (or 20) to pool → `record_usage` |
+| RFQ created (`is_live=true`) | Same, ₹400 (40000 paise) |
+| Contract derived from RFQ | **Waived** — see §7 |
+| Notification send | `check_credit_availability` → send → `deduct_credits` → waiting-JTD path when empty |
+| VaNi access | Read `t_tenant_context.addon_vani_ai` (replaces the `VANI_ENTITLEMENT_MODE` env check) |
+
+### 5.9 Wallet-empty UX
+
+When the wallet empties mid-period, contract creation blocks. Mirror the existing
+waiting-JTD pattern (`get_waiting_jtd_count`, `release_waiting_jtds`, FIFO release
+on top-up) rather than throwing a hard error.
+
+---
+
+## 6. OPS dashboard — Tenant Context widget
+
+A widget on the OPS dashboard tracking the pool:
+
+- Wallet balance (₹) and expiry date of the **oldest** lot
+- Notification pool balance, per channel or pooled per §3.3
+- Contracts used vs quota (or "freemium 3 remaining")
+- Recent ledger activity from `t_bm_credit_transaction`, attributed to the
+  contract that caused each movement (§3.2, requires §5.2)
+- Low-balance state driven by existing `flag_credits_low` / `flag_near_limit`
+
+Also: a toast on contract creation — *"15 credits added to your notification
+pool"* — using the existing toast component.
+
+Note only one component currently consumes tenant context
+(`catalog/ServiceForm/ServiceConfigStep.tsx`); this widget is effectively the
+first real consumer.
+
+---
+
+## 7. RFQ pricing and the derived contract
+
+₹400 is charged **upfront at RFQ creation** and covers the RFQ (₹200) plus the
+contract that will be derived from it (₹200). The derived contract is **not**
+charged again.
+
+**Blocker.** Implementing the waiver requires knowing a contract came from an RFQ.
+Verified live: `t_contracts.rfq_number` is populated on **9 of 9**
+`record_type='rfq'` rows and **0 of 208** `record_type='contract'` rows — it is
+the RFQ's *own* number, not a back-reference on a derived contract. There is no
+`source_rfq_id`.
+
+That linkage is exactly point 5 of the Sprint 3 RFQ-Award spec in `CLAUDE.md`
+(bidirectional `t_contracts.source_rfq_id` ↔ RFQ-side `contract_id`). **The waiver
+cannot ship before that column does.**
+
+**Open question.** Per the Sprint 3 model, the awarded **vendor** authors the
+contract, in their own tenant. The buyer paid the ₹400. If the vendor is also a
+paying ContractNest tenant, they would be charged ₹200 for a contract they were
+invited to create. Waive for them too (the `source_rfq_id` link identifies it
+either way), or charge them on the grounds they are receiving business? A
+fairness question, not a technical one.
+
+---
+
+## 8. Keep / delete
+
+**Keep** — the metering layer, which has no contract equivalent and is well built:
+`t_bm_credit_balance`, `t_bm_topup_pack`, `t_bm_billing_event`,
+`t_bm_credit_transaction`, `t_bm_subscription_usage`, `t_bm_invoice`,
+`t_bm_tenant_subscription`, `t_tenant_context` + triggers, the `billing` edge
+function and all credit/usage RPCs, `/api/billing/*`, `/api/tenant-context/*`.
+
+A contract block records the *price* of a credit pack; it cannot hold a *balance*.
+
+**Delete** — plan authoring and billing UI, which duplicates the contract engine
+and is largely mock:
+- `contractnest-ui/src/pages/settings/businessmodel/admin/**`
+- `contractnest-ui/src/components/businessmodel/{planform,plandetail,billing}`
+- mock tenant pages (`tenants/pricing-plans`, `tenants/Subscription`)
+- `hooks/queries/useBusinessModelQueries.ts`
+- `utils/fakejson/{PricingPlans,BillingData,PlanVersionsData}`
+- edge functions `plans`, `plan-versions`
+- `businessModelRoutes.ts`, `planController.ts`, `planVersionController.ts`,
+  `businessModelService.ts`
+
+Evidence it is not live: admin billing/invoices/versions run on `fakejson`; the
+tenant hooks throw because `useBusinessModelQueries.ts` reads
+`API_ENDPOINTS.BUSINESS_MODEL.*` while `serviceURLs.ts:569` exports
+`BUSINESSMODEL` (no underscore); the only live gate
+(`vaniEntitlementService`) never reads a plan.
+
+Hard-delete on the branch — git preserves it. An `_archive/` folder in the working
+tree just keeps dead imports discoverable and re-lintable.
+
+---
+
+## 9. Suggested build order
+
+1. **Ledger correctness** — §5.1 FIFO lots + §5.2 journal writes. Everything else
+   sits on these, and they are cheapest now while the tables are empty.
+2. **`billing_mode` + wallet column + new limits** (§5.4, §5.5, §5.6).
+3. **Metering hooks** (§5.8) with the `is_live` guard (§4.3) — contract/RFQ
+   deduction, credit grant, notification spend.
+4. **Metering block category + settlement hook** (§5.7).
+5. **Platform contract templates** — freemium, POC, Quarterly, Yearly, VaNi,
+   implementation, top-ups. Seed the Vikuna platform tenant.
+6. **OPS widget** (§6).
+7. **Keep/delete list** (§8).
+8. **Deferred** — storage metering (§5.3, on Drive); RFQ waiver (§7, on Sprint 3
+   linkage); VaNi entitlement switch (§5.8, on VaNi launch).
+
+---
+
+## 10. Open decisions
+
+| # | Decision | Blocks |
+|---|---|---|
+| 1 | Single weighted credit pool vs per-channel buckets (§3.3) | Grant call, widget, hooks |
+| 2 | Are in-app notifications metered? (recommend: no) | §3.3 |
+| 3 | WhatsApp vs email debit weights, if pooled | §3.3 |
+| 4 | Does the vendor pay ₹200 for an RFQ-derived contract they author? (§7) | Waiver logic |
+| 5 | PAYG storage — tenant-owned Drive or ContractNest-owned? (§5.3) | Storage billing |
+| 6 | Credit-pack SKU pricing — keep `t_bm_topup_pack` seeds or re-price? | Template authoring |
+| 7 | When does `VANI_ENTITLEMENT_MODE` flip `open` → `subscription`? | VaNi gating |
