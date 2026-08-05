@@ -19,7 +19,7 @@ Owner's proposed shape (2026-08-05):
 This POA keeps that order and adds three things the outline does not currently
 carry:
 
-- **Ledger correctness moves into Sprint 1.** Sprint 2 assigns 134 real tenants
+- **Ledger correctness moves into Sprint 1.** Sprint 2 assigns the 21 real tenants
   and starts granting credits for real. Both defects in spec §5.1/§5.2 must be
   fixed *before* that, not after. Fixing them now is nearly free (0 subscription
   rows, 0 tenant-context rows); fixing them after assignment means repairing live
@@ -38,15 +38,22 @@ carry:
 wallet) follows in a later phase.**
 
 Rationale:
-- There are **134 orphan tenants** and no revenue mechanism at all today. Plans
-  monetise all of them immediately; the wallet serves a narrower segment.
+- There are **21 real orphan tenants** (plus 112 test) and no revenue mechanism
+  at all today. Plans monetise all of them immediately; the wallet serves a
+  narrower segment.
 - The wallet needs the most new machinery (money-in-paise ledger, top-up flow,
   wallet-empty UX, 1-year expiry).
 - Plans reuse `limit_contracts` / `usage_contracts` / `record_usage`, which
   already exist.
 
-**This does not defer the FIFO-lot work.** Live top-up packs already carry
-`expiry_days = 365`, so the expiry defect is armed in plans-only mode too.
+**FIFO-lot work IS also deferred** — superseding an earlier draft of this
+section. Two findings changed it: the owner decided credits never expire, and the
+Step 1 baseline showed `purchase_topup` computes an expiry then discards it
+(`add_credits` has no expiry parameter), so **no credit has ever carried an
+`expires_at`**. Lots only make expiry correct, so they buy nothing here.
+
+Guard: Step 5 must set `expiry_days = NULL` on every surviving top-up pack.
+Leaving a `365` pack active would re-arm the defect.
 
 Freemium (3 contracts + 1 RFQ) and POC (₹1,500) are both plan-shaped and ship
 within this scope. Only the wallet is deferred.
@@ -57,15 +64,30 @@ within this scope. Only the wallet is deferred.
 
 | Fact | Value |
 |---|---|
-| Tenants | 134 |
+| Tenants (all) | 134 |
+| — `is_test = true` | **112** (67 active, 45 closed) |
+| — real, active | **21** |
+| — real, closed | 1 |
 | Tenants with a subscription | **0** — all orphans |
 | Live contracts | 179 |
 | Live RFQs | 8 |
 | Test contracts / RFQs | 29 / 1 |
 | `t_tenant_context` rows | 0 |
-| `t_bm_credit_balance` rows | 4 |
+| `t_bm_credit_balance` rows | 4 (one seed tenant) |
 | `t_bm_credit_transaction` rows | 2 |
+| Vikuna platform tenant | **exists** — `70f8eb69-9ccf-4a0c-8177-cb6131934344`, `is_admin = true`, workspace `vi4203` |
+| Storage | measured on `t_tenants.storage_consumed`; quota 40, provider `firebase` |
 | Razorpay | Wired to contract engine only; none on the plan side |
+
+> **CORRECTION 2026-08-05.** An earlier draft said "134 orphan tenants" throughout.
+> That is the raw row count. **112 of them are `is_test = true`**, so the Sprint 2
+> backfill is **21 real active tenants**, not 134 — materially smaller and lower
+> risk than first stated. Every "134" elsewhere in this document should be read
+> as 21 real + 112 test.
+>
+> A decision follows from this: do test tenants get a subscription row at all?
+> Recommendation — **yes, `billing_mode = 'freemium'` with test caps**, so no code
+> path has to handle a tenant with no context row.
 
 Nothing in production depends on current metering behaviour.
 
@@ -77,45 +99,60 @@ Nothing in production depends on current metering behaviour.
 
 ### 3.1 Deliverables
 
-| # | Item | Spec ref |
-|---|---|---|
-| 1 | Seed the **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode='exempt'` | §2.7 |
-| 2 | **Ledger journal writes** — `add_credits` / `deduct_credits` insert `t_bm_credit_transaction` in the same transaction | §5.2 |
-| 3 | **FIFO credit lots** — drop `unique_tenant_credit_channel`; lot-per-top-up with own `expires_at`; oldest-unexpired-first consumption; per-lot expiry | §5.1 |
-| 4 | **`billing_mode` + `wallet_balance_paise`** on `t_tenant_context` | §5.4 |
-| 5 | **New limit columns** — `limit_contacts`, `limit_templates`, `limit_rfqs` + `usage_*` | §5.5 |
-| 6 | **Top-up pack cleanup** — deactivate the duplicate generation, settle final SKUs | §10.6 |
-| 7 | **Metering block category** — `sub_cat_name='metering'`, "Credit Pack", visible to platform tenant only | §5.7 |
-| 8 | **Settlement hook** — billing event on a `config.metering` block → `add_credits` / set limits; idempotent on billing-event id | §5.7 |
-| 9 | **Platform contract templates** — Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999, VaNi ₹4,999/mo, Implementation ₹10,000 | §2 |
+Step numbering matches the agreed execution order. Status as of 2026-08-05.
+
+| Step | Item | Spec ref | Status |
+|---|---|---|---|
+| 0 | Lock the credit-model decisions | §3.3, §3.4 | ✅ done |
+| 1 | **Baseline snapshot** — data + all 10 function definitions | `SPRINT1_STEP1_BASELINE.md` | ✅ done |
+| 2 | **Additive schema** (mig 010) + **Channels LOV** (mig 011) | §5.4, §5.5, §3.3 | ✅ applied & verified |
+| 3 | **RPC rework** — D1 journal writes, D3 trigger column, D4/D5 top-up path | §5.2, §5.2b | ⏳ next |
+| 4 | **Regression tests** for Step 3 | §3.2 | ⏳ |
+| 5 | **Top-up pack cleanup** — drop the duplicate generation, set `channel`, set `expiry_days = NULL` | §10.6 | ⏳ |
+| 6 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode = 'exempt'`, init context (tenant row already exists) | §2.7 | ⏳ |
+| 7 | **Metering block category** — `sub_cat_name='metering'`, "Credit Pack", platform tenant only | §5.7 | ⏳ |
+| 8 | **Settlement hook** — billing event on a `config.metering` block → `add_credits` / set limits / write `credit_grant_rates`; idempotent on billing-event id | §5.7 | ⏳ |
+| 9 | **Platform contract templates** — Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999, VaNi ₹4,999/mo, Implementation ₹10,000 | §2 | ⏳ |
+| 10 | **End-to-end proof** — sell one platform contract to a test tenant | §3.2 | ⏳ |
+
+> **FIFO credit lots are no longer in this sprint.** Credits never expire, and the
+> baseline showed nothing has ever written `expires_at`. Deferred to whenever
+> Mode A (the 1-year wallet) ships. See spec §5.1. This removed the largest and
+> riskiest item from Sprint 1.
 
 ### 3.2 Exit criteria
 
 - A platform contract can be created in Vikuna, signed, paid via Razorpay, and
   its settlement grants credits/limits to the buying tenant — end to end, on one
   test tenant.
-- Two top-ups a month apart produce **two lots**; expiring the first leaves the
-  second intact. *(This is the regression test that proves §5.1.)*
 - Every credit movement produces a `t_bm_credit_transaction` row carrying
-  `reference_type`/`reference_id`.
-- `t_bm_topup_pack` has exactly one active SKU per product.
+  `reference_type` / `reference_id`, so a grant can be traced to the contract
+  that caused it.
+- A credit change on a tenant **that has an active subscription** completes
+  without error *(this is the D3 regression test — it throws today)*.
+- `purchase_topup` completes and credits the **correct per-channel pool**
+  *(D4 + D5)*.
+- `t_bm_topup_pack` has exactly one active SKU per product, each with a
+  `channel` and `expiry_days = NULL`.
 
 ### 3.3 Risks
 
-- **Items 2–3 are schema-changing on tables with live rows** (4 balances,
-  2 transactions). Small, but back them up first.
-- Item 8 is the only genuinely new logic in the sprint; the rest is repair and
-  configuration.
+- **Step 3 is the only risky step.** It rewrites three functions that move
+  money. Everything else is additive schema or configuration.
+- D3 is latent today and only surfaces once subscriptions exist — so it will not
+  show up in any test run until a subscription row is created. **Test it
+  explicitly** by creating one subscription and then changing a credit balance.
+- Step 8 is the only genuinely new logic in the sprint.
 
-### 3.4 Decisions needed before starting
+### 3.4 Decisions needed before continuing
 
-- §10.1 pooled-with-weights vs per-channel buckets — **shapes items 2, 3, 9**
-- §10.2 are in-app notifications metered
-- §10.6 final top-up SKU prices
+All Step 0 decisions are closed (spec §10). The only remaining Sprint 1 input is
+**§10.6 — final top-up SKU prices, channels, and expiry**, which blocks Step 5
+but not Step 3.
 
 ---
 
-## 4. Sprint 2 — Buyer side + assign the 134 orphans
+## 4. Sprint 2 — Buyer side + assign the orphans (21 real, 112 test)
 
 **Goal:** every tenant is on a plan and can see it.
 
@@ -125,19 +162,19 @@ Nothing in production depends on current metering behaviour.
 |---|---|---|
 | 1 | **Tenant plans page** — current plan, usage vs limits, available plans, upgrade CTA | Replaces the mock `tenants/pricing-plans` + `tenants/Subscription` |
 | 2 | **Subscribe flow** — pick plan → platform contract raised → CNAK review/accept → Razorpay → settlement grants entitlement | Reuses `contracts/review`, `contracts/claim`, `useRazorpayCheckout` |
-| 3 | **Backfill: assign all 134 tenants** — write `t_bm_tenant_subscription` + `init_tenant_context` for each | §5.6 — always one subscription row |
+| 3 | **Backfill: assign the 21 real active tenants** (+ test tenants on freemium) — write `t_bm_tenant_subscription` + `init_tenant_context` for each | §5.6 — always one subscription row |
 | 4 | **Fix `API_ENDPOINTS.BUSINESS_MODEL` → `BUSINESSMODEL`** or rewrite the hooks | Currently throws at runtime |
 | 5 | **Cutover rule for 179 existing contracts** | See §4.3 |
 
 ### 4.2 Exit criteria
 
-- `orphan_tenants` query returns **0**.
+- `orphan_tenants` query returns **0** (21 real + 112 test all carry a row).
 - A tenant can view their plan and complete a self-service upgrade end to end.
 - No page in the subscription surface reads from `utils/fakejson/*`.
 
 ### 4.3 Decision required — the backfill is a commercial act, not a migration
 
-Assigning 134 live tenants sets what they are entitled to and what they will be
+Assigning 21 real live tenants sets what they are entitled to and what they will be
 billed. Three sub-decisions:
 
 1. **Which plan does a backfilled tenant land on?** Freemium (and they upgrade
@@ -224,7 +261,8 @@ as reference until the replacement is proven in Sprint 3.
 |---|---|---|
 | 1 | Ledger defects reach real tenants | Sprint 1 fixes them before Sprint 2 assigns anyone |
 | 2 | Test data billed as real | `is_live` guard, Sprint 3 item 2; 29 test contracts already exist |
-| 3 | Backfill mis-entitles 134 live tenants | §4.3 decided explicitly before running; dry-run first |
+| 3 | Backfill mis-entitles the 21 real tenants | §4.3 decided explicitly before running; dry-run first |
+| 3b | D3 (context trigger, spec §5.2b) throws on every credit change once subscriptions exist | Fixed in Step 3, **before** the Sprint 2 backfill |
 | 4 | Duplicate top-up SKUs visible to customers | Sprint 1 item 6, before any tenant-facing page |
 | 5 | Flat credit pool erodes margin (WhatsApp 3–15× email) | §10.1 decided in Sprint 1 |
 | 6 | Wallet expiry wipes recent top-ups | Sprint 1 item 3; regression test in §3.2 |
@@ -254,7 +292,7 @@ SPRINT 1   Seller side + ledger correctness
                  independently
 
 SPRINT 2   Buyer side + backfill
-           Plans page, subscribe flow, assign all 134 orphans
+           Plans page, subscribe flow, assign all orphans (21 real + 112 test)
            EXIT: orphan_tenants = 0; no fakejson in the surface
            ⚠ highest-consequence sprint — billing becomes real
 

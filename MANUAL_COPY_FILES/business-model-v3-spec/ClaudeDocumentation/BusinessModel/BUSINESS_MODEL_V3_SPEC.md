@@ -163,28 +163,61 @@ The **grant is still attributed** to the contract that caused it, via
 what powers "where did my credits come from" in the OPS widget (§6). See §5.2:
 that journal write does not currently happen.
 
-### 3.3 Open — bucket shape and channel cost
+### 3.3 RESOLVED — four per-channel pools
 
-`t_bm_credit_balance` supports both shapes: per-channel rows
-(`channel = 'whatsapp' | 'email' | ...`) or a single shared pool
-(`channel IS NULL`, surfaced as `t_tenant_context.credits_pooled`).
+**Owner decision 2026-08-05: four separate per-channel pools**, one each for
+whatsapp / email / sms / inapp. Not a shared bucket.
 
-**Recommendation: a single shared pool** — one number to communicate, no stranded
-per-channel balances, and it does not multiply as SMS and in-app are activated.
+- Each pool starts at **0**.
+- On contract creation, credits are added to **each** pool.
+- Accrual is **cumulative**: a WhatsApp pool at 9 plus a new contract's 15
+  becomes 24. Creating a contract never resets or reduces a pool.
+- Any of the tenant's contracts may draw on any pool.
 
-**But note the margin exposure**: a WhatsApp message costs materially more than an
-email, and an in-app notification costs essentially nothing. A flat pooled credit
-means a tenant who sends only WhatsApp costs far more than one who sends only
-email, for the same 15 credits.
+This maps directly onto `t_bm_credit_balance`, already keyed
+`(tenant_id, credit_type, channel)` — four rows per tenant.
 
-Mitigation if adopted: keep one pool but **debit different weights per channel**
-(e.g. in-app 0, email 1, WhatsApp 5). `balance` is `INTEGER`, so integer weights
-work cleanly — define 1 credit as the smallest unit.
+Because each channel has its own pool, **no per-channel debit weighting is
+needed** — that question is closed. In-app is metered like the others (it has a
+pool), though it costs nothing to send.
 
-Two decisions still required:
-1. Single pool with weights, or per-channel buckets?
-2. Are in-app notifications metered at all? (They cost nothing to send —
-   recommendation: free and unmetered.)
+Schema consequence, applied in migration 010: `t_tenant_context` had
+`credits_whatsapp` / `credits_sms` / `credits_email` / `credits_pooled` but no
+in-app column. `credits_inapp` and `flag_can_send_inapp` were added.
+
+### 3.4 The grant rate is configuration, not code
+
+**Owner decision 2026-08-05: the "15 per contract" must NOT be hardcoded.** It is
+authored by a human in catalog-studio, as a metering block on the platform
+contract template (§5.7), and differs per plan (15 on per-contract, 20 on plans).
+
+Resolved rates are cached on `t_tenant_context.credit_grant_rates` (JSONB, added
+in migration 010) so the contract-creation hook does not walk back to the plan's
+blocks on every contract:
+
+```json
+{ "whatsapp": 15, "email": 15, "sms": 0, "inapp": 0 }
+```
+
+JSONB rather than columns, so activating a new channel needs no migration. The
+settlement hook writes it; an empty object means "grant nothing".
+
+### 3.5 Margin note
+
+At ContractNest's own top-up sell prices (WhatsApp ≈ ₹3/msg, email ≈ ₹1/msg from
+the gen-2 packs), granting per-channel means each contract hands out roughly ₹60
+of credits on the per-contract plan and ₹80 on plans:
+
+| Mode | Revenue/contract | Credits bundled (at sell price) | % |
+|---|---|---|---|
+| Per-contract | ₹200 | ₹60 | 30% |
+| Quarterly | ₹120 | ₹80 | 67% |
+| Yearly | ₹100 | ₹80 | 80% |
+
+At actual MSG91 **cost** these figures are far smaller and healthy — the top-up
+packs evidently carry a large margin. **Worth verifying against real MSG91 rates
+once**: if WhatsApp cost is anywhere near ₹3, the Yearly plan loses money on
+notifications alone.
 
 ---
 
@@ -233,7 +266,25 @@ Live state check (2026-08-05): **0** rows in `t_bm_tenant_subscription`, **0** i
 `t_tenant_context`, 4 credit-balance rows, 2 transaction rows. Nothing in
 production depends on current behaviour — this is a clean slate, not a migration.
 
-### 5.1 FIFO credit lots — required by 1-year wallet validity
+### 5.1 FIFO credit lots — DEFERRED (was: required by 1-year wallet validity)
+
+> **STATUS 2026-08-05: deferred out of Sprint 1.**
+>
+> Owner decision: **credits never expire** — they are consumed, and have no end
+> date. And the Step 1 baseline found that `purchase_topup` computes an expiry
+> then **discards** it (`add_credits` has no expiry parameter), so **every
+> `expires_at` in the database is NULL and nothing has ever expired**.
+>
+> Lots exist only to make expiry correct. With nothing expiring in the
+> plans-only scope, they buy nothing today. Deferred until Mode A (the 1-year
+> wallet) ships.
+>
+> **Guard:** the Step 5 top-up SKU cleanup must set `expiry_days = NULL` on every
+> surviving pack. Leaving a pack with `expiry_days = 365` active would re-arm the
+> defect below.
+>
+> The defect description is retained because it becomes live again the moment
+> anything expires.
 
 **Defect.** The current design silently destroys money:
 
@@ -276,13 +327,57 @@ contract-attribution requirement in §3.2 is impossible until this is fixed.
 `quantity`, `balance_before`, `balance_after`, `reference_type`, `reference_id`,
 `description`, inside the same transaction as the balance change.
 
-### 5.3 Storage metering — blocked on the Drive decision
+Live evidence: the journal's last `balance_after` is **440**, while the actual
+email balance is **535**. The intervening movements were made by `add_credits`
+and left no trace.
 
-`storage_mb` is declared in `billingValidators.ts` and `billing.dto.ts` and is
-*read* in `005_phase2_rpc_functions.sql`, but **nothing writes it**. There is no
-measurement of actual storage anywhere.
+### 5.2b Three further defects found in the Step 1 baseline
 
-It is also blocked on an unresolved contradiction in
+Full detail in `SPRINT1_STEP1_BASELINE.md` §5.
+
+**D3 — the context trigger references a column that does not exist.**
+⚠ **Sprint 2 blocker.** `trg_fn_update_context_on_credit_change` aggregates
+`balance - COALESCE(reserved, 0)`, but the column is **`reserved_balance`**.
+This raises `column "reserved" does not exist`.
+
+It has never fired because the function returns early when the tenant has no
+active subscription, and there are **0 subscription rows**. **The moment Sprint 2
+assigns subscriptions, every credit balance change starts throwing.** Must be
+fixed before the backfill.
+
+**D4 — `purchase_topup` always fails.** It inserts
+`t_bm_billing_event (… processed, processed_at)`; the column is **`status`**.
+The top-up purchase path is broken end to end.
+
+**D5 — `purchase_topup` credits the wrong pool.** It passes `channel = NULL` with
+a comment claiming channel is "determined by credit_type" — it is not.
+`t_bm_topup_pack` had no channel column, so channel existed only in the pack
+*name*. Buying a WhatsApp pack credited the **pooled** bucket, invisible to the
+WhatsApp gate — directly at odds with the four-pool model in §3.3.
+
+The data half is fixed: `t_bm_topup_pack.channel` was added in migration 010.
+Passing it through is Step 3, and each surviving pack needs its channel set
+during the Step 5 SKU cleanup.
+
+### 5.3 Storage metering — blocked on the Drive decision only
+
+> **CORRECTION 2026-08-05.** An earlier draft of this section said storage is
+> never measured. That was wrong. **Storage IS measured**, on `t_tenants`:
+> `storage_quota` (currently 40), `storage_consumed`, `storage_provider`
+> (`firebase`), `storage_setup_complete`. Seven tenants carry real consumption
+> (Vikuna 395,488 — units look like bytes).
+>
+> What is unfed is the **metering layer's copy** —
+> `t_tenant_context.usage_storage_mb` and `t_bm_subscription_usage` rows with
+> `metric_type = 'storage_mb'`. `storage_mb` is declared in
+> `billingValidators.ts` and `billing.dto.ts` and read in
+> `005_phase2_rpc_functions.sql`, but nothing writes those.
+>
+> So storage billing needs a **sync from `t_tenants.storage_consumed` into the
+> metering layer**, not new measurement. Confirm the unit (bytes vs KB) before
+> converting to MB.
+
+It remains blocked on an unresolved contradiction in
 `ContractNest_Evidence_AuditTrail_Spec.md`:
 
 - §2.1 says PAYG storage is the **tenant's own** Google Drive — costs ContractNest
@@ -458,12 +553,35 @@ tree just keeps dead imports discoverable and re-lintable.
 
 ## 10. Open decisions
 
+### Closed 2026-08-05
+
+| # | Decision | Outcome |
+|---|---|---|
+| 1 | Pooled vs per-channel buckets | **Four per-channel pools**, cumulative (§3.3) |
+| 2 | Are in-app notifications metered? | **Yes** — it has its own pool |
+| 3 | Channel debit weights | **Moot** — separate pools need no weighting |
+| — | Credit expiry | **Never expire**; consumed only (§5.1) |
+| — | Is the grant rate hardcoded? | **No** — catalog-studio config (§3.4) |
+| — | Where is the channel list maintained? | **LOV** `notification_channels`, Vikuna tenant only |
+| — | RFQ-derived contract charging | **₹400 upfront covers both**; derived contract free (§7) |
+| — | POC sequencing | **After** the 3 freemium contracts |
+
+### Still open
+
 | # | Decision | Blocks |
 |---|---|---|
-| 1 | Single weighted credit pool vs per-channel buckets (§3.3) | Grant call, widget, hooks |
-| 2 | Are in-app notifications metered? (recommend: no) | §3.3 |
-| 3 | WhatsApp vs email debit weights, if pooled | §3.3 |
 | 4 | Does the vendor pay ₹200 for an RFQ-derived contract they author? (§7) | Waiver logic |
 | 5 | PAYG storage — tenant-owned Drive or ContractNest-owned? (§5.3) | Storage billing |
-| 6 | Credit-pack SKU pricing — keep `t_bm_topup_pack` seeds or re-price? | Template authoring |
+| 6 | Credit-pack SKU pricing — final prices, channels, and `expiry_days = NULL` | Step 5 cleanup |
 | 7 | When does `VANI_ENTITLEMENT_MODE` flip `open` → `subscription`? | VaNi gating |
+| 8 | Verify real MSG91 per-message cost against the bundle (§3.5) | Plan margin |
+| 9 | Backfill: which plan, quota grandfathering, tenant notification (POA §4.3) | Sprint 2 |
+
+---
+
+## 11. Implementation log
+
+| Date | Step | What landed |
+|---|---|---|
+| 2026-08-05 | Sprint 1 / Step 1 | Baseline snapshot captured (read-only). Found D3, D4, D5. |
+| 2026-08-05 | Sprint 1 / Step 2 | Migrations **010** (additive schema) and **011** (channels LOV) applied to production and verified. No behaviour change — nothing reads the new columns until Step 3. |

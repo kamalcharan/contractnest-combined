@@ -51,7 +51,7 @@ hand during testing.
 |---|---|
 | `t_bm_tenant_subscription` | 0 |
 | `t_tenant_context` | 0 |
-| `t_tenants` | 134 (all orphaned) |
+| `t_tenants` | 134 total, all orphaned — but **112 are `is_test = true`**; 21 real active, 1 real closed |
 | `t_contracts` (contract, live) | 179 |
 | `t_contracts` (rfq, live) | 8 |
 | `t_contracts` (test) | 30 |
@@ -130,7 +130,7 @@ IF v_product_code IS NULL THEN RETURN COALESCE(NEW, OLD); END IF;
 
 With **0 subscription rows**, that early return always wins.
 
-> **The moment Sprint 2 assigns subscriptions to the 134 tenants, every single
+> **The moment Sprint 2 assigns subscriptions to any tenant, every single
 > credit balance change starts throwing.** This must be fixed in Sprint 1,
 > before the backfill.
 
