@@ -612,6 +612,26 @@ Infrastructure added: `gs_run_session_notifications()` (IST-aware, cron `group-s
 Also fixed this session: `gs_confirm_declaration`'s payment thank-you had three defects that would have hit on its first-ever fire — blank session name (read `cat_block_id`, NULL on all 33 declarations), an amount that collapsed to **0** when no open invoice existed, and a fragile `country_code`-concatenating phone lookup. It now refuses to enqueue unless name, session and a non-zero amount all resolve.
 **When to revisit**: only if a template is re-registered (re-check its parameter style), or to wire the n8n forwarding.
 
+### BBB notifications — first live batch, four defects found and fixed (2026-08-05)
+
+The first real batch (3-days-out for the 8 Aug occurrence) went out and exposed four things. All fixed in production; migrations 056–059 and jtd-worker v34 are source-of-record copies under `MANUAL_COPY_FILES/group-session-scheduled-notifications/` — **do not re-run**.
+
+**1. It dispatched at 00:00 IST.** The date window opens the moment the IST date rolls over, so 46 members were messaged in the middle of the night. Fixed with a per-block dispatch hour: `config.groupSession.notifications.dispatchHour` (IST, default 10), gating the two forward-looking reminders to 10:00–21:00. The **upper bound is deliberate** — without it a day-long outage would "catch up" at 23:00 and recreate the problem. No-show regret is not gated; it is already anchored to session end + 2h.
+
+**2. Three members got nothing — line breaks in their names.** MSG91 rejects `"next line(\n) is not supported for body value"`. Three BBB contacts have embedded CRLFs (`"JAGANNADHA SHASTRY SOMANCHI\r\n (BHUSHANA MEMBER)"`). Unfixed, this would have blocked **every** future message to them, not just reminders. `cleanParam()` in whatsapp.ts now collapses whitespace on every parameter of every template — applied centrally rather than cleaning three names, because names are free text pasted from imports.
+
+**3. ⚠️ `ON CONFLICT DO NOTHING` + a BEFORE INSERT trigger = phantom queue messages.** `trg_jtd_enqueue` is BEFORE INSERT and calls `pgmq.send()`. On a conflicting row the trigger had already enqueued before the conflict was detected; the row was discarded but the transaction committed, leaving a queue message pointing at an `n_jtd` row that never existed. With a 15-minute cron and day-long windows this injected ~49 junk messages per tick. Harmless to members (the worker deletes unmatched messages) but it burned worker capacity, delayed real sends behind a backlog that regenerated each tick, and made queue depth useless as a health signal. Fixed by a `NOT EXISTS` guard mirroring the unique index on every INSERT, so the trigger never fires for a row that would conflict; `ON CONFLICT` stays only as a race backstop.
+**General lesson: anywhere a BEFORE INSERT trigger has side effects outside the row, `ON CONFLICT DO NOTHING` is not a safe dedupe on its own — guard the SELECT.**
+
+**4. The session time was wrong, and duplicated.** `config.groupSession.timing` held 07:30 while the block description said "8.00 AM to 10.00 AM" — two copies of one fact, drifted. 46 members received a reminder contradicting their own contract. Timing corrected to 08:00/120; the time removed from the description (catalog block + all 49 contract snapshots) so `config.groupSession.timing` is the single source, read live at send time.
+**Structural follow-up NOT done**: the Block Wizard still lets a time be typed into the description, so the duplication can be reintroduced. Durable fix is to compose that sentence from the structured cadence and timing. UI work, scoped separately.
+
+**Also done**: tenant name in messages via `gs_session_display_name(block, tenant, with_tenant)` → "Saturday Network Meeting, BBB Bhagyanagar". Reads `t_tenant_profiles.business_name` (the Business Profile field), **never** `t_tenants.name` — that is a separate shorter value ("BBB") and would silently produce the wrong text. Applied to four templates; `absentee_reminder` deliberately keeps the plain block name because its template reads "the last couple of {{2}} sessions" and a comma inside the name breaks the grammar. No MSG91 re-approval — this changes a variable's value, not the template.
+
+**Method note**: 056–059 modify long live functions by substituting expressions into `prosrc` rather than retyping them (the migration 048 approach). 058's literal matches **silently no-opped** on two of four functions because whitespace differed; 059 redid them with verified anchors plus a post-check that RAISEs if the expected number of call sites is not present. **A silent no-op is the failure mode of this technique — always verify the rewrite landed.**
+
+**Block renamed** Saturday Cadence → Saturday Network Meeting across 6 live locations (95 values). `n_jtd.template_variables` and `t_idempotency_keys` deliberately left on the old name — history and transient cache.
+
 ### OPEN — BBB meeting-fee structure: contracts hold net ₹18,000, circular says list ₹19,500 (raised 2026-08-04)
 BBB's *Meeting Fee Information FY 2026-27* circular prices **26 meetings at ₹750 each = ₹19,500 list**, with a discount that normalises every payment frequency to **₹18,000 net**:
 
