@@ -1,62 +1,91 @@
 ---
-title: Business Model v3 — Plan of Action (4 Sprints)
+title: Business Model v3 — Plan of Action
 project: ContractNest
-status: Draft v0.1 — for discussion, not yet approved
+version: 2.0 — clean rewrite
 date: 2026-08-05
 companion: BUSINESS_MODEL_V3_SPEC.md
+status: Sprint 1 in progress (steps 0–4 applied to production)
 ---
 
-## 0. How this POA relates to the owner's sprint outline
+## 0. What this is
 
-Owner's proposed shape (2026-08-05):
+The build plan for ContractNest's own monetisation. Version 2 is a clean rewrite
+of the 2026-08-05 draft, which had accumulated corrections in place and become
+hard to read. Nothing here is new since that draft — it is the same plan, stated
+once, correctly.
 
-1. Create contracts in vikunatech — upgrade blocks as needed — review
-2. Create tenant plans page — assign current tenants to a plan (all orphans today)
-3. Test — plan working methodology
-4. Sort out any issues from the previous sprints
+### What changed from v1
 
-**The shape is right** — seller side, then buyer side, then validate, then buffer.
-This POA keeps that order and adds three things the outline does not currently
-carry:
-
-- **Ledger correctness moves into Sprint 1.** Sprint 2 assigns the 21 real tenants
-  and starts granting credits for real. Both defects in spec §5.1/§5.2 must be
-  fixed *before* that, not after. Fixing them now is nearly free (0 subscription
-  rows, 0 tenant-context rows); fixing them after assignment means repairing live
-  balances.
-- **Metering/enforcement is named explicitly.** Sprints 1–2 as outlined deliver
-  "tenants can see and subscribe to a plan" — but nothing yet *charges* ₹200 per
-  contract or *enforces* a quota. Sprint 3 becomes enforcement + validation
-  rather than validation alone.
-- **Mode A (wallet) is consciously deferred.** See §1.
+| v1 said | Correct position |
+|---|---|
+| Delete the plan catalog in Sprint 4 | **Leave it alone.** `/settings/businessmodel/admin/pricing-plans` is deprecated by the owner once `/contracts` stabilises into the product. Not this work. |
+| Step 5: clean up top-up SKUs, pick prices | **Dropped.** `t_bm_topup_pack` belongs to that same surface. No pricing decision needed. |
+| FIFO credit lots are mandatory | **Deferred.** Credits never expire, and nothing has ever written `expires_at`. |
+| 134 orphan tenants to backfill | **21.** 112 of the 134 are `is_test = true`. |
+| Storage is never measured | **It is** — `t_tenants.storage_consumed`. The metering layer's copy is what's unfed. |
+| Buyers charged for contracts they receive | **No.** The creator pays; viewing via CNAK is free. |
+| The vendor pays for an RFQ-derived contract | **No.** The ₹400 covered it. |
 
 ---
 
-## 1. Scope decision — plans first, wallet later
+## 1. The model in one page
 
-**Recommendation: Sprints 1–4 ship Mode B (plans) only. Mode A (per-contract
-wallet) follows in a later phase.**
+### The business model is a contract
 
-Rationale:
-- There are **21 real orphan tenants** (plus 112 test) and no revenue mechanism
-  at all today. Plans monetise all of them immediately; the wallet serves a
-  narrower segment.
-- The wallet needs the most new machinery (money-in-paise ledger, top-up flow,
-  wallet-empty UX, 1-year expiry).
-- Plans reuse `limit_contracts` / `usage_contracts` / `record_usage`, which
-  already exist.
+Vikuna authors **contract templates** in `/contracts/create/templates/`. A tenant
+buys a template and it becomes their contract, with Vikuna as seller. Metering
+blocks inside the template carry the grant rates and credit-pack pricing,
+authored in catalog-studio by a human — never hardcoded.
 
-**FIFO-lot work IS also deferred** — superseding an earlier draft of this
-section. Two findings changed it: the owner decided credits never expire, and the
-Step 1 baseline showed `purchase_topup` computes an expiry then discards it
-(`add_credits` has no expiry parameter), so **no credit has ever carried an
-`expires_at`**. Lots only make expiry correct, so they buy nothing here.
+```
+Vikuna authors template  →  tenant buys it  →  real contract (Vikuna = seller)
+       →  Razorpay, via the existing contract payment-gateway path
+       →  settlement hook grants credits / sets limits / writes credit_grant_rates
+       →  t_tenant_context updated — gates read one row
+```
 
-Guard: Step 5 must set `expiry_days = NULL` on every surviving top-up pack.
-Leaving a `365` pack active would re-arm the defect.
+Nothing in `/settings/businessmodel/**` is used, extended or priced.
 
-Freemium (3 contracts + 1 RFQ) and POC (₹1,500) are both plan-shaped and ship
-within this scope. Only the wallet is deferred.
+### The billing rule: the creator pays
+
+| Act | Who | Charge |
+|---|---|---|
+| Create a contract | seller | ₹200 |
+| Create an RFQ | buyer | ₹400 — covers the RFQ **and** its derived contract |
+| Contract derived from an RFQ | whoever authors it | ₹0 |
+| View via CNAK | anyone | ₹0, read-only |
+
+An active plan or wallet is required to **create**. It is never required to view.
+Because the rule keys on the act rather than the role, seller-only, buyer-only
+and both-at-once need no special handling and no `tenant_type` column.
+
+**Two invariants the hooks must respect:**
+- **Drafts are never charged.** The billable moment is `draft → sent`, not an
+  `INSERT`. 50 of 179 live contracts are drafts.
+- **Public routes never touch the ledger.** No check, deduction or usage
+  recording on any CNAK path.
+
+### Commercial terms
+
+| | |
+|---|---|
+| Freemium | 3 contracts + 1 RFQ, credits granted normally |
+| POC | ₹1,500, 1–2 month contract, offered **after** freemium |
+| Quarterly | ₹5,999 — 50 contracts, 20 credits per channel per contract |
+| Yearly | ₹19,999 — 200 contracts, 20 credits per channel per contract |
+| Wallet (Mode A) | ₹200/contract, ₹400/RFQ, ₹1,000 minimum, 1-year validity |
+| VaNi | ₹4,999/month |
+| Implementation | ₹10,000 one-time |
+| Notification credits | Four per-channel pools, cumulative, never expire |
+| GST | Once, at invoice. Never per consumption. |
+| Vikuna | `limit_* = NULL`, `billing_mode = 'exempt'` |
+
+### Scope: plans first, wallet later
+
+Sprints 1–4 ship **Mode B (plans) only**. Mode A (the wallet) follows. Plans
+monetise all 21 orphan tenants and reuse `limit_contracts` / `usage_contracts` /
+`record_usage`, which exist. The wallet needs a paise ledger, top-up flow and
+empty-wallet UX. Freemium and POC are plan-shaped and ship in scope.
 
 ---
 
@@ -64,32 +93,18 @@ within this scope. Only the wallet is deferred.
 
 | Fact | Value |
 |---|---|
-| Tenants (all) | 134 |
-| — `is_test = true` | **112** (67 active, 45 closed) |
-| — real, active | **21** |
-| — real, closed | 1 |
+| Tenants | 134 total — **112 `is_test`**, **21 real active**, 1 real closed |
 | Tenants with a subscription | **0** — all orphans |
-| Live contracts | 179 |
-| Live RFQs | 8 |
+| Live contracts / RFQs | 179 / 8 · of which **50 drafts**, 114 active |
+| Contracts with `buyer_tenant_id` | 15 — the rest have contact buyers |
+| Tenants that both sell and buy | **1** (Pulse Hospital) |
 | Test contracts / RFQs | 29 / 1 |
 | `t_tenant_context` rows | 0 |
-| `t_bm_credit_balance` rows | 4 (one seed tenant) |
-| `t_bm_credit_transaction` rows | 2 |
-| Vikuna platform tenant | **exists** — `70f8eb69-9ccf-4a0c-8177-cb6131934344`, `is_admin = true`, workspace `vi4203` |
+| `t_bm_credit_balance` | 4 — all belong to a tenant **no longer in `t_tenants`** |
+| Vikuna platform tenant | exists — `70f8eb69-9ccf-4a0c-8177-cb6131934344`, `is_admin = true` |
+| Vikuna catalog-studio + templates | **cleared 2026-08-05**, backup committed |
 | Storage | measured on `t_tenants.storage_consumed`; quota 40, provider `firebase` |
-| Razorpay | Wired to contract engine only; none on the plan side |
-
-> **CORRECTION 2026-08-05.** An earlier draft said "134 orphan tenants" throughout.
-> That is the raw row count. **112 of them are `is_test = true`**, so the Sprint 2
-> backfill is **21 real active tenants**, not 134 — materially smaller and lower
-> risk than first stated. Every "134" elsewhere in this document should be read
-> as 21 real + 112 test.
->
-> A decision follows from this: do test tenants get a subscription row at all?
-> Recommendation — **yes, `billing_mode = 'freemium'` with test caps**, so no code
-> path has to handle a tenant with no context row.
-
-Nothing in production depends on current metering behaviour.
+| Razorpay | wired to the contract engine only |
 
 ---
 
@@ -97,217 +112,231 @@ Nothing in production depends on current metering behaviour.
 
 **Goal:** Vikuna can sell, and the ledger underneath is trustworthy.
 
-### 3.1 Deliverables
+| Step | Item | Status |
+|---|---|---|
+| 0 | Lock the credit-model decisions | ✅ |
+| 1 | Baseline snapshot — data + 10 function definitions | ✅ `SPRINT1_STEP1_BASELINE.md` |
+| 2 | Additive schema (mig 010) + Channels LOV (mig 011) | ✅ applied & verified |
+| 3 | Ledger RPC rework (mig 012, 013, 014) | ✅ applied |
+| 4 | Regression tests — found D7 and the D4 second layer | ✅ 13/13 pass |
+| — | ~~Top-up pack cleanup~~ | ❌ dropped — deprecated surface |
+| 5 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode='exempt'`, init context | ⏳ **next** |
+| 6 | **Metering block category** in catalog-studio | ⏳ |
+| 7 | **Settlement hook** | ⏳ |
+| 8 | **Platform contract templates** in `/contracts/create/templates/` | ⏳ |
+| 9 | **End-to-end proof** — Vikuna sells one template to a test tenant | ⏳ |
 
-Step numbering matches the agreed execution order. Status as of 2026-08-05.
+### 3.1 Step 6 — the metering block, in detail
 
-| Step | Item | Spec ref | Status |
-|---|---|---|---|
-| 0 | Lock the credit-model decisions | §3.3, §3.4 | ✅ done |
-| 1 | **Baseline snapshot** — data + all 10 function definitions | `SPRINT1_STEP1_BASELINE.md` | ✅ done |
-| 2 | **Additive schema** (mig 010) + **Channels LOV** (mig 011) | §5.4, §5.5, §3.3 | ✅ applied & verified |
-| 3 | **RPC rework** — D1 journal writes, D3 trigger column, D4/D5 top-up path (mig 012, 013, 014) | §5.2, §5.2b | ✅ applied |
-| 4 | **Regression tests** for Step 3 — found D7 and the D4 second layer | `SPRINT1_STEP3_4_RESULTS.md` | ✅ 13/13 pass |
-| ~~5~~ | ~~Top-up pack cleanup~~ — **REMOVED**. `t_bm_topup_pack` belongs to `/settings/businessmodel/admin/pricing-plans`, which the owner is deprecating once `/contracts` stabilises. Left alone; no SKU or pricing decision needed. | §8 | ❌ dropped |
-| 6 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode = 'exempt'`, init context (tenant row already exists: `70f8eb69…`, `is_admin = true`) | §2.7 | ⏳ |
-| 7 | **Metering block category** in catalog-studio — `sub_cat_name='metering'`, "Credit Pack", platform tenant only. **This is where grant rates and credit-pack pricing are authored by a human.** | §5.7 | ⏳ next |
-| 8 | **Settlement hook** — billing event on a `config.metering` block → `add_credits` / set limits / write `credit_grant_rates`; idempotent on billing-event id | §5.7 | ⏳ |
-| 9 | **Platform contract templates in `/contracts/create/templates/`** — Freemium, POC ₹1,500, Quarterly ₹5,999, Yearly ₹19,999, VaNi ₹4,999/mo, Implementation ₹10,000, Credit Pack. Tenants buy a template and it becomes their contract. | §2, §8 | ⏳ |
-| 10 | **End-to-end proof** — sell one platform contract to a test tenant | §3.2 | ⏳ |
+A metering block is a **service block** with `category='metering'` — following
+the Group Session precedent (`config.audience='group'`), so it inherits pricing
+and cadence for free. All configuration lives in `config.metering`, with four
+modes and nothing else:
 
-> **FIFO credit lots are no longer in this sprint.** Credits never expire, and the
-> baseline showed nothing has ever written `expires_at`. Deferred to whenever
-> Mode A (the 1-year wallet) ships. See spec §5.1. This removed the largest and
-> riskiest item from Sprint 1.
+| Mode | Meaning | Writes to |
+|---|---|---|
+| `limit` | A cap for the period | `t_tenant_context.limit_*` |
+| `per_contract` | Grant rate each time the tenant creates a contract | `credit_grant_rates` |
+| `one_time` | Immediate grant on settlement | `add_credits()` |
+| `flag` | Turns a feature on | `addon_vani_ai` |
 
-### 3.2 Exit criteria
+`per_contract` carries a **per-channel map in one block**, not one block per
+channel:
 
-- A platform contract can be created in Vikuna, signed, paid via Razorpay, and
-  its settlement grants credits/limits to the buying tenant — end to end, on one
-  test tenant.
-- Every credit movement produces a `t_bm_credit_transaction` row carrying
-  `reference_type` / `reference_id`, so a grant can be traced to the contract
-  that caused it.
-- A credit change on a tenant **that has an active subscription** completes
-  without error *(this is the D3 regression test — it throws today)*.
-- `purchase_topup` completes and credits the **correct per-channel pool**
-  *(D4 + D5)*.
-- `t_bm_topup_pack` has exactly one active SKU per product, each with a
-  `channel` and `expiry_days = NULL`.
+```json
+{ "mode": "per_contract",
+  "grants": { "whatsapp": 20, "email": 20, "sms": 0, "inapp": 0 } }
+```
 
-### 3.3 Risks
+This maps 1:1 onto `t_tenant_context.credit_grant_rates`. A human edits one row
+to change the 20, and activating SMS later needs no new block and no migration.
 
-- **Step 3 is the only risky step.** It rewrites three functions that move
-  money. Everything else is additive schema or configuration.
-- D3 is latent today and only surfaces once subscriptions exist — so it will not
-  show up in any test run until a subscription row is created. **Test it
-  explicitly** by creating one subscription and then changing a credit balance.
-- Step 8 is the only genuinely new logic in the sprint.
+Seed the category visible to the platform tenant only.
 
-### 3.4 Decisions needed before continuing
+### 3.2 Step 8 — the templates
 
-All Step 0 decisions are closed (spec §10). The only remaining Sprint 1 input is
-**§10.6 — final top-up SKU prices, channels, and expiry**, which blocks Step 5
-but not Step 3.
+| Template | Price | Blocks |
+|---|---|---|
+| Freemium | ₹0 | `limit`: 3 contracts / 1 RFQ · `per_contract`: 15/15 |
+| POC | ₹1,500 | billing (1–2 month term) · `limit` · `per_contract` |
+| Quarterly | ₹5,999 | billing (quarterly) · `limit` 50 · `per_contract` 20/20 |
+| Yearly | ₹19,999 | billing (annual) · `limit` 200 · `per_contract` 20/20 |
+| VaNi | ₹4,999/mo | billing (monthly) · `flag: addon_vani_ai` |
+| Implementation | ₹10,000 | billing one-off — **no metering block** |
+| Credit Pack | TBD | `one_time`, e.g. `{whatsapp: 500}` |
+
+Not everything Vikuna sells is metered — Implementation is a plain priced block.
+
+### 3.3 Exit criteria
+
+- A platform contract is created in Vikuna, accepted, paid via Razorpay, and its
+  settlement grants credits and limits to the buying tenant — end to end.
+- Every credit movement writes a `t_bm_credit_transaction` row carrying
+  `reference_type` / `reference_id`.
+- A credit change on a tenant **with an active subscription** completes without
+  error (the D3 regression — it threw before mig 012).
+- `credit_grant_rates` is populated from the template's metering block, not from
+  any constant in code.
+
+### 3.4 Risks
+
+- Step 7 (settlement hook) is the only genuinely new logic. Must be **idempotent
+  on billing-event id** so a webhook retry cannot double-grant.
+- D3 and D7 were both latent — invisible until a subscription existed, or until a
+  function actually ran. Assume more of the same and **test by executing**, not by
+  reading.
 
 ---
 
-## 4. Sprint 2 — Buyer side + assign the orphans (21 real, 112 test)
+## 4. Sprint 2 — Buyer side + assign the orphans
 
 **Goal:** every tenant is on a plan and can see it.
 
-### 4.1 Deliverables
+| # | Item |
+|---|---|
+| 1 | **Tenant plans page** — current plan, usage vs limits, available templates, upgrade CTA |
+| 2 | **Subscribe flow** — pick template → platform contract raised → CNAK review/accept → Razorpay → settlement grants entitlement |
+| 3 | **Backfill** — write `t_bm_tenant_subscription` + `init_tenant_context` for 21 real tenants (+ test tenants on freemium) |
+| 4 | **Cutover rule** for the 179 existing contracts |
 
-| # | Item | Notes |
-|---|---|---|
-| 1 | **Tenant plans page** — current plan, usage vs limits, available plans, upgrade CTA | Replaces the mock `tenants/pricing-plans` + `tenants/Subscription` |
-| 2 | **Subscribe flow** — pick plan → platform contract raised → CNAK review/accept → Razorpay → settlement grants entitlement | Reuses `contracts/review`, `contracts/claim`, `useRazorpayCheckout` |
-| 3 | **Backfill: assign the 21 real active tenants** (+ test tenants on freemium) — write `t_bm_tenant_subscription` + `init_tenant_context` for each | §5.6 — always one subscription row |
-| 4 | ~~Fix `API_ENDPOINTS.BUSINESS_MODEL`~~ — **REMOVED**, belongs to the surface being deprecated | — |
-| 5 | **Cutover rule for 179 existing contracts** | See §4.3 |
+### 4.1 The backfill is a commercial act, not a migration
+
+It sets what 21 live tenants are entitled to and what they will be billed. Three
+sub-decisions, needed **before** it runs:
+
+1. **Which plan do they land on** — Freemium, or a grandfathered tier?
+2. **Do the 179 existing contracts count against quota?** Recommendation: **no**
+   — counting starts at assignment date. Otherwise a tenant with 60 contracts is
+   instantly over a 50-contract plan.
+3. **Is anyone notified?** Silent for freemium; announce before any first charge.
+
+Test tenants should also get a row (`billing_mode = 'freemium'`), so no code path
+has to handle a tenant with no context.
 
 ### 4.2 Exit criteria
 
-- `orphan_tenants` query returns **0** (21 real + 112 test all carry a row).
+- Orphan count is 0.
 - A tenant can view their plan and complete a self-service upgrade end to end.
-- No page in the subscription surface reads from `utils/fakejson/*`.
-
-### 4.3 Decision required — the backfill is a commercial act, not a migration
-
-Assigning 21 real live tenants sets what they are entitled to and what they will be
-billed. Three sub-decisions:
-
-1. **Which plan does a backfilled tenant land on?** Freemium (and they upgrade
-   when they hit the wall), or a grandfathered free tier?
-2. **Do the 179 existing contracts count against quota?** Recommendation:
-   **no** — quota counting starts at assignment date, history is grandfathered.
-   Otherwise a tenant with 60 contracts is instantly over a 50-contract plan.
-3. **Is anyone notified?** Silent backfill, or an email announcing their plan?
-   Recommendation: silent for freemium; announce before any first charge.
-
-> This is the highest-consequence step in the whole POA. It is the moment
-> billing becomes real for real customers.
+- **D3 must be fixed first** — otherwise every credit change throws the moment a
+  subscription exists. (Done in Sprint 1, mig 012.)
 
 ---
 
 ## 5. Sprint 3 — Enforcement + validation
 
-**Goal:** the plan actually does something. Limits bite, credits are consumed,
-test mode is bounded.
+**Goal:** the plan actually does something. Limits bite, credits are consumed.
 
-### 5.1 Deliverables
+| # | Item |
+|---|---|
+| 1 | **Metering hooks** — fire on `draft → sent`, never on `INSERT` |
+| 2 | **`is_live = true` guard** on every hook — mandatory |
+| 3 | **CNAK / public-route guard** — no ledger activity on any public path — mandatory |
+| 4 | **Test-environment caps** — 20 contacts, 2 templates, 6 contracts, 3 RFQs; static config, counted from source tables, never touches the ledger |
+| 5 | **Notification spend** — `check_credit_availability` → send → `deduct_credits`; waiting-JTD path when empty |
+| 6 | **OPS Tenant Context widget** — pool balances, usage vs quota, recent ledger activity |
+| 7 | **Grant toast** — "15 credits added to your notification pool" |
 
-| # | Item | Spec ref |
-|---|---|---|
-| 1 | **Metering hooks** — fire on the **draft → sent** transition, never on INSERT (50 of 179 contracts are drafts) → quota/freemium check → `record_usage` → grant credits to pool | §5.8, §1A |
-| 2 | **`is_live = true` guard on every hook** | §4.3 — mandatory |
-| 2b | **CNAK / public-route guard** — no credit check, deduction or usage recording on any public path; viewing is always free | §1A — mandatory |
-| 3 | **Test-environment caps** — 20 contacts, 2 templates, 6 contracts, 3 RFQs; static config, counted from source tables, never touches the ledger | §4.2 |
-| 4 | **Notification spend** — `check_credit_availability` → send → `deduct_credits`; waiting-JTD path when empty | §5.8 |
-| 5 | **OPS Tenant Context widget** — wallet/pool balance, oldest-lot expiry, usage vs quota, recent ledger activity | §6 |
-| 6 | **Grant toast** — "15 credits added to your notification pool" | §6 |
-| 7 | **End-to-end validation of the plan methodology** | §5.2 below |
-
-### 5.2 Validation scenarios (owner's "test — plan working methodology")
+### 5.1 Validation scenarios
 
 - New tenant → 3 free contracts + 1 free RFQ → 4th contract blocked → upgrade →
   unblocked.
-- Contract creation grants credits to the tenant pool, attributed to that
+- Contract creation grants credits to each channel pool, attributed to that
   contract in the journal.
 - Notification send decrements the pool; at zero, jobs queue as `no_credits` and
   release FIFO after top-up.
-- Test-mode tenant hits 6 contracts / 20 contacts / 2 templates / 3 RFQs and is
-  blocked, with **no ledger entry and no invoice line**.
 - A contract sitting in **draft** is never charged; the charge lands on send.
-- A CNAK visitor views a contract end to end with **zero ledger activity**.
-- A tenant that is both seller and buyer (e.g. Pulse Hospital) is charged for
-  what it creates on each side, with no special-case code.
-- Quarterly plan tenant reaching 50 contracts is blocked and prompted to upgrade.
-- Credit lot expiry removes only the expired lot.
-
-### 5.3 Exit criteria
-
-- No path exists that charges or grants against `is_live = false` data.
-- Every scenario in §5.2 passes on a real test tenant.
+- A **CNAK visitor** views a contract end to end with **zero ledger activity**.
+- A tenant that both sells and buys is charged for what it creates on each side,
+  with no special-case code.
+- Test-mode tenant hits its caps and is blocked, with **no ledger entry and no
+  invoice line**.
 
 ---
 
-## 6. Sprint 4 — Stabilisation + cleanup
+## 6. Sprint 4 — Stabilisation
 
-**Goal:** fix what Sprints 1–3 surfaced, and remove the dead weight.
-
-### 6.1 Deliverables
-
-| # | Item | Spec ref |
-|---|---|---|
-| 1 | **Issues raised in Sprints 1–3** — the buffer the owner asked for | — |
-| 2 | ~~Delete the plan catalog~~ — **REMOVED**. Owner deprecates `/settings/businessmodel/admin/pricing-plans` on their own timing, once `/contracts` has stabilised into the product. Not part of this work. | §8 |
-| 3 | **Dunning / grace handling** — what happens at `grace_end_date` | §2.1 |
-| 4 | **Invoice + GST presentation** — verify a platform invoice renders correctly with GST | §2.6 |
-| 5 | **POC expiry → reassignment** flow | §2.1 |
-
-### 6.2 Deliberately NOT in scope
-
-| Item | Blocked on | Spec ref |
-|---|---|---|
-| Storage metering (₹250/100 MB/yr) | Drive methodology revision | §5.3 |
-| RFQ-derived-contract waiver | Sprint 3 `source_rfq_id` linkage | §7 |
-| VaNi entitlement switch | VaNi launch | §5.8 |
-| Mode A — per-contract wallet | This POA's scope decision | §1 |
-
-Deleting the plan catalog (item 2) is deliberately **last** — it stays available
-as reference until the replacement is proven in Sprint 3.
-
----
-
-## 7. Cross-cutting risks
-
-| # | Risk | Mitigation |
-|---|---|---|
-| 1 | Ledger defects reach real tenants | Sprint 1 fixes them before Sprint 2 assigns anyone |
-| 2 | Test data billed as real | `is_live` guard, Sprint 3 item 2; 29 test contracts already exist |
-| 3 | Backfill mis-entitles the 21 real tenants | §4.3 decided explicitly before running; dry-run first |
-| 3b | D3 (context trigger, spec §5.2b) throws on every credit change once subscriptions exist | Fixed in Step 3, **before** the Sprint 2 backfill |
-| 4 | Duplicate top-up SKUs visible to customers | Sprint 1 item 6, before any tenant-facing page |
-| 5 | Flat credit pool erodes margin (WhatsApp 3–15× email) | §10.1 decided in Sprint 1 |
-| 6 | Wallet expiry wipes recent top-ups | Sprint 1 item 3; regression test in §3.2 |
-| 7 | Existing 179 contracts blow through new quotas | §4.3 sub-decision 2 |
-
----
-
-## 8. Open decisions, by sprint
-
-| Sprint | Must be decided before start |
+| # | Item |
 |---|---|
-| 1 | Pooled-with-weights vs per-channel (§10.1); in-app metered? (§10.2); channel debit weights (§10.3); final top-up SKUs (§10.6) |
-| 2 | Backfill plan choice; historical-contract grandfathering; tenant notification (§4.3) |
-| 3 | Do the 3 freemium contracts each grant credits? *(answered: yes)*; does an RFQ consume a freemium slot? *(answered: 1 free RFQ)* |
-| 4 | Hard-delete vs archive branch for the plan catalog (§8) |
-| Later | Vendor charging on RFQ-derived contracts (§10.4); PAYG storage ownership (§10.5); VaNi flip (§10.7) |
+| 1 | Issues raised in Sprints 1–3 — the buffer |
+| 2 | Dunning / grace handling at `grace_end_date` |
+| 3 | Invoice + GST presentation on a platform invoice |
+| 4 | POC expiry → reassignment |
+| 5 | Delete the 4 orphaned credit balances whose tenant no longer exists |
+
+### Explicitly out of scope
+
+| Item | Blocked on |
+|---|---|
+| Storage metering (₹250/100 MB/yr) | Drive methodology revision + the PAYG ownership contradiction |
+| RFQ-derived-contract waiver | Sprint 3's `source_rfq_id` linkage |
+| VaNi entitlement switch | VaNi launch |
+| Mode A — the wallet | Scope decision (§1) |
+| Deprecating `/settings/businessmodel/**` | Owner's timing, after `/contracts` stabilises |
 
 ---
 
-## 9. Summary view
+## 7. Defect register
+
+| # | Defect | Found | Status |
+|---|---|---|---|
+| D1 | `add_credits` / `deduct_credits` write no journal row; `reference_id` discarded | Spec analysis | ✅ fixed (012) |
+| D2 | Expiry zeroes the whole balance | Spec analysis | ⏸ unreachable — nothing expires |
+| D3 | Context trigger: `reserved` vs `reserved_balance` | Step 1 baseline | ✅ fixed (012) |
+| D4 | `purchase_topup`: `processed` column, then `event_source` NOT NULL | Baseline + Step 4 run | ✅ fixed (012, 014) |
+| D5 | `purchase_topup` credits pooled instead of per-channel | Step 1 baseline | ✅ fixed (010, 014) |
+| D6 | `purchase_topup` computes expiry then discards it | Step 1 baseline | ⏸ intentional |
+| D7 | `release_waiting_jtds`: `reserved` vs `reserved_balance` — **`add_credits` was throwing for every tenant in production** | Step 4 regression | ✅ fixed (013) |
+
+---
+
+## 8. Open decisions
+
+| # | Decision | Blocks |
+|---|---|---|
+| 1 | Credit-pack price on the metering block, and real MSG91 per-message cost | Step 6/8 — plan margin |
+| 2 | Where the subscription record lives: projection row on contract activation, or repoint context triggers at `t_contracts` | Steps 5–8 |
+| 3 | Backfill: which plan, quota grandfathering, notification | Sprint 2 |
+| 4 | PAYG storage — tenant-owned Drive or ContractNest-owned? | Storage billing |
+| 5 | When `VANI_ENTITLEMENT_MODE` flips `open` → `subscription` | VaNi gating |
+
+### On decision 2
+
+`t_tenant_context` is populated by triggers on `t_bm_tenant_subscription`. If the
+contract is the subscription, that source is wrong.
+
+- **(a)** Write a subscription row as a *projection* when a platform contract
+  activates. Contract stays source of truth; every existing trigger, flag and the
+  VaNi gate keep working. Small change, compatible with the table surviving until
+  deprecation. **Recommended.**
+- **(b)** Repoint the context triggers at `t_contracts` and retire the table.
+  Cleaner end state, more work, touches the VaNi gate.
+
+### On decision 1 — the margin question
+
+At ContractNest's own top-up prices, the bundled credits are worth a large share
+of plan revenue — on the Yearly plan, potentially more than the per-contract
+revenue itself. The number that matters is the **real MSG91 cost**, not the
+top-up sell price. Worth verifying once before the templates are seeded, because
+it is cheap to change now and expensive after 21 tenants are on a plan.
+
+---
+
+## 9. Summary
 
 ```
 SPRINT 1   Seller side + ledger correctness
-           Vikuna tenant, journal writes, FIFO lots, billing_mode,
-           metering block, settlement hook, platform templates
-           EXIT: one platform contract sold end-to-end; two lots expire
-                 independently
+           [done] baseline, schema, LOV, ledger RPCs, regression
+           [next] Vikuna tenant → metering block → settlement hook
+                  → templates → end-to-end sale
 
 SPRINT 2   Buyer side + backfill
-           Plans page, subscribe flow, assign all orphans (21 real + 112 test)
-           EXIT: orphan_tenants = 0; no fakejson in the surface
+           Plans page, subscribe flow, assign 21 real tenants
            ⚠ highest-consequence sprint — billing becomes real
 
 SPRINT 3   Enforcement + validation
-           Metering hooks, is_live guard, test caps, notification spend,
-           OPS widget
-           EXIT: freemium wall works; test mode never bills
+           Metering hooks on draft→sent, is_live guard, CNAK guard,
+           test caps, notification spend, OPS widget
 
-SPRINT 4   Stabilisation + cleanup
-           Sprint 1-3 issues, delete plan catalog, dunning, GST invoice,
-           POC reassignment
-           EXIT: dead code gone, replacement proven
+SPRINT 4   Stabilisation
+           Buffer, dunning, GST invoice, POC reassignment, cleanup
 ```
