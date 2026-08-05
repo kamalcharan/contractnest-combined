@@ -106,9 +106,9 @@ Step numbering matches the agreed execution order. Status as of 2026-08-05.
 | 0 | Lock the credit-model decisions | §3.3, §3.4 | ✅ done |
 | 1 | **Baseline snapshot** — data + all 10 function definitions | `SPRINT1_STEP1_BASELINE.md` | ✅ done |
 | 2 | **Additive schema** (mig 010) + **Channels LOV** (mig 011) | §5.4, §5.5, §3.3 | ✅ applied & verified |
-| 3 | **RPC rework** — D1 journal writes, D3 trigger column, D4/D5 top-up path | §5.2, §5.2b | ⏳ next |
-| 4 | **Regression tests** for Step 3 | §3.2 | ⏳ |
-| 5 | **Top-up pack cleanup** — drop the duplicate generation, set `channel`, set `expiry_days = NULL` | §10.6 | ⏳ |
+| 3 | **RPC rework** — D1 journal writes, D3 trigger column, D4/D5 top-up path (mig 012, 013, 014) | §5.2, §5.2b | ✅ applied |
+| 4 | **Regression tests** for Step 3 — found D7 and the D4 second layer | `SPRINT1_STEP3_4_RESULTS.md` | ✅ 13/13 pass |
+| 5 | **Top-up pack cleanup** — drop the duplicate generation, set `channel`, set `expiry_days = NULL`, delete orphaned seed balances | §10.6 | ⏳ next |
 | 6 | **Vikuna platform tenant** — `limit_* = NULL`, `billing_mode = 'exempt'`, init context (tenant row already exists) | §2.7 | ⏳ |
 | 7 | **Metering block category** — `sub_cat_name='metering'`, "Credit Pack", platform tenant only | §5.7 | ⏳ |
 | 8 | **Settlement hook** — billing event on a `config.metering` block → `add_credits` / set limits / write `credit_grant_rates`; idempotent on billing-event id | §5.7 | ⏳ |

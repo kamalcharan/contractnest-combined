@@ -585,3 +585,4 @@ tree just keeps dead imports discoverable and re-lintable.
 |---|---|---|
 | 2026-08-05 | Sprint 1 / Step 1 | Baseline snapshot captured (read-only). Found D3, D4, D5. |
 | 2026-08-05 | Sprint 1 / Step 2 | Migrations **010** (additive schema) and **011** (channels LOV) applied to production and verified. No behaviour change — nothing reads the new columns until Step 3. |
+| 2026-08-05 | Sprint 1 / Steps 3–4 | Migrations **012**, **013**, **014** applied and verified — 13/13 regression tests pass. See `SPRINT1_STEP3_4_RESULTS.md`. Regression found **D7** (`release_waiting_jtds` had the same wrong-column bug, and it fires with no early return — `add_credits` was throwing for **every** tenant in production) and a second NOT NULL column stacked behind D4. Also found that `t_bm_tenant_subscription.version_id` is NOT NULL and references `t_bm_plan_version`, so the plan catalog **tables** cannot be deleted as §8 assumes — only the authoring UI. |
