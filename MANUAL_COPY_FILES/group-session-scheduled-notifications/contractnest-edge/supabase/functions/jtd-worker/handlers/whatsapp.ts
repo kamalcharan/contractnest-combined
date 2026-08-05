@@ -35,6 +35,28 @@ function formatMobile(num: string, countryCode?: string): string {
 }
 
 /**
+ * Sanitise a value before it becomes a WhatsApp template parameter.
+ *
+ * WhatsApp rejects line breaks inside body parameters outright — MSG91 returns
+ * `"next line(\n) is not supported for body value"` and the whole message is
+ * dropped. This is not hypothetical: on 5 Aug 2026 three BBB members missed
+ * their reminder because their CONTACT NAMES contain embedded CRLFs, e.g.
+ * "JAGANNADHA SHASTRY SOMANCHI\r\n (BHUSHANA MEMBER)". Left unhandled it would
+ * have blocked every future message to them — reminders, check-in
+ * acknowledgements, payment thank-yous alike.
+ *
+ * Applied centrally to EVERY parameter of EVERY template rather than cleaning
+ * the three offending names, because the data will keep producing these:
+ * names are free text, pasted from spreadsheets and imports.
+ *
+ * Collapses all whitespace runs (CR, LF, tab, repeated spaces) to one space
+ * and trims. Deliberately does not otherwise alter the value.
+ */
+function cleanParam(value: unknown): string {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Send WhatsApp message via MSG91
  * Based on MSG91 documentation: https://docs.msg91.com/reference/send-whatsapp-message
  */
@@ -134,7 +156,7 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
           components['button_1'] = {
             type: 'text',
             sub_type: 'url',
-            value: String(templateData.review_link_suffix)
+            value: cleanParam(templateData.review_link_suffix)
           };
         }
 
@@ -194,7 +216,7 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
         namedParams.forEach(({ name, value }) => {
           components[`body_${name}`] = {
             type: 'text',
-            value: value,
+            value: cleanParam(value),
             parameter_name: name
           };
         });
@@ -203,7 +225,7 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
         orderedValues.forEach((value, index) => {
           components[`body_${index + 1}`] = {
             type: 'text',
-            value: value
+            value: cleanParam(value)
           };
         });
       }
