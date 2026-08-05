@@ -1,0 +1,148 @@
+═══════════════════════════════════════════════════
+BUSINESS MODEL V3 — SPRINT 1, STEP 2
+Additive schema + Notification Channels LOV
+═══════════════════════════════════════════════════
+
+Branch folder : business-model-v3-sprint1
+Date          : 2026-08-05
+Type          : DATABASE MIGRATIONS ONLY — no application code
+
+Submodules affected:
+  - contractnest-edge  (branch: main)
+
+Files:
+  contractnest-edge/supabase/migrations/business-model-v2/
+      010_bm_v3_schema.sql              [NEW]  additive schema
+      010_bm_v3_schema_DOWN.sql         [NEW]  rollback
+      011_channels_lov_vikuna.sql       [NEW]  channels LOV, admin tenant only
+      011_channels_lov_vikuna_DOWN.sql  [NEW]  rollback
+
+═══════════════════════════════════════════════════
+WHAT THIS DOES
+═══════════════════════════════════════════════════
+
+010 — additive schema, ZERO behaviour change:
+  t_bm_topup_pack
+      + channel                     (fixes the data half of baseline D5)
+  t_tenant_context
+      + billing_mode                (freemium|poc|per_contract|plan|exempt)
+      + wallet_balance_paise        (money in PAISE, bigint)
+      + credits_inapp               (4th channel pool)
+      + flag_can_send_inapp
+      + credit_grant_rates  JSONB   (the "15 per contract", human-configurable)
+      + limit_contacts / limit_templates / limit_rfqs
+      + usage_contacts / usage_templates / usage_rfqs
+      + freemium_contracts_used / freemium_rfqs_used
+  t_bm_credit_transaction
+      + 2 indexes for the OPS widget and contract attribution
+
+011 — seeds the Notification Channels LOV in the Vikuna tenant only:
+      whatsapp / WhatsApp   active
+      email    / Email      active
+      sms      / SMS        inactive (not yet launched)
+      inapp    / In-App     inactive (not yet launched)
+
+═══════════════════════════════════════════════════
+WHY IT IS SAFE TO APPLY ALONE
+═══════════════════════════════════════════════════
+
+  - Additive only: nothing dropped, renamed or retyped.
+  - No function, trigger or existing index is altered.
+  - NOTHING reads or writes the new columns until Step 3.
+  - Both migrations are idempotent (IF NOT EXISTS / NOT EXISTS guards).
+  - Both have a DOWN script.
+
+t_tenant_context currently has 0 rows and t_bm_credit_balance has 4
+(all one seed tenant), so blast radius is effectively nil.
+
+═══════════════════════════════════════════════════
+NOT INCLUDED — deliberately
+═══════════════════════════════════════════════════
+
+t_bm_credit_lot (FIFO lots) is NOT created.
+
+Owner decision 2026-08-05: credits never expire — they are consumed and
+have no end date. Baseline §5 D6 confirms nothing has ever written
+expires_at (purchase_topup computes an expiry and then discards it,
+because add_credits has no expiry parameter; every expires_at in the
+database is NULL).
+
+Lots exist only to make expiry correct, so they are deferred until
+Mode A (the 1-year wallet) ships.
+
+  => When Step 5 cleans up the duplicate topup packs, set
+     expiry_days = NULL on every surviving pack, so the expiry-wipe
+     defect (spec §5.1) stays unreachable.
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Migrations copied." -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: Apply — 010 FIRST, then 011
+═══════════════════════════════════════════════════
+Apply against the Supabase project (SQL editor or CLI), in order:
+
+  1. 010_bm_v3_schema.sql
+  2. 011_channels_lov_vikuna.sql
+
+═══════════════════════════════════════════════════
+STEP 4: Verify
+═══════════════════════════════════════════════════
+-- 010: expect 13 then 1
+SELECT count(*) FROM information_schema.columns
+ WHERE table_name = 't_tenant_context'
+   AND column_name IN ('billing_mode','wallet_balance_paise','credits_inapp',
+       'flag_can_send_inapp','credit_grant_rates','limit_contacts',
+       'limit_templates','limit_rfqs','usage_contacts','usage_templates',
+       'usage_rfqs','freemium_contracts_used','freemium_rfqs_used');
+
+SELECT count(*) FROM information_schema.columns
+ WHERE table_name = 't_bm_topup_pack' AND column_name = 'channel';
+
+-- 011: expect 4 rows
+SELECT cd.sub_cat_name, cd.display_name, cd.is_active, cd.sequence_no
+  FROM t_category_details cd
+  JOIN t_category_master cm ON cm.id = cd.category_id
+  JOIN t_tenants t ON t.id = cm.tenant_id AND t.is_admin = true
+ WHERE cm.category_name = 'notification_channels'
+ ORDER BY cd.sequence_no;
+
+-- nothing should have changed:
+SELECT count(*) FROM t_bm_credit_balance;   -- expect 4
+SELECT count(*) FROM t_tenant_context;      -- expect 0
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] 010 applies without error
+- [ ] 010 re-run applies again with no error (idempotent)
+- [ ] 011 applies without error
+- [ ] 011 re-run inserts nothing new (idempotent)
+- [ ] /settings/lov as Vikuna shows "Notification Channels" with 4 values
+- [ ] Existing LOV categories (Roles, Tags, ...) unchanged
+- [ ] App still functions normally — no behaviour should change at all
+
+═══════════════════════════════════════════════════
+ROLLBACK
+═══════════════════════════════════════════════════
+Run in reverse order:
+  1. 011_channels_lov_vikuna_DOWN.sql
+  2. 010_bm_v3_schema_DOWN.sql
+
+Only valid BEFORE Step 3 lands the RPC rework.
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+These migrations have NOT been applied to any database by Claude.
+Apply, verify, then confirm before Step 3 begins.
+═══════════════════════════════════════════════════
