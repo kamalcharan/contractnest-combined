@@ -199,8 +199,9 @@ test mode is bounded.
 
 | # | Item | Spec ref |
 |---|---|---|
-| 1 | **Metering hooks** — contract/RFQ creation → quota/freemium check → `record_usage` → grant credits to pool | §5.8 |
+| 1 | **Metering hooks** — fire on the **draft → sent** transition, never on INSERT (50 of 179 contracts are drafts) → quota/freemium check → `record_usage` → grant credits to pool | §5.8, §1A |
 | 2 | **`is_live = true` guard on every hook** | §4.3 — mandatory |
+| 2b | **CNAK / public-route guard** — no credit check, deduction or usage recording on any public path; viewing is always free | §1A — mandatory |
 | 3 | **Test-environment caps** — 20 contacts, 2 templates, 6 contracts, 3 RFQs; static config, counted from source tables, never touches the ledger | §4.2 |
 | 4 | **Notification spend** — `check_credit_availability` → send → `deduct_credits`; waiting-JTD path when empty | §5.8 |
 | 5 | **OPS Tenant Context widget** — wallet/pool balance, oldest-lot expiry, usage vs quota, recent ledger activity | §6 |
@@ -217,6 +218,10 @@ test mode is bounded.
   release FIFO after top-up.
 - Test-mode tenant hits 6 contracts / 20 contacts / 2 templates / 3 RFQs and is
   blocked, with **no ledger entry and no invoice line**.
+- A contract sitting in **draft** is never charged; the charge lands on send.
+- A CNAK visitor views a contract end to end with **zero ledger activity**.
+- A tenant that is both seller and buyer (e.g. Pulse Hospital) is charged for
+  what it creates on each side, with no special-case code.
 - Quarterly plan tenant reaching 50 contracts is blocked and prompted to upgrade.
 - Credit lot expiry removes only the expired lot.
 

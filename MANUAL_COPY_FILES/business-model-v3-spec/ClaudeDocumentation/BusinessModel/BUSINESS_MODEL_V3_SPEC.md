@@ -62,6 +62,73 @@ billing ourselves is a tenant-facing gap too.
 
 ---
 
+## 1A. The billing rule — the creator pays
+
+> Added 2026-08-05 after working through the seller / buyer / both question.
+> This supersedes any role-based framing elsewhere in this document.
+
+**One rule covers every case: the party who CREATES a record pays for it.
+Viewing is always free.**
+
+| Act | Who does it | Charge |
+|---|---|---|
+| Create a contract | seller | ₹200 (or 1 from plan quota) |
+| Create an RFQ | buyer | ₹400 — covers the RFQ **and** the contract derived from it, upfront |
+| Contract derived from an RFQ | whoever authors it | **₹0** — already paid by the RFQ |
+| **View a contract via CNAK** | anyone | **₹0, read-only** |
+
+### The gate
+
+**An active plan or wallet is required to CREATE. It is never required to view.**
+
+A buyer who only receives contracts is a **contact**, not a tenant. They open the
+contract through a CNAK public link, read-only. They pay nothing and need no
+tenant record. If they want to create anything of their own — an RFQ, their own
+contracts — they activate a plan, and from then on they are billed like any other
+tenant for what they create.
+
+### Seller / buyer / both
+
+Role is **per contract, not per tenant** — `useContractRole.ts` already resolves
+`seller | buyer | viewer` from the contract, and the same tenant is a seller on
+one and a buyer on another.
+
+Because the rule keys on the *act*, not the role, all three cases fall out with
+no special handling:
+
+| Tenant shape | What they pay |
+|---|---|
+| Pure seller | ₹200 per contract they create |
+| Pure buyer | ₹400 per RFQ they raise; ₹0 for contracts they receive |
+| **Both** | Exactly the above, added together — no special case, no `tenant_type` column |
+
+Live example: **Pulse Hospital** already sells 1 contract and buys 4.
+
+### Consequences for implementation
+
+1. **`flag_can_access` gates creation, not viewing.** A CNAK visitor has no
+   tenant context and does not need one.
+2. **CNAK / public routes must never touch the ledger** — no credit check, no
+   deduction, no `record_usage` on `contracts/review`, `contracts/claim`,
+   `/quote/:cnak/:secret` or any other public path. Treat this with the same
+   discipline as the `is_live` guard (§4.3): a whole class of paths that stays
+   outside metering.
+3. **Notification credits come from the contract owner's pool.** A seller's
+   reminder to a CNAK buyer debits the seller. The creator owns the record, so
+   the creator pays for its notifications.
+4. **Nothing is charged at acceptance.** A buyer can never be blocked from
+   accepting, and a seller's deal can never be held up by the buyer's balance.
+   No arrears path is needed.
+5. **`usage_contracts` counts what the tenant CREATES** — keyed on
+   `t_contracts.tenant_id`. It is not "contracts you are party to".
+6. **Drafts are not charged.** 50 of 179 live contracts are drafts. The billable
+   moment is a lifecycle transition (draft → sent), never an `INSERT`. Billing on
+   row creation would charge tenants for scratch work and abandoned drafts.
+7. **Contact → tenant conversion is ordinary signup.** They activate a plan and
+   start being billed for what they create. No conversion-specific billing.
+
+---
+
 ## 2. Commercial model
 
 All prices **exclude GST**. GST is applied once, at invoice time (§2.6).
@@ -443,9 +510,11 @@ visible to the platform tenant only.
 
 | Hook | Action |
 |---|---|
-| Tenant contract created (`is_live=true`) | Freemium/quota check → `deduct_credits('wallet', 20000, …)` unless free → `add_credits` 15 (or 20) to pool → `record_usage` |
-| RFQ created (`is_live=true`) | Same, ₹400 (40000 paise) |
-| Contract derived from RFQ | **Waived** — see §7 |
+| Contract leaves draft (**sent**), `is_live=true`, not RFQ-derived | Freemium/quota check → `deduct_credits('wallet', 20000, …)` unless free → grant credits per `credit_grant_rates` → `record_usage` |
+| RFQ leaves draft (**sent**), `is_live=true` | Same, ₹400 (40000 paise) |
+| Contract derived from an RFQ | **Waived for everyone**, including the vendor who authors it — see §7 |
+| Any CNAK / public route | **No hook at all** — see §1A |
+| Contract accepted by buyer | **No charge** — see §1A |
 | Notification send | `check_credit_availability` → send → `deduct_credits` → waiting-JTD path when empty |
 | VaNi access | Read `t_tenant_context.addon_vani_ai` (replaces the `VANI_ENTITLEMENT_MODE` env check) |
 
@@ -479,26 +548,32 @@ first real consumer.
 
 ## 7. RFQ pricing and the derived contract
 
-₹400 is charged **upfront at RFQ creation** and covers the RFQ (₹200) plus the
-contract that will be derived from it (₹200). The derived contract is **not**
-charged again.
+₹400 is charged **upfront when the RFQ leaves draft**, and covers the RFQ plus
+the contract that will be derived from it. The derived contract is **not charged
+again — to anyone**.
 
-**Blocker.** Implementing the waiver requires knowing a contract came from an RFQ.
-Verified live: `t_contracts.rfq_number` is populated on **9 of 9**
-`record_type='rfq'` rows and **0 of 208** `record_type='contract'` rows — it is
-the RFQ's *own* number, not a back-reference on a derived contract. There is no
-`source_rfq_id`.
+### The vendor is not charged either — RESOLVED 2026-08-05
 
-That linkage is exactly point 5 of the Sprint 3 RFQ-Award spec in `CLAUDE.md`
-(bidirectional `t_contracts.source_rfq_id` ↔ RFQ-side `contract_id`). **The waiver
-cannot ship before that column does.**
+An earlier draft of this section asked whether the awarded **vendor**, who
+authors the contract under the Sprint 3 model, should pay ₹200 as its creator.
 
-**Open question.** Per the Sprint 3 model, the awarded **vendor** authors the
-contract, in their own tenant. The buyer paid the ₹400. If the vendor is also a
-paying ContractNest tenant, they would be charged ₹200 for a contract they were
-invited to create. Waive for them too (the `source_rfq_id` link identifies it
-either way), or charge them on the grounds they are receiving business? A
-fairness question, not a technical one.
+**They do not.** The ₹400 already covered that contract. The waiver attaches to
+the contract, not to a party — whoever authors it, it is free. This is consistent
+with §1A: the creator pays, except where the record has already been paid for.
+
+### Blocker — the waiver needs a linkage column
+
+Implementing the waiver requires knowing a contract came from an RFQ. Verified
+live: `t_contracts.rfq_number` is populated on **9 of 9** `record_type='rfq'`
+rows and **0 of 208** `record_type='contract'` rows — it is the RFQ's *own*
+number, not a back-reference on a derived contract. There is no `source_rfq_id`.
+
+That linkage is point 5 of the Sprint 3 RFQ-Award spec in `CLAUDE.md`
+(bidirectional `t_contracts.source_rfq_id` ↔ RFQ-side `contract_id`). **The
+waiver cannot ship before that column does.**
+
+Until it exists, an RFQ-derived contract has no way to identify itself, and the
+metering hook would charge its author ₹200 on top of the buyer's ₹400.
 
 ---
 
@@ -614,12 +689,15 @@ decided**:
 | — | Where is the channel list maintained? | **LOV** `notification_channels`, Vikuna tenant only |
 | — | RFQ-derived contract charging | **₹400 upfront covers both**; derived contract free (§7) |
 | — | POC sequencing | **After** the 3 freemium contracts |
+| — | Who pays? | **The creator.** Viewing via CNAK is free and read-only (§1A) |
+| — | Seller / buyer / both | No special case; role is per-contract, bill the act (§1A) |
+| — | Does the vendor pay for an RFQ-derived contract? | **No** — the ₹400 covered it, waiver attaches to the contract (§7) |
+| — | Is a passive buyer free? | **Yes to view, always.** They pay only when they create (§1A) |
 
 ### Still open
 
 | # | Decision | Blocks |
 |---|---|---|
-| 4 | Does the vendor pay ₹200 for an RFQ-derived contract they author? (§7) | Waiver logic |
 | 5 | PAYG storage — tenant-owned Drive or ContractNest-owned? (§5.3) | Storage billing |
 | 6 | Credit-pack SKU pricing — final prices, channels, and `expiry_days = NULL` | Step 5 cleanup |
 | 7 | When does `VANI_ENTITLEMENT_MODE` flip `open` → `subscription`? | VaNi gating |
