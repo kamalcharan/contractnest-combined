@@ -1,78 +1,64 @@
 ═══════════════════════════════════════════════════
-BUSINESS MODEL V3 — SPRINT 1, STEP 2
-Additive schema + Notification Channels LOV
+BUSINESS MODEL V3 — SPRINT 1
 ═══════════════════════════════════════════════════
 
 Branch folder : business-model-v3-sprint1
 Date          : 2026-08-05
-Type          : DATABASE MIGRATIONS ONLY — no application code
 
 Submodules affected:
-  - contractnest-edge  (branch: main)
+  - contractnest-edge  (branch: main)   migrations
+  - contractnest-ui    (branch: main)   admin-only block type gate
+
+═══════════════════════════════════════════════════
+STATUS — WHAT IS ALREADY LIVE
+═══════════════════════════════════════════════════
+
+Migrations 010 through 016 have ALREADY BEEN APPLIED to the Supabase
+project and verified. The .sql files here are the record of what ran, for
+version control and rollback.
+
+  010  additive schema (t_tenant_context columns, topup pack channel)
+  011  notification channels LOV, Vikuna tenant only
+  012  ledger RPC rework — D1 journal writes, D3 trigger column,
+       D4/D5 topup path, inapp channel threaded through
+  013  D7 — release_waiting_jtds wrong column (add_credits was throwing
+       for EVERY tenant in production)
+  014  D4 second layer — t_bm_billing_event.event_source NOT NULL
+  015  seed the Vikuna platform tenant (billing_mode=exempt, limits NULL)
+  016  metering block type "Credit Pack", seeded INACTIVE
+
+Regression: 13/13 passed. See SPRINT1_STEP3_4_RESULTS.md.
+
+═══════════════════════════════════════════════════
+WHAT NEEDS COPYING — UI ONLY
+═══════════════════════════════════════════════════
 
 Files:
-  contractnest-edge/supabase/migrations/business-model-v2/
-      010_bm_v3_schema.sql              [NEW]  additive schema
-      010_bm_v3_schema_DOWN.sql         [NEW]  rollback
-      011_channels_lov_vikuna.sql       [NEW]  channels LOV, admin tenant only
-      011_channels_lov_vikuna_DOWN.sql  [NEW]  rollback
+  contractnest-ui/src/types/catalogStudio.ts              [MODIFIED]
+  contractnest-ui/src/utils/catalog-studio/categories.ts  [MODIFIED]
+  contractnest-ui/src/hooks/queries/useBlockTypes.ts      [MODIFIED]
 
-═══════════════════════════════════════════════════
-WHAT THIS DOES
-═══════════════════════════════════════════════════
+Purpose: gate the new "Credit Pack" (metering) block type to the platform
+tenant only.
 
-010 — additive schema, ZERO behaviour change:
-  t_bm_topup_pack
-      + channel                     (fixes the data half of baseline D5)
-  t_tenant_context
-      + billing_mode                (freemium|poc|per_contract|plan|exempt)
-      + wallet_balance_paise        (money in PAISE, bigint)
-      + credits_inapp               (4th channel pool)
-      + flag_can_send_inapp
-      + credit_grant_rates  JSONB   (the "15 per contract", human-configurable)
-      + limit_contacts / limit_templates / limit_rfqs
-      + usage_contacts / usage_templates / usage_rfqs
-      + freemium_contracts_used / freemium_rfqs_used
-  t_bm_credit_transaction
-      + 2 indexes for the OPS widget and contract attribution
+WHY A UI GATE AND NOT A DATABASE ONE:
+  m_category_details has NO tenant_id — block types are platform-wide.
+  There is no way to scope this type to one tenant in the database, so the
+  filter has to live in useBlockCategories(), keyed on
+  currentTenant.is_admin.
 
-011 — seeds the Notification Channels LOV in the Vikuna tenant only:
-      whatsapp / WhatsApp   active
-      email    / Email      active
-      sms      / SMS        inactive (not yet launched)
-      inapp    / In-App     inactive (not yet launched)
+The three changes:
+  1. types/catalogStudio.ts
+       BlockCategory gains `adminOnly?: boolean`, alongside the existing
+       comingSoon / singleton MVP gates.
+  2. utils/catalog-studio/categories.ts
+       'metering' added to BLOCK_CATEGORIES (fallback) and to
+       MVP_CATEGORY_OVERRIDES as { adminOnly: true }.
+  3. hooks/queries/useBlockTypes.ts
+       useBlockCategories() now reads currentTenant and filters out
+       adminOnly types for non-admin tenants.
 
-═══════════════════════════════════════════════════
-WHY IT IS SAFE TO APPLY ALONE
-═══════════════════════════════════════════════════
-
-  - Additive only: nothing dropped, renamed or retyped.
-  - No function, trigger or existing index is altered.
-  - NOTHING reads or writes the new columns until Step 3.
-  - Both migrations are idempotent (IF NOT EXISTS / NOT EXISTS guards).
-  - Both have a DOWN script.
-
-t_tenant_context currently has 0 rows and t_bm_credit_balance has 4
-(all one seed tenant), so blast radius is effectively nil.
-
-═══════════════════════════════════════════════════
-NOT INCLUDED — deliberately
-═══════════════════════════════════════════════════
-
-t_bm_credit_lot (FIFO lots) is NOT created.
-
-Owner decision 2026-08-05: credits never expire — they are consumed and
-have no end date. Baseline §5 D6 confirms nothing has ever written
-expires_at (purchase_topup computes an expiry and then discards it,
-because add_credits has no expiry parameter; every expires_at in the
-database is NULL).
-
-Lots exist only to make expiry correct, so they are deferred until
-Mode A (the 1-year wallet) ships.
-
-  => When Step 5 cleans up the duplicate topup packs, set
-     expiry_days = NULL on every surviving pack, so the expiry-wipe
-     defect (spec §5.1) stays unreachable.
+No existing behaviour changes for any other block type.
 
 ═══════════════════════════════════════════════════
 STEP 1: Navigate to Project
@@ -82,67 +68,47 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 ═══════════════════════════════════════════════════
 STEP 2: Copy Files
 ═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
-Write-Host "Migrations copied." -ForegroundColor Green
+Write-Host "Copied." -ForegroundColor Green
 
 ═══════════════════════════════════════════════════
-STEP 3: Apply — 010 FIRST, then 011
+STEP 3: Run and Test
 ═══════════════════════════════════════════════════
-Apply against the Supabase project (SQL editor or CLI), in order:
-
-  1. 010_bm_v3_schema.sql
-  2. 011_channels_lov_vikuna.sql
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+#
+# NOTE: a hard refresh is needed regardless — useCatBlocksTest caches
+# blocks under a tenant-agnostic query key, which is why deleted blocks
+# still appeared earlier. See ISSUE_admin_reset_all_data_gaps.md §3.
 
 ═══════════════════════════════════════════════════
-STEP 4: Verify
+STEP 4: Activate the block type (ONLY after UI is deployed)
 ═══════════════════════════════════════════════════
--- 010: expect 13 then 1
-SELECT count(*) FROM information_schema.columns
- WHERE table_name = 't_tenant_context'
-   AND column_name IN ('billing_mode','wallet_balance_paise','credits_inapp',
-       'flag_can_send_inapp','credit_grant_rates','limit_contacts',
-       'limit_templates','limit_rfqs','usage_contacts','usage_templates',
-       'usage_rfqs','freemium_contracts_used','freemium_rfqs_used');
+The metering type is seeded is_active = FALSE so it is invisible to
+everyone until the gate above ships. Once it is deployed:
 
-SELECT count(*) FROM information_schema.columns
- WHERE table_name = 't_bm_topup_pack' AND column_name = 'channel';
+UPDATE m_category_details SET is_active = true
+ WHERE sub_cat_name = 'metering'
+   AND category_id = (SELECT id FROM m_category_master
+                       WHERE category_name = 'cat_block_type');
 
--- 011: expect 4 rows
-SELECT cd.sub_cat_name, cd.display_name, cd.is_active, cd.sequence_no
-  FROM t_category_details cd
-  JOIN t_category_master cm ON cm.id = cd.category_id
-  JOIN t_tenants t ON t.id = cm.tenant_id AND t.is_admin = true
- WHERE cm.category_name = 'notification_channels'
- ORDER BY cd.sequence_no;
-
--- nothing should have changed:
-SELECT count(*) FROM t_bm_credit_balance;   -- expect 4
-SELECT count(*) FROM t_tenant_context;      -- expect 0
+If you activate it BEFORE deploying the UI, every tenant sees a
+"Credit Pack" card in catalog-studio.
 
 ═══════════════════════════════════════════════════
 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
-- [ ] 010 applies without error
-- [ ] 010 re-run applies again with no error (idempotent)
-- [ ] 011 applies without error
-- [ ] 011 re-run inserts nothing new (idempotent)
-- [ ] /settings/lov as Vikuna shows "Notification Channels" with 4 values
-- [ ] Existing LOV categories (Roles, Tags, ...) unchanged
-- [ ] App still functions normally — no behaviour should change at all
-
-═══════════════════════════════════════════════════
-ROLLBACK
-═══════════════════════════════════════════════════
-Run in reverse order:
-  1. 011_channels_lov_vikuna_DOWN.sql
-  2. 010_bm_v3_schema_DOWN.sql
-
-Only valid BEFORE Step 3 lands the RPC rework.
+- [ ] Catalog-studio loads normally; existing block types unchanged
+- [ ] As a NON-admin tenant, no "Credit Pack" card appears
+- [ ] After activating (step 4), as vikuna (admin) the card DOES appear
+- [ ] As a non-admin tenant after activation, still NO card
+- [ ] Creating an ordinary service/spare block still works
 
 ═══════════════════════════════════════════════════
 WAITING FOR CONFIRMATION
 ═══════════════════════════════════════════════════
-These migrations have NOT been applied to any database by Claude.
-Apply, verify, then confirm before Step 3 begins.
+Test locally and confirm before any merge to main.
 ═══════════════════════════════════════════════════
