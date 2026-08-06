@@ -26,7 +26,11 @@ import { useTenantMasterData } from '../../../../../hooks/queries/useProductMast
 // The four modes a metering block can operate in. Kept deliberately small —
 // each one maps to exactly one thing the settlement hook does when a platform
 // contract is paid.
-export type MeteringMode = 'limit' | 'per_contract' | 'one_time' | 'flag';
+// 'per_creation' fires on EVERY chargeable creation event — a contract OR an
+// RFQ. It is deliberately not called per_contract: the grant is not tied to
+// contracts, it is tied to the act of creating a billable record, and a
+// contract-only reading would silently skip every RFQ.
+export type MeteringMode = 'limit' | 'per_creation' | 'one_time' | 'flag';
 
 interface ChannelRow {
   sub_cat_name: string;   // 'whatsapp' | 'email' | 'sms' | 'inapp' — the KEY
@@ -55,10 +59,10 @@ const MODES: Array<{
   description: string;
 }> = [
   {
-    id: 'per_contract',
-    label: 'Per Contract',
+    id: 'per_creation',
+    label: 'Per Creation',
     icon: Gauge,
-    description: 'Grant credits every time the tenant creates a contract. The recurring allowance in a plan.',
+    description: 'Grant credits every time the tenant creates a contract OR an RFQ. The recurring allowance in a plan.',
   },
   {
     id: 'limit',
@@ -113,7 +117,7 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
   const inputClass =
     'w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all';
 
-  const mode: MeteringMode = formData.meteringMode ?? 'per_contract';
+  const mode: MeteringMode = formData.meteringMode ?? 'per_creation';
   const grants = formData.meteringGrants ?? {};
   const limits = formData.meteringLimits ?? {};
 
@@ -204,17 +208,17 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
       </div>
 
       {/* Per-channel grants -------------------------------------------------- */}
-      {(mode === 'per_contract' || mode === 'one_time') && (
+      {(mode === 'per_creation' || mode === 'one_time') && (
         <div>
           <h3 className="text-base font-semibold mb-1" style={labelStyle}>
-            {mode === 'per_contract'
-              ? 'Credits granted per contract created'
+            {mode === 'per_creation'
+              ? 'Credits granted each time a contract or RFQ is created'
               : 'Credits granted once, on payment'}
           </h3>
           <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
-            Each channel is set separately — e.g. 15 WhatsApp and 10 Email. Each has its
-            own pool, and grants accumulate: a pool at 9 plus a grant of 15 becomes 24.
-            Leave a channel blank to grant none of it.
+            Each channel is set separately. Each has its own tenant-level pool and
+            grants accumulate: a pool at 9 plus a grant of 15 becomes 24. Any contract
+            can draw from the pool. Leave a channel blank to grant none of it.
           </p>
 
           {channelsLoading && (
