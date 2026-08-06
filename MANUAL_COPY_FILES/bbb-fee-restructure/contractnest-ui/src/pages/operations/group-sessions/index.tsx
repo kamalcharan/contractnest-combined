@@ -772,7 +772,7 @@ const GroupSessionsPage: React.FC = () => {
 
     const exportCsv = () => {
       const header = [
-        'Member', 'Contract', 'Start', 'End', 'Plan', 'Instalments', 'Currency', 'Contract value', 'Discount', 'Net payable',
+        'Member', 'Contract', 'Start', 'End', 'Plan', 'Plan source', 'Instalments', 'Currency', 'Contract value', 'Discount', 'Net payable',
         'Scheduled', 'Paid', 'Due now', 'Not yet due', 'Beyond window',
         ...duesMonths.map((m) => `${m.label} ${m.year}`),
       ];
@@ -783,7 +783,7 @@ const GroupSessionsPage: React.FC = () => {
       // sum them. The currency travels in its own column instead.
       const body = filteredDues.map((r) => [
         r.name, r.contract_number, r.start_date?.slice(0, 10) || '', r.end_date?.slice(0, 10) || '',
-        planLabel(r.plan), r.instalments, r.currency,
+        planLabel(r.plan), r.plan_source, r.instalments, r.currency,
         r.contract_value, r.discount, r.net,
         r.scheduled_total, r.paid_total, r.due_total, r.future_total, r.beyond_total,
         ...duesMonths.map((m) => {
@@ -792,7 +792,7 @@ const GroupSessionsPage: React.FC = () => {
         }),
       ]);
       const totalRow = [
-        `TOTAL (${duesScope})`, '', '', '', '', '', duesCurrency || 'mixed', '', duesTotals.discount, '',
+        `TOTAL (${duesScope})`, '', '', '', '', '', '', duesCurrency || 'mixed', '', duesTotals.discount, '',
         duesTotals.scheduled, duesTotals.paid, duesTotals.due, duesTotals.future, duesTotals.beyond,
         ...duesMonths.map(() => ''),
       ];
@@ -940,7 +940,12 @@ const GroupSessionsPage: React.FC = () => {
                             it belongs to the member's identity, and folding it
                             in returns that width to the money columns. */}
                         <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                          <Pill label={`${planLabel(r.plan)}${r.instalments ? ` ×${r.instalments}` : ''}`} accent={planColor(r.plan)} />
+                          <span title={r.plan_source === 'derived' ? 'Plan inferred from instalment spacing — not recorded on the contract' : undefined}>
+                            <Pill
+                              label={`${planLabel(r.plan)}${r.instalments ? ` ×${r.instalments}` : ''}${r.plan_source === 'derived' ? '?' : ''}`}
+                              accent={planColor(r.plan)}
+                            />
+                          </span>
                           <span className="text-[10px] truncate" style={sub}>
                             {r.contract_number || '—'}
                             {/* Only shown when this contact holds more than one

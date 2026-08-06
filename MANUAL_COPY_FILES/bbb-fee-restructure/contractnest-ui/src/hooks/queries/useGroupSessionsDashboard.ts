@@ -121,10 +121,16 @@ export interface GsDuesRow {
   end_date: string | null;
   /** The CONTRACT's currency, per row — not a tenant-wide assumption. */
   currency: string;
-  /** Derived from the spacing of this member's own billing events, NOT from
-   * t_contracts.billing_cycle_type — that column reads 'mixed' on every BBB
-   * contract, so trusting it would label everybody "Mixed". */
+  /** The contract's payment frequency. Read from metadata.billing_plan when it
+   * has been recorded, otherwise inferred from instalment spacing.
+   *
+   * NOT from t_contracts.billing_cycle_type — that column means unified-vs-
+   * per-block billing ('unified' | 'mixed'), not a frequency. */
   plan: 'monthly' | 'quarterly' | 'halfyearly' | 'yearly' | 'none';
+  /** 'recorded' = stated on the contract; 'derived' = inferred from the gaps
+   * between instalments, which is a guess and can be wrong once a member has
+   * changed plan mid-year (their receipts keep the old cadence). */
+  plan_source: 'recorded' | 'derived';
   instalments: number;
   /** Gross contract value before any discount (t_contracts.total_value). */
   contract_value: number;
