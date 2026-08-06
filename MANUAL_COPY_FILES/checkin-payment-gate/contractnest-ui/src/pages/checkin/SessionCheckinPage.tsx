@@ -397,6 +397,45 @@ const SessionCheckinPage: React.FC = () => {
   const targetDue = openDues[0] || null;
   const [showSchedule, setShowSchedule] = useState(false);
 
+  // ── Same-day duplicate guard ────────────────────────────────────────────
+  // Members re-declare: they tap through twice, or come back unsure whether the
+  // first one registered. Live, one member produced three declarations for the
+  // SAME instalment inside four minutes, two of which the chair confirmed.
+  //
+  // The database has partial unique indexes (migration 052) but they only cover
+  // status='pending' and they discard the second row SILENTLY via ON CONFLICT
+  // DO NOTHING — so the member is told nothing and assumes it worked. This warns
+  // instead, and points them at the chair, which is the only place a correction
+  // can actually be made.
+  //
+  // "Today" is computed in IST rather than from the device clock, matching every
+  // other date decision in this product (migration 048).
+  const istDay = (value: string | number | Date): string =>
+    new Date(new Date(value).getTime() + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+  const declarations = history?.declarations || [];
+  const todayIst = istDay(Date.now());
+
+  // Same member + same instalment + today, in ANY status. Deliberately not
+  // limited to 'pending': a confirmed or rejected declaration from this morning
+  // is exactly the case where re-entering causes the damage.
+  const declaredTodayForDue = useMemo(
+    () => (!targetDue ? null : declarations.find(
+      (d) => d.billing_event_id === targetDue.event_id && d.created_at && istDay(d.created_at) === todayIst
+    ) || null),
+    [declarations, targetDue?.event_id, todayIst]
+  );
+
+  // A repeated UPI reference is the one unambiguous proof of a double entry —
+  // the same bank transaction cannot legitimately be declared twice. Checked
+  // across every instalment, not just this one.
+  const duplicateRefDecl = useMemo(() => {
+    const ref = upiRef.trim();
+    if (!ref) return null;
+    return declarations.find((d) => (d.upi_reference || '').trim() === ref) || null;
+  }, [declarations, upiRef]);
+
+  const [showDupAlert, setShowDupAlert] = useState<null | 'same-day' | 'same-ref'>(null);
+
   // Auto-target the next due the moment it's known — paying it isn't a
   // decision the member makes among options, so there's nothing to tap
   // before the "Pay" action becomes available.
@@ -890,9 +929,26 @@ const SessionCheckinPage: React.FC = () => {
                 </div>
               </div>
             )}
+            {declaredTodayForDue && (
+              <div style={{ marginBottom: 10, background: '#FEF3C7', border: '1px solid #F59E0B66', borderRadius: 10, padding: 11 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#92400E' }}>You already recorded this today</div>
+                <div style={{ fontSize: 12, color: '#92400E', marginTop: 3, lineHeight: 1.5 }}>
+                  A payment of {money(declaredTodayForDue.amount, targetDue?.currency)} for {targetDue?.label} was recorded
+                  earlier today{declaredTodayForDue.upi_reference ? ` (ref ${declaredTodayForDue.upi_reference})` : ''}.
+                  Entering it again will not add to it — please speak to the chair for any correction.
+                </div>
+              </div>
+            )}
             <label style={labelStyle}>UPI reference</label>
             <input value={upiRef} onChange={(e) => { setUpiRef(e.target.value); setShowReturnNudge(false); }} placeholder="e.g. 4098XXXX2231" style={inputStyle} autoFocus />
-            <button type="button" onClick={() => { if (upiRef.trim()) setPaymentStepDone(true); }} disabled={!upiRef.trim()}
+            <button type="button" onClick={() => {
+                if (!upiRef.trim()) return;
+                // The reference clash is the louder of the two — same bank
+                // transaction, so it is a duplicate regardless of the date.
+                if (duplicateRefDecl) { setShowDupAlert('same-ref'); return; }
+                if (declaredTodayForDue) { setShowDupAlert('same-day'); return; }
+                setPaymentStepDone(true);
+              }} disabled={!upiRef.trim()}
               style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
                 background: upiRef.trim() ? BRAND.accent : '#9CA3AF', color: '#fff', fontWeight: 800, fontSize: 15,
                 cursor: upiRef.trim() ? 'pointer' : 'not-allowed' }}>
@@ -901,6 +957,60 @@ const SessionCheckinPage: React.FC = () => {
             <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
               The chair will confirm it offline once you check in.
             </p>
+
+            {showDupAlert && (
+              <div
+                role="dialog" aria-modal="true" aria-label="This looks like a repeat entry"
+                style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
+                  alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(15,15,20,0.55)' }}
+                onClick={() => setShowDupAlert(null)}
+              >
+                <div onClick={(e) => e.stopPropagation()}
+                  style={{ width: '100%', maxWidth: 430, background: '#fff',
+                    borderRadius: '18px 18px 0 0', padding: '20px 18px 18px' }}>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: BRAND.ink, marginBottom: 8 }}>
+                    {showDupAlert === 'same-ref'
+                      ? 'That reference is already recorded'
+                      : 'You already recorded this today'}
+                  </div>
+                  <p style={{ fontSize: 13.5, color: BRAND.sub, margin: '0 0 4px', lineHeight: 1.6 }}>
+                    {showDupAlert === 'same-ref' ? (
+                      <>UPI reference <b style={{ color: BRAND.ink }}>{upiRef.trim()}</b> has already been
+                      submitted{duplicateRefDecl?.status ? ` and is ${duplicateRefDecl.status}` : ''}. The
+                      same transaction can only count once.</>
+                    ) : (
+                      <>A payment for <b style={{ color: BRAND.ink }}>{targetDue?.label}</b> was already
+                      recorded earlier today. Submitting again will not add to it.</>
+                    )}
+                  </p>
+                  <p style={{ fontSize: 13.5, color: BRAND.sub, margin: '0 0 16px', lineHeight: 1.6 }}>
+                    <b style={{ color: BRAND.ink }}>Please speak to the chair</b> if something needs
+                    correcting — they can adjust it from their side.
+                  </p>
+
+                  {/* Continues to check-in WITHOUT recording anything: upiRef is
+                      cleared, and intent is derived from it, so no second
+                      declaration can be created. Attendance still counts. */}
+                  <button type="button"
+                    onClick={() => {
+                      setShowDupAlert(null);
+                      setUpiRef('');
+                      setPaymentAttempted(false);
+                      setPaymentStepDone(true);
+                    }}
+                    style={{ width: '100%', padding: 13, border: 'none', borderRadius: 12,
+                      background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
+                    Got it — continue to check-in
+                  </button>
+                  <button type="button" onClick={() => setShowDupAlert(null)}
+                    style={{ width: '100%', marginTop: 8, padding: 11, borderRadius: 12,
+                      border: `1.5px solid ${BRAND.line}`, background: '#fff',
+                      color: BRAND.sub, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>
+                    Back — let me check the reference
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
