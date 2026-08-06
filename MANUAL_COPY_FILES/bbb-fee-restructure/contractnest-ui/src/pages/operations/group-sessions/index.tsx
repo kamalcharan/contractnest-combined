@@ -67,6 +67,11 @@ type RosterFilter = 'all' | 'overcap' | 'dues';
 type AttFilter = 'all' | 'present' | 'absent';
 
 const PAGE_SIZE = 10;
+// Dues pages deeper than the other tables on purpose. It is the one view read
+// as a whole — a chair scans the year's collection position across the roster,
+// so 10 rows at a time turns one question into five page turns. The other
+// tables stay at 10; this is not a page-wide change.
+const DUES_PAGE_SIZE = 50;
 
 // Table column templates (product-wide list pattern)
 const GROUPS_COLS = 'minmax(200px,1.6fr) 90px 110px 90px minmax(120px,1fr) 100px 32px';
@@ -254,9 +259,24 @@ const GroupSessionsPage: React.FC = () => {
     });
   }, [declarations, declGroup, declSearch]);
 
+  // A contract with nothing in this financial year is a renewal for the next
+  // one — active, but not part of this year's collection position. Excluded
+  // from the grid and counted separately, never silently dropped.
+  const duesOutOfWindow = useMemo(() => duesRows.filter((r) => !r.in_window), [duesRows]);
+
+  // Contacts holding more than one contract IN THIS WINDOW. Normal at renewal
+  // and around a mid-year re-signing, so those rows get their contract period
+  // shown to tell them apart.
+  const duesRepeatContacts = useMemo(() => {
+    const seen = new Map<string, number>();
+    duesRows.filter((r) => r.in_window).forEach((r) => seen.set(r.contact_id, (seen.get(r.contact_id) || 0) + 1));
+    return new Set(Array.from(seen.entries()).filter(([, n]) => n > 1).map(([id]) => id));
+  }, [duesRows]);
+
   const filteredDues = useMemo(() => {
     const term = duesSearch.trim().toLowerCase();
     return duesRows.filter((r) => {
+      if (!r.in_window) return false;
       if (duesPlan !== 'all' && r.plan !== duesPlan) return false;
       // "Owing" is money already past its due date — NOT the whole unpaid
       // balance. A member paying quarterly is not in arrears just because
@@ -333,8 +353,10 @@ const GroupSessionsPage: React.FC = () => {
     backgroundColor: active ? colors.brand.primary + '14' : 'transparent',
     color: active ? colors.utility.primaryText : colors.utility.secondaryText,
   });
-  const Pager = ({ page, total, onPage, noun }: { page: number; total: number; onPage: (p: number) => void; noun: string }) => {
-    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // `size` is optional and defaults to PAGE_SIZE, so every existing caller
+  // keeps its current behaviour untouched.
+  const Pager = ({ page, total, onPage, noun, size = PAGE_SIZE }: { page: number; total: number; onPage: (p: number) => void; noun: string; size?: number }) => {
+    const pages = Math.max(1, Math.ceil(total / size));
     if (pages <= 1) return null;
     const cur = Math.min(page, pages);
     return (
@@ -363,10 +385,10 @@ const GroupSessionsPage: React.FC = () => {
       </div>
     );
   };
-  const pageSlice = <T,>(rows: T[], page: number): T[] => {
-    const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageSlice = <T,>(rows: T[], page: number, size: number = PAGE_SIZE): T[] => {
+    const pages = Math.max(1, Math.ceil(rows.length / size));
     const cur = Math.min(page, pages);
-    return rows.slice((cur - 1) * PAGE_SIZE, cur * PAGE_SIZE);
+    return rows.slice((cur - 1) * size, cur * size);
   };
 
   // NOTE: the shared ui/Card accepts ONLY className/children — it silently
@@ -712,6 +734,14 @@ const GroupSessionsPage: React.FC = () => {
     const sumMoney = (n: number) =>
       duesCurrency ? money(n, duesCurrency) : Number(n).toLocaleString();
 
+    // Rows are contracts. Usually one per member, but not at renewal — say
+    // both counts when they diverge so the row count is never mistaken for a
+    // head count.
+    const memberCount = new Set(filteredDues.map((r) => r.contact_id)).size;
+    const duesScope = memberCount === filteredDues.length
+      ? `${filteredDues.length} member${filteredDues.length === 1 ? '' : 's'}`
+      : `${filteredDues.length} contracts · ${memberCount} members`;
+
     const planLabel = (p: GsDuesRow['plan']) =>
       p === 'monthly' ? 'Monthly'
         : p === 'quarterly' ? 'Quarterly'
@@ -742,7 +772,7 @@ const GroupSessionsPage: React.FC = () => {
 
     const exportCsv = () => {
       const header = [
-        'Member', 'Contract', 'Plan', 'Instalments', 'Currency', 'Contract value', 'Discount', 'Net payable',
+        'Member', 'Contract', 'Start', 'End', 'Plan', 'Plan source', 'Instalments', 'Currency', 'Contract value', 'Discount', 'Net payable',
         'Scheduled', 'Paid', 'Due now', 'Not yet due', 'Beyond window',
         ...duesMonths.map((m) => `${m.label} ${m.year}`),
       ];
@@ -752,7 +782,8 @@ const GroupSessionsPage: React.FC = () => {
       // Numbers stay unformatted in the CSV — a spreadsheet must be able to
       // sum them. The currency travels in its own column instead.
       const body = filteredDues.map((r) => [
-        r.name, r.contract_number, planLabel(r.plan), r.instalments, r.currency,
+        r.name, r.contract_number, r.start_date?.slice(0, 10) || '', r.end_date?.slice(0, 10) || '',
+        planLabel(r.plan), r.plan_source, r.instalments, r.currency,
         r.contract_value, r.discount, r.net,
         r.scheduled_total, r.paid_total, r.due_total, r.future_total, r.beyond_total,
         ...duesMonths.map((m) => {
@@ -761,7 +792,7 @@ const GroupSessionsPage: React.FC = () => {
         }),
       ]);
       const totalRow = [
-        `TOTAL (${filteredDues.length} members)`, '', '', '', duesCurrency || 'mixed', '', duesTotals.discount, '',
+        `TOTAL (${duesScope})`, '', '', '', '', '', '', duesCurrency || 'mixed', '', duesTotals.discount, '',
         duesTotals.scheduled, duesTotals.paid, duesTotals.due, duesTotals.future, duesTotals.beyond,
         ...duesMonths.map(() => ''),
       ];
@@ -855,7 +886,7 @@ const GroupSessionsPage: React.FC = () => {
           <>
             {/* Year summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <Kpi icon={<Wallet size={12} />} label="Scheduled" value={sumMoney(duesTotals.scheduled)} sub={duesCurrency ? `${filteredDues.length} members` : `${filteredDues.length} members · mixed currencies`} />
+              <Kpi icon={<Wallet size={12} />} label="Scheduled" value={sumMoney(duesTotals.scheduled)} sub={`${duesScope}${duesCurrency ? '' : ' · mixed currencies'}`} />
               <Kpi icon={<CheckCircle2 size={12} />} label="Collected" value={sumMoney(duesTotals.paid)} tone="good" sub={duesTotals.scheduled ? `${Math.round((duesTotals.paid / duesTotals.scheduled) * 100)}% of scheduled` : undefined} />
               <Kpi icon={<AlertTriangle size={12} />} label="In arrears" value={sumMoney(duesTotals.due)} tone="warn" sub="past due date" />
               <Kpi icon={<CalendarClock size={12} />} label="Not yet due" value={sumMoney(duesTotals.future)} sub="future instalments" />
@@ -890,9 +921,11 @@ const GroupSessionsPage: React.FC = () => {
                   ))}
                 </div>
 
-                {pageSlice(filteredDues, duesPage).map((r) => (
+                {pageSlice(filteredDues, duesPage, DUES_PAGE_SIZE).map((r) => (
                   <div
-                    key={r.contact_id}
+                    /* keyed by CONTRACT — a contact can hold two at renewal,
+                       and keying by contact would collide and drop a row */
+                    key={r.contract_id}
                     onClick={() => r.contract_id && navigate(`/contracts/${r.contract_id}`)}
                     className="grid items-center gap-2 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors"
                     style={rowStyle(duesCols)}
@@ -907,9 +940,17 @@ const GroupSessionsPage: React.FC = () => {
                             it belongs to the member's identity, and folding it
                             in returns that width to the money columns. */}
                         <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
-                          <Pill label={`${planLabel(r.plan)}${r.instalments ? ` ×${r.instalments}` : ''}`} accent={planColor(r.plan)} />
+                          <span title={r.plan_source === 'derived' ? 'Plan inferred from instalment spacing — not recorded on the contract' : undefined}>
+                            <Pill
+                              label={`${planLabel(r.plan)}${r.instalments ? ` ×${r.instalments}` : ''}${r.plan_source === 'derived' ? '?' : ''}`}
+                              accent={planColor(r.plan)}
+                            />
+                          </span>
                           <span className="text-[10px] truncate" style={sub}>
                             {r.contract_number || '—'}
+                            {/* Only shown when this contact holds more than one
+                                contract in the window — otherwise it is noise. */}
+                            {duesRepeatContacts.has(r.contact_id) && ` · ${fmtShort(r.start_date)}–${fmtShort(r.end_date)}`}
                             {r.beyond_count > 0 && ` · ${money(r.beyond_total, r.currency)} after Mar`}
                           </span>
                         </div>
@@ -945,12 +986,14 @@ const GroupSessionsPage: React.FC = () => {
               </div>
             </div>
 
-            <Pager page={duesPage} total={filteredDues.length} onPage={setDuesPage} noun="members" />
+            <Pager page={duesPage} total={filteredDues.length} onPage={setDuesPage} noun={memberCount === filteredDues.length ? 'members' : 'contracts'} size={DUES_PAGE_SIZE} />
 
             <p className="text-[11px] mt-3" style={sub}>
               Read from each member's billing schedule, so a cell shows which month a payment actually covered —
               the contract-level invoice only carries a running total and cannot.
-              {duesTotals.beyondMembers > 0 && ` ${duesTotals.beyondMembers} member${duesTotals.beyondMembers > 1 ? 's have' : ' has'} ${sumMoney(duesTotals.beyond)} of instalments falling after ${fmtDate(duesQuery.data?.fy_end)} — shown under the member's name, not in the grid.`}
+              {duesTotals.beyondMembers > 0 && ` ${duesTotals.beyondMembers} contract${duesTotals.beyondMembers > 1 ? 's carry' : ' carries'} ${sumMoney(duesTotals.beyond)} of instalments falling after ${fmtDate(duesQuery.data?.fy_end)} — shown under the member's name, not in the grid.`}
+              {duesOutOfWindow.length > 0 && ` ${duesOutOfWindow.length} further active contract${duesOutOfWindow.length > 1 ? 's belong' : ' belongs'} to another financial year and ${duesOutOfWindow.length > 1 ? 'are' : 'is'} not counted here.`}
+              {' '}One row per contract, not per member — a member holds two during a renewal, and both are shown.
             </p>
           </>
         )}
