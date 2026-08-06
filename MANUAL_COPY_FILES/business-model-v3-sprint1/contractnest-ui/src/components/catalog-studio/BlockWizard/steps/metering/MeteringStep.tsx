@@ -40,8 +40,8 @@ interface MeteringStepProps {
     meteringMode?: MeteringMode;
     /** Per-channel credit grants, keyed by the LOV sub_cat_name. */
     meteringGrants?: Record<string, number>;
-    /** Resource caps for the billing period. null/absent = unlimited. */
-    meteringLimits?: Record<string, number | null>;
+    /** What the plan may CREATE. Absent or blank = 0, never unlimited. */
+    meteringLimits?: Record<string, number>;
     /** Tenant-context flag to switch on, e.g. addon_vani_ai. */
     meteringFlag?: string;
   };
@@ -64,7 +64,7 @@ const MODES: Array<{
     id: 'limit',
     label: 'Limit',
     icon: Wallet,
-    description: 'Cap what the tenant may create in the billing period.',
+    description: 'How many contracts or RFQs this plan may create. Blank is 0, not unlimited.',
   },
   {
     id: 'one_time',
@@ -80,15 +80,17 @@ const MODES: Array<{
   },
 ];
 
-// Limits are resources, not channels, so they are a fixed set — they map to
-// real columns on t_tenant_context rather than to LOV rows.
+// Only CREATION is billed, so only creation is capped. The product charges
+// the party that creates a contract or an RFQ; the counterparty consumes it
+// for free, and contacts / users / templates are not chargeable events, so
+// they carry no cap at all.
+//
+// Contracts is the seller's meter, RFQs is the buyer's — only a buyer raises
+// an RFQ. A seller-side plan therefore sets Contracts and leaves RFQs at 0,
+// and a buyer-side plan does the reverse.
 const LIMIT_FIELDS = [
-  { key: 'contracts', label: 'Contracts' },
-  { key: 'rfqs', label: 'RFQs' },
-  { key: 'contacts', label: 'Contacts' },
-  { key: 'templates', label: 'Templates' },
-  { key: 'users', label: 'Users' },
-  { key: 'storage_mb', label: 'Storage (MB)' },
+  { key: 'contracts', label: 'Contracts', hint: 'seller — contracts this plan may create' },
+  { key: 'rfqs', label: 'RFQs', hint: 'buyer — RFQs this plan may raise' },
 ];
 
 const FLAGS = [
@@ -136,10 +138,18 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
 
   const setLimit = (limitKey: string, raw: string) => {
     const next = { ...limits };
-    // Blank means unlimited, which is NULL on t_tenant_context — never 0, and
-    // never a large sentinel. A sentinel would still trip near-limit warnings
-    // and would eventually run out.
-    next[limitKey] = raw === '' ? null : Number(raw);
+    // Blank means ZERO, not unlimited. There is no unlimited plan — every plan
+    // states exactly what it may create, and t_tenant_context keeps the
+    // balance sheet (granted vs consumed) against that number. Leaving RFQs
+    // blank on a seller plan therefore means "may not raise RFQs", which is
+    // the intent; treating blank as unlimited would have silently handed every
+    // seller unlimited RFQs.
+    //
+    // NULL on t_tenant_context.limit_* is reserved for the exempt platform
+    // tenant (billing_mode='exempt') and is never written from this screen.
+    const value = raw === '' ? 0 : Number(raw);
+    if (Number.isNaN(value) || value < 0) return;
+    next[limitKey] = value;
     onChange('meteringLimits', next);
   };
 
@@ -262,22 +272,25 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
       {mode === 'limit' && (
         <div>
           <h3 className="text-base font-semibold mb-1" style={labelStyle}>
-            Caps for the billing period
+            What this plan may create
           </h3>
           <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
-            Each cap is set separately. Leave one blank for unlimited. Counting starts when
-            the contract activates.
+            Only creation is billed, so only creation is capped — the counterparty
+            views and uses the record for free. Blank means <strong>0</strong>, not
+            unlimited: a seller plan leaves RFQs at 0, a buyer plan leaves Contracts
+            at 0. Counting starts when the contract activates.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {LIMIT_FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="block text-sm font-medium mb-2" style={labelStyle}>
+                <label className="block text-sm font-medium mb-1" style={labelStyle}>
                   {f.label}
                 </label>
+                <p className="text-xs mb-2" style={{ color: colors.textSecondary }}>{f.hint}</p>
                 <input
                   type="number"
                   min="0"
-                  placeholder="Unlimited"
+                  placeholder="0"
                   value={limits[f.key] ?? ''}
                   onChange={(e) => setLimit(f.key, e.target.value)}
                   className={inputClass}

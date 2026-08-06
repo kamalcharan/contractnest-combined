@@ -316,3 +316,33 @@ wizard alike. cat-blocks handleCreateBlock still has no server-side
 check, so a direct API call carrying the metering block_type_id would
 succeed for a non-platform tenant. Worth closing before this is real
 money, but it is not a change I made unasked.
+
+───────────────────────────────────────────────────
+6. CORRECTION — blank means 0, not unlimited
+───────────────────────────────────────────────────
+FILES: .../BlockWizard/steps/metering/MeteringStep.tsx
+       .../utils/catalog-studio/catBlockAdapter.ts
+
+MeteringStep was built on "blank = NULL = unlimited". That is wrong. Owner
+ruling: there is no unlimited plan. Every plan states exactly what it may
+create and t_tenant_context keeps the balance sheet (granted vs consumed)
+against that number — it is the consumption orchestrator.
+
+  - blank now writes 0, not null
+  - placeholder "Unlimited" -> "0"
+  - meteringLimits type Record<string, number | null> -> Record<string, number>
+  - LIMIT_FIELDS cut from 6 fields to 2: Contracts and RFQs
+
+Why only two: the product bills the party that CREATES. The counterparty
+consumes the contract or RFQ for free, so consumption is never capped, and
+contacts / users / templates are not chargeable events and carry no cap.
+Contracts is the seller's meter; RFQs is the buyer's, because only a buyer
+raises an RFQ. A seller plan sets Contracts and leaves RFQs at 0; a buyer
+plan does the reverse.
+
+This matters: under the old reading, leaving RFQs blank on a seller plan
+would have granted every seller UNLIMITED RFQs.
+
+NULL on t_tenant_context.limit_* is now reserved for the exempt platform
+tenant (billing_mode='exempt', migration 015) and is never written from
+this screen.

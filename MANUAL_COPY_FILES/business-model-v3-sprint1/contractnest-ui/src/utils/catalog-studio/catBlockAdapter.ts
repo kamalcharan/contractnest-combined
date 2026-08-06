@@ -163,7 +163,7 @@ export const catBlockToBlock = (catBlock: CatBlock): Block => {
       // values on edit, same fallback convention as the Group Session fields.
       meteringMode: (config.metering as { mode?: string } | undefined)?.mode,
       meteringGrants: (config.metering as { grants?: Record<string, number> } | undefined)?.grants,
-      meteringLimits: (config.metering as { limits?: Record<string, number | null> } | undefined)?.limits,
+      meteringLimits: (config.metering as { limits?: Record<string, number> } | undefined)?.limits,
       meteringFlag: (config.metering as { flag?: string } | undefined)?.flag,
       bufferTime: config.buffer || config.bufferTime,
       location: config.location,
@@ -395,15 +395,20 @@ const buildServiceConfig = (block: Partial<Block>): Record<string, unknown> => {
   // Grant keys are the notification_channels LOV sub_cat_name values
   // (whatsapp / email / sms / inapp) and must stay in step with
   // t_bm_credit_balance.channel and t_tenant_context.credit_grant_rates.
+  //
+  // limits are CREATION caps only (contracts for a seller, rfqs for a buyer),
+  // and 0 is a real value meaning "may not create any" — never a stand-in for
+  // unlimited. There is no unlimited plan; t_tenant_context holds the balance
+  // sheet of granted vs consumed against these numbers.
   const meteringMode = getField(block, 'meteringMode') as string | undefined;
   const meteringGrants = getField(block, 'meteringGrants') as Record<string, number> | undefined;
-  const meteringLimits = getField(block, 'meteringLimits') as Record<string, number | null> | undefined;
+  const meteringLimits = getField(block, 'meteringLimits') as Record<string, number> | undefined;
   const meteringFlag = getField(block, 'meteringFlag') as string | undefined;
   const existingMetering = (block.config as Record<string, unknown> | undefined)?.metering as
     {
       mode?: string;
       grants?: Record<string, number>;
-      limits?: Record<string, number | null>;
+      limits?: Record<string, number>;
       flag?: string;
     } | undefined;
 
