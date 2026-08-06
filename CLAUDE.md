@@ -632,7 +632,56 @@ The first real batch (3-days-out for the 8 Aug occurrence) went out and exposed 
 
 **Block renamed** Saturday Cadence → Saturday Network Meeting across 6 live locations (95 values). `n_jtd.template_variables` and `t_idempotency_keys` deliberately left on the old name — history and transient cache.
 
-### OPEN — BBB meeting-fee structure: contracts hold net ₹18,000, circular says list ₹19,500 (raised 2026-08-04)
+### Group Sessions → Dues tab, and Finance now agrees with it (2026-08-06)
+New **Dues** tab on Operations → Group Sessions: every active contract carrying the block × every month of the April–March year, amount + paid/in-arrears/not-yet-due, with CSV. Backed by `gs_dues_matrix` (migration 060).
+
+Three things worth knowing before touching it:
+- **One row per CONTRACT, not per contact.** `gs_dash_roster` collapses with `DISTINCT ON (buyer_id)` — right for "who is in the room", wrong for money, because across a renewal a contact holds both the outgoing and incoming contract. `in_window` flags a contract with nothing billing inside the displayed year so the caller can list it separately instead of padding the grid.
+- **Instalments outside the window** are returned as `beyond_total`/`beyond_count`, never dropped.
+- **"Today" is IST**, per the migration 048 correction.
+
+**Migration 064 confirmed the 048 warning was right.** `get_tenant_receivables`, `get_tenant_payables`, `get_contact_cockpit_summary` and `get_vani_briefing` were all still deciding overdue-ness with bare `CURRENT_DATE` — **42 occurrences across the four** — so for 5½ hours every IST day Finance believed it was yesterday. All now IST. 064 also gave Finance and the Dues grid **one shared definition of "open"** (they previously disagreed: FIFO-allocated invoice cash vs event status).
+
+Migration 065 adds `is_group_session` to receivables events so `/ops/finance` can filter group-session fees from the rest. It tests the **contract** (any block with `config.audience='group'`), deliberately **not** `block_name` — billing events hang off the FEE block, so on BBB every event reads "BBB Yearly Cadance workout" and the group block never appears.
+
+### DONE 2026-08-06 — BBB restated to ₹19,500 gross with plan discounts (raised 2026-08-04, superseded below)
+Everything in the section that follows described the pre-restatement state. It has been **carried out** — migrations 061–065, all applied live and merged to `main`. Read this box first; the original analysis is kept underneath because the two open arithmetic questions it raised are still open.
+
+| | |
+|---|---|
+| Contracts | 49 · gross **₹9,33,000** − discounts **₹13,500** = net **₹9,19,500** |
+| Discounts | quarterly 375 ×10 · half-yearly 750 ×7 · yearly 1,500 ×3 · monthly nil. `discount_type='amount'` (the product's enum is `'percent' \| 'amount'` — **not** `'fixed'`) |
+| Billing events | rebuilt to sum ₹9,19,500; **every receipted rupee left untouched** — paid still ₹3,13,500 |
+| Invoices | restated in step; all 49 verified individually, zero mismatches (invoice total = grand_total = Σ events, balance recomputes) |
+| End dates | all 49 now **31 Mar 2027**. Nothing bills past that date |
+| Mid-year joiners | CN-1045 Ajay, CN-1046 Dr Ramanathan, CN-1049 Pavan → **₹13,500** pro-rata each (Pavan was ₹12,000) |
+| Deliberately untouched | CN-1024 Patron, CN-1026 Nishikant, CN-1047 Bhushana — left at ₹18,000 on owner instruction ("leave alone right now") |
+| `billing_cycle_type` | left as `'mixed'` on owner instruction. It means unified-vs-per-block billing, **not** a payment frequency — do not read it as one |
+
+Plan frequency is now stored in `t_contracts.metadata.billing_plan`; `gs_dues_matrix` prefers it and falls back to inferring from instalment spacing, reporting which via `plan_source`.
+
+**STILL OPEN — the two arithmetic questions below were never resolved, and the restatement made the first one sharper**: every contract now says ₹19,500, but the schedule still holds **25** meetings (11 Apr 2026 → 20 Mar 2027). ₹19,500 ÷ 25 = **₹780**, not the circular's ₹750. Either a 26th meeting is added (the 21-day gap 23 May → 13 Jun is the obvious slot) or ₹750 is the wrong rate. This also feeds the joiners' ₹13,500, which was computed at ₹750.
+
+### OPEN — guest session payments have nowhere to post (raised 2026-08-06)
+A guest can declare a payment at check-in, and `gs_pending_declarations` does surface it to the chair (it emits `is_guest_fee` = `billing_event_id IS NULL`). But **`gs_confirm_declaration` has no branch for a null billing event** — it posts to `t_invoices` and `amount_settled`, both of which require one. So a confirmed guest fee lands nowhere and never reaches "total collected".
+
+The obvious fix — a standalone receivable — is blocked by the schema: **`t_invoices.contract_id` is NOT NULL**, and `get_tenant_receivables` is built on `t_invoices JOIN t_contracts`. Every invoice in the system today is tied to a real contract; there is no ad-hoc receivable concept anywhere.
+
+**Owner decision (2026-08-06): deferred.** The product is due to gain contract-less invoice generation, and this should stabilise on that rather than grow a parallel mechanism first. Until then guest payments stay **orphaned** — declarable, confirmable by the chair, but not reconciled into receivables.
+
+**Current state**: zero guest declarations exist on BBB, so this has never fired live. Also found: a **stale 10-argument `gs_checkin_guest` overload** still exists alongside the current 12-argument one (the old one has no payment support at all). The API sends all 12 args so resolution is correct today, but the old overload should be dropped before it resolves by accident.
+**When to revisit**: when contract-less invoices ship. Then decide whether a guest fee becomes one of those, and add the null-billing-event branch to `gs_confirm_declaration`.
+
+### Check-in was fabricating payment declarations from a button tap (found + fixed 2026-08-06)
+`hasMemberPaymentIntent` was `!!payEventId && (paymentAttempted || !!upiRef)`. Tapping **"Open UPI app"** set `paymentAttempted`, and that alone counted as intent to pay — while **"Skip for now — continue to check-in"** set `paymentStepDone` without ever clearing it. So leaving for the UPI app and then skipping, or simply returning empty-handed, recorded a declaration for money that never moved.
+
+**Live damage**: **29 of the first 33 declarations carry no UPI reference at all** — 19 rejected by the chair by hand, 4 still pending, **6 confirmed (₹12,000)**. Only 4 declarations in total have a reference.
+
+**Fix**: intent is now a reference actually being entered. `paymentAttempted` still drives the come-back nudge but no longer fabricates a payment. Added a "Did you pay?" gate on continuing after leaving for the UPI app with nothing entered — *No* clears the attempt, attendance still records.
+
+**Also found, not yet fixed — same-day duplicate declarations.** Migration 052 added partial unique indexes, but they are scoped to `status = 'pending'`, so once a declaration is confirmed or rejected nothing stops another for the same due; and `ON CONFLICT DO NOTHING` discards the second **silently**, so the member believes it recorded. Live: Bharat Kumar Mangipudi has two with the *identical* reference `074747724582` (chair caught it); **Dr Srinivas Medepalli has two both CONFIRMED at ₹1,500 on 25 Jul** — possibly ₹1,500 credited twice. Treasurer has been asked to confirm. Owner wants an alert telling the member to speak to the chair, keyed on same member + same billing event in **any** status, plus a louder warning on a duplicate UPI reference (the only definitive proof).
+
+### OPEN — BBB meeting-fee structure: contracts hold net ₹18,000, circular says list ₹19,500 (raised 2026-08-04 — SUPERSEDED, see the DONE box above)
 BBB's *Meeting Fee Information FY 2026-27* circular prices **26 meetings at ₹750 each = ₹19,500 list**, with a discount that normalises every payment frequency to **₹18,000 net**:
 
 | Frequency | Actual | Discount | Payable | ×periods = net/yr |
@@ -645,7 +694,7 @@ BBB's *Meeting Fee Information FY 2026-27* circular prices **26 meetings at ₹7
 **Current live state**: all 48 active Saturday contracts carry `total_value = grand_total = 18,000` with `discount_type`, `discount_value`, `discount_total` all **NULL** — the net is booked as if it were the list price, so the ₹19,500 gross and the ₹1,500 concession are invisible in the system. (One further contract sits at ₹12,000 / quantity 17 — a mid-year joiner.) Billing events already spread correctly: 18 contracts × 12 × ₹1,500 monthly, 31 contracts × 4 × ₹4,500 quarterly. **Cash collected is correct; only the gross/discount representation is missing.**
 
 **Second discrepancy, same circular**: it states **26 meetings**, but `t_group_session_schedule` holds **25** occurrences (11 Apr 2026 → 20 Mar 2027) and contract `quantity` is likewise 25. The arithmetic points at 26 being right — 19,500 ÷ 26 = **₹750 exactly**, whereas 18,000 ÷ 25 = ₹720 and 19,500 ÷ 25 = ₹780. The schedule also contains one irregular **21-day gap** (23 May → 13 Jun 2026) where every other interval is 14 days, which both loses a meeting and shifts the fortnightly phase by a week.
-**When to revisit**: next session. Decide (a) whether contracts should be restated to list ₹19,500 + ₹1,500 discount = ₹18,000 net, or left at net-only; (b) whether the missing 26th meeting is added to the schedule (and if so, where — 4 Apr 2026 at the start, or closing the 23 May → 13 Jun gap); (c) whether contract `quantity` moves 25 → 26. Note any schedule change ripples into the notification cohorts and the "missed the last two" absentee logic. Nothing has been changed — this is analysis only.
+**When to revisit**: (a) is **done** — contracts were restated to ₹19,500 gross with plan discounts (see the DONE box above). (b) and (c) remain open: whether the missing 26th meeting is added to the schedule (and if so, where — 4 Apr 2026 at the start, or closing the 23 May → 13 Jun gap), and whether contract `quantity` moves 25 → 26. Note any schedule change ripples into the notification cohorts and the "missed the last two" absentee logic.
 
 ---
 
