@@ -71,29 +71,32 @@ Verified against live BBB immediately after applying:
   313500 + 111000 + 451500 = 876000 ✓
 
 ═══════════════════════════════════════════════════
-⚠️ READ THIS BEFORE COPYING serviceURLs.ts
+ℹ️ serviceURLs.ts — copy it, no hand edit needed
 ═══════════════════════════════════════════════════
-The checked-out copy of serviceURLs.ts is BEHIND the deployed build. It was
-missing OCC_ASSIGN and OCC_ASSIGN_DEFAULT even though
-useGroupSessionsDashboard.ts calls both — the repo copy did not compile
-against its own hook. Same repo-drift pattern as the jtd-worker last week.
+An earlier draft of this file asked for three lines to be pasted in by hand.
+That is NOT necessary. Diffed against origin/main, the batch copy of
+serviceURLs.ts differs by exactly NINE ADDED LINES and nothing else — zero
+lines removed, zero modified:
 
-I added those two keys back (matching the live routes) as well as DUES, so the
-file in this batch is now self-consistent. But if YOUR local copy has other
-newer keys I cannot see, a whole-file overwrite would delete them.
+    + OCC_ASSIGN            (4 comment lines + 1 code line)
+    + OCC_ASSIGN_DEFAULT    (1 code line)
+    + DUES                  (2 code lines)
 
-SAFEST PATH — add three entries by hand instead of copying the file.
-In src/services/serviceURLs.ts, inside API_ENDPOINTS.GROUP_SESSIONS, next to
-ROSTER, paste:
+OCC_ASSIGN and OCC_ASSIGN_DEFAULT were already being CALLED by
+useGroupSessionsDashboard.ts but were missing from this file, so the repo copy
+did not compile against its own hook — the same repo-drift pattern as the
+jtd-worker. Adding them back is a fix, not a risk.
 
-    OCC_ASSIGN: (id: string) => `/api/group-sessions/occurrence/${id}/assign`,
-    OCC_ASSIGN_DEFAULT: (blockId: string) => `/api/group-sessions/occurrences/${blockId}/assign-default`,
-    DUES: (blockId: string, fyStart?: string | null) =>
-      `/api/group-sessions/dues/${blockId}${fyStart ? `?fy=${fyStart}` : ''}`,
+All seven files are safe to copy whole.
 
-(If OCC_ASSIGN / OCC_ASSIGN_DEFAULT are already there, add only DUES.)
+ONE CHECK, worth ten seconds: if you have your OWN uncommitted edits sitting
+in serviceURLs.ts right now, a copy would discard them. Confirm you don't:
 
-The other five source files are safe to copy whole — they are additive.
+    cd contractnest-ui
+    git status --short src/services/serviceURLs.ts
+    cd ..
+
+No output = clean, copy away. If it prints a line, stash or commit first.
 
 ═══════════════════════════════════════════════════
 ✅ ALSO PUSHED TO THE PRODUCT REPOS — you can pull instead of copying
@@ -124,19 +127,17 @@ STEP 1: Navigate to Project
 ─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-STEP 2: Copy Files
+STEP 2: Copy Files — all seven, no hand edits
 ─────────────────────────────────
-# API — safe whole-file copies
-Copy-Item "MANUAL_COPY_FILES\bbb-fee-restructure\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+$B = "MANUAL_COPY_FILES\bbb-fee-restructure"
 
-# UI — hook + page (safe), then serviceURLs.ts BY HAND per the ⚠️ above
-Copy-Item "MANUAL_COPY_FILES\bbb-fee-restructure\contractnest-ui\src\hooks\*" -Destination "contractnest-ui\src\hooks\" -Recurse -Force
-Copy-Item "MANUAL_COPY_FILES\bbb-fee-restructure\contractnest-ui\src\pages\*" -Destination "contractnest-ui\src\pages\" -Recurse -Force
+Copy-Item "$B\contractnest-api\src\*"      -Destination "contractnest-api\src\"      -Recurse -Force
+Copy-Item "$B\contractnest-ui\src\*"       -Destination "contractnest-ui\src\"       -Recurse -Force
+Copy-Item "$B\contractnest-edge\supabase\*" -Destination "contractnest-edge\supabase\" -Recurse -Force
 
-# Edge — migration file, for the record only (already applied to live)
-Copy-Item "MANUAL_COPY_FILES\bbb-fee-restructure\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+git submodule foreach 'git status --short'   # expect exactly 7 files touched
 
-Write-Host "✅ Files copied — now edit serviceURLs.ts by hand" -ForegroundColor Green
+Write-Host "✅ All files copied" -ForegroundColor Green
 
 STEP 3: Start Dev Servers & Test
 ─────────────────────────────────
