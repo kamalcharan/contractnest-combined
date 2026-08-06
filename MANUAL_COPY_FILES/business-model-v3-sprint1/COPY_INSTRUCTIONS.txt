@@ -260,6 +260,36 @@ NOT deleted, deliberately:
 With fix #2 deployed, none of these appear in the platform tenant's
 Templates hub any more — they were never Vikuna's to begin with.
 
+───────────────────────────────────────────────────
+5. UI — a price of 0 could not be entered
+───────────────────────────────────────────────────
+FILE: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+
+    value={record.amount || ''}      // 0 || '' === ''
+
+0 is falsy, so typing a 0 blanked the field on the next render. The value
+was being stored — the input simply refused to display it, so a genuinely
+free item (a Freemium plan, a zero-rated Credit Pack) could not be priced.
+Four occurrences: total price, cadence rate, resource price, variant price.
+Changed to `?? ''`, which only falls back when the value is null/undefined.
+
+Nothing downstream had to change — verified:
+  - catBlockAdapter does no amount>0 filtering
+  - cat-blocks edge has no amount guard
+  - the API validator (catalogHelpers.isValidPriceAmount) rejects only
+    `num < 0`, so 0 was always accepted server-side despite its comment
+    saying "positive number"
+
+NOTE, not changed: BlockWizardContent.validateStep still requires
+`amount > 0` for service / spare blocks. Metering blocks are unaffected —
+validateStep has no 'metering' branch, so a Credit Pack can be saved at 0.
+Service blocks already have their own answer for free items, the
+`complimentary` flag, which short-circuits every pricing check. Left alone
+rather than widened unasked.
+
+    Copy-Item "$SRC\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" `
+              -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Force
+
 ═══════════════════════════════════════════════════
 TESTING CHECKLIST — ADDENDUM
 ═══════════════════════════════════════════════════
@@ -273,6 +303,8 @@ TESTING CHECKLIST — ADDENDUM
        (chips with count 0 are hidden). Vikuna has 0 blocks right now, so
        author a Credit Pack in catalog-studio first, then re-check.
 [ ] Ordinary tenant -> same step -> NO "Credit Packs" chip
+[ ] Catalog-studio -> any block -> Pricing -> type 0 -> field SHOWS 0
+       (was blanking instantly) and the wizard saves at 0
 [ ] /service-contracts/templates and .../designer still load
 [ ] /contracts/create/client — contract wizard unaffected
 
