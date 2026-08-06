@@ -158,9 +158,19 @@ const FinancePage: React.FC = () => {
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [allEvents]);
 
-  // Only worth offering the group/direct split when the tenant has both kinds.
-  const hasBothAudiences = useMemo(
-    () => allEvents.some((e) => e.is_group_session) && allEvents.some((e) => !e.is_group_session),
+  // Offered as soon as the tenant runs ANY group session.
+  //
+  // This deliberately does NOT require the tenant to have both kinds. That was
+  // the first rule here and it was wrong: a chapter whose every contract is a
+  // membership fee saw no control at all, so there was no way to confirm the
+  // split even exists, and the counts below could not be read as "of which
+  // group sessions". Hidden only where there is genuinely nothing to split.
+  const hasGroupSessions = useMemo(
+    () => allEvents.some((e) => e.is_group_session),
+    [allEvents]
+  );
+  const groupEventCount = useMemo(
+    () => allEvents.filter((e) => e.is_group_session).length,
     [allEvents]
   );
 
@@ -523,11 +533,10 @@ const FinancePage: React.FC = () => {
                   Overdue only{overdueOnly ? ' ×' : ''}
                 </button>
 
-                {/* Group-session fees vs ordinary receivables. Rendered only
-                    when the tenant actually has both — a single-line dropdown
-                    offering a choice that cannot change anything is just noise
-                    on the many tenants that run no group sessions at all. */}
-                {hasBothAudiences && (
+                {/* Group-session fees vs ordinary receivables. Shown wherever
+                    the tenant runs any group session — the counts tell you at a
+                    glance how much of the book is membership fees. */}
+                {hasGroupSessions && (
                   <select
                     value={audienceFilter}
                     onChange={(e) => { setAudienceFilter(e.target.value as 'all' | 'group' | 'direct'); setWorklistPage(1); }}
@@ -535,9 +544,9 @@ const FinancePage: React.FC = () => {
                     style={{ ...chipStyle(audienceFilter !== 'all'), backgroundColor: audienceFilter !== 'all' ? colors.brand.primary + '14' : colors.utility.primaryBackground }}
                     aria-label="Filter by group session or direct"
                   >
-                    <option value="all">All receivables</option>
-                    <option value="group">Group sessions</option>
-                    <option value="direct">Non group sessions</option>
+                    <option value="all">All receivables · {allEvents.length}</option>
+                    <option value="group">Group sessions · {groupEventCount}</option>
+                    <option value="direct">Non group sessions · {allEvents.length - groupEventCount}</option>
                   </select>
                 )}
 
