@@ -101,6 +101,7 @@ BEGIN
                'contract_name',   m.contract_name,
                'start_date',      m.start_date,
                'end_date',        m.end_date,
+               'currency',        m.currency,
                'plan',            m.plan,
                'instalments',     m.instalments,
                'contract_value',  m.contract_value,
@@ -123,6 +124,11 @@ BEGIN
                  c.name            AS contract_name,
                  c.start_date,
                  c.end_date,
+                 -- Currency is the CONTRACT's, carried per row rather than
+                 -- assumed for the tenant: t_contracts.currency is per contract
+                 -- and the UI must not print ₹ against a contract booked in
+                 -- anything else.
+                 coalesce(c.currency, 'INR')                   AS currency,
                  coalesce(c.total_value, 0)                    AS contract_value,
                  coalesce(c.discount_total, 0)                 AS discount,
                  coalesce(c.grand_total, c.total_value, 0)     AS net,

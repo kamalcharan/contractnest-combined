@@ -119,6 +119,8 @@ export interface GsDuesRow {
   contract_name: string | null;
   start_date: string | null;
   end_date: string | null;
+  /** The CONTRACT's currency, per row — not a tenant-wide assumption. */
+  currency: string;
   /** Derived from the spacing of this member's own billing events, NOT from
    * t_contracts.billing_cycle_type — that column reads 'mixed' on every BBB
    * contract, so trusting it would label everybody "Mixed". */
