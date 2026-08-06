@@ -121,6 +121,49 @@ cross-tenant template leak, dead-folder removal
 ═══════════════════════════════════════════════════
 
 ───────────────────────────────────────────────────
+0. COPY COMMANDS — run these first (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+$SRC = "MANUAL_COPY_FILES\business-model-v3-sprint1"
+
+# --- contractnest-ui : the one changed file in this step -------------
+Copy-Item "$SRC\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" `
+          -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+
+# --- contractnest-edge : the leak fix --------------------------------
+Copy-Item "$SRC\contractnest-edge\supabase\functions\cat-templates\index.ts" `
+          -Destination "contractnest-edge\supabase\functions\cat-templates\index.ts" -Force
+
+# --- earlier Sprint-1 UI files (skip any you already copied) ---------
+Copy-Item "$SRC\contractnest-ui\src\*" -Destination "contractnest-ui\src\" -Recurse -Force
+
+Write-Host "Files copied" -ForegroundColor Green
+
+# --- verify the two fixes actually landed ----------------------------
+Select-String -Path "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Pattern "key: 'metering'"
+Select-String -Path "contractnest-edge\supabase\functions\cat-templates\index.ts" -Pattern "allTenantsView"
+# expect 1 hit and 2 hits respectively
+
+# --- delete the two unrouted trees -----------------------------------
+cd contractnest-ui
+git rm -r src/pages/contracts/create/templates
+git rm -r src/pages/templates
+cd ..
+
+# --- deploy the edge fix ---------------------------------------------
+cd contractnest-edge
+supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+cd ..
+# expect v20, verify_jwt stays true
+
+# --- rebuild & test ---------------------------------------------------
+cd contractnest-ui
+npm run build
+npm run dev
+# then hard-refresh the browser: Ctrl+F5
+
+───────────────────────────────────────────────────
 1. UI — Credit Pack blocks are now pickable
 ───────────────────────────────────────────────────
 FILE: contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
