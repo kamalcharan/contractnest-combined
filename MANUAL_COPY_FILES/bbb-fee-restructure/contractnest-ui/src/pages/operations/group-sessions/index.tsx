@@ -67,6 +67,11 @@ type RosterFilter = 'all' | 'overcap' | 'dues';
 type AttFilter = 'all' | 'present' | 'absent';
 
 const PAGE_SIZE = 10;
+// Dues pages deeper than the other tables on purpose. It is the one view read
+// as a whole — a chair scans the year's collection position across the roster,
+// so 10 rows at a time turns one question into five page turns. The other
+// tables stay at 10; this is not a page-wide change.
+const DUES_PAGE_SIZE = 50;
 
 // Table column templates (product-wide list pattern)
 const GROUPS_COLS = 'minmax(200px,1.6fr) 90px 110px 90px minmax(120px,1fr) 100px 32px';
@@ -333,8 +338,10 @@ const GroupSessionsPage: React.FC = () => {
     backgroundColor: active ? colors.brand.primary + '14' : 'transparent',
     color: active ? colors.utility.primaryText : colors.utility.secondaryText,
   });
-  const Pager = ({ page, total, onPage, noun }: { page: number; total: number; onPage: (p: number) => void; noun: string }) => {
-    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // `size` is optional and defaults to PAGE_SIZE, so every existing caller
+  // keeps its current behaviour untouched.
+  const Pager = ({ page, total, onPage, noun, size = PAGE_SIZE }: { page: number; total: number; onPage: (p: number) => void; noun: string; size?: number }) => {
+    const pages = Math.max(1, Math.ceil(total / size));
     if (pages <= 1) return null;
     const cur = Math.min(page, pages);
     return (
@@ -363,10 +370,10 @@ const GroupSessionsPage: React.FC = () => {
       </div>
     );
   };
-  const pageSlice = <T,>(rows: T[], page: number): T[] => {
-    const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pageSlice = <T,>(rows: T[], page: number, size: number = PAGE_SIZE): T[] => {
+    const pages = Math.max(1, Math.ceil(rows.length / size));
     const cur = Math.min(page, pages);
-    return rows.slice((cur - 1) * PAGE_SIZE, cur * PAGE_SIZE);
+    return rows.slice((cur - 1) * size, cur * size);
   };
 
   // NOTE: the shared ui/Card accepts ONLY className/children — it silently
@@ -890,7 +897,7 @@ const GroupSessionsPage: React.FC = () => {
                   ))}
                 </div>
 
-                {pageSlice(filteredDues, duesPage).map((r) => (
+                {pageSlice(filteredDues, duesPage, DUES_PAGE_SIZE).map((r) => (
                   <div
                     key={r.contact_id}
                     onClick={() => r.contract_id && navigate(`/contracts/${r.contract_id}`)}
@@ -945,7 +952,7 @@ const GroupSessionsPage: React.FC = () => {
               </div>
             </div>
 
-            <Pager page={duesPage} total={filteredDues.length} onPage={setDuesPage} noun="members" />
+            <Pager page={duesPage} total={filteredDues.length} onPage={setDuesPage} noun="members" size={DUES_PAGE_SIZE} />
 
             <p className="text-[11px] mt-3" style={sub}>
               Read from each member's billing schedule, so a cell shows which month a payment actually covered —
