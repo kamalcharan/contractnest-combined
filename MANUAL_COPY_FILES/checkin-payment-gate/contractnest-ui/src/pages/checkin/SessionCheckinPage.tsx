@@ -848,6 +848,21 @@ const SessionCheckinPage: React.FC = () => {
     }
     return (
       <div style={{ marginTop: 14, borderTop: `1px solid #F1F1F3`, paddingTop: 14 }}>
+        {/* Shown BEFORE the pay controls, not after. A member who already paid
+            today needs to know that on arrival — warning them only once they
+            have tapped "Open UPI app" is too late to stop the second payment,
+            which is the thing this is here to prevent. */}
+        {declaredTodayForDue && (
+          <div style={{ marginBottom: 12, background: '#FEF3C7', border: '1px solid #F59E0B66', borderRadius: 10, padding: 11 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: '#92400E' }}>You already recorded this today</div>
+            <div style={{ fontSize: 12, color: '#92400E', marginTop: 3, lineHeight: 1.5 }}>
+              A payment of {money(declaredTodayForDue.amount, currency)} for {targetDue?.label} was recorded
+              earlier today{declaredTodayForDue.upi_reference ? ` (ref ${declaredTodayForDue.upi_reference})` : ''}
+              {declaredTodayForDue.status ? `, currently ${declaredTodayForDue.status}` : ''}.
+              You don't need to pay again — please speak to the chair if something looks wrong.
+            </div>
+          </div>
+        )}
         <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink, marginBottom: 8 }}>
           Pay {money(amount, currency)} via your UPI app
         </div>
@@ -926,16 +941,6 @@ const SessionCheckinPage: React.FC = () => {
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Back from paying?</div>
                 <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>
                   Enter your UPI reference below and tap Confirm payment.
-                </div>
-              </div>
-            )}
-            {declaredTodayForDue && (
-              <div style={{ marginBottom: 10, background: '#FEF3C7', border: '1px solid #F59E0B66', borderRadius: 10, padding: 11 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: '#92400E' }}>You already recorded this today</div>
-                <div style={{ fontSize: 12, color: '#92400E', marginTop: 3, lineHeight: 1.5 }}>
-                  A payment of {money(declaredTodayForDue.amount, targetDue?.currency)} for {targetDue?.label} was recorded
-                  earlier today{declaredTodayForDue.upi_reference ? ` (ref ${declaredTodayForDue.upi_reference})` : ''}.
-                  Entering it again will not add to it — please speak to the chair for any correction.
                 </div>
               </div>
             )}
