@@ -346,3 +346,62 @@ would have granted every seller UNLIMITED RFQs.
 NULL on t_tenant_context.limit_* is now reserved for the exempt platform
 tenant (billing_mode='exempt', migration 015) and is never written from
 this screen.
+
+───────────────────────────────────────────────────
+7. Plan catalogue — /businessmodel/tenants/pricing-plans
+───────────────────────────────────────────────────
+The page rendered `fakePricingPlans` from a fixture and its Subscribe button
+navigated to /businessmodel/tenants/pricing-plans/:id/subscribe — a route
+that is not registered anywhere. It was a mock end to end.
+
+Now wired to the real plan catalogue: published contract templates owned by
+the platform tenant. Owner's spec: "show Templates where tenant is admin".
+
+  EDGE  contractnest-edge/supabase/functions/cat-templates/index.ts
+        + GET /plans -> handleGetPlanTemplates
+          · resolves the platform tenant by is_admin FLAG, never a hardcoded
+            uuid (the id differs per environment)
+          · is_active + is_live = caller's env + settings->>lifecycle =
+            'signed_off' (published only, or a half-built plan is purchasable)
+          · derives price/term/limits/grants/flags from the template's own
+            blocks snapshot, so a buying tenant never reads the platform
+            tenant's block rows — it has no right to them
+
+        NOTE this file also carries the cat-templates leak fix (§2). Deploy
+        once and both ship together. Expect v21.
+
+  API   src/types/catalogStudioTypes.ts    + PlanTemplate, PlanTemplateListResponse
+        src/services/catTemplatesService.ts + listPlanTemplates()
+        src/controllers/catalogStudioController.ts + getPlanTemplates
+        src/routes/catalogStudioRoutes.ts   + GET /templates/plans
+          · registered ABOVE /templates/:id — otherwise Express matches
+            "plans" as a template id
+
+  UI    src/services/serviceURLs.ts                     + TEMPLATES.PLANS
+        src/hooks/queries/usePlanTemplates.ts           NEW
+        src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+                                                        rewritten, no fixture
+
+WHY NOT REUSE /system: system templates are `tenant_id IS NULL`, and
+handleGetTemplates already matches those — so publishing plans that way would
+drop "Free", "Quarterly" and the rest into EVERY tenant's own Templates hub,
+mixed in with their contract templates. Same cross-tenant bleed as the
+is_admin bypass. Plans stay owned by the platform tenant, served only here.
+
+SUBSCRIBE IS DISABLED, deliberately. Activation is step 7: create the contact
+from the subscribing tenant's own record (setting source_tenant_id), raise the
+contract under the platform tenant, apply the plan's metering to
+t_tenant_context. Until that exists the button is disabled rather than
+navigating to a route that does not exist.
+
+  Copy-Item "$SRC\contractnest-ui\src\hooks\queries\usePlanTemplates.ts" `
+            -Destination "contractnest-ui\src\hooks\queries\usePlanTemplates.ts" -Force
+  Copy-Item "$SRC\contractnest-ui\src\services\serviceURLs.ts" `
+            -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+  Copy-Item "$SRC\contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" `
+            -Destination "contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Force
+  Copy-Item "$SRC\contractnest-api\src\*" -Destination "contractnest-api\src\" -Recurse -Force
+
+  cd contractnest-edge
+  supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+  cd ../contractnest-api && npm run dev
