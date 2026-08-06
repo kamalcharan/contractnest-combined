@@ -440,22 +440,42 @@ const SessionCheckinPage: React.FC = () => {
   // A due date ("01 Apr 2026") is not what a member is looking for — they want
   // "have I paid April". Same three states and the same colours as Operations →
   // Group Sessions → Dues, so the chair and the member are reading one language.
-  const PAY_COL = { paid: '#2E7D32', due: '#F57C00', future: '#CA8A04' } as const;
+  const PAY_COL = { paid: '#2E7D32', due: '#F57C00' } as const;
   type PayState = keyof typeof PAY_COL;
   const monthShort = (d?: string | null) => {
     if (!d) return '—';
     const dt = new Date(d);
     return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase();
   };
-  // Every instalment, not only the paid ones — the whole year at a glance is
-  // the point. Ordered as the RPC returns them (by scheduled_date).
+  // Arrears: unpaid AND already past its due date. This is what a member owes
+  // today, and it is deliberately NOT the rest of the year — quoting the full
+  // annual figure to someone in August overstates what is due of them.
+  // Identical rule to gs_dues_matrix's due_total and Finance's overdue, so the
+  // member, the chair and the ledger all read the same number.
+  const arrearsDues = useMemo(
+    () => openDues.filter((d) => d.date && istDay(d.date) <= todayIst),
+    [openDues, todayIst]
+  );
+  const arrearsTotal = useMemo(
+    () => arrearsDues.reduce((sum, d) => sum + Number(d.remaining ?? d.amount ?? 0), 0),
+    [arrearsDues]
+  );
+
+  // Up to and including the current month only — months that have not come
+  // round yet are not history, and showing them invites a member to think they
+  // are behind on payments that are not due. So every cell here is either
+  // settled or owed; there is no third state.
   const monthCells = useMemo(
-    () => billingTimeline.map((e) => {
-      const state: PayState = e.status === 'paid'
-        ? 'paid'
-        : (e.date && istDay(e.date) <= todayIst ? 'due' : 'future');
-      return { key: e.event_id, month: monthShort(e.date), amount: e.remaining ?? e.amount, state, label: e.label, date: e.date };
-    }),
+    () => billingTimeline
+      .filter((e) => e.date && istDay(e.date) <= todayIst)
+      .map((e) => ({
+        key: e.event_id,
+        month: monthShort(e.date),
+        amount: e.remaining ?? e.amount,
+        state: (e.status === 'paid' ? 'paid' : 'due') as PayState,
+        label: e.label,
+        date: e.date,
+      })),
     [billingTimeline, todayIst]
   );
 
@@ -1396,7 +1416,7 @@ const SessionCheckinPage: React.FC = () => {
                             ))}
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
-                            {([['paid', 'Paid'], ['due', 'Due'], ['future', 'Upcoming']] as [PayState, string][]).map(([k, lbl]) => (
+                            {([['paid', 'Paid'], ['due', 'Due']] as [PayState, string][]).map(([k, lbl]) => (
                               <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: BRAND.sub }}>
                                 <span style={{ width: 11, height: 11, borderRadius: 4, background: `${PAY_COL[k]}18`, border: `1px solid ${PAY_COL[k]}55` }} />
                                 {lbl}
@@ -1430,23 +1450,25 @@ const SessionCheckinPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* The whole unpaid balance, not just this instalment. A
-                          member who has paid nothing all year sees one month's
-                          figure and thinks that is what they owe — which is how
-                          somebody ends up ₹18,000 behind believing they are
-                          ₹1,500 behind. Only shown when there IS more behind it. */}
-                      {openDues.length > 1 && (
+                      {/* What is owed AS OF TODAY — every instalment already
+                          past its due date and still unpaid. NOT the rest of the
+                          year: a member who has paid nothing by August owes
+                          Apr–Aug, and telling them the full annual figure
+                          overstates what is actually due of them right now.
+                          Same rule the Dues grid and Finance use for arrears
+                          (unpaid AND due date passed), so all three agree.
+
+                          Hidden when only one instalment is overdue, since it
+                          would just repeat the amount directly above. */}
+                      {arrearsDues.length > 1 && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${BRAND.accent}55` }}>
                           <div style={{ fontSize: 12.5, color: BRAND.sub }}>
-                            Total outstanding
-                            <span style={{ color: BRAND.sub }}> · {openDues.length} instalments</span>
+                            Pending till now
+                            <span style={{ color: BRAND.sub }}> · {arrearsDues.length} instalments</span>
                           </div>
                           <div style={{ fontSize: 15, fontWeight: 800, color: BRAND.accentInk }}>
-                            {money(
-                              openDues.reduce((sum, d) => sum + Number(d.remaining ?? d.amount ?? 0), 0),
-                              targetDue.currency
-                            )}
+                            {money(arrearsTotal, targetDue.currency)}
                           </div>
                         </div>
                       )}
