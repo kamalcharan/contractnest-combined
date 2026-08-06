@@ -141,6 +141,11 @@ export interface GsDuesRow {
    * schedule runs past March. Surfaced so the grid never silently loses money. */
   beyond_total: number;
   beyond_count: number;
+  /** False when this contract has no instalment inside the window at all — a
+   * renewal signed for next year, still active but not part of this year's
+   * collection position. Kept in the payload rather than filtered server-side
+   * so the caller can account for it instead of wondering where it went. */
+  in_window: boolean;
   cells: Record<string, GsDuesCell | undefined>;
 }
 
