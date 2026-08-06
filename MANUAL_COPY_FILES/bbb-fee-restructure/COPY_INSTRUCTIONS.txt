@@ -96,7 +96,28 @@ ROSTER, paste:
 The other five source files are safe to copy whole — they are additive.
 
 ═══════════════════════════════════════════════════
-💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+✅ ALSO PUSHED TO THE PRODUCT REPOS — you can pull instead of copying
+═══════════════════════════════════════════════════
+The same code is now committed to a branch in each submodule repo:
+
+    contractnest-ui    claude/group-session-dues-matrix   719d9de
+    contractnest-api   claude/group-session-dues-matrix   2424284
+    contractnest-edge  claude/group-session-dues-matrix   f21f523
+
+Pulling is the better path — it avoids the serviceURLs.ts overwrite hazard
+below entirely, because git merges rather than replaces.
+
+    cd contractnest-ui   ; git fetch origin ; git checkout claude/group-session-dues-matrix ; cd ..
+    cd contractnest-api  ; git fetch origin ; git checkout claude/group-session-dues-matrix ; cd ..
+    cd contractnest-edge ; git fetch origin ; git checkout claude/group-session-dues-matrix ; cd ..
+
+Test, then merge each branch into its own main when you are happy.
+Nothing has been pushed to any main branch.
+
+The MANUAL_COPY_FILES copies below remain valid as a fallback.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1 (fallback): COPY FILES FOR LOCAL TESTING
 ═══════════════════════════════════════════════════
 
 STEP 1: Navigate to Project
