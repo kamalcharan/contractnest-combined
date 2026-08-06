@@ -3,7 +3,7 @@ title: Issue — /tenant-masterdata is unreachable, and the repo copy is stale
 project: ContractNest
 date: 2026-08-05
 severity: High — every tenant LOV lookup via useTenantMasterData silently fails
-status: Diagnosed. Fix is a two-block reorder. NOT applied — see §3.
+status: FIXED and deployed 2026-08-05 (product-masterdata v24). See §3.
 ---
 
 ## 1. The bug
@@ -63,7 +63,27 @@ Verified safe — no new shadowing is introduced:
 | Tenant | `…/product-masterdata/tenant-masterdata` | **yes** | tenant branch ✓ |
 | Categories | `…/product-masterdata/all-tenant-categories` | no | its own branch ✓ |
 
-## 3. Why it has NOT been applied — the repo copy is stale
+## 3. RESOLVED — deployed as product-masterdata v24
+
+The reorder was applied by patching the **deployed** source rather than the repo
+copy, and redeployed via MCP. Verified after deploy by fetching the function back:
+
+| Check | Result |
+|---|---|
+| `/tenant-masterdata` now before `/product-masterdata` | ✅ |
+| `const level` / `const parentId` extraction | ✅ preserved |
+| `getIndustries(…, search, level, parentId)` — 7 args | ✅ preserved |
+| Hierarchy filters `.eq('level')`, `.eq('parent_id')` | ✅ preserved |
+| `_shared/cors.ts` | ✅ unchanged |
+
+`useTenantMasterData` now works for every tenant category. The temporary
+`useNotificationChannels` hook has been deleted and `MeteringStep` uses
+`useTenantMasterData('notification_channels', true)` as originally intended.
+
+### Repo is still stale — resync separately
+
+Starting from the deployed source meant no regression, but the repo copy remains
+behind by the industry-hierarchy work:
 
 **The deployed function is NEWER than the repo copy.** Deploying the repo file,
 even with the fix applied, would regress live behaviour:
@@ -79,12 +99,7 @@ Someone added industry-hierarchy support directly to the deployed function and
 it was never committed back. `supabase functions deploy product-masterdata` from
 a clean checkout would drop it.
 
-### Recommended: patch the deployed source directly
-
-Fastest and no regression risk — edit in the Supabase dashboard function editor
-and move the two blocks. Roughly 2 minutes, and it does not touch the repo.
-
-### Then, separately: resync the repo
+### Resync the repo
 
 ```bash
 supabase functions download product-masterdata --project-ref uwyqhzotluikawcboldr
@@ -97,17 +112,11 @@ Worth checking whether other edge functions have drifted the same way. `cat-bloc
 was verified byte-identical, so the drift is not universal — but it is not
 nothing either.
 
-## 4. Interim workaround, already in place
+## 4. Workaround removed
 
-`MeteringStep` does **not** use `useTenantMasterData`. It uses a dedicated
-`useNotificationChannels` hook built on `/api/masterdata/categories` and
-`/api/masterdata/category-details`, which are served by a **different** edge
-function (`masterdata`) and are the same calls Settings → LOV makes, so the path
-is known-good.
-
-Once the reorder is deployed, `useNotificationChannels` could be simplified back
-to a single `useTenantMasterData('notification_channels')` call — but there is no
-need to, and the current version is one fewer moving part.
+An interim `useNotificationChannels` hook briefly routed around this via
+`/api/masterdata/*`. With the root cause fixed it was deleted rather than left in
+place — a workaround that outlives its bug becomes the next person's confusion.
 
 ## 5. Blast radius
 

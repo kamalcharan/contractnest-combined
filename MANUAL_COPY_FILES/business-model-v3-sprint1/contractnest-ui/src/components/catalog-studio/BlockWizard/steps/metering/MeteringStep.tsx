@@ -9,25 +9,28 @@
 //
 // CHANNELS COME FROM THE LOV, NOT FROM THIS FILE.
 // They are read from the `notification_channels` LOV in the platform tenant
-// (/settings/lov), seeded by migration 011, via useNotificationChannels —
-// which only returns channels whose LOV row is active. Activating SMS or
-// In-App later is a toggle in /settings/lov: no code change, no migration, no
-// redeploy. Hardcoding the channel list here would have reintroduced exactly
+// (/settings/lov), seeded by migration 011. useTenantMasterData filters on
+// is_active, so only channels actually switched on are offered. Activating SMS
+// or In-App later is a toggle in /settings/lov: no code change, no migration,
+// no redeploy. Hardcoding the channel list here would have reintroduced exactly
 // the coupling the LOV exists to remove.
-//
-// NOTE: this deliberately does NOT use useTenantMasterData. That hook is
-// broken for every tenant category — see useNotificationChannels for the
-// routing bug it works around.
 
 import React from 'react';
 import { Wallet, Gauge, Gift, ToggleRight, Info } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
-import { useNotificationChannels } from '../../../../../hooks/queries/useNotificationChannels';
+import { useTenantMasterData } from '../../../../../hooks/queries/useProductMasterdata';
 
 // The four modes a metering block can operate in. Kept deliberately small —
 // each one maps to exactly one thing the settlement hook does when a platform
 // contract is paid.
 export type MeteringMode = 'limit' | 'per_contract' | 'one_time' | 'flag';
+
+interface ChannelRow {
+  sub_cat_name: string;   // 'whatsapp' | 'email' | 'sms' | 'inapp' — the KEY
+  display_name: string;
+  hexcolor?: string | null;
+  sequence_no?: number;
+}
 
 interface MeteringStepProps {
   formData: {
@@ -99,8 +102,11 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
   const limits = formData.meteringLimits ?? {};
 
   // ── Channels: from the LOV, active only ────────────────────────────────────
-  const { data: channelData, isLoading: channelsLoading } = useNotificationChannels();
-  const channels = channelData ?? [];
+  const { data: channelResponse, isLoading: channelsLoading } =
+    useTenantMasterData('notification_channels', true);
+
+  // transformMasterData preserves sub_cat_name / display_name / hexcolor.
+  const channels: ChannelRow[] = (channelResponse?.data as ChannelRow[] | undefined) ?? [];
 
   const setGrant = (channelKey: string, raw: string) => {
     const next = { ...grants };
