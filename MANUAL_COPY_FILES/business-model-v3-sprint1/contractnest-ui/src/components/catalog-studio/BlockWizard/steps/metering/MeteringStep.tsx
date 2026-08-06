@@ -14,6 +14,9 @@
 // or In-App later is a toggle in /settings/lov: no code change, no migration,
 // no redeploy. Hardcoding the channel list here would have reintroduced exactly
 // the coupling the LOV exists to remove.
+//
+// Every channel and every cap is an INDEPENDENT field — 15 WhatsApp and 10
+// Email is entered as two separate values, not one shared number.
 
 import React from 'react';
 import { Wallet, Gauge, Gift, ToggleRight, Info } from 'lucide-react';
@@ -55,19 +58,19 @@ const MODES: Array<{
     id: 'per_contract',
     label: 'Per Contract',
     icon: Gauge,
-    description: 'Grant credits every time the tenant creates a contract. This is the recurring allowance in a plan.',
+    description: 'Grant credits every time the tenant creates a contract. The recurring allowance in a plan.',
   },
   {
     id: 'limit',
     label: 'Limit',
     icon: Wallet,
-    description: 'Cap what the tenant may create in the billing period. Blank means unlimited.',
+    description: 'Cap what the tenant may create in the billing period.',
   },
   {
     id: 'one_time',
     label: 'One Time',
     icon: Gift,
-    description: 'Grant credits once, when the contract is paid. This is a top-up pack.',
+    description: 'Grant credits once, when the contract is paid. A top-up pack.',
   },
   {
     id: 'flag',
@@ -89,13 +92,24 @@ const LIMIT_FIELDS = [
 ];
 
 const FLAGS = [
-  { key: 'addon_vani_ai', label: 'VaNi AI' },
-  { key: 'addon_rfp', label: 'RFP / RFQ module' },
+  { key: 'addon_vani_ai', label: 'VaNi AI', description: 'Unlocks the VaNi assistant for this tenant' },
+  { key: 'addon_rfp', label: 'RFP / RFQ module', description: 'Unlocks sourcing and vendor quotes' },
 ];
 
 const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+
+  // Same input/label styling the rest of the wizard uses, so these read as
+  // editable fields rather than static text.
+  const inputStyle = {
+    backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#F9FAFB',
+    borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+    color: colors.utility.primaryText,
+  };
+  const labelStyle = { color: colors.utility.primaryText };
+  const inputClass =
+    'w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all';
 
   const mode: MeteringMode = formData.meteringMode ?? 'per_contract';
   const grants = formData.meteringGrants ?? {};
@@ -110,9 +124,13 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
 
   const setGrant = (channelKey: string, raw: string) => {
     const next = { ...grants };
-    const value = raw === '' ? 0 : Number(raw);
-    if (Number.isNaN(value) || value < 0) return;
-    next[channelKey] = value;
+    if (raw === '') {
+      delete next[channelKey];
+    } else {
+      const value = Number(raw);
+      if (Number.isNaN(value) || value < 0) return;
+      next[channelKey] = value;
+    }
     onChange('meteringGrants', next);
   };
 
@@ -136,11 +154,11 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
     <div className="space-y-6">
       {/* Mode ---------------------------------------------------------------- */}
       <div>
-        <h3 className="text-base font-semibold mb-1" style={{ color: colors.textPrimary }}>
+        <h3 className="text-base font-semibold mb-1" style={labelStyle}>
           What does this block do?
         </h3>
         <p className="text-sm mb-3" style={{ color: colors.textSecondary }}>
-          Picked once. It decides what happens when a tenant pays for the contract this block sits on.
+          Decides what happens when a tenant pays for the contract this block sits on.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -160,10 +178,11 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
                 }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon size={16} style={{ color: selected ? colors.brand?.primary ?? '#0EA5E9' : colors.textSecondary }} />
-                  <span className="font-medium text-sm" style={{ color: colors.textPrimary }}>
-                    {m.label}
-                  </span>
+                  <Icon
+                    size={16}
+                    style={{ color: selected ? colors.brand?.primary ?? '#0EA5E9' : colors.textSecondary }}
+                  />
+                  <span className="font-medium text-sm" style={labelStyle}>{m.label}</span>
                 </div>
                 <p className="text-xs" style={{ color: colors.textSecondary }}>
                   {m.description}
@@ -176,15 +195,16 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
 
       {/* Per-channel grants -------------------------------------------------- */}
       {(mode === 'per_contract' || mode === 'one_time') && (
-        <div style={cardBase}>
-          <h4 className="text-sm font-semibold mb-1" style={{ color: colors.textPrimary }}>
+        <div>
+          <h3 className="text-base font-semibold mb-1" style={labelStyle}>
             {mode === 'per_contract'
               ? 'Credits granted per contract created'
               : 'Credits granted once, on payment'}
-          </h4>
-          <p className="text-xs mb-3" style={{ color: colors.textSecondary }}>
-            Each channel has its own pool. Grants accumulate — a pool at 9 plus a
-            grant of 15 becomes 24. Credits are consumed, never expired.
+          </h3>
+          <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
+            Each channel is set separately — e.g. 15 WhatsApp and 10 Email. Each has its
+            own pool, and grants accumulate: a pool at 9 plus a grant of 15 becomes 24.
+            Leave a channel blank to grant none of it.
           </p>
 
           {channelsLoading && (
@@ -193,84 +213,75 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
 
           {!channelsLoading && channels.length === 0 && (
             <div
-              className="flex items-start gap-2 text-xs p-3 rounded"
-              style={{ backgroundColor: colors.warning + '15', color: colors.textSecondary }}
+              className="flex items-start gap-2 text-sm p-4 rounded-xl"
+              style={{ backgroundColor: (colors.warning || '#D97706') + '15', color: colors.textSecondary }}
             >
-              <Info size={14} className="mt-0.5 shrink-0" />
+              <Info size={16} className="mt-0.5 shrink-0" />
               <span>
                 No active notification channels found. Channels are maintained in{' '}
-                <strong>Settings → LOV → Notification Channels</strong>. Activate a channel
-                there and it will appear here.
+                <strong>Settings → LOV → Notification Channels</strong>. Activate one there
+                and it will appear here.
               </span>
             </div>
           )}
 
-          <div className="space-y-2">
-            {channels.map((ch) => (
-              <div key={ch.sub_cat_name} className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{ backgroundColor: ch.hexcolor || colors.textSecondary }}
-                  />
-                  <span className="text-sm" style={{ color: colors.textPrimary }}>
-                    {ch.display_name}
-                  </span>
-                  <code className="text-[11px]" style={{ color: colors.textSecondary }}>
-                    {ch.sub_cat_name}
-                  </code>
-                </div>
-                <input
-                  type="number"
-                  min={0}
-                  value={grants[ch.sub_cat_name] ?? ''}
-                  onChange={(e) => setGrant(ch.sub_cat_name, e.target.value)}
-                  placeholder="0"
-                  className="w-24 px-2 py-1 rounded text-sm text-right"
-                  style={{
-                    backgroundColor: colors.background,
-                    border: `1px solid ${colors.border}`,
-                    color: colors.textPrimary,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-
           {channels.length > 0 && (
-            <p className="text-[11px] mt-3" style={{ color: colors.textSecondary }}>
-              Channels come from the Notification Channels LOV. Only active channels are
-              listed — switch one on in Settings → LOV and it appears here automatically.
-            </p>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {channels.map((ch) => (
+                  <div key={ch.sub_cat_name}>
+                    <label className="block text-sm font-medium mb-2" style={labelStyle}>
+                      <span
+                        className="inline-block w-2 h-2 rounded-full mr-2 align-middle"
+                        style={{ backgroundColor: ch.hexcolor || colors.textSecondary }}
+                      />
+                      {ch.display_name}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="None"
+                      value={grants[ch.sub_cat_name] ?? ''}
+                      onChange={(e) => setGrant(ch.sub_cat_name, e.target.value)}
+                      className={inputClass}
+                      style={{ ...inputStyle, borderRadius: '0.75rem' }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs mt-3" style={{ color: colors.textSecondary }}>
+                Channels come from the Notification Channels LOV. Only active channels are
+                listed — switch one on in Settings → LOV and it appears here automatically.
+              </p>
+            </>
           )}
         </div>
       )}
 
       {/* Limits -------------------------------------------------------------- */}
       {mode === 'limit' && (
-        <div style={cardBase}>
-          <h4 className="text-sm font-semibold mb-1" style={{ color: colors.textPrimary }}>
+        <div>
+          <h3 className="text-base font-semibold mb-1" style={labelStyle}>
             Caps for the billing period
-          </h4>
-          <p className="text-xs mb-3" style={{ color: colors.textSecondary }}>
-            Leave blank for unlimited. Counting starts when the contract activates.
+          </h3>
+          <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
+            Each cap is set separately. Leave one blank for unlimited. Counting starts when
+            the contract activates.
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {LIMIT_FIELDS.map((f) => (
-              <div key={f.key} className="flex items-center justify-between gap-2">
-                <span className="text-sm" style={{ color: colors.textPrimary }}>{f.label}</span>
+              <div key={f.key}>
+                <label className="block text-sm font-medium mb-2" style={labelStyle}>
+                  {f.label}
+                </label>
                 <input
                   type="number"
-                  min={0}
+                  min="0"
+                  placeholder="Unlimited"
                   value={limits[f.key] ?? ''}
                   onChange={(e) => setLimit(f.key, e.target.value)}
-                  placeholder="∞"
-                  className="w-24 px-2 py-1 rounded text-sm text-right"
-                  style={{
-                    backgroundColor: colors.background,
-                    border: `1px solid ${colors.border}`,
-                    color: colors.textPrimary,
-                  }}
+                  className={inputClass}
+                  style={{ ...inputStyle, borderRadius: '0.75rem' }}
                 />
               </div>
             ))}
@@ -280,28 +291,44 @@ const MeteringStep: React.FC<MeteringStepProps> = ({ formData, onChange }) => {
 
       {/* Flag ---------------------------------------------------------------- */}
       {mode === 'flag' && (
-        <div style={cardBase}>
-          <h4 className="text-sm font-semibold mb-1" style={{ color: colors.textPrimary }}>
+        <div>
+          <h3 className="text-base font-semibold mb-1" style={labelStyle}>
             Add-on to switch on
-          </h4>
-          <p className="text-xs mb-3" style={{ color: colors.textSecondary }}>
+          </h3>
+          <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
             Sets the flag on the tenant when the contract is paid, and clears it when it lapses.
           </p>
-          <select
-            value={formData.meteringFlag ?? ''}
-            onChange={(e) => onChange('meteringFlag', e.target.value || undefined)}
-            className="w-full px-3 py-2 rounded text-sm"
-            style={{
-              backgroundColor: colors.background,
-              border: `1px solid ${colors.border}`,
-              color: colors.textPrimary,
-            }}
-          >
-            <option value="">Select an add-on…</option>
-            {FLAGS.map((f) => (
-              <option key={f.key} value={f.key}>{f.label}</option>
-            ))}
-          </select>
+          {/* Cards rather than a dropdown — a bare select was not readable as a
+              control, and there are only two options. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {FLAGS.map((f) => {
+              const selected = formData.meteringFlag === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => onChange('meteringFlag', selected ? undefined : f.key)}
+                  className="text-left transition-all"
+                  style={{
+                    ...cardBase,
+                    borderColor: selected ? colors.brand?.primary ?? '#0EA5E9' : colors.border,
+                    borderWidth: selected ? 2 : 1,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <ToggleRight
+                      size={16}
+                      style={{ color: selected ? colors.brand?.primary ?? '#0EA5E9' : colors.textSecondary }}
+                    />
+                    <span className="font-medium text-sm" style={labelStyle}>{f.label}</span>
+                  </div>
+                  <p className="text-xs" style={{ color: colors.textSecondary }}>
+                    {f.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
