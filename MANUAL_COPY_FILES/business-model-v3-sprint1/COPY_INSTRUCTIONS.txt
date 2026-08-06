@@ -112,3 +112,132 @@ WAITING FOR CONFIRMATION
 ═══════════════════════════════════════════════════
 Test locally and confirm before any merge to main.
 ═══════════════════════════════════════════════════
+
+
+═══════════════════════════════════════════════════
+ADDENDUM — 2026-08-06
+Metering block reachable in the template wizard,
+cross-tenant template leak, dead-folder removal
+═══════════════════════════════════════════════════
+
+───────────────────────────────────────────────────
+1. UI — Credit Pack blocks are now pickable
+───────────────────────────────────────────────────
+FILE: contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+
+The catalog in the Add Service Blocks step renders ONLY what is listed in
+its section whitelist. Every render path filters through it — the chips,
+the grouped lists, and the search. A block whose categoryId matched no
+section was unreachable, not merely hidden. 'metering' matched nothing, so
+a Credit Pack block could never be added to a template or a contract.
+
+  - SECTIONS renamed ALL_SECTIONS; gains a 7th entry:
+        key 'metering' / chip "Credit Packs" / cats ['metering'] / priced
+  - new `adminOnly` flag on the section type
+  - inside the component, SECTIONS = ALL_SECTIONS filtered by
+    currentTenant.is_admin  (same gate useBlockCategories uses)
+  - useAuth import added
+
+This is the ONLY file changed for that fix. Template mode and contract
+mode share this step (ContractWizard/index.tsx:1550), so both get it.
+
+───────────────────────────────────────────────────
+2. EDGE — cross-tenant template leak  ** DEPLOY THIS **
+───────────────────────────────────────────────────
+FILE: contractnest-edge/supabase/functions/cat-templates/index.ts  (~line 237)
+
+The platform tenant's Templates hub was showing BBB's and hubb's
+templates as if they were its own. Not a data problem — a visibility bug:
+
+    if (!ctx.isAdmin) {          // admin => NO tenant filter at all
+      q = q.or(`tenant_id.eq.${ctx.tenantId},...`)
+    }
+
+Being is_admin silently widened the list to every tenant. This is the
+identical bug already fixed in cat-blocks. Changed to explicit opt-in:
+
+    const allTenantsView = ctx.isAdmin && params.get('all_tenants') === 'true';
+    if (!allTenantsView) { ...same filters... }
+
+Verified before editing: deployed v19 and the repo copy are byte-identical
+(both index.ts and _shared/edgeUtils.ts), so there is NO drift here — unlike
+product-masterdata. Deploying the repo copy is safe.
+
+    cd contractnest-edge
+    supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+
+Expect v20. verify_jwt stays true.
+
+───────────────────────────────────────────────────
+3. UI — delete two unrouted duplicate trees
+───────────────────────────────────────────────────
+Evidence they are unreachable:
+  - App.tsx is the only router; App2.tsx is imported by nothing
+  - no file-based routing, no lazy() into either tree
+  - zero importers outside the trees; they import only each other
+  - the only navigate() into them comes from a file inside them
+
+    cd contractnest-ui
+    git rm -r src/pages/contracts/create/templates
+    git rm -r src/pages/templates
+
+  KEEP src/pages/contracts/create/index.tsx and .../steps/ — that is
+  ContractCreatePage, live at App.tsx:190/597. Only the `templates`
+  subfolder goes.
+
+11 files, ~5,000 lines. Live template surfaces are untouched:
+    /catalog-studio/templates-list        t_cat_templates + ContractWizard
+    /service-contracts/templates          legacy useTemplates
+    /service-contracts/templates/designer legacy useBlocks
+
+───────────────────────────────────────────────────
+4. DATABASE — junk rows removed (already done, production)
+───────────────────────────────────────────────────
+No new migration. Three rows deleted from t_cat_templates:
+
+  26810ac5…  'asdds'            is_system  -> was visible to EVERY tenant
+  cc89f559…  'asddsd'           is_system  -> was visible to EVERY tenant
+  e8645a99…  'verifying block'  orphan of a deleted tenant, 0 refs
+
+Backup of all 31 rows taken BEFORE the delete:
+  ClaudeDocumentation/BusinessModel/backups/t_cat_templates_full_backup_2026-08-06.json
+
+NOT deleted, deliberately:
+  e4f4cfbe…  'verifying block' — 3 ACTIVE contracts still point at it
+             (CN-1030 / CN-1032 / CN-1037, all belonging to the same
+             deleted tenant a58ca91a…). Deleting it strands them. These
+             contracts are themselves orphans; cleaning them up is a
+             separate decision, not a side effect of this step.
+  18  BBB templates   — live production tenant. Several are exact
+                        duplicates (same name, same created_at, different
+                        id) which looks like a copy/versioning bug worth
+                        its own look, but they are BBB's data.
+  9   hubb templates  — is_test tenant, junk names ('sdfdf', 'Untitled').
+
+With fix #2 deployed, none of these appear in the platform tenant's
+Templates hub any more — they were never Vikuna's to begin with.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST — ADDENDUM
+═══════════════════════════════════════════════════
+[ ] npm run build — no missing-import errors from the deleted folders
+[ ] Deploy cat-templates, then hard-refresh (Ctrl+F5)
+[ ] Log in as vikunatech@gmail.com -> /catalog-studio/templates-list
+       expect 0 templates  (was showing 8 that belonged to BBB/hubb)
+[ ] Log in as BBB -> its own templates still all present, count unchanged
+[ ] Vikuna -> New Template -> Add Service Blocks:
+       "Credit Packs" chip appears — ONLY after a metering block exists
+       (chips with count 0 are hidden). Vikuna has 0 blocks right now, so
+       author a Credit Pack in catalog-studio first, then re-check.
+[ ] Ordinary tenant -> same step -> NO "Credit Packs" chip
+[ ] /service-contracts/templates and .../designer still load
+[ ] /contracts/create/client — contract wizard unaffected
+
+═══════════════════════════════════════════════════
+KNOWN GAP — flagged, not fixed
+═══════════════════════════════════════════════════
+The metering gate is UI-only, in catalog-studio and in the contract
+wizard alike. cat-blocks handleCreateBlock still has no server-side
+check, so a direct API call carrying the metering block_type_id would
+succeed for a non-platform tenant. Worth closing before this is real
+money, but it is not a change I made unasked.
