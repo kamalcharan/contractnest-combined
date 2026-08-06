@@ -436,6 +436,29 @@ const SessionCheckinPage: React.FC = () => {
 
   const [showDupAlert, setShowDupAlert] = useState<null | 'same-day' | 'same-ref'>(null);
 
+  // ── Payment history as months, matching the Dues grid ───────────────────
+  // A due date ("01 Apr 2026") is not what a member is looking for — they want
+  // "have I paid April". Same three states and the same colours as Operations →
+  // Group Sessions → Dues, so the chair and the member are reading one language.
+  const PAY_COL = { paid: '#2E7D32', due: '#F57C00', future: '#CA8A04' } as const;
+  type PayState = keyof typeof PAY_COL;
+  const monthShort = (d?: string | null) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase();
+  };
+  // Every instalment, not only the paid ones — the whole year at a glance is
+  // the point. Ordered as the RPC returns them (by scheduled_date).
+  const monthCells = useMemo(
+    () => billingTimeline.map((e) => {
+      const state: PayState = e.status === 'paid'
+        ? 'paid'
+        : (e.date && istDay(e.date) <= todayIst ? 'due' : 'future');
+      return { key: e.event_id, month: monthShort(e.date), amount: e.remaining ?? e.amount, state, label: e.label, date: e.date };
+    }),
+    [billingTimeline, todayIst]
+  );
+
   // Auto-target the next due the moment it's known — paying it isn't a
   // decision the member makes among options, so there's nothing to tap
   // before the "Pay" action becomes available.
@@ -886,7 +909,7 @@ const SessionCheckinPage: React.FC = () => {
             <button type="button" onClick={openUpiApp}
               style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
                 background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-              Open UPI app
+              Open UPI app · Pay {money(amount, currency)}
             </button>
             <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
               Copies the UPI ID and tries to open your UPI app. If nothing opens, launch GPay / PhonePe / any UPI app yourself and choose "Pay to UPI ID."
@@ -1339,7 +1362,7 @@ const SessionCheckinPage: React.FC = () => {
                     </div>
                   )}
 
-                  {paidEvents.length > 0 && (
+                  {monthCells.length > 0 && (
                     <div style={{ marginBottom: 4 }}>
                       <button
                         type="button"
@@ -1349,38 +1372,54 @@ const SessionCheckinPage: React.FC = () => {
                           cursor: 'pointer' }}>
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink }}>
                           Payment History
-                          <span style={{ fontWeight: 500, color: BRAND.sub }}> - {paidEvents.length} paid</span>
+                          <span style={{ fontWeight: 500, color: BRAND.sub }}> - {paidEvents.length} of {monthCells.length} paid</span>
                         </span>
                         <span style={{ fontSize: 12, color: BRAND.sub }}>{showSchedule ? '▲' : '▼'}</span>
                       </button>
                       {showSchedule && (
-                        <div style={{ marginTop: 4 }}>
-                          {paidEvents.map((e) => (
-                            <div key={e.event_id}
-                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px', borderTop: `1px solid #F1F1F3` }}>
-                              <div>
-                                <div style={{ fontSize: 13, color: BRAND.ink }}>{e.label}</div>
-                                <div style={{ fontSize: 11.5, color: BRAND.sub, marginTop: 1 }}>{fmtDate(e.date)}</div>
+                        <div style={{ marginTop: 10 }}>
+                          {/* Month strip, same colours as the Dues grid. Scrolls
+                              sideways rather than wrapping — a 12-month row on a
+                              phone has to scroll, and wrapping loses the sense
+                              of a single timeline running left to right. */}
+                          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                            {monthCells.map((c) => (
+                              <div key={c.key} title={`${c.label} · ${fmtDate(c.date)}`}
+                                style={{ flex: 'none', minWidth: 62, textAlign: 'center',
+                                  border: `1px solid ${PAY_COL[c.state]}55`, background: `${PAY_COL[c.state]}18`,
+                                  borderRadius: 10, padding: '7px 6px' }}>
+                                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: PAY_COL[c.state] }}>{c.month}</div>
+                                <div style={{ fontSize: 12, fontWeight: 800, color: PAY_COL[c.state], marginTop: 2 }}>
+                                  {money(c.amount, targetDue?.currency)}
+                                </div>
                               </div>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: BRAND.ok }}>
-                                ✓ {money(e.amount_settled ?? e.amount, e.currency)}
+                            ))}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+                            {([['paid', 'Paid'], ['due', 'Due'], ['future', 'Upcoming']] as [PayState, string][]).map(([k, lbl]) => (
+                              <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: BRAND.sub }}>
+                                <span style={{ width: 11, height: 11, borderRadius: 4, background: `${PAY_COL[k]}18`, border: `1px solid ${PAY_COL[k]}55` }} />
+                                {lbl}
                               </span>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {(paidEvents.length > 0 && (targetDue || openDues.length === 0)) && (
+                  {(monthCells.length > 0 && (targetDue || openDues.length === 0)) && (
                     <div style={{ height: 1, background: BRAND.line, margin: '14px 0' }} />
                   )}
 
                   {openDues.length === 0 ? (
                     <p style={{ color: BRAND.ok, fontSize: 14, margin: 0 }}>All dues are settled.</p>
                   ) : targetDue && (
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: BRAND.sub, letterSpacing: 0.4, marginBottom: 6 }}>CURRENT</div>
+                    /* Tinted and bordered so the one card that needs action
+                       stands out from the neutral tiles above it. */
+                    <div style={{ background: BRAND.accentSoft, border: `1.5px solid ${BRAND.accent}55`,
+                      borderRadius: 14, padding: '12px 14px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: BRAND.accentInk, letterSpacing: 0.4, marginBottom: 6 }}>CURRENT</div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div>
                           <div style={{ fontWeight: 800, fontSize: 15, color: BRAND.ink }}>{targetDue.label}</div>
@@ -1390,6 +1429,27 @@ const SessionCheckinPage: React.FC = () => {
                           {money(targetDue.remaining ?? targetDue.amount, targetDue.currency)}
                         </div>
                       </div>
+
+                      {/* The whole unpaid balance, not just this instalment. A
+                          member who has paid nothing all year sees one month's
+                          figure and thinks that is what they owe — which is how
+                          somebody ends up ₹18,000 behind believing they are
+                          ₹1,500 behind. Only shown when there IS more behind it. */}
+                      {openDues.length > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${BRAND.accent}55` }}>
+                          <div style={{ fontSize: 12.5, color: BRAND.sub }}>
+                            Total outstanding
+                            <span style={{ color: BRAND.sub }}> · {openDues.length} instalments</span>
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: BRAND.accentInk }}>
+                            {money(
+                              openDues.reduce((sum, d) => sum + Number(d.remaining ?? d.amount ?? 0), 0),
+                              targetDue.currency
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
