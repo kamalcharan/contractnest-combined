@@ -405,3 +405,35 @@ navigating to a route that does not exist.
   cd contractnest-edge
   supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
   cd ../contractnest-api && npm run dev
+
+───────────────────────────────────────────────────
+8. BUILD FIX — missing import broke the Docker build
+───────────────────────────────────────────────────
+FILE: contractnest-api/src/services/catTemplatesService.ts
+
+  error TS2552: Cannot find name 'PlanTemplateListResponse'.
+
+listPlanTemplates() used the type but it was never added to the import
+block from '../types/catalogStudioTypes'. One line:
+
+    ApiResponse,
+    TemplateListResponse,
+  + PlanTemplateListResponse,
+    TemplateCoverageResponse,
+
+Why the local typecheck did not catch it: this container has TypeScript
+6.0.2 while the project pins ^5.9.2 (API) / ~5.7.2 (UI). TS6 treats
+`moduleResolution: node10` and `baseUrl` in tsconfig as ERRORS and stops
+before checking a single file — so `tsc` reported exactly 2 errors, both
+about tsconfig, and no type checking had happened at all. Reading that as
+"clean" was wrong.
+
+Verify with the deprecations silenced, which forces a real check:
+
+    npx tsc --ignoreDeprecations 6.0 --noEmit
+
+Re-verified after the fix: 0 occurrences of PlanTemplateListResponse in
+the error output, and no real errors in any of the changed API or UI files.
+
+    Copy-Item "$SRC\contractnest-api\src\services\catTemplatesService.ts" `
+              -Destination "contractnest-api\src\services\catTemplatesService.ts" -Force

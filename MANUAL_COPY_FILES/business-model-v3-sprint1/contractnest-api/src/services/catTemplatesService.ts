@@ -8,6 +8,7 @@ import {
   TemplateQueryParams,
   ApiResponse,
   TemplateListResponse,
+  PlanTemplateListResponse,
   TemplateCoverageResponse,
   RequestContext,
 } from '../types/catalogStudioTypes';
