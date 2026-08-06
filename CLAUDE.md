@@ -590,6 +590,63 @@ Live-diagnosed while closing the RFQ handover work (branch `claude/rfq-handover-
 **Current state**: pure specification — no research, schema design, migration, route, or UI work has started. Explicitly parked by owner ("we will not do this" this session) and folded into Sprint 3 scope alongside the per-asset event-proof gap above, since both are "the real backend work behind UI/flows that already assume it exists."
 **When to revisit**: next session this is picked up, before writing any code: (a) confirm exact shape of the two new linkage columns (`t_contracts.source_rfq_id`? RFQ-side `contract_id`?) and whether they live on `t_contracts` itself or a join table; (b) read `create_contract_transaction` (or whatever RPC actually creates a normal contract today) to see how much of it a vendor-facing flow can reuse as-is vs. needs a parallel path; (c) decide whether "vendor goes through contractnest steps" means the vendor literally uses (a public-context variant of) the Contract Wizard React components, or a new lighter parallel flow that produces the same `t_contracts` shape; (d) design the new public-link/access-grant type for contract-creation (vs. the existing quote-response grant) — including how the vendor's created contract gets attributed to the buyer's tenant; (e) only then implement, per this repo's usual analysis-first workflow.
 
+### BBB Group Session notifications — all five live (2026-08-04)
+
+All five group-session WhatsApp triggers are built, deployed and **verified arriving on a real handset**. Applied directly to production this session (owner instruction "you can run the migrations" / "make things work / live"), so the migration files under `MANUAL_COPY_FILES/group-session-scheduled-notifications/` are a source-of-record copy of what is already live — **do not re-run them**.
+
+| Trigger | Fires | Style |
+|---|---|---|
+| `group_session_attendance_ack` | on check-in (rides `gs_submit_checkin`) | NAMED |
+| `group_session_payment_thankyou` | on chair confirm (rides `gs_confirm_declaration`) | NAMED |
+| `group_session_looking_forward` | 3 days out **and** 1 day out | POSITIONAL |
+| `group_session_noshow_regret` | session end + 2h | POSITIONAL |
+| `group_session_absentee_reminder` | 3 days out, to members who missed the last two | POSITIONAL |
+
+Infrastructure added: `gs_run_session_notifications()` (IST-aware, cron `group-session-notifications` every 15 min), `gs_roster_members()`, `gs_member_whatsapp_phone()`, and `ux_n_jtd_group_session_reminder` (partial unique index — `n_jtd` previously had **no** unique index beyond its PK, so a cron would have re-sent every 15 minutes forever).
+
+**⚠️ THE TRAP — WhatsApp parameter styles are MIXED in this MSG91 account.** Templates registered **before Aug 2026** (`attendance_ack`, `payment_thankyou`) use Meta's **named** parameters (`body_<name>` + `parameter_name`). Everything registered **from Aug 2026 onward** is **positional** (`body_1`, `body_2`), because MSG91's editor now refuses named placeholders ("Variables parameters must be whole numbers with two sets of curly brackets"). There is **no account-wide rule** — each branch in `jtd-worker/handlers/whatsapp.ts` must match how its own template was registered. This cost a full cycle of wrong diagnoses in both directions. Getting it wrong fails **silently**: MSG91 accepts the request and returns a request_id (row reads `status='sent'`), then WhatsApp rejects on delivery with *"Parameter name is missing or empty"*. Two templates failed this way from 1–4 Aug and were only caught by checking a handset.
+
+**`status='sent'` has never meant delivered.** It means MSG91 accepted the request. A new `msg91-webhook` edge function (v1, `verify_jwt=false`) now receives delivery reports and moves rows to delivered/read/failed — statuses are ranked and move forward only, so out-of-order callbacks can't walk a row backwards.
+**Not yet wired**: MSG91 already posts delivery reports (webhook "BBB", event *On Inbound Report Received*) to **n8n** at `https://n8n.srv1096269.hstgr.cloud/webhook/whatsapp-msg91` — they simply never reached ContractNest. Recommended: add an HTTP Request node in that n8n workflow forwarding the payload to `https://uwyqhzotluikawcboldr.supabase.co/functions/v1/msg91-webhook`, leaving MSG91 config untouched. n8n's execution history holds real MSG91 report payloads — capture one and tighten the deliberately shape-agnostic extractor to exact paths.
+
+Also fixed this session: `gs_confirm_declaration`'s payment thank-you had three defects that would have hit on its first-ever fire — blank session name (read `cat_block_id`, NULL on all 33 declarations), an amount that collapsed to **0** when no open invoice existed, and a fragile `country_code`-concatenating phone lookup. It now refuses to enqueue unless name, session and a non-zero amount all resolve.
+**When to revisit**: only if a template is re-registered (re-check its parameter style), or to wire the n8n forwarding.
+
+### BBB notifications — first live batch, four defects found and fixed (2026-08-05)
+
+The first real batch (3-days-out for the 8 Aug occurrence) went out and exposed four things. All fixed in production; migrations 056–059 and jtd-worker v34 are source-of-record copies under `MANUAL_COPY_FILES/group-session-scheduled-notifications/` — **do not re-run**.
+
+**1. It dispatched at 00:00 IST.** The date window opens the moment the IST date rolls over, so 46 members were messaged in the middle of the night. Fixed with a per-block dispatch hour: `config.groupSession.notifications.dispatchHour` (IST, default 10), gating the two forward-looking reminders to 10:00–21:00. The **upper bound is deliberate** — without it a day-long outage would "catch up" at 23:00 and recreate the problem. No-show regret is not gated; it is already anchored to session end + 2h.
+
+**2. Three members got nothing — line breaks in their names.** MSG91 rejects `"next line(\n) is not supported for body value"`. Three BBB contacts have embedded CRLFs (`"JAGANNADHA SHASTRY SOMANCHI\r\n (BHUSHANA MEMBER)"`). Unfixed, this would have blocked **every** future message to them, not just reminders. `cleanParam()` in whatsapp.ts now collapses whitespace on every parameter of every template — applied centrally rather than cleaning three names, because names are free text pasted from imports.
+
+**3. ⚠️ `ON CONFLICT DO NOTHING` + a BEFORE INSERT trigger = phantom queue messages.** `trg_jtd_enqueue` is BEFORE INSERT and calls `pgmq.send()`. On a conflicting row the trigger had already enqueued before the conflict was detected; the row was discarded but the transaction committed, leaving a queue message pointing at an `n_jtd` row that never existed. With a 15-minute cron and day-long windows this injected ~49 junk messages per tick. Harmless to members (the worker deletes unmatched messages) but it burned worker capacity, delayed real sends behind a backlog that regenerated each tick, and made queue depth useless as a health signal. Fixed by a `NOT EXISTS` guard mirroring the unique index on every INSERT, so the trigger never fires for a row that would conflict; `ON CONFLICT` stays only as a race backstop.
+**General lesson: anywhere a BEFORE INSERT trigger has side effects outside the row, `ON CONFLICT DO NOTHING` is not a safe dedupe on its own — guard the SELECT.**
+
+**4. The session time was wrong, and duplicated.** `config.groupSession.timing` held 07:30 while the block description said "8.00 AM to 10.00 AM" — two copies of one fact, drifted. 46 members received a reminder contradicting their own contract. Timing corrected to 08:00/120; the time removed from the description (catalog block + all 49 contract snapshots) so `config.groupSession.timing` is the single source, read live at send time.
+**Structural follow-up NOT done**: the Block Wizard still lets a time be typed into the description, so the duplication can be reintroduced. Durable fix is to compose that sentence from the structured cadence and timing. UI work, scoped separately.
+
+**Also done**: tenant name in messages via `gs_session_display_name(block, tenant, with_tenant)` → "Saturday Network Meeting, BBB Bhagyanagar". Reads `t_tenant_profiles.business_name` (the Business Profile field), **never** `t_tenants.name` — that is a separate shorter value ("BBB") and would silently produce the wrong text. Applied to four templates; `absentee_reminder` deliberately keeps the plain block name because its template reads "the last couple of {{2}} sessions" and a comma inside the name breaks the grammar. No MSG91 re-approval — this changes a variable's value, not the template.
+
+**Method note**: 056–059 modify long live functions by substituting expressions into `prosrc` rather than retyping them (the migration 048 approach). 058's literal matches **silently no-opped** on two of four functions because whitespace differed; 059 redid them with verified anchors plus a post-check that RAISEs if the expected number of call sites is not present. **A silent no-op is the failure mode of this technique — always verify the rewrite landed.**
+
+**Block renamed** Saturday Cadence → Saturday Network Meeting across 6 live locations (95 values). `n_jtd.template_variables` and `t_idempotency_keys` deliberately left on the old name — history and transient cache.
+
+### OPEN — BBB meeting-fee structure: contracts hold net ₹18,000, circular says list ₹19,500 (raised 2026-08-04)
+BBB's *Meeting Fee Information FY 2026-27* circular prices **26 meetings at ₹750 each = ₹19,500 list**, with a discount that normalises every payment frequency to **₹18,000 net**:
+
+| Frequency | Actual | Discount | Payable | ×periods = net/yr |
+|---|---|---|---|---|
+| Monthly (2 meetings) | ₹1,500 | ₹0 | ₹1,500 | ×12 = 18,000 |
+| Quarterly | ₹4,875 | ₹375 | ₹4,500 | ×4 = 18,000 |
+| Half-yearly | ₹9,750 | ₹750 | ₹9,000 | ×2 = 18,000 |
+| Yearly | ₹19,500 | ₹1,500 | ₹18,000 | = 18,000 |
+
+**Current live state**: all 48 active Saturday contracts carry `total_value = grand_total = 18,000` with `discount_type`, `discount_value`, `discount_total` all **NULL** — the net is booked as if it were the list price, so the ₹19,500 gross and the ₹1,500 concession are invisible in the system. (One further contract sits at ₹12,000 / quantity 17 — a mid-year joiner.) Billing events already spread correctly: 18 contracts × 12 × ₹1,500 monthly, 31 contracts × 4 × ₹4,500 quarterly. **Cash collected is correct; only the gross/discount representation is missing.**
+
+**Second discrepancy, same circular**: it states **26 meetings**, but `t_group_session_schedule` holds **25** occurrences (11 Apr 2026 → 20 Mar 2027) and contract `quantity` is likewise 25. The arithmetic points at 26 being right — 19,500 ÷ 26 = **₹750 exactly**, whereas 18,000 ÷ 25 = ₹720 and 19,500 ÷ 25 = ₹780. The schedule also contains one irregular **21-day gap** (23 May → 13 Jun 2026) where every other interval is 14 days, which both loses a meeting and shifts the fortnightly phase by a week.
+**When to revisit**: next session. Decide (a) whether contracts should be restated to list ₹19,500 + ₹1,500 discount = ₹18,000 net, or left at net-only; (b) whether the missing 26th meeting is added to the schedule (and if so, where — 4 Apr 2026 at the start, or closing the 23 May → 13 Jun gap); (c) whether contract `quantity` moves 25 → 26. Note any schedule change ripples into the notification cohorts and the "missed the last two" absentee logic. Nothing has been changed — this is analysis only.
+
 ---
 
 ## ⚠️ Session Reminders
