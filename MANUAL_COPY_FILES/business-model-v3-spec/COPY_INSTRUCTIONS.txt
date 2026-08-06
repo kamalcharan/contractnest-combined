@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════
+BUSINESS MODEL V3 SPEC — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch folder : business-model-v3-spec
+Date          : 2026-08-05
+Type          : DOCUMENTATION ONLY — no code, no schema, no migration
+
+Submodules affected:
+  - ClaudeDocumentation  (branch: master)
+
+Files:
+  ClaudeDocumentation/BusinessModel/BUSINESS_MODEL_V3_SPEC.md   [NEW]
+
+═══════════════════════════════════════════════════
+WHAT THIS IS
+═══════════════════════════════════════════════════
+
+Records the commercial model agreed in the 2026-08-05 session, plus the
+implementation consequences verified against the live database.
+
+Supersedes the Jan-2026 plan-catalog direction in the same folder
+(HANDOVER_CONTEXT.md, BM_delivery.md, BUSINESS_MODEL_AGENT_PRD.md).
+Those files are left in place as history.
+
+Two defects found in the existing RPCs are documented in section 5 —
+both are live-verified and both block decisions made this session:
+  - 5.1  FIFO credit lots      (1-year wallet validity destroys money today)
+  - 5.2  Ledger journal writes (add_credits/deduct_credits write no audit row)
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2: Copy File
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-spec\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Write-Host "Spec copied." -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: Review
+═══════════════════════════════════════════════════
+Open: ClaudeDocumentation\BusinessModel\BUSINESS_MODEL_V3_SPEC.md
+
+Review checklist:
+  [ ] Section 2 — commercial numbers match your intent
+  [ ] Section 3.3 — decide pooled-with-weights vs per-channel
+  [ ] Section 4 — test-environment caps correct
+  [ ] Section 7 — vendor-authored contract charging question
+  [ ] Section 10 — 7 open decisions
+
+═══════════════════════════════════════════════════
+NOTE ON COMMIT
+═══════════════════════════════════════════════════
+ClaudeDocumentation is a separate repo and is NOT pushed by the
+Claude session (GitHub access this session is scoped to
+contractnest-combined only). Commit it yourself when ready:
+
+  cd ClaudeDocumentation
+  git add BusinessModel/BUSINESS_MODEL_V3_SPEC.md
+  git commit -m "docs: business model v3 spec - commercial model and ledger findings"
+  git push origin master
+  cd ..
+
+═══════════════════════════════════════════════════
+NO CODE WAS WRITTEN THIS SESSION
+═══════════════════════════════════════════════════
+Nothing to test, nothing to deploy. Implementation waits for the
+open decisions in section 10 and explicit go-ahead.
+═══════════════════════════════════════════════════

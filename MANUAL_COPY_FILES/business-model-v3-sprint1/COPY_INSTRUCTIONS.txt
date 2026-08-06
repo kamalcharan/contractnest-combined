@@ -1,0 +1,439 @@
+═══════════════════════════════════════════════════
+BUSINESS MODEL V3 — SPRINT 1
+═══════════════════════════════════════════════════
+
+Branch folder : business-model-v3-sprint1
+Date          : 2026-08-05
+
+Submodules affected:
+  - contractnest-edge  (branch: main)   migrations
+  - contractnest-ui    (branch: main)   admin-only block type gate
+
+═══════════════════════════════════════════════════
+STATUS — WHAT IS ALREADY LIVE
+═══════════════════════════════════════════════════
+
+Migrations 010 through 016 have ALREADY BEEN APPLIED to the Supabase
+project and verified. The .sql files here are the record of what ran, for
+version control and rollback.
+
+  010  additive schema (t_tenant_context columns, topup pack channel)
+  011  notification channels LOV, Vikuna tenant only
+  012  ledger RPC rework — D1 journal writes, D3 trigger column,
+       D4/D5 topup path, inapp channel threaded through
+  013  D7 — release_waiting_jtds wrong column (add_credits was throwing
+       for EVERY tenant in production)
+  014  D4 second layer — t_bm_billing_event.event_source NOT NULL
+  015  seed the Vikuna platform tenant (billing_mode=exempt, limits NULL)
+  016  metering block type "Credit Pack", seeded INACTIVE
+
+Regression: 13/13 passed. See SPRINT1_STEP3_4_RESULTS.md.
+
+═══════════════════════════════════════════════════
+WHAT NEEDS COPYING — UI ONLY
+═══════════════════════════════════════════════════
+
+Files:
+  contractnest-ui/src/types/catalogStudio.ts              [MODIFIED]
+  contractnest-ui/src/utils/catalog-studio/categories.ts  [MODIFIED]
+  contractnest-ui/src/hooks/queries/useBlockTypes.ts      [MODIFIED]
+
+Purpose: gate the new "Credit Pack" (metering) block type to the platform
+tenant only.
+
+WHY A UI GATE AND NOT A DATABASE ONE:
+  m_category_details has NO tenant_id — block types are platform-wide.
+  There is no way to scope this type to one tenant in the database, so the
+  filter has to live in useBlockCategories(), keyed on
+  currentTenant.is_admin.
+
+The three changes:
+  1. types/catalogStudio.ts
+       BlockCategory gains `adminOnly?: boolean`, alongside the existing
+       comingSoon / singleton MVP gates.
+  2. utils/catalog-studio/categories.ts
+       'metering' added to BLOCK_CATEGORIES (fallback) and to
+       MVP_CATEGORY_OVERRIDES as { adminOnly: true }.
+  3. hooks/queries/useBlockTypes.ts
+       useBlockCategories() now reads currentTenant and filters out
+       adminOnly types for non-admin tenants.
+
+No existing behaviour changes for any other block type.
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied." -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: Run and Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+#
+# NOTE: a hard refresh is needed regardless — useCatBlocksTest caches
+# blocks under a tenant-agnostic query key, which is why deleted blocks
+# still appeared earlier. See ISSUE_admin_reset_all_data_gaps.md §3.
+
+═══════════════════════════════════════════════════
+STEP 4: Activate the block type (ONLY after UI is deployed)
+═══════════════════════════════════════════════════
+The metering type is seeded is_active = FALSE so it is invisible to
+everyone until the gate above ships. Once it is deployed:
+
+UPDATE m_category_details SET is_active = true
+ WHERE sub_cat_name = 'metering'
+   AND category_id = (SELECT id FROM m_category_master
+                       WHERE category_name = 'cat_block_type');
+
+If you activate it BEFORE deploying the UI, every tenant sees a
+"Credit Pack" card in catalog-studio.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Catalog-studio loads normally; existing block types unchanged
+- [ ] As a NON-admin tenant, no "Credit Pack" card appears
+- [ ] After activating (step 4), as vikuna (admin) the card DOES appear
+- [ ] As a non-admin tenant after activation, still NO card
+- [ ] Creating an ordinary service/spare block still works
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm before any merge to main.
+═══════════════════════════════════════════════════
+
+
+═══════════════════════════════════════════════════
+ADDENDUM — 2026-08-06
+Metering block reachable in the template wizard,
+cross-tenant template leak, dead-folder removal
+═══════════════════════════════════════════════════
+
+───────────────────────────────────────────────────
+0. COPY COMMANDS — run these first (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+$SRC = "MANUAL_COPY_FILES\business-model-v3-sprint1"
+
+# --- contractnest-ui : the one changed file in this step -------------
+Copy-Item "$SRC\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" `
+          -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+
+# --- contractnest-edge : the leak fix --------------------------------
+Copy-Item "$SRC\contractnest-edge\supabase\functions\cat-templates\index.ts" `
+          -Destination "contractnest-edge\supabase\functions\cat-templates\index.ts" -Force
+
+# --- earlier Sprint-1 UI files (skip any you already copied) ---------
+Copy-Item "$SRC\contractnest-ui\src\*" -Destination "contractnest-ui\src\" -Recurse -Force
+
+Write-Host "Files copied" -ForegroundColor Green
+
+# --- verify the two fixes actually landed ----------------------------
+Select-String -Path "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Pattern "key: 'metering'"
+Select-String -Path "contractnest-edge\supabase\functions\cat-templates\index.ts" -Pattern "allTenantsView"
+# expect 1 hit and 2 hits respectively
+
+# --- delete the two unrouted trees -----------------------------------
+cd contractnest-ui
+git rm -r src/pages/contracts/create/templates
+git rm -r src/pages/templates
+cd ..
+
+# --- deploy the edge fix ---------------------------------------------
+cd contractnest-edge
+supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+cd ..
+# expect v20, verify_jwt stays true
+
+# --- rebuild & test ---------------------------------------------------
+cd contractnest-ui
+npm run build
+npm run dev
+# then hard-refresh the browser: Ctrl+F5
+
+───────────────────────────────────────────────────
+1. UI — Credit Pack blocks are now pickable
+───────────────────────────────────────────────────
+FILE: contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+
+The catalog in the Add Service Blocks step renders ONLY what is listed in
+its section whitelist. Every render path filters through it — the chips,
+the grouped lists, and the search. A block whose categoryId matched no
+section was unreachable, not merely hidden. 'metering' matched nothing, so
+a Credit Pack block could never be added to a template or a contract.
+
+  - SECTIONS renamed ALL_SECTIONS; gains a 7th entry:
+        key 'metering' / chip "Credit Packs" / cats ['metering'] / priced
+  - new `adminOnly` flag on the section type
+  - inside the component, SECTIONS = ALL_SECTIONS filtered by
+    currentTenant.is_admin  (same gate useBlockCategories uses)
+  - useAuth import added
+
+This is the ONLY file changed for that fix. Template mode and contract
+mode share this step (ContractWizard/index.tsx:1550), so both get it.
+
+───────────────────────────────────────────────────
+2. EDGE — cross-tenant template leak  ** DEPLOY THIS **
+───────────────────────────────────────────────────
+FILE: contractnest-edge/supabase/functions/cat-templates/index.ts  (~line 237)
+
+The platform tenant's Templates hub was showing BBB's and hubb's
+templates as if they were its own. Not a data problem — a visibility bug:
+
+    if (!ctx.isAdmin) {          // admin => NO tenant filter at all
+      q = q.or(`tenant_id.eq.${ctx.tenantId},...`)
+    }
+
+Being is_admin silently widened the list to every tenant. This is the
+identical bug already fixed in cat-blocks. Changed to explicit opt-in:
+
+    const allTenantsView = ctx.isAdmin && params.get('all_tenants') === 'true';
+    if (!allTenantsView) { ...same filters... }
+
+Verified before editing: deployed v19 and the repo copy are byte-identical
+(both index.ts and _shared/edgeUtils.ts), so there is NO drift here — unlike
+product-masterdata. Deploying the repo copy is safe.
+
+    cd contractnest-edge
+    supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+
+Expect v20. verify_jwt stays true.
+
+───────────────────────────────────────────────────
+3. UI — delete two unrouted duplicate trees
+───────────────────────────────────────────────────
+Evidence they are unreachable:
+  - App.tsx is the only router; App2.tsx is imported by nothing
+  - no file-based routing, no lazy() into either tree
+  - zero importers outside the trees; they import only each other
+  - the only navigate() into them comes from a file inside them
+
+    cd contractnest-ui
+    git rm -r src/pages/contracts/create/templates
+    git rm -r src/pages/templates
+
+  KEEP src/pages/contracts/create/index.tsx and .../steps/ — that is
+  ContractCreatePage, live at App.tsx:190/597. Only the `templates`
+  subfolder goes.
+
+11 files, ~5,000 lines. Live template surfaces are untouched:
+    /catalog-studio/templates-list        t_cat_templates + ContractWizard
+    /service-contracts/templates          legacy useTemplates
+    /service-contracts/templates/designer legacy useBlocks
+
+───────────────────────────────────────────────────
+4. DATABASE — junk rows removed (already done, production)
+───────────────────────────────────────────────────
+No new migration. Three rows deleted from t_cat_templates:
+
+  26810ac5…  'asdds'            is_system  -> was visible to EVERY tenant
+  cc89f559…  'asddsd'           is_system  -> was visible to EVERY tenant
+  e8645a99…  'verifying block'  orphan of a deleted tenant, 0 refs
+
+Backup of all 31 rows taken BEFORE the delete:
+  ClaudeDocumentation/BusinessModel/backups/t_cat_templates_full_backup_2026-08-06.json
+
+NOT deleted, deliberately:
+  e4f4cfbe…  'verifying block' — 3 ACTIVE contracts still point at it
+             (CN-1030 / CN-1032 / CN-1037, all belonging to the same
+             deleted tenant a58ca91a…). Deleting it strands them. These
+             contracts are themselves orphans; cleaning them up is a
+             separate decision, not a side effect of this step.
+  18  BBB templates   — live production tenant. Several are exact
+                        duplicates (same name, same created_at, different
+                        id) which looks like a copy/versioning bug worth
+                        its own look, but they are BBB's data.
+  9   hubb templates  — is_test tenant, junk names ('sdfdf', 'Untitled').
+
+With fix #2 deployed, none of these appear in the platform tenant's
+Templates hub any more — they were never Vikuna's to begin with.
+
+───────────────────────────────────────────────────
+5. UI — a price of 0 could not be entered
+───────────────────────────────────────────────────
+FILE: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+
+    value={record.amount || ''}      // 0 || '' === ''
+
+0 is falsy, so typing a 0 blanked the field on the next render. The value
+was being stored — the input simply refused to display it, so a genuinely
+free item (a Freemium plan, a zero-rated Credit Pack) could not be priced.
+Four occurrences: total price, cadence rate, resource price, variant price.
+Changed to `?? ''`, which only falls back when the value is null/undefined.
+
+Nothing downstream had to change — verified:
+  - catBlockAdapter does no amount>0 filtering
+  - cat-blocks edge has no amount guard
+  - the API validator (catalogHelpers.isValidPriceAmount) rejects only
+    `num < 0`, so 0 was always accepted server-side despite its comment
+    saying "positive number"
+
+NOTE, not changed: BlockWizardContent.validateStep still requires
+`amount > 0` for service / spare blocks. Metering blocks are unaffected —
+validateStep has no 'metering' branch, so a Credit Pack can be saved at 0.
+Service blocks already have their own answer for free items, the
+`complimentary` flag, which short-circuits every pricing check. Left alone
+rather than widened unasked.
+
+    Copy-Item "$SRC\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" `
+              -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Force
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST — ADDENDUM
+═══════════════════════════════════════════════════
+[ ] npm run build — no missing-import errors from the deleted folders
+[ ] Deploy cat-templates, then hard-refresh (Ctrl+F5)
+[ ] Log in as vikunatech@gmail.com -> /catalog-studio/templates-list
+       expect 0 templates  (was showing 8 that belonged to BBB/hubb)
+[ ] Log in as BBB -> its own templates still all present, count unchanged
+[ ] Vikuna -> New Template -> Add Service Blocks:
+       "Credit Packs" chip appears — ONLY after a metering block exists
+       (chips with count 0 are hidden). Vikuna has 0 blocks right now, so
+       author a Credit Pack in catalog-studio first, then re-check.
+[ ] Ordinary tenant -> same step -> NO "Credit Packs" chip
+[ ] Catalog-studio -> any block -> Pricing -> type 0 -> field SHOWS 0
+       (was blanking instantly) and the wizard saves at 0
+[ ] /service-contracts/templates and .../designer still load
+[ ] /contracts/create/client — contract wizard unaffected
+
+═══════════════════════════════════════════════════
+KNOWN GAP — flagged, not fixed
+═══════════════════════════════════════════════════
+The metering gate is UI-only, in catalog-studio and in the contract
+wizard alike. cat-blocks handleCreateBlock still has no server-side
+check, so a direct API call carrying the metering block_type_id would
+succeed for a non-platform tenant. Worth closing before this is real
+money, but it is not a change I made unasked.
+
+───────────────────────────────────────────────────
+6. CORRECTION — blank means 0, not unlimited
+───────────────────────────────────────────────────
+FILES: .../BlockWizard/steps/metering/MeteringStep.tsx
+       .../utils/catalog-studio/catBlockAdapter.ts
+
+MeteringStep was built on "blank = NULL = unlimited". That is wrong. Owner
+ruling: there is no unlimited plan. Every plan states exactly what it may
+create and t_tenant_context keeps the balance sheet (granted vs consumed)
+against that number — it is the consumption orchestrator.
+
+  - blank now writes 0, not null
+  - placeholder "Unlimited" -> "0"
+  - meteringLimits type Record<string, number | null> -> Record<string, number>
+  - LIMIT_FIELDS cut from 6 fields to 2: Contracts and RFQs
+
+Why only two: the product bills the party that CREATES. The counterparty
+consumes the contract or RFQ for free, so consumption is never capped, and
+contacts / users / templates are not chargeable events and carry no cap.
+Contracts is the seller's meter; RFQs is the buyer's, because only a buyer
+raises an RFQ. A seller plan sets Contracts and leaves RFQs at 0; a buyer
+plan does the reverse.
+
+This matters: under the old reading, leaving RFQs blank on a seller plan
+would have granted every seller UNLIMITED RFQs.
+
+NULL on t_tenant_context.limit_* is now reserved for the exempt platform
+tenant (billing_mode='exempt', migration 015) and is never written from
+this screen.
+
+───────────────────────────────────────────────────
+7. Plan catalogue — /businessmodel/tenants/pricing-plans
+───────────────────────────────────────────────────
+The page rendered `fakePricingPlans` from a fixture and its Subscribe button
+navigated to /businessmodel/tenants/pricing-plans/:id/subscribe — a route
+that is not registered anywhere. It was a mock end to end.
+
+Now wired to the real plan catalogue: published contract templates owned by
+the platform tenant. Owner's spec: "show Templates where tenant is admin".
+
+  EDGE  contractnest-edge/supabase/functions/cat-templates/index.ts
+        + GET /plans -> handleGetPlanTemplates
+          · resolves the platform tenant by is_admin FLAG, never a hardcoded
+            uuid (the id differs per environment)
+          · is_active + is_live = caller's env + settings->>lifecycle =
+            'signed_off' (published only, or a half-built plan is purchasable)
+          · derives price/term/limits/grants/flags from the template's own
+            blocks snapshot, so a buying tenant never reads the platform
+            tenant's block rows — it has no right to them
+
+        NOTE this file also carries the cat-templates leak fix (§2). Deploy
+        once and both ship together. Expect v21.
+
+  API   src/types/catalogStudioTypes.ts    + PlanTemplate, PlanTemplateListResponse
+        src/services/catTemplatesService.ts + listPlanTemplates()
+        src/controllers/catalogStudioController.ts + getPlanTemplates
+        src/routes/catalogStudioRoutes.ts   + GET /templates/plans
+          · registered ABOVE /templates/:id — otherwise Express matches
+            "plans" as a template id
+
+  UI    src/services/serviceURLs.ts                     + TEMPLATES.PLANS
+        src/hooks/queries/usePlanTemplates.ts           NEW
+        src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+                                                        rewritten, no fixture
+
+WHY NOT REUSE /system: system templates are `tenant_id IS NULL`, and
+handleGetTemplates already matches those — so publishing plans that way would
+drop "Free", "Quarterly" and the rest into EVERY tenant's own Templates hub,
+mixed in with their contract templates. Same cross-tenant bleed as the
+is_admin bypass. Plans stay owned by the platform tenant, served only here.
+
+SUBSCRIBE IS DISABLED, deliberately. Activation is step 7: create the contact
+from the subscribing tenant's own record (setting source_tenant_id), raise the
+contract under the platform tenant, apply the plan's metering to
+t_tenant_context. Until that exists the button is disabled rather than
+navigating to a route that does not exist.
+
+  Copy-Item "$SRC\contractnest-ui\src\hooks\queries\usePlanTemplates.ts" `
+            -Destination "contractnest-ui\src\hooks\queries\usePlanTemplates.ts" -Force
+  Copy-Item "$SRC\contractnest-ui\src\services\serviceURLs.ts" `
+            -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+  Copy-Item "$SRC\contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" `
+            -Destination "contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Force
+  Copy-Item "$SRC\contractnest-api\src\*" -Destination "contractnest-api\src\" -Recurse -Force
+
+  cd contractnest-edge
+  supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+  cd ../contractnest-api && npm run dev
+
+───────────────────────────────────────────────────
+8. BUILD FIX — missing import broke the Docker build
+───────────────────────────────────────────────────
+FILE: contractnest-api/src/services/catTemplatesService.ts
+
+  error TS2552: Cannot find name 'PlanTemplateListResponse'.
+
+listPlanTemplates() used the type but it was never added to the import
+block from '../types/catalogStudioTypes'. One line:
+
+    ApiResponse,
+    TemplateListResponse,
+  + PlanTemplateListResponse,
+    TemplateCoverageResponse,
+
+Why the local typecheck did not catch it: this container has TypeScript
+6.0.2 while the project pins ^5.9.2 (API) / ~5.7.2 (UI). TS6 treats
+`moduleResolution: node10` and `baseUrl` in tsconfig as ERRORS and stops
+before checking a single file — so `tsc` reported exactly 2 errors, both
+about tsconfig, and no type checking had happened at all. Reading that as
+"clean" was wrong.
+
+Verify with the deprecations silenced, which forces a real check:
+
+    npx tsc --ignoreDeprecations 6.0 --noEmit
+
+Re-verified after the fix: 0 occurrences of PlanTemplateListResponse in
+the error output, and no real errors in any of the changed API or UI files.
+
+    Copy-Item "$SRC\contractnest-api\src\services\catTemplatesService.ts" `
+              -Destination "contractnest-api\src\services\catTemplatesService.ts" -Force
