@@ -51,10 +51,16 @@ const PricingPlansPage: React.FC = () => {
   const { data, isLoading, error } = usePlanTemplates();
   const plans: PlanTemplate[] = data?.data?.plans ?? [];
 
+  // Server truth, not local state. The old version only knew you were
+  // subscribed if you had clicked in this browser session — reload and every
+  // card said "Subscribe" again, and you found out by getting a 409.
+  const currentPlanId = data?.data?.current_plan_id ?? null;
+  const currentContractNumber = data?.data?.current_contract_number ?? null;
+  const isSubscribed = !!currentPlanId;
+
   const subscribe = useSubscribeToPlan();
   // Tracked per plan so only the clicked card shows a spinner, not all of them.
   const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
-  const [subscribedPlanId, setSubscribedPlanId] = useState<string | null>(null);
 
   const handleSubscribe = (plan: PlanTemplate) => {
     setPendingPlanId(plan.id);
@@ -62,7 +68,8 @@ const PricingPlansPage: React.FC = () => {
       { templateId: plan.id },
       {
         onSuccess: (result) => {
-          setSubscribedPlanId(plan.id);
+          // No local "subscribed" flag — the query is invalidated by the
+          // mutation, so the card re-renders from current_plan_id.
           addToast({
             type: 'success',
             title: `You are on ${result.plan_name}`,
@@ -126,9 +133,15 @@ const PricingPlansPage: React.FC = () => {
           Plans
         </h1>
         <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-          Choose a plan. You are billed for what you create — contracts and RFQs.
-          Anyone you share a record with can view and act on it at no cost to them.
+          You are billed for what you create — contracts and RFQs. Anyone you
+          share a record with can view and act on it at no cost to them.
         </p>
+        {isSubscribed && currentContractNumber && (
+          <p className="text-sm mt-2 flex items-center gap-1.5" style={{ color: colors.semantic?.success || '#0d9464' }}>
+            <CheckCircle2 className="w-4 h-4" />
+            Your plan is active under contract {currentContractNumber}.
+          </p>
+        )}
       </div>
 
       {plans.length === 0 && (
@@ -149,6 +162,7 @@ const PricingPlansPage: React.FC = () => {
           const symbol = getCurrencySymbol(plan.currency);
           const term = formatTerm(plan.term);
           const isFree = plan.price === 0;
+          const isCurrent = currentPlanId === plan.id;
 
           // Only surface caps that actually grant something. A 0 here is a real
           // cap ("may not create any"), so listing it as a feature would read
@@ -157,7 +171,16 @@ const PricingPlansPage: React.FC = () => {
           const grantEntries = Object.entries(plan.grants).filter(([, v]) => v > 0);
 
           return (
-            <div key={plan.id} style={cardStyle} className="overflow-hidden flex flex-col">
+            <div
+              key={plan.id}
+              style={{
+                ...cardStyle,
+                // The plan you are on should be obvious before reading a button.
+                borderColor: isCurrent ? colors.semantic?.success || '#0d9464' : `${colors.utility.primaryText}20`,
+                borderWidth: isCurrent ? 2 : 1,
+              }}
+              className="overflow-hidden flex flex-col"
+            >
               <div className="p-5 pb-4">
                 <div className="flex items-center gap-2 mb-2">
                   {isFree && <Sparkles className="w-4 h-4" style={{ color: colors.brand.primary }} />}
@@ -232,11 +255,11 @@ const PricingPlansPage: React.FC = () => {
               </div>
 
               <div className="px-5 pb-5">
-                {/* One click = one server-side transaction: contact created
-                    from this tenant's own record, plan contract raised under
-                    the platform tenant, entitlements written to
-                    t_tenant_context. See subscribe_tenant_to_plan. */}
-                {subscribedPlanId === plan.id ? (
+                {/* Three states, all driven by server truth:
+                    · this IS the current plan  -> Current plan, no action
+                    · subscribed to another one -> Switch, disabled (see below)
+                    · not subscribed            -> Subscribe                */}
+                {isCurrent ? (
                   <div
                     className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                     style={{
@@ -245,8 +268,25 @@ const PricingPlansPage: React.FC = () => {
                     }}
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    Subscribed
+                    Current plan
                   </div>
+                ) : isSubscribed ? (
+                  // Switching is not built yet: subscribe_tenant_to_plan
+                  // refuses with ALREADY_SUBSCRIBED because superseding the
+                  // existing contract is an unanswered product decision.
+                  // Disabling is honest; an enabled button would 409.
+                  <button
+                    type="button"
+                    disabled
+                    title="You are already on a plan. Switching plans is not available yet."
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed"
+                    style={{
+                      backgroundColor: `${colors.utility.primaryText}10`,
+                      color: colors.utility.secondaryText,
+                    }}
+                  >
+                    Switch
+                  </button>
                 ) : (
                   <button
                     type="button"
