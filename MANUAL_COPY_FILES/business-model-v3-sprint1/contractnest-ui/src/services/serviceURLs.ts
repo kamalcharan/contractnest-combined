@@ -691,6 +691,17 @@ export const API_ENDPOINTS = {
   // =================================================================
   // CATALOG STUDIO ENDPOINTS
   // =================================================================
+  // =================================================================
+  // TENANT CONTEXT — the tenant's own balance sheet: plan, what it may
+  // create vs what it has used, notification credit pools, add-on flags.
+  // Backed by get_tenant_context, whose subscription block is resolved
+  // from the plan CONTRACT, not the legacy t_bm_* tables.
+  // =================================================================
+  TENANT_CONTEXT: {
+    BASE: '/api/tenant-context',
+    CAN_SEND: (channel: string) => `/api/tenant-context/can-send/${channel}`,
+  },
+
   CATALOG_STUDIO: {
     // Health check
     HEALTH: '/api/catalog-studio/health',

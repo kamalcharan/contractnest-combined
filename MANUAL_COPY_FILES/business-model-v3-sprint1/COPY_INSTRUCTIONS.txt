@@ -570,3 +570,51 @@ pricing page down, not just the badge. Replaced with two plain lookups.
 SWITCHING IS STILL NOT BUILT. "Switch" is deliberately disabled: superseding
 the existing contract is an unanswered product decision (supersede vs stack).
 An enabled button would just 409.
+
+───────────────────────────────────────────────────
+12. /tenants/subscription — built for real
+───────────────────────────────────────────────────
+It was never wired, not broken: it called
+API_ENDPOINTS.BUSINESS_MODEL.USAGE_SUMMARY, and BUSINESS_MODEL was never
+defined in serviceURLs.ts. That throws on undefined, so mockSubscription was
+all anyone ever saw.
+
+  DB   018_tenant_context_plan_aware.sql  (APPLIED to prod)
+       get_tenant_context now also returns:
+         · limits/usage for rfqs, contacts, templates (only had users,
+           contracts, storage — a buyer plan caps RFQs and it could not show it)
+         · credits.inapp
+         · billing_mode, credit_grant_rates
+         · subscription{} resolved from the PLAN CONTRACT under the platform
+           tenant via the buyer contact's source_tenant_id — the same link
+           /plans and subscribe_tenant_to_plan use, so all three agree.
+           Previously it read the legacy t_bm_subscription columns and came
+           back entirely NULL.
+       Backwards compatible: every previously returned key is unchanged.
+
+  API  controllers/tenantContextController.ts
+       extractAuth now accepts x-product AS WELL AS x-product-code.
+       ** This is why the route had no callers. ** The UI's axios client sends
+       x-product (services/api.ts) and the rest of the API reads x-product
+       (utils/supabaseConfig.ts); this controller alone demanded
+       x-product-code, so every browser call to /api/tenant-context 400'd.
+
+  UI   serviceURLs                     + TENANT_CONTEXT.BASE / CAN_SEND
+       hooks/queries/useTenantContext.ts   NEW
+       .../tenants/Subscription/index.tsx  REWRITTEN, no mock
+
+DESIGN — the page is organised around RUNWAY, not utilisation. A percentage
+tells you what you have consumed; a tenant needs to know what is LEFT and how
+long they have. So the big numbers are "2 contracts left" and "31 days left",
+with "1 of 3 used" as small print. Credit pools show the grant rate next to
+the balance ("+15 per creation") because that is the thing a tenant can act
+on. Contacts/users/templates are absent by design — only creation is billed,
+so only creation has a runway.
+
+NOT INCLUDED — top-ups. The 19 rows in t_bm_topup_pack have a NULL channel so
+they cannot be shown against the pools, and the A/B decision (t_bm_topup_pack
+vs catalog-studio metering blocks) is still open. Flagged in the page source.
+
+STILL NOT ENFORCED: nothing reads limit_contracts/limit_rfqs anywhere in the
+API or edge. The page will honestly show "0 of 3 used" while a tenant creates
+a fourth. Display first, enforcement next.
