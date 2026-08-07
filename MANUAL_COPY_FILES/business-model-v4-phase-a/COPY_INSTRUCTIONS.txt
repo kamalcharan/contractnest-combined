@@ -1,0 +1,99 @@
+===================================================================
+BUSINESS MODEL V4 - PHASE A : balance moves onto t_tenant_context
+===================================================================
+
+Branch folder : business-model-v4-phase-a
+Submodules    : contractnest-edge  (branch: main)   [migration file only]
+UI / API      : NO CHANGES - every caller goes through the six RPCs and
+                all six kept their exact signatures.
+
+*** ALREADY APPLIED TO THE LIVE DATABASE ***
+Applied in 7 parts via the Supabase MCP (same route as 017/018/019):
+    v4_phase_a_1_columns_and_primitives
+    v4_phase_a_2_journal_rename_and_rpcs
+    v4_phase_a_3_get_credit_balance
+    v4_phase_a_4_context_triggers_and_jtd_release
+    v4_phase_a_5_backfill_and_retire
+    v4_phase_a_6_get_tenant_context
+    v4_phase_a_7_fix_ambiguous_product_code
+The .sql below is the consolidated, corrected file for the repo record -
+it matches what is running. Do NOT run it again; it is idempotent but
+there is nothing left to do.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/020_balance_on_context.sql  [NEW]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy the migration into the edge submodule
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-a\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "020_balance_on_context.sql copied" -ForegroundColor Green
+
+-------------------------------------------------------------------
+STEP 3: Nothing to build, nothing to restart
+-------------------------------------------------------------------
+No UI or API change. No edge function redeploy. The change is entirely
+in the database and the six RPC signatures are unchanged.
+
+-------------------------------------------------------------------
+WHAT CHANGED
+-------------------------------------------------------------------
+  t_tenant_context.credits_<channel>   IS the balance now (was a copy)
+  t_tenant_context.credits_reserved    NEW jsonb - in-flight holds
+  t_tenant_context.credits_other       NEW jsonb - non-typed credit types
+  t_bm_credit_transaction              RENAMED to t_credit_journal
+  t_bm_credit_balance                  no longer read or written
+                                       (dropped in Phase E)
+
+  DROPPED: trg_credit_balance_update_context (the sync trigger)
+           trg_credit_topup_release_jtds     (moved to the context row)
+           trg_fn_update_context_on_credit_change
+           trg_fn_release_jtds_on_credit_topup
+           process_credit_expiry             (credits do not expire - D2)
+
+  NEW ON t_tenant_context:
+           trg_context_credit_flags   BEFORE - recalcs can_send_* / low
+           trg_context_release_jtds   AFTER  - releases parked JTDs
+
+-------------------------------------------------------------------
+VERIFIED LIVE (Trinity, demo tenant)
+-------------------------------------------------------------------
+  add_credits      270 -> 275     journal 270 -> 275
+  reserve_credits  hold 2         credits_reserved {"notification:whatsapp": 2}
+  check_credit_availability        balance 275, reserved 2, available 273
+  deduct_credits   275 -> 273     hold consumed back to 0,
+                                  journal row carries reference_type 'jtd'
+  get_credit_balance               6 lines, summary notification 528
+  get_tenant_context               credits.whatsapp 273, plan CN-1001,
+                                   limits/usage/flags unchanged in shape
+
+  4 orphan balances (tenant a58ca91a..., not present in t_tenants at all)
+  were reported and skipped, not migrated. They are junk from a deleted
+  tenant and go away with t_bm_credit_balance in Phase E.
+
+-------------------------------------------------------------------
+NOTE
+-------------------------------------------------------------------
+Trinity ends the smoke test on 273 WhatsApp rather than 270 (+5 added,
+-2 spent). Left as-is: Trinity is the demo tenant and the journal is a
+truthful record of the test. Reverting the balance would break the
+balance_before/balance_after chain, which is the whole point of keeping
+the journal as a table.
+
+-------------------------------------------------------------------
+NEXT
+-------------------------------------------------------------------
+Phase B - close the spend loop:
+  1. JTD create: check_credit_availability -> park as 'no_credits'
+  2. jtd-worker: reserve -> deduct on success -> release on failure
+  3. reference_type 'jtd' on every deduction (proven working above)
+  4. "N waiting for credits" on the Subscription page
+===================================================================
