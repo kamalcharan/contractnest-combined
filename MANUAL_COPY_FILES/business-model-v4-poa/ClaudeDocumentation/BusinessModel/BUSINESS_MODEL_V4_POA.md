@@ -1,6 +1,6 @@
 # Business Model V4 — Plan of Action
 
-**Status**: Phase A applied 2026-08-07; Phases B–E open
+**Status**: Phases A–C applied 2026-08-07; Phases D–E open
 **Supersedes**: the `t_bm_*` layer described in `BUSINESS_MODEL_V3_POA.md` / `BUSINESS_MODEL_V3_SPEC.md`
 **Written**: 2026-08-07
 **Rule for this document**: every "already built" claim below was verified against the live
@@ -288,7 +288,25 @@ One trap worth recording: `fn_credit_state` returns a table with a
 body. Postgres accepts the function at CREATE time and raises 42702 only on the
 first call. Every table reference in that function is aliased.
 
-**Remaining: Phases B–E as specified above.**
+**Phase B — DONE (2026-08-07).** `021_close_the_spend_loop.sql`.
+`trg_jtd_credit_gate` parks unpayable messages at INSERT (named to sort ahead
+of `trg_jtd_enqueue`); the worker reserves before dispatch, charges on provider
+success, releases on failure; every deduction carries `reference_type='jtd'`.
+Identity messages, the test environment and unmetered tenants are never
+charged; every path fails open. Database applied and tested live; the worker
+redeploy is the owner's step.
+
+**Phase C — DONE (2026-08-07).** `022_soft_limits.sql`. `flag_over_limit` added
+and both limit flags now recompute on the context row itself — the old writer
+fired on `t_bm_subscription_usage`, a table with zero rows, so `flag_near_limit`
+had never been true for anybody either. A limit of 0 with zero usage reads as
+"not in this plan", not "over", so seller plans are not nagged forever about
+RFQs they never wanted. Plan-contract expiry zeroes the two metered allowances
+and leaves credits alone (D2). Nothing blocks: no constraint, no RAISE, no
+disabled button (D3) — the tenant is warned on wizard open and on the
+Subscription page, upgrade one click away.
+
+**Remaining: Phases D–E as specified above.**
 
 ---
 
