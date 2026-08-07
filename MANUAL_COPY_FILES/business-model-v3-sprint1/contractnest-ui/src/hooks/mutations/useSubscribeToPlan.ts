@@ -39,13 +39,27 @@ export const useSubscribeToPlan = () => {
 
   return useMutation<PlanSubscriptionResult, Error, { templateId: string }>({
     mutationFn: async ({ templateId }) => {
-      const response = await api.post(API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.SUBSCRIBE, {
-        template_id: templateId,
-      });
-      if (!response.data?.success) {
-        throw new Error(response.data?.error?.message || 'Subscription failed');
+      try {
+        const response = await api.post(API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.SUBSCRIBE, {
+          template_id: templateId,
+        });
+        if (!response.data?.success) {
+          throw new Error(response.data?.error?.message || 'Subscription failed');
+        }
+        return response.data.data as PlanSubscriptionResult;
+      } catch (err: any) {
+        // axios REJECTS on 4xx, so the success check above never runs for a
+        // refusal — without this the user sees "Request failed with status
+        // code 400" instead of the reason the server actually gave
+        // (already subscribed, platform tenant, plan not listed…).
+        const payload = err?.response?.data;
+        if (payload?.error?.message) {
+          const e = new Error(payload.error.message) as Error & { code?: string };
+          e.code = payload.error.code;
+          throw e;
+        }
+        throw err;
       }
-      return response.data.data as PlanSubscriptionResult;
     },
     onSuccess: () => {
       // The plan list shows which plan is current, and the whole point of
