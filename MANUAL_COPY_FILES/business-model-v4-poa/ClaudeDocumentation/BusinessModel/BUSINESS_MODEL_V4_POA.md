@@ -1,6 +1,6 @@
 # Business Model V4 — Plan of Action
 
-**Status**: proposed, not started
+**Status**: Phase A applied 2026-08-07; Phases B–E open
 **Supersedes**: the `t_bm_*` layer described in `BUSINESS_MODEL_V3_POA.md` / `BUSINESS_MODEL_V3_SPEC.md`
 **Written**: 2026-08-07
 **Rule for this document**: every "already built" claim below was verified against the live
@@ -239,30 +239,56 @@ Listed so they are not silently re-litigated:
 
 ---
 
-## Part 4 — Open decisions (answer before Phase A)
+## Part 4 — Decisions (answered 2026-08-07)
 
-**D1 — Does the credit journal stay a table?**
-Grants are already reconstructible from contracts; spends will be reconstructible from
-`n_jtd` once B3 lands. So `t_bm_credit_transaction` could become a view.
-*Recommendation: keep it as a table.* It carries `balance_before`/`balance_after`, which
-is what lets you prove the balance is correct rather than recompute it and hope. Rename
-to `t_credit_journal` and drop the `t_bm_` prefix. Cheap to keep, expensive to miss.
+**D1 — Does the credit journal stay a table?** → **Table.** Renamed
+`t_bm_credit_transaction` → `t_credit_journal` in Phase A. It carries
+`balance_before`/`balance_after`, which is what lets a balance be proven rather
+than recomputed.
 
-**D2 — Do credits expire?**
-`process_credit_expiry()` exists and `expiry_days` is on every pack. A scalar column on
-`t_tenant_context` cannot expire in tranches — supporting it means a tranche table,
-which re-introduces the thing we are deleting.
-*Recommendation: credits do not expire in V4.* Drop `expiry_days` from the pack model.
-If expiry is commercially required later, it comes back as a tranche table with eyes
-open, not as a side effect.
+**D2 — Do credits expire?** → **No.** A *contract* expires; the credits that
+contract granted stay with the tenant. `process_credit_expiry()` and all
+`expires_at` handling were dropped in Phase A, and `expiry_days` comes off the
+top-up pack model in Phase D. This also creates a standing rule for Phase C:
+when a plan contract expires, limits lapse but `credits_*` are left alone.
 
-**D3 — Hard block or soft warn at the limit?**
-Hard block is honest and simple; it also means a paying tenant hits a wall mid-work.
-*Recommendation: hard block on create, with the upgrade path one click away in the same
-toast.* Soft-warn metering that nobody enforces is what produced the current state.
+**D3 — Hard block or soft warn at the limit?** → **Soft.** No enforcement in
+`create_contract_transaction`; limits are advisory. Phase C is surfacing only —
+an over-limit flag, a banner, a toast, an upgrade CTA.
 
-**D4 — What is Trinity's true `usage_contracts`?**
-Currently 17, inflated by a backfill. Needs an agreed number before C1.
+**D4 — Trinity's `usage_contracts`?** → **Moot.** Trinity is the demo tenant.
+No reset, no backfill correction.
+
+---
+
+## Phase A — DONE (2026-08-07)
+
+Applied live in seven parts (`v4_phase_a_1` … `v4_phase_a_7`). File of record:
+`contractnest-edge/supabase/migrations/business-model-v2/020_balance_on_context.sql`.
+
+| | |
+|---|---|
+| `t_tenant_context.credits_<channel>` | **is** the balance — nothing copies it |
+| `credits_reserved` (jsonb, NEW) | in-flight holds, keyed `<credit_type>:<channel\|_>` |
+| `credits_other` (jsonb, NEW) | credit types with no typed column (ai_report) |
+| `t_credit_journal` | renamed from `t_bm_credit_transaction` |
+| `t_bm_credit_balance` | no longer read or written — dropped in Phase E |
+| dropped | the sync trigger, its function, the old JTD-release trigger, `process_credit_expiry` |
+| new on `t_tenant_context` | `trg_context_credit_flags` (BEFORE), `trg_context_release_jtds` (AFTER) |
+
+All six RPC signatures unchanged, so `billing/index.ts`,
+`_shared/businessModel/index.ts` and `trg_fn_contract_consumption` needed no edit.
+
+Smoke-tested live end to end: add → reserve → check → deduct, with the hold
+consumed correctly and the journal chain unbroken (270→275→273). Four orphan
+balances belonging to a tenant absent from `t_tenants` were reported and skipped.
+
+One trap worth recording: `fn_credit_state` returns a table with a
+`product_code` column, which shadows `t_tenant_context.product_code` inside the
+body. Postgres accepts the function at CREATE time and raises 42702 only on the
+first call. Every table reference in that function is aliased.
+
+**Remaining: Phases B–E as specified above.**
 
 ---
 
