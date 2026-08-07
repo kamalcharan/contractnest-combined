@@ -487,3 +487,47 @@ TWO KNOWN GAPS — not yet fixed:
 
 STILL TO DO for the Subscribe button: /plans filter on is_public, an edge
 route + API route calling this RPC, and enabling the button on the page.
+
+───────────────────────────────────────────────────
+10. Step 7 COMPLETE — Subscribe button is live
+───────────────────────────────────────────────────
+Two fixes to 017 (already applied to prod, migration file re-synced):
+  · contract_id/contract_number were NULL — create_contract_transaction
+    returns {success, data:{id, contract_number}}; the RPC was reading the
+    wrong level.
+  · no events were derived. create_contract_transaction does NOT derive
+    them, it stores whatever computed_events it is handed (the wizard
+    computes them client-side). The RPC now builds ONE prepaid billing
+    event for the term, but only when total > 0 — a zero-price plan has
+    nothing to bill, which also avoids minting a 0.00 invoice that would
+    sit unpaid forever. That leaves the ₹0-invoice question moot for Free;
+    it still needs answering before a paid plan ships.
+
+NEW — edge (same file as the leak fix and /plans; one deploy, expect v22):
+  POST /cat-templates/subscribe -> handleSubscribeToPlan
+    · subscriber is ALWAYS ctx.tenantId, never the body — a tenant cannot
+      subscribe another by posting someone else's id
+    · 409 for ALREADY_SUBSCRIBED (state conflict), 400 for the rest
+  GET /cat-templates/plans now also filters .eq('is_public', true)
+
+NEW — api:
+  types      + PlanSubscriptionResult
+  service    + subscribeToPlan()
+  controller + subscribeToPlan (409 passthrough)
+  routes     + POST /templates/subscribe  (ABOVE /templates/:id)
+
+NEW — ui:
+  serviceURLs                       + TEMPLATES.SUBSCRIBE
+  hooks/mutations/useSubscribeToPlan.ts   NEW
+  pricing-plans/index.tsx           Subscribe enabled: per-card spinner,
+                                    "Subscribed" state, toast on both paths
+
+VERIFIED in test against Trinity Tecnitions -> Free:
+  { success: true, contract_number: "CN-1001",
+    contact_id: ..., limits: {contracts:3, rfqs:0} }
+  guards: second click  -> ALREADY_SUBSCRIBED
+          self-subscribe-> SELF_SUBSCRIPTION
+          wrong env     -> PLAN_NOT_AVAILABLE
+  t_tenant_context: billing_mode=plan, limit_contracts=3, limit_rfqs=0,
+                    flag_can_access=true
+  contract: 3 blocks, 0 events (billingOnly working, ₹0 so no billing event)

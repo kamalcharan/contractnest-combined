@@ -12,13 +12,15 @@
 // Subscribe button navigated to a route that was never registered. It is now
 // wired to /api/catalog-studio/templates/plans.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, Sparkles, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { analyticsService } from '@/services/analytics.service';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import { usePlanTemplates, PlanTemplate } from '@/hooks/queries/usePlanTemplates';
+import { useSubscribeToPlan } from '@/hooks/mutations/useSubscribeToPlan';
+import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 
 // Creation limits are the only capped resources — the product bills whoever
 // CREATES a contract or an RFQ; the counterparty consumes it for free.
@@ -45,8 +47,39 @@ const PricingPlansPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
+  const { addToast } = useVaNiToast();
   const { data, isLoading, error } = usePlanTemplates();
   const plans: PlanTemplate[] = data?.data?.plans ?? [];
+
+  const subscribe = useSubscribeToPlan();
+  // Tracked per plan so only the clicked card shows a spinner, not all of them.
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [subscribedPlanId, setSubscribedPlanId] = useState<string | null>(null);
+
+  const handleSubscribe = (plan: PlanTemplate) => {
+    setPendingPlanId(plan.id);
+    subscribe.mutate(
+      { templateId: plan.id },
+      {
+        onSuccess: (result) => {
+          setSubscribedPlanId(plan.id);
+          addToast({
+            type: 'success',
+            title: `You are on ${result.plan_name}`,
+            message: `Contract ${result.contract_number} is active.`,
+          });
+        },
+        onError: (err: Error) => {
+          addToast({
+            type: 'error',
+            title: 'Could not subscribe',
+            message: err.message,
+          });
+        },
+        onSettled: () => setPendingPlanId(null),
+      },
+    );
+  };
 
   useEffect(() => {
     analyticsService.trackPageView('businessmodel/tenants/pricing-plans', 'Pricing Plans');
@@ -199,24 +232,33 @@ const PricingPlansPage: React.FC = () => {
               </div>
 
               <div className="px-5 pb-5">
-                {/* Activation is Sprint 1 step 7: subscribing must create the
-                    contact from this tenant's own record, raise the contract
-                    under the platform tenant, and apply the plan's metering to
-                    t_tenant_context. Until that exists the button stays
-                    disabled rather than navigating to a route that does not
-                    exist — which is what it did before. */}
-                <button
-                  type="button"
-                  disabled
-                  title="Activation is not wired up yet"
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed"
-                  style={{
-                    backgroundColor: `${colors.utility.primaryText}10`,
-                    color: colors.utility.secondaryText,
-                  }}
-                >
-                  Subscribe
-                </button>
+                {/* One click = one server-side transaction: contact created
+                    from this tenant's own record, plan contract raised under
+                    the platform tenant, entitlements written to
+                    t_tenant_context. See subscribe_tenant_to_plan. */}
+                {subscribedPlanId === plan.id ? (
+                  <div
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                    style={{
+                      backgroundColor: `${colors.semantic?.success || '#0d9464'}15`,
+                      color: colors.semantic?.success || '#0d9464',
+                    }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Subscribed
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSubscribe(plan)}
+                    disabled={pendingPlanId !== null}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                  >
+                    {pendingPlanId === plan.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {pendingPlanId === plan.id ? 'Subscribing…' : 'Subscribe'}
+                  </button>
+                )}
               </div>
             </div>
           );
@@ -225,7 +267,6 @@ const PricingPlansPage: React.FC = () => {
 
       {plans.length > 0 && (
         <p className="text-xs mt-5" style={{ color: colors.utility.secondaryText }}>
-          Subscribing is not active yet — plans are shown here for review.{' '}
           <button
             type="button"
             onClick={() => navigate('/businessmodel/tenants/subscription')}

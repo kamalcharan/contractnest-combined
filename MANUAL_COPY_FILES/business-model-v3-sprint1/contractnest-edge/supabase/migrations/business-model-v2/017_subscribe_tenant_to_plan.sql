@@ -55,6 +55,7 @@ DECLARE
     v_flags           TEXT[] := ARRAY[]::TEXT[];
     v_duration_value  INTEGER;
     v_duration_unit   TEXT;
+    v_events          JSONB := '[]'::JSONB;
 BEGIN
     -- ── platform tenant, by FLAG never by hardcoded id ────────────────
     SELECT id INTO v_platform_id FROM t_tenants WHERE is_admin = TRUE LIMIT 1;
@@ -177,6 +178,26 @@ BEGIN
     v_duration_value := COALESCE((v_template.settings->'defaults'->>'duration_value')::INT, 1);
     v_duration_unit  := COALESCE(v_template.settings->'defaults'->>'duration_unit', 'months');
 
+    -- A plan is billed once, prepaid, for its whole term. At zero there is
+    -- nothing to bill, so no event is raised — which also avoids minting a
+    -- zero-value invoice that would sit unpaid forever.
+    --
+    -- create_contract_transaction does NOT derive events; it stores whatever
+    -- computed_events it is handed (the wizard computes them client-side).
+    -- Passing none is why the first cut of this function produced a contract
+    -- with no billing event at all.
+    IF COALESCE(v_template.total, 0) > 0 THEN
+        v_events := jsonb_build_array(jsonb_build_object(
+            'id', 'billing-1',
+            'event_type', 'billing',
+            'category_id', '',
+            'block_name', COALESCE(v_template.display_name, v_template.name),
+            'scheduled_date', now(),
+            'amount', v_template.total,
+            'status', 'pending'
+        ));
+    END IF;
+
     v_payload := jsonb_build_object(
         'tenant_id',         v_platform_id,
         'is_live',           p_is_live,
@@ -199,6 +220,7 @@ BEGIN
         'tax_total',         0,
         'discount_total',    0,
         'blocks',            v_blocks,
+        'computed_events',   v_events,
         'created_by',        p_user_id,
         'performed_by_type', 'user',
         'metadata',          jsonb_build_object(
@@ -262,8 +284,8 @@ BEGIN
 
     RETURN jsonb_build_object(
         'success', true,
-        'contract_id',     v_result->>'contract_id',
-        'contract_number', v_result->>'contract_number',
+        'contract_id',     v_result->'data'->>'id',
+        'contract_number', v_result->'data'->>'contract_number',
         'contact_id',      v_contact_id,
         'plan_name',       COALESCE(v_template.display_name, v_template.name),
         'limits',          v_limits,
