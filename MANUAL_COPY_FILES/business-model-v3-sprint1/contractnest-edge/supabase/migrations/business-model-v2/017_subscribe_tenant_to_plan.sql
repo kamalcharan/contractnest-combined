@@ -20,6 +20,11 @@
 -- Creating it FROM the subscribing tenant's own record sets it by
 -- construction, which is the whole reason this flow is buyer-initiated.
 --
+-- ALWAYS LIVE. There is no p_is_live parameter and no environment scoping
+-- anywhere in here. ContractNest's own commercial model exists once: a tenant
+-- switching to its test environment is still on the same real plan, billed for
+-- real. Scoping by environment gave every tenant a phantom second plan in test.
+--
 -- Cross-tenant by design: the caller is the subscriber, but the contact and
 -- contract are written under the platform tenant. That is why this is a
 -- SECURITY DEFINER function with its own guards rather than something the
@@ -30,7 +35,6 @@
 CREATE OR REPLACE FUNCTION public.subscribe_tenant_to_plan(
     p_template_id           UUID,
     p_subscriber_tenant_id  UUID,
-    p_is_live               BOOLEAN DEFAULT TRUE,
     p_user_id               UUID    DEFAULT NULL
 )
 RETURNS JSONB
@@ -85,7 +89,7 @@ BEGIN
     WHERE id = p_template_id
       AND tenant_id = v_platform_id
       AND is_active = TRUE
-      AND is_live = p_is_live
+      AND is_live = TRUE
       AND is_public = TRUE
       AND settings->>'lifecycle' = 'signed_off';
 
@@ -107,7 +111,7 @@ BEGIN
     FROM t_contracts c
     JOIN t_contacts ct ON ct.id = c.buyer_id
     WHERE c.tenant_id = v_platform_id
-      AND c.is_live = p_is_live
+      AND c.is_live = TRUE
       AND c.record_type = 'contract'
       AND c.status IN ('active', 'pending_acceptance')
       AND ct.source_tenant_id = p_subscriber_tenant_id
@@ -126,12 +130,12 @@ BEGIN
     SELECT id INTO v_contact_id
     FROM t_contacts
     WHERE tenant_id = v_platform_id
-      AND is_live = p_is_live
+      AND is_live = TRUE
       AND source_tenant_id = p_subscriber_tenant_id
     LIMIT 1;
 
     IF v_contact_id IS NULL THEN
-        v_seq := get_next_formatted_sequence('CONTACT', v_platform_id, p_is_live);
+        v_seq := get_next_formatted_sequence('CONTACT', v_platform_id, TRUE);
 
         -- t_contacts_type_name_check: a 'corporate' contact must carry
         -- company_name and leave name NULL (only 'individual' uses name).
@@ -141,7 +145,7 @@ BEGIN
             classifications, status, is_active, is_seed,
             source, source_tenant_id, created_by
         ) VALUES (
-            v_platform_id, p_is_live, 'corporate',
+            v_platform_id, TRUE, 'corporate',
             NULL, v_subscriber.name, v_seq->>'formatted',
             '["client"]'::JSONB, 'active', TRUE, FALSE,
             'plan_subscription', p_subscriber_tenant_id, p_user_id
@@ -200,7 +204,7 @@ BEGIN
 
     v_payload := jsonb_build_object(
         'tenant_id',         v_platform_id,
-        'is_live',           p_is_live,
+        'is_live',           TRUE,
         'record_type',       'contract',
         'contract_type',     'client',
         'name',              COALESCE(v_template.display_name, v_template.name),
@@ -307,4 +311,4 @@ COMMENT ON FUNCTION public.subscribe_tenant_to_plan IS
 
 -- Verify:
 --   select subscribe_tenant_to_plan(
---     '<template_id>'::uuid, '<subscriber_tenant_id>'::uuid, false, null);
+--     '<template_id>'::uuid, '<subscriber_tenant_id>'::uuid, null);

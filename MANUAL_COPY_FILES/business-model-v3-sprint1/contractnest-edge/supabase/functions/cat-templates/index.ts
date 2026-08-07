@@ -238,10 +238,13 @@ async function handleSubscribeToPlan(
     return createErrorResponse('template_id is required', 'VALIDATION_ERROR', 400, ctx.operationId);
   }
 
+  // No is_live argument by design. ContractNest's own commercial model is
+  // ALWAYS live: a tenant playing in its test environment still has exactly
+  // one real subscription, billed for real. Scoping it by ctx.isLive gave a
+  // tenant a separate phantom plan per environment.
   const { data, error } = await supabase.rpc('subscribe_tenant_to_plan', {
     p_template_id: templateId,
     p_subscriber_tenant_id: ctx.tenantId,
-    p_is_live: ctx.isLive,
     p_user_id: ctx.userId || null,
   });
 
@@ -311,9 +314,11 @@ async function handleGetPlanTemplates(
       .select('id, name, display_name, description, category, tags, blocks, currency, subtotal, total, settings, is_live, created_at, updated_at')
       .eq('tenant_id', platform.id)
       .eq('is_active', true)
-      // Environment-scoped like every other catalogue read: a plan authored in
-      // test must not surface to a tenant working in live.
-      .eq('is_live', ctx.isLive)
+      // ALWAYS live, never ctx.isLive. The plan catalogue is ContractNest's
+      // own commercial model, which exists once — a tenant switching to its
+      // test environment is still on the same real plan and must see the same
+      // prices, not a parallel test catalogue.
+      .eq('is_live', true)
       // Published only. Lifecycle lives in settings.lifecycle ('draft' until
       // signed_off); without this a half-built plan would be purchasable.
       .eq('settings->>lifecycle', 'signed_off')
@@ -342,6 +347,48 @@ async function handleGetPlanTemplates(
   // Everything a plan card needs is derived HERE, from the template's own
   // self-contained blocks snapshot, so the buying tenant never has to read the
   // platform tenant's block rows — which it has no right to.
+  // Which plan is this tenant already on? The subscription is found through
+  // the contact's source_tenant_id — the same link subscribe_tenant_to_plan
+  // uses for its ALREADY_SUBSCRIBED guard, so the page and the server can
+  // never disagree about who is subscribed to what.
+  //
+  // Without this the page rendered "Subscribe" on every card and the tenant
+  // only discovered they were already subscribed by clicking and getting a
+  // 409 — a refusal doing the job a badge should have done.
+  let currentPlanTemplateId: string | null = null;
+  let currentContractNumber: string | null = null;
+
+  // Two lookups rather than an embedded join: there is NO foreign key between
+  // t_contracts.buyer_id and t_contacts.id, so PostgREST cannot infer the
+  // relationship and a `t_contacts!inner(...)` embed fails at runtime — which
+  // would take this whole page down, not just the badge.
+  const { data: planContact } = await supabase
+    .from('t_contacts')
+    .select('id')
+    .eq('tenant_id', platform.id)
+    .eq('is_live', true)
+    .eq('source_tenant_id', ctx.tenantId)
+    .limit(1)
+    .maybeSingle();
+
+  if (planContact?.id) {
+    const { data: activeSub } = await supabase
+      .from('t_contracts')
+      .select('contract_number, metadata')
+      .eq('tenant_id', platform.id)
+      .eq('is_live', true)
+      .eq('record_type', 'contract')
+      .eq('buyer_id', planContact.id)
+      .in('status', ['active', 'pending_acceptance'])
+      .limit(1)
+      .maybeSingle();
+
+    if (activeSub) {
+      currentContractNumber = activeSub.contract_number ?? null;
+      currentPlanTemplateId = activeSub.metadata?.plan_template_id ?? null;
+    }
+  }
+
   const plans = (data || []).map((t: any) => {
     const defaults = t.settings?.defaults || {};
     const blocks: any[] = Array.isArray(t.blocks) ? t.blocks : [];
@@ -372,7 +419,12 @@ async function handleGetPlanTemplates(
     };
   });
 
-  return createSuccessResponse({ plans, count: plans.length }, ctx.operationId, ctx.startTime);
+  return createSuccessResponse({
+    plans,
+    count: plans.length,
+    current_plan_id: currentPlanTemplateId,
+    current_contract_number: currentContractNumber,
+  }, ctx.operationId, ctx.startTime);
 }
 
 

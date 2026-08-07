@@ -531,3 +531,42 @@ VERIFIED in test against Trinity Tecnitions -> Free:
   t_tenant_context: billing_mode=plan, limit_contracts=3, limit_rfqs=0,
                     flag_can_access=true
   contract: 3 blocks, 0 events (billingOnly working, ₹0 so no billing event)
+
+───────────────────────────────────────────────────
+11. Business model is ALWAYS LIVE + current-plan UX
+───────────────────────────────────────────────────
+Owner ruling: ContractNest's own commercial model is always live. A tenant
+switching to its test environment is still on the same real plan, billed for
+real. The previous cut scoped everything by ctx.isLive, which gave every
+tenant a phantom second plan in test.
+
+  DB   subscribe_tenant_to_plan — p_is_live PARAMETER DROPPED (4 args -> 3).
+       Template lookup, contact, contract, sequence and the already-subscribed
+       check all pin to is_live = TRUE. The old 4-arg overload was DROPped so
+       no caller can pass an environment. Applied to prod; 017 re-synced.
+
+  EDGE GET /plans  · .eq('is_live', true), never ctx.isLive
+                   · now also returns current_plan_id + current_contract_number
+       POST /subscribe · calls the 3-arg RPC, no environment argument
+
+  UI   usePlanTemplates  + current_plan_id / current_contract_number
+                         cache key is tenant only — nothing to partition by
+       pricing-plans     three card states from SERVER truth:
+                           · current plan -> green border + "Current plan"
+                           · subscribed   -> "Switch" (disabled, see below)
+                           · otherwise    -> "Subscribe"
+                         header shows "Your plan is active under CN-1001"
+                         the local subscribedPlanId state is GONE — it only
+                         knew you were subscribed if you had clicked in that
+                         browser session, so a reload showed "Subscribe" again
+                         and you learned the truth from a 409
+
+CAUGHT BEFORE DEPLOY: the first version of the current-plan lookup used a
+PostgREST embed (t_contacts!inner(source_tenant_id)). There is NO foreign key
+between t_contracts.buyer_id and t_contacts.id, so PostgREST cannot infer that
+relationship and the embed fails at runtime — it would have taken the whole
+pricing page down, not just the badge. Replaced with two plain lookups.
+
+SWITCHING IS STILL NOT BUILT. "Switch" is deliberately disabled: superseding
+the existing contract is an unanswered product decision (supersede vs stack).
+An enabled button would just 409.

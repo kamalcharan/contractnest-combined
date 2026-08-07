@@ -36,13 +36,25 @@ export interface PlanTemplate {
 
 export interface PlanTemplatesResponse {
   success: boolean;
-  data?: { plans: PlanTemplate[]; count: number };
+  data?: {
+    plans: PlanTemplate[];
+    count: number;
+    /**
+     * The plan this tenant is already on, or null. Resolved server-side from
+     * the active plan contract, so the page and the subscribe guard can never
+     * disagree about who is subscribed to what.
+     */
+    current_plan_id: string | null;
+    current_contract_number: string | null;
+  };
 }
 
 export const planTemplateKeys = {
   all: ['plan-templates'] as const,
-  // Keyed by tenant: the catalogue is environment-scoped server-side, so a
-  // tenant switching test/live must not be served the other one's cache.
+  // Keyed by tenant only — NOT by environment. ContractNest's own commercial
+  // model is always live: a tenant switching to its test environment is on the
+  // same real plan and must see the same catalogue, so there is nothing to
+  // partition the cache by.
   list: (tenantId?: string) => [...planTemplateKeys.all, tenantId] as const,
 };
 
