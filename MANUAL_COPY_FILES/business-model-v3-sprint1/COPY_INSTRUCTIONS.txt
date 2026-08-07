@@ -437,3 +437,97 @@ the error output, and no real errors in any of the changed API or UI files.
 
     Copy-Item "$SRC\contractnest-api\src\services\catTemplatesService.ts" `
               -Destination "contractnest-api\src\services\catTemplatesService.ts" -Force
+
+───────────────────────────────────────────────────
+9. Step 7 (part 1) — subscribe_tenant_to_plan
+───────────────────────────────────────────────────
+MIGRATION: 017_subscribe_tenant_to_plan.sql   ** ALREADY APPLIED to prod **
+
+Tenant self-service subscription, one transaction:
+  1. creates the subscriber's contact in the PLATFORM tenant's book,
+     stamped with source_tenant_id
+  2. raises the plan contract under the platform tenant from the template
+  3. applies the template's metering blocks to the SUBSCRIBER's
+     t_tenant_context (limits, credit_grant_rates, add-on flags)
+
+Why the contact is created here: source_tenant_id is the only link between
+"a contact on a contract" and "a tenant account", and NOTHING in the product
+writes it (17 of 361 rows have it, all seed data). Creating the contact FROM
+the subscribing tenant's own record sets it by construction — which is why
+the flow has to be buyer-initiated.
+
+Guards: platform tenant resolved by is_admin flag; plan must be is_active +
+is_live matching + is_public + lifecycle 'signed_off'; platform tenant cannot
+subscribe to itself; one active plan per tenant (ALREADY_SUBSCRIBED).
+
+VERIFIED end-to-end in test (Trinity Tecnitions -> Free):
+  contract CN-1001 active, 7 Aug -> 7 Sep, 3 blocks, 0 events
+  contact "Trinity Tecnitions" corporate, source_tenant_id -> Trinity
+  t_tenant_context: billing_mode=plan, limit_contracts=3, limit_rfqs=0,
+                    flag_can_access=true
+  0 events confirms billingOnly suppresses the service event.
+
+DATA: t_cat_templates.is_public is now the "listed for sale" flag. No new
+column — is_public already existed and did nothing for platform-tenant-owned
+rows (handleGetPublicTemplates requires tenant_id IS NULL). Both Free rows
+set to true.
+
+  lifecycle='signed_off' -> published, usable to create contracts
+  is_public=true         -> offered for sale on the plan catalogue
+
+TWO KNOWN GAPS — not yet fixed:
+  a) the RPC returns contract_id / contract_number as NULL. The contract IS
+     created; the return keys from create_contract_transaction were guessed.
+     Needs fixing before the UI can navigate after subscribing.
+  b) NO events are derived. create_contract_transaction takes computed_events
+     in its payload — the UI computes them client-side and passes them in.
+     This RPC passes none. Harmless for Free at zero, but a PAID plan would
+     never raise an invoice. Decide whether the RPC derives events itself
+     before Quarterly goes live.
+
+STILL TO DO for the Subscribe button: /plans filter on is_public, an edge
+route + API route calling this RPC, and enabling the button on the page.
+
+───────────────────────────────────────────────────
+10. Step 7 COMPLETE — Subscribe button is live
+───────────────────────────────────────────────────
+Two fixes to 017 (already applied to prod, migration file re-synced):
+  · contract_id/contract_number were NULL — create_contract_transaction
+    returns {success, data:{id, contract_number}}; the RPC was reading the
+    wrong level.
+  · no events were derived. create_contract_transaction does NOT derive
+    them, it stores whatever computed_events it is handed (the wizard
+    computes them client-side). The RPC now builds ONE prepaid billing
+    event for the term, but only when total > 0 — a zero-price plan has
+    nothing to bill, which also avoids minting a 0.00 invoice that would
+    sit unpaid forever. That leaves the ₹0-invoice question moot for Free;
+    it still needs answering before a paid plan ships.
+
+NEW — edge (same file as the leak fix and /plans; one deploy, expect v22):
+  POST /cat-templates/subscribe -> handleSubscribeToPlan
+    · subscriber is ALWAYS ctx.tenantId, never the body — a tenant cannot
+      subscribe another by posting someone else's id
+    · 409 for ALREADY_SUBSCRIBED (state conflict), 400 for the rest
+  GET /cat-templates/plans now also filters .eq('is_public', true)
+
+NEW — api:
+  types      + PlanSubscriptionResult
+  service    + subscribeToPlan()
+  controller + subscribeToPlan (409 passthrough)
+  routes     + POST /templates/subscribe  (ABOVE /templates/:id)
+
+NEW — ui:
+  serviceURLs                       + TEMPLATES.SUBSCRIBE
+  hooks/mutations/useSubscribeToPlan.ts   NEW
+  pricing-plans/index.tsx           Subscribe enabled: per-card spinner,
+                                    "Subscribed" state, toast on both paths
+
+VERIFIED in test against Trinity Tecnitions -> Free:
+  { success: true, contract_number: "CN-1001",
+    contact_id: ..., limits: {contracts:3, rfqs:0} }
+  guards: second click  -> ALREADY_SUBSCRIBED
+          self-subscribe-> SELF_SUBSCRIPTION
+          wrong env     -> PLAN_NOT_AVAILABLE
+  t_tenant_context: billing_mode=plan, limit_contracts=3, limit_rfqs=0,
+                    flag_can_access=true
+  contract: 3 blocks, 0 events (billingOnly working, ₹0 so no billing event)

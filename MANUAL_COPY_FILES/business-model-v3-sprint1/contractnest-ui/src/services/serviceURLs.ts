@@ -732,6 +732,9 @@ export const API_ENDPOINTS = {
       // The plan catalogue: published templates owned by the platform tenant,
       // which is what a tenant subscribes to on /businessmodel/tenants/pricing-plans.
       PLANS: '/api/catalog-studio/templates/plans',
+      // Subscribe the CALLING tenant to a plan. The subscriber comes from the
+      // request context server-side, so the body carries only the plan id.
+      SUBSCRIBE: '/api/catalog-studio/templates/subscribe',
       COVERAGE: '/api/catalog-studio/templates/coverage',
       COPY: (id: string) => `/api/catalog-studio/templates/${id}/copy`,
 
