@@ -1,0 +1,45 @@
+===================================================================
+BUSINESS MODEL V4 - PLAN OF ACTION (documentation only)
+===================================================================
+
+Branch folder : business-model-v4-poa
+Submodules    : ClaudeDocumentation  (branch: master)
+Code changes  : NONE - this is a document only, nothing to test
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+ClaudeDocumentation/BusinessModel/BUSINESS_MODEL_V4_POA.md   [NEW]
+    Plan of action for collapsing the t_bm_* layer into
+    contracts + t_tenant_context + n_jtd.
+    Part 0 is a verified inventory of what is ALREADY built,
+    written specifically so nothing gets rebuilt.
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy the file
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-poa\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Write-Host "POA copied to ClaudeDocumentation\BusinessModel\" -ForegroundColor Green
+
+-------------------------------------------------------------------
+STEP 3: Read it
+-------------------------------------------------------------------
+No build, no dev server, no test. Read Part 0 (ground truth) and
+Part 4 (open decisions D1-D4) - those four answers unblock Phase A.
+
+-------------------------------------------------------------------
+WAITING FOR
+-------------------------------------------------------------------
+  -> answers to D1 (journal table or view)
+  -> answers to D2 (do credits expire)
+  -> answers to D3 (hard block or soft warn)
+  -> answers to D4 (Trinity's true usage_contracts)
+
+Then Phase A can be written as a single migration.
+===================================================================
