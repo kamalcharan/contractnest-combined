@@ -1,0 +1,116 @@
+===================================================================
+BUSINESS MODEL V4 - PHASE B : close the spend loop
+===================================================================
+
+Branch folder : business-model-v4-phase-b
+Submodules    : contractnest-edge (main)  - migration + jtd-worker
+                contractnest-ui   (main)  - serviceURLs, hook, Subscription
+
+*** SUPERSEDES business-model-v3-sprint1 FOR THREE FILES ***
+If you have NOT yet copied business-model-v3-sprint1, copy it FIRST,
+then this folder on top. The three UI files below are the sprint1
+versions plus the Phase B additions, so copying this folder last is
+always correct.
+    contractnest-ui/src/services/serviceURLs.ts
+    contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+
+-------------------------------------------------------------------
+WHAT WAS ALREADY APPLIED TO THE LIVE DATABASE
+-------------------------------------------------------------------
+    v4_phase_b_1_gate_and_helpers
+    v4_phase_b_2_worker_credit_rpcs
+    v4_phase_b_3_release_waiting_jtds_shared_availability
+The .sql file is the consolidated record. Do NOT run it again.
+
+-------------------------------------------------------------------
+WHAT IS NOT YET LIVE - YOU MUST DEPLOY THE WORKER
+-------------------------------------------------------------------
+The database half is live: unpayable messages now PARK at creation and
+release themselves on a top-up. The worker half is not: nothing charges
+a credit until jtd-worker is redeployed. That intermediate state is
+safe and coherent - parking works, charging does not - but Phase B is
+not finished until you deploy.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/021_close_the_spend_loop.sql   [NEW]
+contractnest-edge/supabase/functions/jtd-worker/index.ts                               [MODIFIED]
+contractnest-ui/src/services/serviceURLs.ts                                            [MODIFIED - + WAITING_JTDS]
+contractnest-ui/src/hooks/queries/useWaitingCredits.ts                                  [NEW]
+contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx         [MODIFIED]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy files
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-b\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-b\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase B files copied" -ForegroundColor Green
+
+-------------------------------------------------------------------
+STEP 3: Deploy the worker  (REQUIRED)
+-------------------------------------------------------------------
+cd contractnest-edge
+supabase functions deploy jtd-worker --project-ref uwyqhzotluikawcboldr
+cd ..
+
+-------------------------------------------------------------------
+STEP 4: Run the UI
+-------------------------------------------------------------------
+cd contractnest-ui
+npm run dev
+# hard refresh: Ctrl+F5
+# open /settings/businessmodel/tenants/subscription as Trinity
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : yes - reserve/charge/release are single RPCs,
+                           each atomic; the row lock is taken inside
+                           fn_credit_state
+  Race conditions        : yes - reservation (FOR UPDATE on the context
+                           row) stops two workers spending the same last
+                           credit; a unique partial index on
+                           t_credit_journal makes double-charging
+                           impossible even under a retry racing itself
+  Error handling         : yes - every credit path fails OPEN. A metering
+                           outage never blocks a message and never
+                           rewrites a sent message as failed
+  Toasts                 : n/a - no new user action on this page
+  Loaders                : existing - the page's Loader2 spinner; the
+                           waiting count renders only once it arrives and
+                           cannot fail the page
+
+-------------------------------------------------------------------
+DESIGN DECISIONS WORTH KNOWING
+-------------------------------------------------------------------
+NOT CHARGED, deliberately:
+  - user_invite, user_created, contract_signoff. These are already
+    exempt from the TEST-env guardrail, the channel kill switch and the
+    per-message-type toggle, for the same reason: a tenant who cannot
+    invite a teammate or let a counterparty reach the signing page has
+    an outage, not a saving.
+  - is_live = false. Test-env email and WhatsApp are already blocked
+    from real delivery; charging for a send that never happens would be
+    theft.
+  - billing_mode 'exempt' (the platform tenant), and any tenant with no
+    context row at all. BBB has no context row, so BBB is untouched by
+    all of this.
+
+POOL ORDER: the channel's own pool first, the shared pooled bucket as
+fallback. The chosen pool is written to n_jtd.metadata.credit so a retry
+spends from the same place it reserved from.
+
+PARKED IS NOT FAILED: a JTD in 'no_credits' keeps its place in a FIFO
+queue, is not retried, is not sent to the DLQ, and releases itself the
+moment credits arrive. The UI says "waiting", never "failed" - the
+difference between a tenant who tops up and one who thinks they must
+re-send everything.
+
+===================================================================
