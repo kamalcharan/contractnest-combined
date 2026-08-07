@@ -1,0 +1,124 @@
+===================================================================
+BUSINESS MODEL V4 - PHASE C : soft limits
+===================================================================
+
+Branch folder : business-model-v4-phase-c
+Submodules    : contractnest-edge (main)  - migration only, already applied
+                contractnest-ui   (main)  - hook, wizard, page, types
+
+*** COPY ORDER ***
+business-model-v3-sprint1  ->  business-model-v4-phase-b  ->  this
+Each later folder carries the earlier version of any file it touches,
+so copying them in that order is always correct.
+
+Files here that supersede an earlier folder's copy:
+    contractnest-ui/src/hooks/queries/useTenantContext.ts               (sprint1)
+    contractnest-ui/src/pages/.../Subscription/index.tsx                (phase-b)
+
+-------------------------------------------------------------------
+ALREADY APPLIED TO THE LIVE DATABASE
+-------------------------------------------------------------------
+    v4_phase_c_1_soft_limit_flags_and_lapse
+    v4_phase_c_2_zero_limit_is_not_over
+    v4_phase_c_3_get_tenant_context_over_limit
+The .sql is the consolidated record. Do NOT run it again.
+
+-------------------------------------------------------------------
+NOTHING TO DEPLOY
+-------------------------------------------------------------------
+No edge function changed. UI only.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/022_soft_limits.sql  [NEW]
+contractnest-ui/src/hooks/useAllowanceWarning.ts                             [NEW]
+contractnest-ui/src/hooks/queries/useTenantContext.ts                        [MODIFIED - + flags.over_limit]
+contractnest-ui/src/components/contracts/ContractWizard/index.tsx            [MODIFIED - 2 lines]
+contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx [MODIFIED]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy files
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-c\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-c\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase C files copied" -ForegroundColor Green
+
+-------------------------------------------------------------------
+STEP 3: Run the UI
+-------------------------------------------------------------------
+cd contractnest-ui
+npm run dev
+# hard refresh: Ctrl+F5
+# sign in as Trinity - it is at 17 contracts against a limit of 3
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : n/a - flag computation is a BEFORE trigger on
+                           the row already being written, so it is inside
+                           whatever transaction the writer opened
+  Race conditions        : n/a - no new write path; the flags are derived
+                           from the same row in the same statement
+  Error handling         : yes - the lapse trigger is wrapped and returns
+                           NULL on error, so a contract status change can
+                           never fail because of the meter
+  Toasts                 : existing VaNiToast (useVaNiToast / addToast),
+                           type 'warning' with a 'See plans' action
+  Loaders                : n/a - no new async surface; the warning rides
+                           the tenant-context query the page already runs
+
+-------------------------------------------------------------------
+WHAT SOFT MEANS HERE
+-------------------------------------------------------------------
+NOTHING IS BLOCKED. This phase adds no constraint, no RAISE, no
+rejected insert, no disabled button. create_contract_transaction is
+untouched. A tenant over their allowance creates the contract, and the
+meter still moves.
+
+What changes is that the tenant is TOLD:
+  - a toast when the contract wizard OPENS (not on submit - so the
+    warning arrives before six steps are filled in, not after), with
+    "See plans" as the action
+  - a banner on the Subscription page whose copy says outright that
+    nothing is blocked, because a tenant who thinks they are locked out
+    stops working instead of upgrading
+  - "17 of 3 used, 14 over" rather than "limit reached", which would
+    read like a wall they already stopped at
+
+A LIMIT OF 0 IS NOT "OVER". A seller plan sets limit_rfqs = 0 on
+purpose. Zero with zero usage renders as "not in this plan" and raises
+no flag; it only counts as over once something is actually created
+against it. The first cut of the trigger read 0 >= 0 as over-limit and
+would have nagged every seller-plan tenant forever.
+
+WHEN THE PLAN EXPIRES, CREDITS STAY. auto_expire_contracts already
+flips plan contracts active -> expired nightly. The new trigger zeroes
+limit_contracts and limit_rfqs for that tenant and touches nothing
+else - credits, grant rates and add-ons are left exactly as they were.
+Tested live on CN-1001 and restored.
+
+-------------------------------------------------------------------
+VERIFIED LIVE
+-------------------------------------------------------------------
+  Trinity 17/3 contracts        -> flag_over_limit true
+  Trinity 0/0 rfqs              -> no flag (not in this plan)
+  Trinity at limit 20 (17/20)   -> flag_near_limit true, over false
+  Trinity at limit 25 (17/25)   -> neither
+  vikuna (billing_mode exempt)  -> never flagged
+  CN-1001 expired               -> limits 0/0, credits 272/255/1 intact
+  CN-1001 restored              -> limits 3/0, plan active again
+  get_tenant_context            -> flags.over_limit present
+
+-------------------------------------------------------------------
+NEXT
+-------------------------------------------------------------------
+Phase D - top-up packs become catalog-studio templates, and
+t_bm_topup_pack's 4 call sites move off it.
+===================================================================
