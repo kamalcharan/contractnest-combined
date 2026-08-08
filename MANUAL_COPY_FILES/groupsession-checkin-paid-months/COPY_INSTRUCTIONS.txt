@@ -1,0 +1,133 @@
+═══════════════════════════════════════════════════
+FIX: Group Session check-in — paid months showed ₹0
+Branch folder: groupsession-checkin-paid-months
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (1 file)
+
+  contractnest-api    — NOT touched
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+No database change. No migration. No RPC change. No API change.
+No data repair required — the underlying data was always correct.
+
+
+FILES
+-----
+  contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+      Payment History month strip rendered the outstanding BALANCE
+      instead of the instalment AMOUNT.
+
+
+THE BUG
+-------
+Line 479 read:
+
+    amount: e.remaining ?? e.amount,
+
+`remaining` is produced by the RPC gs_member_history as:
+
+    greatest(0, coalesce(e.amount,0) - coalesce(e.amount_settled,0))
+
+For any settled instalment that is 0 BY DEFINITION. So every paid month
+rendered as "₹0" — while the TOTAL PAID tile immediately above it showed
+the real figure. A member who had paid Apr-Jul saw four ₹0 cells and
+reasonably concluded their payments were never recorded.
+
+The `??` fallback was also dead code: the RPC never returns null for this
+field, and `0 ?? x` evaluates to `0`, so the fallback could never fire.
+
+
+THE FIX
+-------
+    amount: e.amount,
+
+This is the same field the Dues grid already renders
+(contractnest-ui/src/pages/operations/group-sessions/index.tsx:1039 ->
+`money(c.amount, r.currency)`), fed by gs_dues_matrix which emits
+'amount' as sum(amt) and keeps settlement separately as 'paid'.
+Check-in now reads the same number the chair reads.
+
+`state` already carries paid-vs-due, so the colour communicates
+settlement; the number does not need to double as a balance.
+
+Deliberately NOT changed: the CURRENT due card (line ~1454) and
+arrearsTotal (line ~465) still use `remaining ?? amount`. That is
+correct for those two — for an unpaid or part-paid instalment you do
+want what is still owed.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+---------------------------------
+Live data, Charan Kamal, live contract CN-1001 (the only is_live=true
+contract for this contact):
+
+  01 Apr 2026  Monthly 1/12  amount 1500  settled 1500  paid     -> was ₹0, now ₹1,500
+  01 May 2026  Monthly 2/12  amount 1500  settled 1500  paid     -> was ₹0, now ₹1,500
+  01 Jun 2026  Monthly 3/12  amount 1500  settled 1500  paid     -> was ₹0, now ₹1,500
+  01 Jul 2026  Monthly 4/12  amount 1500  settled 1500  paid     -> was ₹0, now ₹1,500
+  01 Aug 2026  Monthly 5/12  amount 1500  settled    0  overdue  -> ₹1,500 (unchanged)
+
+Reconciliation across all 49 LIVE group-session contracts:
+  sum(event.amount_settled) vs invoice.amount_paid  -> 0 mismatches
+  sum(event.amount)         vs invoice.total_amount -> 0 mismatches
+  113 paid events, every one with amount_settled == amount
+  0 partial payments live, so amount and amount_settled cannot disagree
+
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  3 errors before the change, 3 errors after — identical, all
+  pre-existing environment/config issues (missing @types/node,
+  vite/client types, deprecated baseUrl). None in the check-in page.
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Copy File
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\groupsession-checkin-paid-months\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+Hard refresh the browser: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Open the member check-in link, identify as CHARAN KAMAL
+[ ] Expand "Payment History - 4 of 5 paid"
+[ ] APR / MAY / JUN / JUL now read ₹1,500 each (green), NOT ₹0
+[ ] AUG still reads ₹1,500 (orange/due) — unchanged
+[ ] TOTAL PAID ₹6,000 and BALANCE ₹13,500 tiles unchanged
+[ ] CURRENT card still shows "Monthly 5/12 · Due 1 Aug 2026 · ₹1,500"
+[ ] Cross-check against Operations > Group Sessions > Dues for the same
+    member — the month cells should now show the SAME numbers
+[ ] Spot-check a quarterly member (e.g. a Quarterly x4 contract) — paid
+    quarters should read ₹4,500, not ₹0
+[ ] Spot-check a member with nothing paid — all cells still show the
+    instalment amount in due colour, no ₹0
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  -> "Tested, working - proceed with merge"
+  -> "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
