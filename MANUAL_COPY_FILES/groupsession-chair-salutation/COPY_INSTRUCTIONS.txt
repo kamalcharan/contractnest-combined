@@ -1,0 +1,229 @@
+═══════════════════════════════════════════════════
+FEATURE: Chair-name salutation (Session series / Sessions list / Appointment)
+Branch folder: groupsession-chair-salutation
+═══════════════════════════════════════════════════
+
+⚠️ APPLY AFTER groupsession-salutation-wiring, NOT INSTEAD OF IT
+--------------------------------------------------------------------
+This batch's copies of useGroupSessionsDashboard.ts and
+operations/group-sessions/index.tsx are CUMULATIVE — they contain
+everything from the previous groupsession-salutation-wiring batch
+PLUS this batch's chair-name fix. If you already copied that batch,
+copying this one over it is correct and complete; you do not need to
+re-copy the older batch afterward. If you have NOT yet copied
+groupsession-salutation-wiring, copy this batch instead — it supersedes
+it for these two files. (SessionCheckinPage.tsx and useSessionCheckin.ts
+are untouched by this batch — nothing new to copy for those two; the
+earlier batch's copies already cover them.)
+
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (3 files: 2 modified, 1 newly touched)
+
+  contractnest-api    — NOT touched
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+Database: 1 RPC updated (gs_dash_occurrences) — ALREADY APPLIED to
+production, verified against live data.
+
+
+WHAT THIS DOES
+------------------
+The chair name shown on the Sessions list, the "Session series" default-
+chair banner, and the per-occurrence "Appointment" card was still bare
+("SANJAY GHOTIKAR", no "Sri") — a different code path from the member
+names fixed in the previous batch, so it needed tracing separately.
+
+Traced it fully: the chair's name is a WRITE-TIME SNAPSHOT stored on
+t_group_session_schedule.assigned_to_name (same pattern as
+buyer_name/member_name) — built by a local confirm() function inside
+this page, which in turn was calling ContactPicker's own name logic.
+ContactPicker (src/components/common/ContactPicker.tsx) is a SHARED
+component also used by entity-registry and equipment-registry, and it
+had its own separate, salutation-blind formula:
+  contact.name || contact.displayName || 'Unnamed Contact'
+— a fifth independent reimplementation on top of the ones already found
+in Contacts and Group Sessions.
+
+
+DATABASE — 1 RPC updated
+------------------------------
+  gs_dash_occurrences  -> Sessions list, Session series banner,
+                          per-occurrence Appointment card
+
+Added a LEFT JOIN to t_contacts on s.assigned_to, returns
+'assigned_to_salutation' alongside the existing (unchanged)
+'assigned_to_name'. Verified live.
+
+
+⚠️ FINDING, NOT FIXED — an orphaned chair reference
+--------------------------------------------------------
+Verifying this against live data surfaced something separate: EVERY
+chair assignment currently in t_group_session_schedule (all 50 rows,
+Saturday Network Meeting) points at assigned_to =
+9fd8e6da-2953-4574-a816-7e06885659a5 — an id that does not exist in
+t_contacts OR t_user_profiles. It's a dangling reference, pre-existing,
+unrelated to anything in this session's work.
+
+This is why "Sri" won't actually show for Sanjay Ghotikar's existing
+assignments even after this fix ships — the LEFT JOIN correctly finds
+no match and returns null, which is the SAFE behaviour (shows the bare
+name exactly as before, doesn't misattribute a random contact's
+salutation to a name it can't verify). The fix is correct and will work
+immediately for the NEXT chair assignment made through the current UI
+(ContactPicker sends a real contact id), but it can't retroactively fix
+this one.
+
+There are two t_contacts rows named "SANJAY GHOTIKAR" (one is_live=true
+with 1 contract as buyer, one is_live=false/test) — both already carry
+salutation='sri' from the earlier backfill, so which one is "correct"
+doesn't actually change what would display. Repairing the 50 orphaned
+assigned_to values to point at the live one is a real, separate data
+question — NOT done as part of this batch. Flagged for you to decide,
+not silently patched.
+
+
+FILES CHANGED — contractnest-ui
+----------------------------------
+  hooks/queries/useGroupSessionsDashboard.ts
+      Added assigned_to_salutation to GsOccurrenceRow.
+
+  components/common/ContactPicker.tsx
+      getDisplayName() — MINIMAL change on purpose: only the
+      individual-with-a-name branch now goes through
+      formatContactDisplayName. The corporate branch and the no-name
+      fallback to contact.displayName are byte-for-byte unchanged. This
+      is a shared component (entity-registry, equipment-registry also
+      use it) — the fix can only make what those screens show more
+      correct, nothing there was touched directly or audited beyond
+      confirming the fix doesn't change their control flow.
+
+  pages/operations/group-sessions/index.tsx
+      - AssignChairControl's confirm() — deliberately did NOT bake
+        salutation into the stored name here (tried it, then reverted —
+        see note below). It still stores the bare name, same convention
+        as buyer_name/member_name; salutation only ever comes from the
+        live join, added at render time.
+      - seriesChair (the "Session series" default-chair banner) now
+        pre-formats the name once, inside its own useMemo.
+      - Sessions list CHAIR column and the per-occurrence "Appointment ·
+        X" card now both format at render, matching every other name on
+        this page.
+      - The onAssign/onRemove optimistic local-state updates (used while
+        waiting for the real refetch after assigning/removing a chair)
+        explicitly reset assigned_to_salutation to null rather than
+        carrying over the PREVIOUS chair's value — showing no prefix for
+        a moment is safe; showing the wrong one isn't.
+
+  A NOTE ON HOW THIS WAS BUILT, since it explains a design choice above:
+  the first draft of the confirm() fix baked the formatted (salutation-
+  prefixed) name directly into what gets stored as assigned_to_name.
+  Caught before shipping that this breaks the exact convention this
+  session already established for buyer_name/member_name — the stored
+  snapshot should stay bare, salutation added only via the live join —
+  and would additionally have caused a real bug: the optimistic local-
+  state update spreads the previous occurrence object, so
+  assigned_to_salutation would have gone stale for a moment and, worse,
+  could double up with a name that already had salutation baked in.
+  Reverted to keep the write path exactly as it always was; salutation
+  comes ONLY from the render-time live join, consistently with
+  everything else in this batch and the last one.
+
+
+PRODUCTION CHECKLIST
+---------------------
+  Transaction Management : N/A — read-only RPC, no writes changed.
+  Race Condition Handling : N/A — no new concurrent-write paths; the
+                            optimistic-state fix above specifically
+                            avoids a race between local state and the
+                            real refetch showing conflicting data.
+  Error Handling          : Unchanged — every existing fallback
+                            preserved exactly (see ContactPicker note).
+  Toasts                  : N/A — no new user actions introduced.
+  Loaders                 : N/A — no new async calls introduced.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+-------------------------------------
+gs_dash_occurrences re-created via CREATE OR REPLACE FUNCTION from the
+freshly fetched live definition, then called against real production
+data and inspected directly.
+
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  1190 pre-existing repo-wide errors, unchanged. One error appears in
+  ContactPicker.tsx (line 39, a useRef missing an initial value) — it's
+  several lines away from anything touched here and was already present
+  in the 1190 baseline before this file was ever edited; confirmed by
+  the total count not moving.
+
+Process note for the record: while building this batch, a `git
+checkout` step used to keep the sandbox clean between batches was found
+to also discard the PREVIOUS batch's uncommitted work-in-progress in
+this same session (nothing already staged/handed to you was affected —
+only this session's own working copy). Caught via typecheck ("Cannot
+find name displayName") before anything was staged, the affected files
+were restored from the already-verified previous batch, and this
+batch's edits were re-applied and re-verified on the correct, complete
+base. Mentioning it so the verification trail is honest, not because
+anything you've already copied needs re-checking.
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\groupsession-chair-salutation\contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Destination "contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\groupsession-chair-salutation\contractnest-ui\src\components\common\ContactPicker.tsx" -Destination "contractnest-ui\src\components\common\ContactPicker.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\groupsession-chair-salutation\contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Destination "contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Sessions list CHAIR column: still shows "SANJAY GHOTIKAR" bare, NO
+    "Sri" prefix — this is EXPECTED (the orphaned-reference finding
+    above), not a bug in this fix
+[ ] Session series banner ("Chaired by X") — same, still bare, expected
+[ ] Assign a DIFFERENT/NEW chair via "Change default" or "Assign chair"
+    on a single date — picking a real contact through ContactPicker:
+      - The picker's own dropdown now shows salutation-prefixed names
+        for every individual contact in the list
+      - After confirming, the newly assigned chair's name shows WITH
+        its salutation prefix, everywhere (Sessions list, banner,
+        Appointment card) — this is the real proof the fix works,
+        since it's a fresh assignment with a real, resolving contact id
+[ ] Remove a chair assignment -> no errors, reverts to "unassigned"
+    cleanly
+[ ] ContactPicker used elsewhere (Entity Registry, Equipment Registry
+    forms) — spot check the contact-name dropdown shows salutation
+    correctly for individuals, unchanged for anything else
+[ ] Confirm nothing else on the Sessions list / occurrence detail page
+    regressed
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
