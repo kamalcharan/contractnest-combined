@@ -1,0 +1,153 @@
+===================================================================
+BUSINESS MODEL V4 - PHASE D : buying credits becomes a contract
+===================================================================
+
+Branch folder : business-model-v4-phase-d
+Submodules    : contractnest-edge (main)  - migration only, already applied
+
+*** COPY ORDER ***
+business-model-v3-sprint1 -> business-model-v4-phase-b
+                          -> business-model-v4-phase-c -> this
+Each later folder carries the earlier version of any file it touches,
+so copying them in that order is always correct.
+
+This folder touches no file any earlier folder touched.
+
+-------------------------------------------------------------------
+NOT TESTED END TO END. NO UI.
+-------------------------------------------------------------------
+The SQL is applied and each piece was exercised in isolation, but the
+full path buy -> contract -> invoice -> payment -> credits has NOT been
+run against a real pack, because no pack has been authored and there is
+no purchase screen yet. Treat this phase as landed-but-unproven.
+
+The test template used while building (386ab8ce-bee3-4b7f-ad5f-
+d1626b988032) was set is_public = FALSE so it cannot appear for sale.
+
+-------------------------------------------------------------------
+t_bm_topup_pack IS NOT USED HERE
+-------------------------------------------------------------------
+Nothing in this migration reads it. Its 19 rows are not migrated and
+its prices are not ported. A credit pack is authored in catalog-studio
+exactly like a plan - one metering block (mode 'one_time', grants keyed
+by channel) plus one priced block. The table stays where it is for the
+kaladristi product; ContractNest simply stops reading it.
+
+purchase_topup (the old RPC) now returns RETIRED_USE_CONTRACT_PATH.
+
+-------------------------------------------------------------------
+ALREADY APPLIED TO THE LIVE DATABASE
+-------------------------------------------------------------------
+    v4_phase_d_1_subscribe_tenant_to_plan_patches
+    v4_phase_d_2_purchase_topup_template
+    v4_phase_d_3_apply_topup_grants_on_payment
+    v4_phase_d_4_exclude_topup_from_plan_resolution
+    v4_phase_d_5_retire_purchase_topup
+The .sql is the consolidated record. Do NOT run it again.
+
+-------------------------------------------------------------------
+NOTHING TO DEPLOY
+-------------------------------------------------------------------
+No edge function changed in this phase.
+
+NOTE - jtd-worker from PHASE B is still not deployed. Until it is,
+credits are granted but never spent, so a purchased pack's balance will
+sit untouched no matter how much work runs.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/023_topup_is_a_contract.sql  [NEW]
+
+-------------------------------------------------------------------
+WHAT THE MIGRATION DOES
+-------------------------------------------------------------------
+1. subscribe_tenant_to_plan - three in-place corrections, each anchor
+   asserted so a missed anchor raises rather than silently no-ops:
+     a. a 'one_time' bucket separate from 'per_creation'
+     b. ALREADY_SUBSCRIBED ignores topup_purchase contracts
+     c. one-off grants applied immediately via add_credits
+
+2. purchase_topup_template(p_template_id, p_buyer_tenant_id, p_user_id)
+   raises a real contract through create_contract_transaction and
+   snapshots the pack's grants into metadata.topup_grants, so a later
+   re-pricing of the template cannot change what was sold.
+
+3. fn_apply_topup_grants(p_contract_id) + trg_topup_credits_on_payment,
+   an AFTER UPDATE OF status trigger on t_invoices. Credits land ON
+   PAYMENT, not on purchase.
+
+4. get_tenant_context and trg_fn_plan_contract_lapsed both now exclude
+   metadata->>'source' = 'topup_purchase'.
+
+-------------------------------------------------------------------
+THE COLLISION THIS HAD TO SOLVE
+-------------------------------------------------------------------
+A top-up purchase is a contract raised BY the platform tenant FOR a
+subscriber - structurally identical to a plan subscription. Three
+existing pieces of logic matched on exactly that shape:
+
+  - subscribe_tenant_to_plan's ALREADY_SUBSCRIBED guard would have
+    treated a purchased pack as an existing plan and refused to ever
+    sell that tenant a plan again.
+  - get_tenant_context resolves the plan as the newest active platform
+    contract for the tenant - so a pack bought after subscribing would
+    have displayed AS the plan, replacing the real one.
+  - trg_plan_contract_lapsed (Phase C) zeroes allowances when such a
+    contract expires - so an expiring pack would have wiped the
+    tenant's plan limits.
+
+All three are filtered on metadata->>'source' <> 'topup_purchase'. The
+filter is an exclusion rather than a requirement that source =
+'plan_subscription', so a plan contract created by some other path in
+future still counts as a plan.
+
+-------------------------------------------------------------------
+A BUG FOUND ON THE WAY (fixed here)
+-------------------------------------------------------------------
+subscribe_tenant_to_plan folded both metering modes into one bucket:
+
+    ELSIF v_meter->>'mode' IN ('per_creation', 'one_time') ...
+        v_grants := v_grants || v_meter->'grants';
+
+...and v_grants is written to credit_grant_rates - the RATE APPLIED ON
+EVERY CREATION. A 'one_time' block means "grant N once"; filed there it
+becomes "grant N on every contract this tenant ever creates".
+
+No live plan carries such a block, so nothing over-granted. But a credit
+pack IS a one_time block, so this had to be right before packs shipped.
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : yes - purchase_topup_template runs inside
+                           create_contract_transaction's transaction;
+                           the grant trigger runs inside the payment
+                           transaction, so credits and the paid invoice
+                           commit together or not at all
+  Race conditions        : yes - unique partial index on t_credit_journal
+                           keyed to the contract makes double-granting
+                           impossible even if the invoice is flipped to
+                           paid twice concurrently
+  Error handling         : yes - every in-place patch asserts its anchor
+                           and raises if absent; fn_apply_topup_grants
+                           is a no-op on a contract with no topup_grants
+  Toasts                 : n/a - no UI in this phase
+  Loaders                : n/a - no UI in this phase
+
+-------------------------------------------------------------------
+STILL PENDING BEFORE THIS IS USABLE
+-------------------------------------------------------------------
+  1. Author the packs in catalog-studio. Prices are the owner's to set.
+  2. Build the purchase UI - there is no screen that calls
+     purchase_topup_template today.
+  3. Run the full path once against a real pack and a real payment.
+  4. Deploy jtd-worker (Phase B) so the credits can actually be spent.
+
+-------------------------------------------------------------------
+OPEN RISK CARRIED FORWARD
+-------------------------------------------------------------------
+POST /billing/credits-add still mints credits with no payment check.
+Phase D closed that hole for the pack path only; the direct endpoint is
+untouched and remains a way to create credits out of nothing.
+===================================================================
