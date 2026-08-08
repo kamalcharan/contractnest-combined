@@ -1,0 +1,168 @@
+═══════════════════════════════════════════════════
+FEATURE: Record a cash/offline payment from the Dues grid
+Branch folder: groupsession-dues-record-payment
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (1 file)
+
+  contractnest-api    — NOT touched
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+No database change. No migration. No RPC change. No new API endpoint,
+mutation, or backend logic of any kind — this reuses the existing
+RecordPaymentDialog + record-payment endpoint already used on the
+Contract Detail page and the Contract Wizard's success screen.
+
+
+⚠️ IMPORTANT — THIS FILE ALSO REMOVES THE TEMP DEBUG PANEL
+------------------------------------------------------------
+The previous drop (MANUAL_COPY_FILES/groupsession-dues-debug/) added a
+temporary on-screen debug panel to diagnose "Couldn't load dues." That
+bug is now understood and fixed on your machine (local, uncommitted
+edits to serviceURLs.ts had dropped GROUP_SESSIONS.DUES) — nothing in
+this codebase needed changing for it.
+
+This file was built from a clean baseline WITHOUT that debug panel.
+Copying it over your local file removes the debug panel AND adds the
+feature below, in one step. If you still need the debug panel for some
+other reason, say so before copying this over it.
+
+
+FILES
+-----
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx
+
+
+WHAT CHANGED
+------------
+The Dues grid's per-cell modal ("Change instalment status") only ever
+offered status-correction chips: Adjustment, Waived, Cancelled, Bad
+Debt. Those relabel an instalment — they do NOT create a receipt, do
+NOT touch amount_settled, and do NOT update the invoice balance. There
+was no way, from this screen, to record that a member actually paid
+(e.g. in cash) — clicking a cell with an overdue amount gave no path
+to settle it as paid.
+
+Added a "Record Payment" button to that same modal, above the status
+chips, visible only when the cell has a real open balance. It opens
+the EXISTING RecordPaymentDialog component (used on the Contract
+Detail page), pre-selecting the specific instalment(s) shown in that
+cell so the amount fills in automatically. From there the chair picks
+a payment method — Cash, Bank Transfer, UPI, Cheque, Card, Other — an
+optional reference/notes, and submits. That creates a real receipt,
+settles the event, and updates the invoice balance through the SAME
+path already used everywhere else money is recorded in the app — not
+a second, parallel write path.
+
+On success the dialog closes and the Dues grid refetches, so the cell
+immediately shows the new paid status.
+
+
+WHY NOT JUST ADD A "PAID" STATUS CHIP INSTEAD
+-----------------------------------------------
+Considered and rejected. The status chips call a bare PATCH on the
+billing event's status field only. Using that to mark something "paid"
+would flip the label without creating a receipt or updating
+amount_settled/invoice.balance — producing exactly the status-vs-
+settled-amount mismatch this codebase already had to fix once
+(migration 064, noted in CLAUDE.md). Reusing RecordPaymentDialog avoids
+inventing a second settlement path with its own bugs.
+
+
+PRODUCTION CHECKLIST
+---------------------
+  Transaction Management : Yes — handled inside the existing
+                            record-payment endpoint/RPC, unchanged here.
+  Race Condition Handling : Yes — RecordPaymentDialog re-fetches invoice
+                            state on open; nothing new introduced by
+                            this wiring.
+  Error Handling          : Yes — RecordPaymentDialog already has
+                            try/catch + toasts for every failure path
+                            (missing invoice, amount exceeds balance,
+                            API error). Nothing bypassed.
+  Toasts                  : Yes — existing VaNiToast calls inside
+                            RecordPaymentDialog (success/error), no new
+                            toast component needed.
+  Loaders                 : Yes — existing isPending / isLoadingInvoice
+                            states inside RecordPaymentDialog.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+-----------------------------------
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  1190 errors before this change, 1190 after — identical, all
+  pre-existing repo-wide issues unrelated to this file (mostly
+  src/vani/**). Zero errors in operations/group-sessions/index.tsx.
+
+Confirmed GsDuesRow carries contract_id (required prop for
+RecordPaymentDialog) and GsDuesCellEvent carries amount/settled
+(used to decide whether the button should show at all).
+
+Could not exercise this in a real browser from this environment — no
+live session/token available here. The testing checklist below covers
+what to check by hand.
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Copy File
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\groupsession-dues-record-payment\contractnest-ui\src\pages\operations\group-sessions\index.tsx" `
+          -Destination "contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Force
+
+This does NOT touch serviceURLs.ts, ContractWizard, or any of your
+other in-progress local edits — only this one file.
+
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+Hard refresh the browser: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Open Operations > Group Sessions > Dues
+[ ] Click a cell with an overdue/scheduled amount (e.g. Adithya
+    Pandravada, Jul 2026, CN-1003, ₹4,500 Overdue)
+[ ] A green "Record Payment" button now appears ABOVE the status
+    chips (Adjustment / Waived / Cancelled / Bad Debt)
+[ ] Click it — the existing Record Payment dialog opens, with:
+      - Invoice number and balance shown correctly
+      - The specific instalment(s) from that cell pre-ticked in the
+        "Outstanding dues" checklist
+      - Amount pre-filled to match
+[ ] Select "Cash" as the payment method, leave reference blank
+    (cash usually has none), optionally add a note
+[ ] Submit — expect a success toast with a receipt number
+[ ] Dues grid refreshes automatically; that cell now shows paid
+    (green), and the row's PAID/ARREARS totals update
+[ ] Cross-check Finance / the member's invoice — balance should be
+    reduced by the same amount
+[ ] Click a cell that is already fully paid, or on a waived/cancelled
+    instalment — the "Record Payment" button should NOT appear (no
+    open balance to record against)
+[ ] Try a cell with more than one instalment in it (if one exists) —
+    confirm both entries appear correctly in the pre-ticked checklist
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
