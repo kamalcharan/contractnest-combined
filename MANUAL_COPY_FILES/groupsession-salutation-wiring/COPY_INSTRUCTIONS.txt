@@ -1,0 +1,213 @@
+═══════════════════════════════════════════════════
+FEATURE: Wire salutation into Group Sessions
+Branch folder: groupsession-salutation-wiring
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (4 files modified)
+
+  contractnest-api    — NOT touched (these RPCs are called directly by
+                        the frontend via Supabase; the Node API layer
+                        between them is a pure pass-through, verified,
+                        no remapping to update)
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+Database: 5 RPCs updated — ALREADY APPLIED to production directly via
+Supabase, verified against live data before this handover. Nothing to
+run from this copy step for the database side; listed below for the
+record.
+
+
+WHAT THIS DOES
+------------------
+Group Sessions previously had ZERO salutation touchpoints anywhere —
+Dues, Roster, Attendance, Payments to confirm, and the check-in
+"Welcome" greeting all showed bare names, even though Contacts (fixed
+in the prior batch) now stores and displays salutation correctly.
+
+Wired it in properly, reusing the SAME canonical formatter Contacts
+uses (formatContactDisplayName from utils/constants/contacts.ts) rather
+than writing a private reimplementation for this module — the exact
+mistake that caused the original "Dr. Pavan Kulkarni" vs "Pavan
+Kulkarni" divergence in the first place.
+
+
+DATABASE — 5 RPCs updated, all verified against live data
+--------------------------------------------------------------
+Each now joins t_contacts and returns 'salutation' (or
+'member_salutation' where the existing field is already prefixed)
+alongside the name it already returned. All joins are LEFT JOIN —
+salutation is additive, nothing that worked before can now return
+fewer rows or fail.
+
+  gs_dues_matrix            -> Dues grid
+  gs_dash_roster             -> Roster tab
+  gs_pending_declarations    -> Payments to confirm
+  gs_lookup_member            -> check-in "Welcome, X" greeting
+  gs_occurrence_attendance   -> the per-session Mark Attendance screen
+                                (has a UNION ALL of real members and
+                                guests — guests explicitly get
+                                'salutation': null, not omitted, so the
+                                frontend type stays uniform; guests have
+                                no contact-level salutation to draw on
+                                and this was NOT extended to collect one)
+
+Verified live for each: Charan Kamal -> 'sri', Pavan Kulkarni -> 'dr'
+(both from the earlier backfill), guest row -> null. Row counts
+unaffected (LEFT JOIN, 1:1 on contact id, no fan-out).
+
+
+FILES CHANGED — contractnest-ui
+----------------------------------
+  hooks/queries/useGroupSessionsDashboard.ts
+      Added `salutation: string | null` to GsDuesRow, GsRosterRow,
+      GsOccAttendanceMember, and `member_salutation: string | null` to
+      GsDeclaration (matching that RPC's existing 'member_name' prefix
+      convention). All four query hooks were already pure pass-throughs
+      of the raw API response (no per-field remapping), so no other
+      change was needed for the new field to flow through once the RPC
+      started returning it — confirmed by reading each hook, not
+      assumed.
+
+  pages/operations/group-sessions/index.tsx
+      Added one shared helper:
+        const displayName = (person) =>
+          formatContactDisplayName({ type: 'individual', ...person });
+      — a thin wrapper, not a new formatter, since every name on this
+      page is an individual (Group Sessions has no corporate buyers).
+      Applied at every place a PERSON's name renders: the Dues grid row,
+      the Dues cell modal header (both the instalment-status list and
+      its confirm dialog), the Roster row, the Attendance/Mark-present
+      row (guest-safe automatically — salutation is null for guests, so
+      formatContactDisplayName adds no prefix), the Payments-to-confirm
+      row, and both CSV exports (Payments to confirm, Dues) — so an
+      exported spreadsheet matches what's on screen.
+      Left UNCHANGED: block/group name renders (s.name, g.name — these
+      are session names like "Saturday Network Meeting", not people).
+      Every existing '\u2014' empty-state fallback was preserved exactly
+      (checked name truthiness before calling the formatter, rather than
+      letting formatContactDisplayName's own "Unnamed Contact" fallback
+      silently take over a spot that used to show '\u2014').
+
+  pages/checkin/useSessionCheckin.ts
+      Added `salutation?: string | null` to the CheckinMember interface.
+      The `lookup()` API call was already a pure pass-through of
+      gs_lookup_member's response — confirmed, no other change needed.
+
+  pages/checkin/SessionCheckinPage.tsx
+      "Welcome, {member.name}" now reads
+      "Welcome, {formatContactDisplayName({ type:'individual', ... })}".
+      Deliberately NOT extended to the substitute/guest "Welcome back"
+      greetings on this same page (lines just above) — those are ad-hoc
+      contacts created at check-in with no salutation field anywhere in
+      that flow. Adding it there means a new form field on the public
+      check-in page, a different piece of work; flagged, not silently
+      skipped.
+
+
+WHAT WAS DELIBERATELY NOT TOUCHED
+--------------------------------------
+- Substitute / guest check-in greetings (see above).
+- The underlying buyer_name / member_name SNAPSHOT columns that Dues,
+  Roster and Attendance still read for the base name — those remain
+  frozen at contract-creation / check-in time, a separate, already-
+  flagged issue. Salutation itself is NOT frozen the same way — it's a
+  genuinely live join added fresh in this batch, so it stays correct
+  even where the underlying name is stale. Worth knowing this is an
+  intentional asymmetry, not an oversight.
+- contractnest-api — every endpoint these RPCs sit behind was confirmed
+  to be pass-through (controller calls the RPC, returns result.data
+  unchanged); nothing there needed editing.
+
+
+PRODUCTION CHECKLIST
+---------------------
+  Transaction Management : N/A — read-only RPCs, no writes changed.
+  Race Condition Handling : N/A — no new concurrent-write paths.
+  Error Handling          : Unchanged — every existing fallback
+                            ('\u2014', 'Unnamed Contact' only where it
+                            already applied) preserved exactly as it was.
+  Toasts                  : N/A — no new user actions introduced.
+  Loaders                 : N/A — no new async calls introduced.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+-------------------------------------
+Each of the 5 RPCs re-created via CREATE OR REPLACE FUNCTION using the
+FRESHLY fetched current definition as the base (re-queried immediately
+before editing, not from memory) with only the intended lines changed,
+then called live against real production data and the JSON output
+inspected directly — not assumed from the SQL alone.
+
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  1190 pre-existing repo-wide errors, unchanged. Zero errors in any of
+  the 4 touched files.
+
+Not exercised in a live browser from this environment — no session
+available here. Testing checklist below covers manual verification.
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\groupsession-salutation-wiring\contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Destination "contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\groupsession-salutation-wiring\contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Destination "contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\groupsession-salutation-wiring\contractnest-ui\src\pages\checkin\useSessionCheckin.ts" -Destination "contractnest-ui\src\pages\checkin\useSessionCheckin.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\groupsession-salutation-wiring\contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Destination "contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+Note: the database side is already live — you don't need to run
+anything for the RPC changes to take effect. You're only testing that
+the UI now displays what the RPCs already return.
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Operations > Group Sessions > Dues: Pavan Kulkarni's row now shows
+    "Dr. Pavan Kulkarni"; Charan Kamal's row shows "Sri CHARAN KAMAL"
+[ ] Click Pavan Kulkarni's Dues cell -> the "Change instalment status"
+    modal header and the confirm dialog both show "Dr. Pavan Kulkarni"
+[ ] Roster tab: same members show the same salutation-prefixed names
+[ ] Open a session occurrence (Mark Attendance screen): members show
+    salutation, but the guest row (Tejaswinni ni Bappudi Sundar) shows
+    NO prefix — confirm this is not blank/broken, just correctly absent
+[ ] Payments to confirm: Pavan Kulkarni's declaration row shows
+    "Dr. Pavan Kulkarni"; the guest fee row (Tejaswinni) shows no prefix
+[ ] Export CSV from both Dues and Payments to confirm -> open the file,
+    confirm the Member column matches what's on screen
+[ ] Check-in flow: as Charan (or any member with a phone on file), the
+    "Welcome, X" greeting now shows "Welcome, Sri CHARAN KAMAL"
+[ ] Check-in as a substitute or first-time guest -> "Welcome back, X"
+    / "X (guest)" greetings are UNCHANGED (no salutation, by design —
+    not part of this batch)
+[ ] Confirm nothing else on any of these screens regressed — amounts,
+    statuses, dates, filters all behave exactly as before
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
