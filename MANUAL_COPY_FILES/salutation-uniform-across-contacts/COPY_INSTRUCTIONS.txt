@@ -1,0 +1,287 @@
+═══════════════════════════════════════════════════
+FEATURE: Uniform salutation across Contacts + backfill
+Branch folder: salutation-uniform-across-contacts
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (9 files modified, 2 files DELETED)
+  contractnest-api  (1 file — seed data only)
+
+  contractnest-edge   — NOT touched (zero salutation references found)
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+Database: one live backfill UPDATE, run separately (see BACKFILL section
+below) — NOT part of this copy step, already executed against production
+directly via Supabase before this handover (see report in chat).
+
+
+⚠️ THIS BATCH INCLUDES TWO FILE DELETIONS
+--------------------------------------------
+A plain file copy cannot represent "delete this file" — you must remove
+these two by hand. They were dead code (zero importers anywhere in the
+codebase, confirmed by grep before deleting):
+
+  contractnest-ui/src/lib/constants/salutations.ts
+  contractnest-ui/src/utils/constants/salutations.ts
+
+Both were byte-for-byte duplicates of each other, defined an 8-value
+salutation list (including Miss/Rev/Capt, which nobody asked for) in a
+shape (`code`/`displayName`) incompatible with the one actually used by
+all 23 real importers (`value`/`label`). Deleting them removes a source
+of future confusion, not anything currently working.
+
+
+WHAT WAS FOUND (root cause)
+------------------------------
+Investigated why Contacts showed "Dr. Pavan Kulkarni" but Group Sessions
+showed "Pavan Kulkarni" with no title. Turned out to be much bigger than
+that one screen. Salutation had:
+
+  - FIVE independent definitions of "what are the valid options" across
+    the codebase (one live with 23 importers, two dead duplicates, two
+    more inline hardcoded arrays in Create-mode's Edit tab and a wizard
+    review step) — with THREE DIFFERENT VALUE ENCODINGS for the exact
+    same real-world choice: lowercase codes ('mr'), bare capitalized
+    words ('Mr'), and capitalized-with-period ('Mr.').
+
+  - SIX independent re-implementations of "how do we turn salutation +
+    name into a display string" — of which TWO were genuinely broken,
+    not just duplicated: contactService.ts and pages/contacts/view.tsx
+    both did `${contact.salutation}. ${name}` with NO label lookup at
+    all, so a record saved as 'mr' rendered as "mr. Pavan Kulkarni" —
+    lowercase, wrong case, on two real screens.
+
+  - Live production data already reflected this: t_contacts.salutation
+    held null (282 rows), 'mr', 'Mr.', 'mrs', 'Ms.', 'Dr', 'Dr.' — six
+    distinct stored strings for what should be five clean codes, on a
+    column with NO database constraint of any kind (plain varchar).
+
+
+FILES CHANGED — contractnest-ui
+----------------------------------
+  utils/constants/contacts.ts
+      THE canonical source (23 importers, unchanged surface). Added:
+        - 'smt' (Smt.) and 'sri' (Sri) to SALUTATIONS
+        - DEFAULT_SALUTATION = 'sri' as const
+      formatContactDisplayName() — already existed here — is now
+      actually called by every screen below instead of being
+      reimplemented next to it.
+
+  types/contacts.ts
+      Widened the salutation union type (4 occurrences) to include
+      'smt' | 'sri'.
+
+  pages/contacts/create.tsx  (Create mode)
+      - Already imported the correct SALUTATIONS list — only needed the
+        forcing behaviour: initial state, the "load existing contact for
+        edit" path, and the type-switch reset all now default to
+        DEFAULT_SALUTATION instead of undefined/''.
+      - Dropdown: removed the blank "Select" option — a value is always
+        present, defaulting to Sri.
+
+  components/contacts/view/ContactProfileTab.tsx  (Edit mode — the
+  Contact Detail page's inline "Identity" card)
+      - Was the worst offender: a private inline array
+        ['', 'Mr', 'Ms', 'Mrs', 'Dr'] that wrote bare capitalized values
+        with NO 'Prof' option at all — a completely different value
+        format from Create mode, on the SAME database column.
+      - Now imports SALUTATIONS + DEFAULT_SALUTATION from the canonical
+        file. Writes the same lowercase codes Create mode writes.
+      - Also fixed the READ-ONLY display, which was printing the raw
+        stored code (e.g. "mr") instead of its label ("Mr.") — now
+        looks it up properly.
+
+  components/contacts/forms/ContactPersonsSection.tsx
+      - Its own dropdown (for a corporate contact's "people") had the
+        same blank-option / no-forcing gap as old Create mode — fixed
+        the same way, same DEFAULT_SALUTATION.
+      - getPersonDisplayName() already did a correct lookup (this one
+        wasn't broken), but reimplemented it inline. Now calls
+        formatContactDisplayName() with a synthesized {type:'individual'}
+        object, since a ContactPerson has no .type field of its own.
+        Kept its own "New Contact Person" placeholder for a still-blank
+        name — formatContactDisplayName's own fallback ("Unnamed
+        Contact") would otherwise silently take over, since it never
+        returns a falsy value.
+
+  pages/contacts/view.tsx
+  components/contacts/cockpit/ProfileDrawer.tsx
+      - Both had the "mr. Pavan Kulkarni" bug described above — raw
+        stored value plus a hardcoded period, no label lookup at all.
+        Both now call formatContactDisplayName() directly.
+
+  services/contactService.ts
+      - Same "mr. Pavan Kulkarni" bug, in the API-facing service layer
+        this time (getContactDisplayName, used wherever contact lists
+        are mapped for display). Now calls formatContactDisplayName().
+
+  components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+      - Had its own private SALUTATION_LABELS map (5 values, correct
+        labels, but a totally separate object nobody else could reuse
+        or that would drift if the canonical list ever changed).
+        Deleted it; buyerDisplayName now calls
+        formatContactDisplayName(), preserving the exact same
+        buyerName-prop fallback behaviour the original had when
+        buyerContact.name is empty.
+
+  DELETED: lib/constants/salutations.ts, utils/constants/salutations.ts
+      (see the callout above — must be removed by hand, a copy can't
+      delete a file)
+
+
+FILES CHANGED — contractnest-api
+------------------------------------
+  seeds/sampleContacts.seed.ts
+      14 occurrences of salutation: 'Mr.' / 'Ms.' / 'Dr.' (capitalized
+      with period — a FOURTH format, distinct from either frontend
+      dropdown) normalized to the canonical lowercase codes 'mr' / 'ms'
+      / 'dr'. Pure literal substitution, verified nothing else in the
+      file changed (diff reviewed line by line, brace/quote balance
+      checked). Stops future onboarding/demo seed runs from
+      reintroducing yet another format into fresh tenants.
+
+
+BACKFILL — ALREADY RUN AGAINST PRODUCTION
+---------------------------------------------
+Per your decision to normalize everything (not just NULLs), run once,
+directly against Supabase, scoped to t_contacts WHERE type='individual':
+
+  NULL                    -> 'sri'
+  'mr', 'mrs'             -> unchanged (already canonical)
+  'Mr.'                   -> 'mr'
+  'Ms.'                   -> 'ms'
+  'Dr', 'Dr.'             -> 'dr'
+
+This covered every distinct value that existed on the live table at the
+time (confirmed by GROUP BY before running) — nothing else needed
+mapping. Corporate contacts were not touched (salutation never applies
+to them; formatContactDisplayName has always skipped that branch).
+Full before/after counts are in the chat report, not repeated here.
+
+This step does NOT need to be re-run by copying anything — it is already
+done. Listed here only so the branch's paper trail is complete.
+
+
+WHAT WAS DELIBERATELY NOT TOUCHED
+--------------------------------------
+Group Sessions (Dues, Attendance, Roster, Payments-to-confirm, check-in
+greeting, WhatsApp templates) — confirmed earlier in this investigation
+to have ZERO existing salutation touchpoints anywhere. Nothing there
+needed fixing because nothing there currently reads or writes
+salutation at all. Wiring it in is separate, deliberately deferred,
+follow-up work — not part of this batch.
+
+
+PRODUCTION CHECKLIST
+---------------------
+  Transaction Management : N/A for the UI/constant changes (no DB writes
+                            in this code beyond the existing
+                            create/update-contact flows, unchanged).
+                            The backfill itself ran as a single UPDATE
+                            statement (atomic).
+  Race Condition Handling : N/A — no new concurrent-write paths added.
+  Error Handling          : Unchanged — every touched formatter/dropdown
+                            keeps its existing fallback behaviour
+                            (checked explicitly for ContactPersonsSection
+                            and ReviewSendStep, where a naive swap would
+                            have changed fallback text).
+  Toasts                  : N/A — no new user actions introduced.
+  Loaders                 : N/A — no new async calls introduced.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+-------------------------------------
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  1190 errors before this change, 1190 after — identical. Two real
+  regressions were caught and fixed during this work (DEFAULT_SALUTATION
+  needed `as const` or it widened to plain `string` and broke
+  ContactFormData's literal union in create.tsx) — confirmed fixed by
+  the count returning to exactly 1190.
+
+Confirmed via grep, before deleting: zero files anywhere import from
+lib/constants/salutations or the old utils/constants/salutations.
+
+Seed file: diff reviewed line-by-line (exactly 14 targeted
+substitutions, nothing else changed), brace/quote balance verified.
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Delete the two dead files FIRST
+═══════════════════════════════════════════════════
+Remove-Item "contractnest-ui\src\lib\constants\salutations.ts"
+Remove-Item "contractnest-ui\src\utils\constants\salutations.ts"
+
+
+═══════════════════════════════════════════════════
+STEP 3: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\components\contacts\cockpit\ProfileDrawer.tsx" -Destination "contractnest-ui\src\components\contacts\cockpit\ProfileDrawer.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\components\contacts\forms\ContactPersonsSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactPersonsSection.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\components\contacts\view\ContactProfileTab.tsx" -Destination "contractnest-ui\src\components\contacts\view\ContactProfileTab.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\pages\contacts\create.tsx" -Destination "contractnest-ui\src\pages\contacts\create.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\pages\contacts\view.tsx" -Destination "contractnest-ui\src\pages\contacts\view.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\services\contactService.ts" -Destination "contractnest-ui\src\services\contactService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\types\contacts.ts" -Destination "contractnest-ui\src\types\contacts.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-ui\src\utils\constants\contacts.ts" -Destination "contractnest-ui\src\utils\constants\contacts.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\salutation-uniform-across-contacts\contractnest-api\src\seeds\sampleContacts.seed.ts" -Destination "contractnest-api\src\seeds\sampleContacts.seed.ts" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+STEP 4: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Contacts > New Contact (Create mode): Salutation defaults to "Sri"
+    pre-selected, no blank option, dropdown shows Mr./Mrs./Ms./Dr./Prof./
+    Smt./Sri (7 options)
+[ ] Save a new individual contact without touching the dropdown ->
+    confirm it saves with salutation 'sri'
+[ ] Open an EXISTING contact's Identity card (Edit mode, the inline
+    pencil-edit) -> dropdown now shows the SAME 7 options, same order,
+    as Create mode (previously: only 4, no Prof, different values)
+[ ] Edit an existing contact's salutation to "Prof." (previously
+    impossible from this screen) -> save -> confirm it persists and
+    displays correctly
+[ ] Pavan Kulkarni's contact page: salutation now shows correctly
+    everywhere it's displayed (contact list, contact detail header,
+    ProfileDrawer, anywhere the display name renders)
+[ ] Spot-check a contact whose salutation was one of the messy backfilled
+    values (e.g. anyone who was 'Mr.', 'Dr', 'Dr.' before) -> should now
+    read correctly with proper case ("Mr. ...", "Dr. ...")
+[ ] Corporate contact -> Identity card shows NO salutation field at all
+    (unchanged, this branch was never touched)
+[ ] Add a "Contact Person" under a corporate contact -> same forced
+    default (Sri, no blank), same 7 options
+[ ] Contract Wizard > Review & Send step, with an individual buyer
+    selected -> buyer name still shows with correct salutation exactly
+    as before
+[ ] Confirm nothing else on these screens regressed (addresses, tags,
+    channels, compliance numbers — none of these files' unrelated
+    sections were touched)
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
