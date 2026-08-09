@@ -361,6 +361,7 @@ const GroupSessionsPage: React.FC = () => {
   // required, invoice + receipt created together, always fully paid.
   const [adhocInvoiceTarget, setAdhocInvoiceTarget] = useState<null | {
     contactId: string; contactName: string | null; declarationId?: string | null;
+    initialItems?: Array<{ blockId?: string | null; name: string; qty?: number; unitPrice: number }>;
   }>(null);
 
   const statusColor = (code: string) =>
@@ -771,7 +772,15 @@ const GroupSessionsPage: React.FC = () => {
                       {d.is_guest_fee && !d.adhoc_invoice_id ? (
                         d.member_contact_id && (
                           <button
-                            onClick={() => setAdhocInvoiceTarget({ contactId: d.member_contact_id as string, contactName: d.member_name, declarationId: d.id })}
+                            onClick={() => setAdhocInvoiceTarget({
+                              contactId: d.member_contact_id as string,
+                              contactName: d.member_name,
+                              declarationId: d.id,
+                              // Already declared at check-in — seed the item
+                              // from what's known rather than making the
+                              // chair re-enter it from scratch.
+                              initialItems: [{ name: d.label || d.block_name || 'Guest Participation Fee', unitPrice: d.amount || 0, qty: 1 }],
+                            })}
                             title="Create a contact-less invoice for this member"
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1"
                             style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
@@ -1717,6 +1726,7 @@ const GroupSessionsPage: React.FC = () => {
           contactId={adhocInvoiceTarget.contactId}
           contactName={adhocInvoiceTarget.contactName}
           declarationId={adhocInvoiceTarget.declarationId}
+          initialItems={adhocInvoiceTarget.initialItems}
           onSuccess={() => {
             setAdhocInvoiceTarget(null);
             declarationsQuery.refetch();

@@ -3,6 +3,36 @@ FEATURE: Contact-less (adhoc) invoicing — no contract required
 Branch folder: adhoc-invoice-no-contract
 ═══════════════════════════════════════════════════
 
+⚠️ UPDATED again after second round of live testing (2026-08-09) — re-copy
+AdHocInvoiceDialog.tsx and group-sessions/index.tsx even if you already
+copied this batch
+--------------------------------------------------------------------
+Two more things came out of testing:
+
+1) The dialog was a generic compact form. Direction given: reuse the visual
+   design of the real invoice document (pages/contracts/invoice/index.tsx —
+   header/branding, Bill To, itemized # | Item | Rate | Qty | Total table,
+   Grand Total) rather than a plain modal, with the difference that here
+   items are editable (added from the catalog picker, or pre-filled) instead
+   of read-only. AdHocInvoiceDialog.tsx is now styled that way: a white
+   document panel with the tenant's logo/business name header, a Bill To
+   block naming the contact, and a real itemized table with inline-editable
+   rate/qty per row. The catalog/FlyBy picker (BlockLibraryMini) is now a
+   collapsible side panel via an "Add item" toggle, rather than always-open,
+   so the document gets the width by default.
+
+2) Real gap: opening "Invoice" from a guest-fee declaration showed an EMPTY
+   item list ("0 selected", "Create Invoice · INR 0.00"), even though the
+   guest already named a specific paid service and amount at check-in. The
+   chair had to re-search and re-add the exact same item by hand. Fixed:
+   AdHocInvoiceDialog now takes an optional `initialItems` prop; the
+   Payments-to-confirm "Invoice" button seeds one line item from the
+   declaration's own label + amount when it opens. Still editable (not
+   locked) in case it needs a correction. The Contacts Financials entry
+   point (AdHocServiceCard) is unaffected — it has no declaration, so it
+   still opens blank.
+
+
 ⚠️ UPDATED after first round of live testing (2026-08-09) — re-copy even if
 you already copied this batch once
 --------------------------------------------------------------------
@@ -264,11 +294,16 @@ TESTING CHECKLIST
 [ ] A CONTRACT-linked dues row (a normal member's monthly/quarterly due)
     shows Confirm + Reject as always, and does NOT show "Invoice"
 [ ] Click "Invoice" on a guest-fee row -> dialog opens pre-scoped to that
-    member
-[ ] In the dialog: add a catalog item (select card) — price/name populate
-    automatically; add a FlyBy item — type a name and amount manually
-[ ] Remove a line item, change qty/price on another, confirm the running
-    total updates
+    member, AND the item row is already pre-filled with the declaration's
+    own label + amount (not empty/0.00) — this is the main thing to verify
+    this round
+[ ] Dialog looks like an invoice document — tenant branding header, Bill To
+    with the contact's name, a real # | Item | Rate | Qty | Total table
+[ ] Edit the pre-filled row's rate/qty inline — Grand Total updates
+[ ] Click "Add item" -> catalog picker panel opens on the left; add a
+    catalog item (select card) — price/name populate automatically; add a
+    FlyBy item — type a name and amount manually
+[ ] Remove a line item, confirm the running total updates
 [ ] Fill in payment method/date/reference, submit — success toast shows
     invoice + receipt numbers; dialog closes
 [ ] Back on the panel, that same row should now show "Confirm" (with the
