@@ -1,0 +1,241 @@
+===================================================================
+BUSINESS MODEL V4 - PHASE D : buying credits becomes a contract
+===================================================================
+STATUS: COMPLETE. Buy-path plumbing built, deployed-to-DB, and proven
+live end to end (purchase -> contract -> invoice -> payment -> credits
+-> idempotent re-payment), then cleaned up. D1 (author the real packs
+and set their prices) is still yours - see "STILL PENDING" below.
+
+Branch folder : business-model-v4-phase-d
+Submodules    : contractnest-edge (main)  - migration (applied) + edge fn (NOT deployed)
+                contractnest-api  (main)  - routes, controller, service, types
+                contractnest-ui   (main)  - serviceURLs, two new hooks, pricing-plans page
+
+*** COPY ORDER ***
+business-model-v3-sprint1 -> business-model-v4-phase-b
+                          -> business-model-v4-phase-c -> this
+Each later folder carries the earlier version of any file it touches,
+so copying them in that order is always correct. This folder now
+carries forward and supersedes sprint1's copies of: cat-templates/
+index.ts, catalogStudioRoutes.ts, catalogStudioController.ts,
+catTemplatesService.ts, catalogStudioTypes.ts, and (with phase-b's
+edit already folded in) serviceURLs.ts.
+
+-------------------------------------------------------------------
+WHERE BUYING A PACK ACTUALLY LIVES
+-------------------------------------------------------------------
+Not on the Subscription page. sprint1 already rewrote Subscription/
+index.tsx from scratch (the "runway" version) and that rewrite drops
+the page's old TopupPackCard / handleBuyPack section entirely - it was
+never carried into any V4 folder, so copying sprint1 in already
+deletes it. Packs are bought on the PLAN CATALOGUE instead -
+/businessmodel/tenants/pricing-plans - which already has the
+Subscribe/toast/loader pattern this reuses. A "Credit packs" section
+now renders below the Plans grid on that same page, wired to the two
+new hooks below.
+
+If you were expecting the old alert("Opening payment for...") stub to
+turn into something real - it doesn't, because sprint1 already
+removes it. This is a net simplification, not a missed spot.
+
+-------------------------------------------------------------------
+ALREADY APPLIED TO THE LIVE DATABASE (unchanged from before)
+-------------------------------------------------------------------
+    v4_phase_d_1_subscribe_tenant_to_plan_patches
+    v4_phase_d_2_purchase_topup_template
+    v4_phase_d_3_apply_topup_grants_on_payment
+    v4_phase_d_4_exclude_topup_from_plan_resolution
+    v4_phase_d_5_retire_purchase_topup
+The .sql is the consolidated record. Do NOT run it again.
+
+-------------------------------------------------------------------
+NEEDS DEPLOYING: cat-templates edge function
+-------------------------------------------------------------------
+This is new since the last time this folder was handed off. The
+function now carries two more handlers:
+    GET  /cat-templates/packs           (list pack templates)
+    POST /cat-templates/packs/purchase  (buy one -> purchase_topup_template)
+plus a one-line bug fix in the EXISTING plans handler (see below).
+Deploy this function before the pricing-plans page's pack section can
+work - until then GET .../templates/packs 500s.
+
+-------------------------------------------------------------------
+A REAL BUG CAUGHT AND FIXED WHILE BUILDING THIS
+-------------------------------------------------------------------
+handleGetPlanTemplates (the /plans listing) has never filtered on
+category. Real plans are tagged category='service_delivery'; nothing
+enforces that. Once a pack template is published (is_public=true,
+same gate a plan uses), it would have started appearing as a PLAN
+CARD on /businessmodel/tenants/pricing-plans - no limits, its
+one_time grant mislabeled as "credits each time you create a
+contract or RFQ". Caught this live during testing: flipped the test
+pack's is_public to TRUE, and it appeared in a raw run of the plans
+query with no category filter.
+
+Fixed by excluding category='topup_pack' from the /plans query.
+Plans themselves are not required to carry any particular category -
+only packs are excluded, which is the one thing that must never
+render as a plan.
+
+-------------------------------------------------------------------
+TESTED LIVE, END TO END, THEN CLEANED UP
+-------------------------------------------------------------------
+Built a disposable test tenant (not Trinity, not CN-1001 - a throwaway
+so nothing real was touched), and ran the actual chain against the
+test pack (386ab8ce, "WhatsApp 500 Pack", Rs.1500 -> 500 WhatsApp
+credits):
+
+  1. purchase_topup_template -> contract CN-1002 raised, credits_pending: true
+  2. invoice INV-10002, Rs.1500.00, unpaid - same shape as a plan's invoice
+  3. subscribe_tenant_to_plan on the SAME test tenant, for the real Free
+     plan -> succeeded (CN-1003). Confirms the topup contract does NOT
+     trip ALREADY_SUBSCRIBED.
+  4. get_tenant_context on that tenant -> subscription resolved to CN-1003
+     (Free), not CN-1002 (the pack). credits.whatsapp still 0 - correctly
+     pending, nothing granted yet.
+  5. Flipped INV-10002 to paid -> credits_whatsapp jumped 0 -> 500.
+     Journal row: transaction_type=topup, reference_type=topup_contract,
+     reference_id=<the pack's contract id>, balance_before=0,
+     balance_after=500.
+  6. Flipped the SAME invoice unpaid -> paid again (simulating a duplicate
+     webhook) -> still exactly 1 journal row, still 500 credits. The
+     unique partial index held.
+  7. Deleted every row this created (journal, context, invoice, contract
+     blocks/events, both contracts, the contact, the tenant, an
+     auto-seeded t_vani_rules row) and restored the test pack template to
+     is_public=false. Verified zero rows remain across all seven tables.
+
+Also fixed, permanently, on the live template: its category was
+'plan' (a leftover from before packs had their own tag) - corrected
+to 'topup_pack'. is_public is back to FALSE, same as before this
+session - it still cannot appear for sale.
+
+-------------------------------------------------------------------
+t_bm_topup_pack IS NOT USED, ANYWHERE IN THIS BUILD
+-------------------------------------------------------------------
+Nothing added in Phase D reads it - not the edge handlers, not the API
+layer, not the new UI hooks. The old billing edge function's
+topup-packs / credits-topup routes, billingRoutes.ts, and
+useBusinessModelQueries.ts's useTopupPacks/TopupPack are left exactly
+as they were: untouched, and now simply unused, because the new
+pack-buying UI never calls them. This satisfies the original D4 intent
+(move call sites off the table) without deleting anything working
+elsewhere or refactoring code nobody asked to touch.
+
+-------------------------------------------------------------------
+SCOPE DECISIONS MADE WHILE BUILDING (flagging, not asking again)
+-------------------------------------------------------------------
+1. Skipped MeteringStep's expiry_days field (originally planned as
+   D2). Building it now would be dead configuration: Phase A already
+   removed every piece of credit-expiry machinery per decision D2
+   ("credits don't expire, the contract does") - a saved expiry_days
+   value would have nothing left in the system to read it. Revisit
+   only if D2 is ever reversed.
+2. Skipped the six merchandising fields (is_popular, sort_order,
+   original_price, discount_percentage, promotion_text,
+   promotion_ends_at) - agreed with you before building: ship the buy
+   path first, add these after if wanted.
+3. useTopupPacks in useBusinessModelQueries.ts was NOT repointed at the
+   new endpoint as I originally proposed - once it was clear packs live
+   on the pricing-plans page (via the new usePackTemplates hook)
+   instead of the old Subscription page, repointing the old hook would
+   have been code nothing calls. Left alone.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/023_topup_is_a_contract.sql  [unchanged]
+contractnest-edge/supabase/functions/cat-templates/index.ts             [MODIFIED - +2 handlers, +1 bugfix]
+contractnest-api/src/types/catalogStudioTypes.ts                        [MODIFIED - +PackTemplate types]
+contractnest-api/src/services/catTemplatesService.ts                    [MODIFIED - +listPackTemplates, +purchasePack]
+contractnest-api/src/controllers/catalogStudioController.ts             [MODIFIED - +getPackTemplates, +purchasePack]
+contractnest-api/src/routes/catalogStudioRoutes.ts                      [MODIFIED - +2 routes, above /templates/:id]
+contractnest-ui/src/services/serviceURLs.ts                             [MODIFIED - +PACKS, +PACKS_PURCHASE]
+contractnest-ui/src/hooks/queries/usePackTemplates.ts                   [NEW]
+contractnest-ui/src/hooks/mutations/usePurchasePack.ts                  [NEW]
+contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx  [MODIFIED - +Credit packs section]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy files, IN ORDER
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v3-sprint1\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-b\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-c\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-d\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-d\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-d\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase D files copied (with all prerequisite folders)" -ForegroundColor Green
+
+If sprint1/phase-b/phase-c were already copied into your checkout in an
+earlier session, you only strictly need this folder's own three
+Copy-Item lines - but running all of them is harmless and guarantees
+you are not missing an intermediate file.
+
+-------------------------------------------------------------------
+STEP 3: Deploy the edge function
+-------------------------------------------------------------------
+supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+
+-------------------------------------------------------------------
+STEP 4: Run the UI
+-------------------------------------------------------------------
+cd contractnest-ui
+npm run dev
+# hard refresh: Ctrl+F5
+# /businessmodel/tenants/pricing-plans - Plans grid unchanged; a
+# "Credit packs" section appears below it once at least one pack
+# template is published (see STILL PENDING #1)
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : yes - purchase_topup_template runs inside
+                           create_contract_transaction's transaction;
+                           the grant trigger runs inside the payment
+                           transaction (unchanged from before)
+  Race conditions        : yes - unique partial index on t_credit_journal
+                           makes double-granting impossible even on a
+                           duplicate payment webhook - reverified live
+                           this session with an actual paid/unpaid/paid
+                           cycle
+  Error handling         : yes - purchasePack/getPackTemplates mirror
+                           subscribeToPlan/getPlanTemplates's existing
+                           401/400 handling; the mutation unwraps the
+                           server's error message the same way
+                           useSubscribeToPlan already does
+  Toasts                 : existing VaNiToast (useVaNiToast / addToast),
+                           same success/error pattern already on this
+                           page for Subscribe
+  Loaders                : existing per-card pending state (Loader2 spin
+                           + disabled buttons), same pattern as Subscribe
+
+-------------------------------------------------------------------
+STILL PENDING BEFORE THIS IS USABLE
+-------------------------------------------------------------------
+  1. Author the packs in catalog-studio, category='topup_pack', one
+     metering block (mode 'one_time', grants keyed by channel) + one
+     priced block, signed off and made public. Prices are yours to set.
+  2. Deploy jtd-worker (Phase B) so credits, once granted, can actually
+     be spent.
+  3. Click through it once in a real browser as a real tenant, with a
+     real (or sandbox) payment - the SQL-level chain is proven, the
+     browser path is not.
+
+-------------------------------------------------------------------
+OPEN RISK CARRIED FORWARD (unchanged)
+-------------------------------------------------------------------
+POST /billing/credits-add still mints credits with no payment check.
+Phase D closed that hole for the pack path only; the direct endpoint is
+untouched and remains a way to create credits out of nothing.
+===================================================================

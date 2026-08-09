@@ -1,12 +1,14 @@
 # Business Model V4 — Plan of Action
 
-**Status**: Phases A–C applied 2026-08-07; Phases D–E open
+**Status**: Phases A–C applied 2026-08-07; Phases D–E open. Section 0.3 re-audited 2026-08-08 — two claims corrected.
 **Supersedes**: the `t_bm_*` layer described in `BUSINESS_MODEL_V3_POA.md` / `BUSINESS_MODEL_V3_SPEC.md`
 **Written**: 2026-08-07
-**Rule for this document**: every "already built" claim below was verified against the live
-database or by grep across all five submodules on the date above. Nothing is assumed.
-If you are picking this up cold, read Part 0 first — it exists specifically so nobody
-rebuilds something that is already running.
+**Rule for this document**: claims carry their evidence. A NEGATIVE claim ("this does not
+exist") requires at least two independent probes — a table-name search alone is not
+enough, because anything reached through an RPC will not appear in one. Section 0.3 was
+rewritten on 2026-08-08 after exactly that mistake put two false negatives in this
+document. If you are picking this up cold, read Part 0 first — it exists specifically so
+nobody rebuilds something that is already running.
 
 ---
 
@@ -79,19 +81,72 @@ spent a credit through code.**
 (`FOR UPDATE NOWAIT`), `release_reserved_credits`, `check_credit_availability`,
 `get_credit_balance`, `process_credit_expiry`, `fn_recalc_credit_flags`.
 
-### 0.3 NOT built — verified by grep, zero call sites
+### 0.3 What is and is not built — re-audited 2026-08-08
 
-| Gap | Evidence |
-|---|---|
-| **Limit enforcement** | `limit_contracts` / `limit_rfqs` appear in **zero** application files. Only in `006_tenant_context.sql` and two docs. Trinity is at 17 contracts against a limit of 3 and nothing stops him. |
-| **The credit gate on send** | `jtd-worker/` contains **zero** occurrences of "credit". Nothing anywhere *writes* `status_code = 'no_credits'` — it is only ever read by admin dashboards. The release machinery in 0.2 is complete and has never had anything to release. |
-| **Deduct on send** | The worker sends and never calls `deduct_credits`. Balances only ever go up. |
-| **Top-up purchase** | No flow. `t_bm_topup_pack` is a price list with no checkout. |
-| **Plan switch / upgrade** | "Switch" button deliberately disabled on the pricing page. |
-| **Invoice for a plan contract** | ₹0 Free plan produces no billing event; untested for a paid plan. |
+**This section was rewritten after two of its original six claims turned out to be
+false.** The first version asserted every negative from a single grep on a *table*
+name. Flows that go through an RPC do not appear in a table-name search, so
+"I did not find it" got written down as "it is not there."
 
-**This is the headline.** The half everyone assumes exists — *spending* a credit — does
-not. Grants work; the meter only turns one way.
+Each row below now records the evidence, on at least two axes (DB function bodies,
+function-name search, route registration, live data). Verdicts are ✅ confirmed,
+❌ was wrong.
+
+| Claim | Verdict | Evidence |
+|---|---|---|
+| **Limit enforcement does not exist** | ✅ | Only four DB functions reference `limit_contracts`/`limit_rfqs` — `get_tenant_context`, `subscribe_tenant_to_plan`, and the two V4 Phase C triggers. `create_contract_transaction` does not. No RPC named for quota/limit checks exists. |
+| **Nothing gated a send on credits (pre-Phase B)** | ✅ | Function-body search: the only callers of `deduct_credits` / `reserve_credits` / `check_credit_availability` anywhere in the database are `jtd_charge_credit` and `jtd_reserve_credit`, both written in Phase B. Nothing pre-existing called them. |
+| **The worker never deducted (pre-Phase B)** | ✅ | Same evidence, plus `jtd-worker/` contained zero occurrences of "credit". |
+| **Top-up purchase has no flow** | ❌ **WRONG** | `purchase_topup(tenant, pack_id, payment_reference)` exists and is wired end to end: `POST /billing/credits-topup` (edge) → `POST /api/billing/credits/topup` (API, registered at `index.ts:827`). It calls `add_credits` and logs a `t_bm_billing_event`. See 0.3.1. |
+| **No plan switch / upgrade** | ✅ | Now verified on the function-name axis, not just "the button is disabled": no `switch`/`change`/`upgrade`/`downgrade`/`prorat`/`renew` function exists in the schema. `subscribe_tenant_to_plan` is the only plan-side write. |
+| **A plan contract produces no invoice** | ❌ **WRONG** | CN-1001 already has **INV-10001, ₹0.00, status `unpaid`**, created in the same microsecond as the contract by `generate_contract_invoices`. See 0.3.2. |
+
+#### 0.3.1 Top-up purchase — what is actually missing
+
+The endpoint is not missing. Two things are:
+
+1. **There is no payment.** `purchase_topup` takes `p_payment_reference` as free
+   text and grants the credits unconditionally. Any string, or NULL, mints
+   credits. Nothing verifies that money moved. This is the real hole, and it is
+   worse than a missing endpoint — it is a live endpoint that gives credits away.
+2. **The UI cannot reach it, for two independent reasons.** The current
+   Subscription page's Buy handler is `console.log` + `alert("Opening payment
+   for …")`. And `API_ENDPOINTS.BUSINESS_MODEL` is referenced by every hook in
+   `useBusinessModelQueries.ts` but **is never defined in `serviceURLs.ts`**, so
+   those hooks throw on the undefined property before any request is made.
+
+`t_bm_billing_event` has 0 rows, confirming `purchase_topup` has never run.
+
+#### 0.3.2 Plan contracts are already invoiced
+
+Subscribing raises a contract, and contract creation runs
+`generate_contract_invoices` — so a plan contract gets an invoice like any other.
+For the ₹0 Free plan that means **a zero-rupee invoice in `unpaid` status against
+the platform tenant, per subscriber**. One exists today. At any real number of
+Free-plan signups this becomes an AR ledger full of unpayable ₹0 invoices.
+
+Not addressed anywhere in V4 so far. Decide in Phase D whether a ₹0 plan should
+skip invoicing, auto-settle, or be filtered out of AR views.
+
+#### 0.3.3 The `t_bm_*` surface is built, not dead
+
+Correcting a framing used earlier in this work: the `billing` edge function
+exposes 12 routes (`status`, `subscription`, `credits`, `usage`,
+`invoice-estimate`, `alerts`, `topup-packs`, `credits-deduct`, `credits-add`,
+`credits-topup`, `credits-check`) and `billingRoutes` mirrors them on the API and
+**is registered**. The layer is fully built and reachable by anything holding a
+token. It is unreachable *from the UI* only because of the missing
+`API_ENDPOINTS.BUSINESS_MODEL` constant. "Unreachable from our own front end" is
+not the same as "safe" — `credits-add` and `credits-topup` both mint credits.
+
+#### 0.3.4 Caveat on every grep in this document
+
+The submodule checkouts in the analysis environment lag the working tree:
+`contractnest-edge` at 5 Aug, `contractnest-api` at 2 Aug, `contractnest-ui` at
+3 Aug, audited on 8 Aug. `subscribe_tenant_to_plan` returns zero application call
+sites here even though the deployed `cat-templates` v23 calls it. **A "zero call
+sites" result from this checkout can be wrong purely from staleness** — confirm
+against the database or the live deployment before acting on one.
 
 ### 0.4 Dead tables — verified row counts
 
