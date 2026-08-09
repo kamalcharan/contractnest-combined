@@ -60,6 +60,10 @@ class InvoiceService {
     referenceNumber?: string | null;
     notes?: string | null;
     createdBy?: string | null;
+    /** Group Session declaration this invoice settles, if any — stamped
+     * onto t_session_payment_declarations.adhoc_invoice_id in the same
+     * transaction as the invoice/receipt. */
+    declarationId?: string | null;
   }) {
     return this.call('create_adhoc_invoice', {
       p_payload: {
@@ -74,6 +78,7 @@ class InvoiceService {
         reference_number: params.referenceNumber ?? null,
         notes: params.notes ?? null,
         created_by: params.createdBy ?? null,
+        declaration_id: params.declarationId ?? null,
       },
     });
   }

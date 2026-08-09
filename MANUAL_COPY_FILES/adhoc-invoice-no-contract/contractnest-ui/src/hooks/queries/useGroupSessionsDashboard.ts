@@ -543,6 +543,14 @@ export interface GsDeclaration {
   /** Group identity (bbb-foundation/046) — null for legacy/ad-hoc declarations */
   block_id: string | null;
   block_name: string | null;
+  /** billing_event_id === null — no contract/billing event to confirm
+   * against (e.g. a guest fee). Confirm is a silent no-op for these until
+   * an adhoc invoice exists — see adhoc_invoice_id. */
+  is_guest_fee: boolean;
+  /** Set once a contact-less invoice has been created for this declaration
+   * (create_adhoc_invoice, called with declaration_id). Null until then. */
+  adhoc_invoice_id: string | null;
+  adhoc_invoice_number: string | null;
 }
 
 /** Pending payment declarations awaiting chair confirmation (tenant-wide). */

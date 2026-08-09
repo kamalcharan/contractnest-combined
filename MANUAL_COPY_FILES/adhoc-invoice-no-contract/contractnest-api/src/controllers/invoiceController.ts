@@ -35,7 +35,7 @@ class InvoiceController {
       return;
     }
 
-    const { contact_id, currency, line_items, tax_amount, payment_method, payment_date, reference_number, notes } =
+    const { contact_id, currency, line_items, tax_amount, payment_method, payment_date, reference_number, notes, declaration_id } =
       req.body || {};
 
     if (!contact_id) {
@@ -74,6 +74,7 @@ class InvoiceController {
       referenceNumber: reference_number || null,
       notes: notes || null,
       createdBy: req.user?.id || null,
+      declarationId: declaration_id || null,
     });
 
     if (!result.success) {
