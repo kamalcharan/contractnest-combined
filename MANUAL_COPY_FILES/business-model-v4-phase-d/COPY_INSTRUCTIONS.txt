@@ -93,15 +93,18 @@ ALREADY APPLIED TO THE LIVE DATABASE (unchanged from before)
 The .sql is the consolidated record. Do NOT run it again.
 
 -------------------------------------------------------------------
-NEEDS DEPLOYING: cat-templates edge function
+DEPLOYED: cat-templates edge function (v25, live)
 -------------------------------------------------------------------
-This is new since the last time this folder was handed off. The
-function now carries two more handlers:
+Deployed directly via the Supabase MCP this session - no local
+`supabase functions deploy` needed for this one. Content verified
+byte-identical to what's in this folder before AND after deploy (no
+transit corruption). The function now carries two more handlers:
     GET  /cat-templates/packs           (list pack templates)
     POST /cat-templates/packs/purchase  (buy one -> purchase_topup_template)
-plus a one-line bug fix in the EXISTING plans handler (see below).
-Deploy this function before the pricing-plans page's pack section can
-work - until then GET .../templates/packs 500s.
+plus the category-filter bug fix in the EXISTING plans handler (see
+below). GET .../templates/packs is live and will return an empty
+packs:[] array until a pack template is authored, published, and
+tagged category='topup_pack' - that's expected, not broken.
 
 -------------------------------------------------------------------
 A REAL BUG CAUGHT AND FIXED WHILE BUILDING THIS
@@ -229,8 +232,10 @@ Copy-Item lines - but running all of them is harmless and guarantees
 you are not missing an intermediate file.
 
 -------------------------------------------------------------------
-STEP 3: Deploy the edge function
+STEP 3: Deploy the edge function - ALREADY DONE, skip
 -------------------------------------------------------------------
+cat-templates v25 is live. Nothing to run here. If a future change
+touches this function again and it needs redeploying by hand:
 supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
 
 -------------------------------------------------------------------
