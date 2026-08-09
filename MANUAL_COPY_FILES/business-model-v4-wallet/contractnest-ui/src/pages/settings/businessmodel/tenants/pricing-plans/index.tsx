@@ -12,9 +12,9 @@
 // Subscribe button navigated to a route that was never registered. It is now
 // wired to /api/catalog-studio/templates/plans.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, Sparkles, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Check, Sparkles, AlertCircle, Loader2, CheckCircle2, Wallet } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { analyticsService } from '@/services/analytics.service';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
@@ -125,6 +125,13 @@ const PricingPlansPage: React.FC = () => {
     analyticsService.trackPageView('businessmodel/tenants/pricing-plans', 'Pricing Plans');
   }, []);
 
+  // The 'per_contract' plan card has no Subscribe action of its own — funding
+  // the wallet IS what switches billing_mode to per_contract (see
+  // fn_apply_topup_grants's wallet branch), so its button scrolls down to the
+  // wallet top-up purchase instead of pretending to be a second Subscribe.
+  const packsRef = useRef<HTMLDivElement>(null);
+  const scrollToPacks = () => packsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const cardStyle: React.CSSProperties = {
     backgroundColor: colors.utility.secondaryBackground,
     border: `1px solid ${colors.utility.primaryText}20`,
@@ -192,6 +199,92 @@ const PricingPlansPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {plans.map((plan) => {
+          // Pay-as-you-go, not a capped tier — no price/term/cap of its own,
+          // so it gets its own card shape rather than forcing isFree/term
+          // logic built for the three subscription plans to also fit this.
+          if (plan.category === 'per_contract') {
+            const rateEntries = Object.entries(plan.rates).filter(([, v]) => v > 0);
+            const grantEntries = Object.entries(plan.grants).filter(([, v]) => v > 0);
+
+            return (
+              <div key={plan.id} style={cardStyle} className="overflow-hidden flex flex-col">
+                <div className="p-5 pb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Wallet className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                    <h2 className="text-lg font-bold" style={{ color: colors.utility.primaryText }}>
+                      {plan.name}
+                    </h2>
+                  </div>
+
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-extrabold" style={{ color: colors.utility.primaryText }}>
+                      Pay as you go
+                    </span>
+                  </div>
+
+                  {plan.description && (
+                    <p className="text-sm mt-2" style={{ color: colors.utility.secondaryText }}>
+                      {plan.description}
+                    </p>
+                  )}
+                </div>
+
+                <div className="px-5 pb-5 flex-1">
+                  <ul className="space-y-2">
+                    {rateEntries.map(([key, paise]) => (
+                      <li
+                        key={key}
+                        className="flex items-start gap-2 text-sm"
+                        style={{ color: colors.utility.primaryText }}
+                      >
+                        <Check
+                          className="w-4 h-4 mt-0.5 shrink-0"
+                          style={{ color: colors.semantic?.success || '#0d9464' }}
+                        />
+                        <span>
+                          <strong>{getCurrencySymbol(plan.currency)}{(paise / 100).toLocaleString()}</strong> per{' '}
+                          {key === 'rfqs' ? 'RFQ' : 'contract'}
+                        </span>
+                      </li>
+                    ))}
+
+                    {grantEntries.length > 0 && (
+                      <li className="flex items-start gap-2 text-sm" style={{ color: colors.utility.primaryText }}>
+                        <Check
+                          className="w-4 h-4 mt-0.5 shrink-0"
+                          style={{ color: colors.semantic?.success || '#0d9464' }}
+                        />
+                        <span>
+                          {grantEntries.map(([ch, n]) => `${n} ${CHANNEL_LABELS[ch] || ch}`).join(' + ')}{' '}
+                          credits each time you create a contract or RFQ
+                        </span>
+                      </li>
+                    )}
+
+                    <li className="flex items-start gap-2 text-sm" style={{ color: colors.utility.primaryText }}>
+                      <Check
+                        className="w-4 h-4 mt-0.5 shrink-0"
+                        style={{ color: colors.semantic?.success || '#0d9464' }}
+                      />
+                      <span>No cap, no term — pay only for what you create</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="px-5 pb-5">
+                  <button
+                    type="button"
+                    onClick={scrollToPacks}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                    style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                  >
+                    Get started
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
           const symbol = getCurrencySymbol(plan.currency);
           const term = formatTerm(plan.term);
           const isFree = plan.price === 0;
@@ -345,7 +438,7 @@ const PricingPlansPage: React.FC = () => {
           just crediting the wallet instead of a notification pool. See
           usePackTemplates.ts / handleGetPackTemplates for why. */}
       {!packsLoading && packs.length > 0 && (
-        <div className="mt-10">
+        <div className="mt-10" ref={packsRef}>
           <h2 className="text-lg font-bold mb-1" style={{ color: colors.utility.primaryText }}>
             Credit packs & wallet top-ups
           </h2>

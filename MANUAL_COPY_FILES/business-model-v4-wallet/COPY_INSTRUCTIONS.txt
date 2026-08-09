@@ -2,14 +2,18 @@
 BUSINESS MODEL V4 - PER-CONTRACT MODE (Mode A / wallet billing)
 ===================================================================
 STATUS: DB + edge function layer complete, applied/deployed live,
-proven end to end via the FINAL (reuse-based) design. UI shows
-wallet top-ups on the existing Plans page. No dedicated API route -
-none needed, see below. See "STILL PENDING" for what's left.
+proven end to end via the FINAL (reuse-based) design. "Per Contract"
+is now a real 4th tile in the Plans grid, alongside Free/Quarterly/
+Yearly, AND wallet top-ups are purchased via the existing "Credit
+packs & wallet top-ups" section. No dedicated API route - none
+needed, see below. See "STILL PENDING" for what's left.
 
 Branch folder : business-model-v4-wallet
-Submodules    : contractnest-edge (main)   - 2 migrations, already applied
-                                              + cat-templates edge fn, already deployed (v26)
-                contractnest-ui (main)     - PackTemplate type + Plans page card
+Submodules    : contractnest-edge (main)   - 3 migrations, already applied
+                                              + cat-templates edge fn, already deployed (v27)
+                contractnest-ui (main)     - PackTemplate + PlanTemplate types,
+                                              Plans page cards (pack card +
+                                              per_contract plan card)
 
 -------------------------------------------------------------------
 THE DESIGN CHANGED MID-STREAM - READ THIS FIRST
@@ -46,6 +50,24 @@ Both files are needed, in order, on a fresh environment:
      only ever needed one condition, not two).
 Do NOT skip file 1 - trg_fn_wallet_charge (the actual money-deducting
 trigger) only exists there, and 025 does not recreate it.
+
+A THIRD round followed: "per contract should be visible right" - the
+mode had no card in the Plans grid at all, only a generic wallet-
+top-up purchase with no explanation of what it activates. Fixed in
+026_per_contract_visible_plan.sql:
+  - "Per Contract" is now a REAL t_cat_templates row, category =
+    'per_contract', is_public = true - the exact same is_public/
+    is_active/lifecycle gate every other plan uses to control what's
+    listed for sale (per the owner's own framing - reusing the
+    listing mechanism, not inventing a new one).
+  - trg_fn_wallet_charge's hardcoded 20000/40000 literals are GONE -
+    it now reads the SAME template's 'per_creation_charge' metering
+    block, live, so the rate has exactly one home (the template),
+    not two things that could drift apart. Fails CLOSED if the
+    template is unpublished or the rate block missing (RAISE, not a
+    silent free-creation or a stale fallback) - tested live below.
+026 depends on 024's trg_fn_wallet_charge existing to replace, so
+run 024, then 025, then 026, in that order, on a fresh environment.
 
 -------------------------------------------------------------------
 WHAT billing_mode ACTUALLY IS
@@ -115,15 +137,24 @@ ALREADY APPLIED TO THE LIVE DATABASE
     v4_wallet_8_purchase_topup_template_wallet_category
     v4_wallet_9_apply_topup_grants_wallet_branch
     v4_wallet_10_simplify_source_exclusion
-Do NOT run any of this again on THIS database - it's live. The two
+  026 (Per Contract becomes a visible plan, final state):
+    v4_wallet_11_per_contract_template
+    v4_wallet_12_per_contract_parent_id
+    v4_wallet_13_charge_reads_rate_from_template
+Do NOT run any of this again on THIS database - it's live. The three
 .sql files are the consolidated, final, tested record for a FRESH
-environment: run 024 first, then 025, in that order.
+environment: run 024, then 025, then 026, in that order.
 
-Edge function: cat-templates deployed live as v26 (project
-uwyqhzotluikawcboldr) - handleGetPackTemplates now returns both
-topup_pack and wallet_topup rows (with a wallet_paise field), and
-handleGetPlanTemplates excludes both categories from the plans list.
-_shared/edgeUtils.ts unchanged, verified byte-identical before deploy.
+Edge function: cat-templates deployed live as v27 (project
+uwyqhzotluikawcboldr) - handleGetPackTemplates still returns both
+topup_pack and wallet_topup rows (with a wallet_paise field, from
+v26); handleGetPlanTemplates (v27) now also returns `category` and
+`rates` per plan, and orders by sequence_no instead of total (total
+ties Free and Per Contract at 0, which would put Per Contract 2nd
+instead of last - sequence_no is the author's explicit order and
+happens to already match ascending price for the other three, so
+this changes nothing for them). _shared/edgeUtils.ts unchanged,
+verified byte-identical before deploy.
 
 -------------------------------------------------------------------
 TWO REAL PRE-EXISTING BUGS FOUND WHILE TESTING (both fixed)
@@ -157,7 +188,7 @@ TWO REAL PRE-EXISTING BUGS FOUND WHILE TESTING (both fixed)
    comparisons would catch any other latent copies of this mistake.
 
 -------------------------------------------------------------------
-TESTED LIVE, END TO END, TWICE - THEN CLEANED UP BOTH TIMES
+TESTED LIVE, END TO END, THREE TIMES - THEN CLEANED UP EACH TIME
 -------------------------------------------------------------------
 ROUND 1 (024, the original bespoke topup_wallet() design - since
 retired, but this is what proved the charge/block mechanism itself,
@@ -219,6 +250,40 @@ ROUND 2 (025, proving the REUSE path is what's actually live today):
      the test tenant, the test template). Verified tenant_left=0,
      template_left=0, contracts_left=0.
 
+ROUND 3 (026, proving the rate now comes from the template, not a
+literal, and that the fail-closed path holds):
+  1. Built a disposable test tenant, billing_mode='per_contract',
+     wallet_balance_paise=15000 directly (no need to re-prove the
+     funding path - rounds 1-2 already did).
+  2. Tried an RFQ at 15000 balance (needs 40000, the template's rate)
+     -> hard blocked: "have 15000 paise, need 40000 paise" - proves
+     the RFQ rate was actually READ from the new template's rates
+     block, not a leftover hardcoded 40000 that happened to match.
+  3. Topped up to 100000, created a real contract (is_live=true) ->
+     100000 -> 80000 (-₹200, the template's contracts rate).
+  4. Created a real RFQ -> 80000 -> 40000 (-₹400, the template's
+     rfqs rate). Both rates independently confirmed live.
+  5. Temporarily set the Per Contract template's is_public=FALSE
+     (simulating "someone unpublished the rate") and tried another
+     contract -> hard blocked: "Per-contract billing rate is not
+     configured. Contact support." - confirms FAIL-CLOSED: an
+     unresolvable rate blocks creation, it does not silently charge
+     nothing or fall back to a stale amount.
+  6. Restored is_public=TRUE. Retried the same contract -> succeeded
+     normally, proving the block in step 5 was specifically the
+     missing rate, not something else broken.
+  7. Deleted every row this created (journal, context, contract_
+     events, contract_blocks, all 3 contracts, the test tenant -
+     t_vani_rules had to be deleted first, an FK dependency the
+     earlier rounds' cleanup also hit). Verified tenant_left=0,
+     contracts_left=0, ctx_left=0, journal_left=0.
+     NOTE while cleaning up: deleting the t_tenants row succeeded
+     even while t_contracts/t_tenant_context rows still referenced
+     it by tenant_id - there is NO enforced foreign key from either
+     table's tenant_id back to t_tenants.id. Not this batch's bug to
+     fix, but worth knowing: orphaned tenant_id references are
+     possible today and nothing in the schema prevents them.
+
 -------------------------------------------------------------------
 STILL PENDING
 -------------------------------------------------------------------
@@ -239,15 +304,34 @@ STILL PENDING
   4. No fixed-denomination guardrail in code for the ₹1,000 minimum -
      see "THE THREE RULES" above. If a floor needs enforcing in code
      rather than by publishing discipline, that's new scope.
+  5. The Per Contract card always shows a plain "Get started" button
+     - there is no "you are already on per_contract billing" active-
+     state badge the way Free/Quarterly/Yearly get a green "Current
+     plan" badge. Deliberately out of scope for this round (the
+     current_plan_id lookup is keyed off metadata.plan_template_id,
+     which only subscribe_tenant_to_plan sets - a wallet-funding
+     contract never will, by design). Revisit if/once step 1-2 are
+     live and this distinction actually matters to a real tenant.
+  6. "Get started" scrolls to the Credit packs & wallet top-ups
+     section via a ref - if that section is empty (packs.length===0,
+     which is the current live state per PENDING #1, nothing
+     published yet) the button is a harmless no-op, not an error.
+     Re-test the scroll once a real wallet_topup template exists.
+  7. No enforced FK from t_contracts.tenant_id / t_tenant_context.
+     tenant_id back to t_tenants.id (found incidentally during Round
+     3 cleanup - see the NOTE at the end of that round). Unrelated to
+     this feature, flagged here for whoever picks up schema hygiene.
 
 -------------------------------------------------------------------
 FILES
 -------------------------------------------------------------------
 contractnest-edge/supabase/migrations/business-model-v2/024_wallet_mode.sql              [NEW - run first]
 contractnest-edge/supabase/migrations/business-model-v2/025_wallet_via_pack_purchase.sql  [NEW - run second]
-contractnest-edge/supabase/functions/cat-templates/index.ts                              [MODIFIED - deployed live as v26]
+contractnest-edge/supabase/migrations/business-model-v2/026_per_contract_visible_plan.sql [NEW - run third]
+contractnest-edge/supabase/functions/cat-templates/index.ts                              [MODIFIED - deployed live as v27]
 contractnest-ui/src/hooks/queries/usePackTemplates.ts                                    [MODIFIED - wallet_paise field]
-contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx         [MODIFIED - wallet top-up card]
+contractnest-ui/src/hooks/queries/usePlanTemplates.ts                                    [MODIFIED - category + rates fields]
+contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx         [MODIFIED - pack card + per_contract plan card]
 
 -------------------------------------------------------------------
 STEP 1: Navigate to project
@@ -266,19 +350,28 @@ STEP 3: Test locally
 -------------------------------------------------------------------
 cd contractnest-ui && npm run dev
 # Open Settings > Business Model > Pricing Plans as a tenant admin.
-# Confirm the "Credit packs & wallet top-ups" section still renders
-# any existing credit packs correctly (no visual regression) - there
-# is no real wallet-topup template in production yet to see the new
-# card variant against, so this is a regression check on existing
-# packs, not a full wallet-topup UI test. Full UI verification of the
-# wallet-topup card needs a real published template (see PENDING #1).
+# Confirm:
+#   - A 4th card, "Per Contract", now appears AFTER Yearly (not
+#     tucked between Free and Quarterly) with a Wallet icon, "Pay as
+#     you go" headline, "₹200 per contract" / "₹400 per RFQ" bullets,
+#     the 15+15 credit line, and a "Get started" button.
+#   - Clicking "Get started" smooth-scrolls down to the "Credit
+#     packs & wallet top-ups" section (a no-op if that section is
+#     empty - see PENDING #6).
+#   - The "Credit packs & wallet top-ups" section still renders any
+#     existing credit packs correctly (no visual regression from the
+#     Phase D card).
+# There is no real wallet-topup template in production yet, so the
+# wallet-topup PACK card variant still can't be fully eyeballed (see
+# PENDING #1) - only the Per Contract PLAN card (which needed no
+# template to exist, it IS the template) is fully visible today.
 
 -------------------------------------------------------------------
 NOTHING TO DEPLOY OR RUN ON THE BACKEND
 -------------------------------------------------------------------
-Both migrations are already applied to the live database. The edge
-function is already deployed live (v26). This copy is purely so the
-files exist in your local checkout, matching every other phase's
+All three migrations are already applied to the live database. The
+edge function is already deployed live (v27). This copy is purely so
+the files exist in your local checkout, matching every other phase's
 record-keeping. Only the UI files are genuinely new to your local
 checkout's dev server.
 
