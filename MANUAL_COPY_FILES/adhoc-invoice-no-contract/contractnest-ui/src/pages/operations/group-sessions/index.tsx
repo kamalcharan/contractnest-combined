@@ -360,7 +360,7 @@ const GroupSessionsPage: React.FC = () => {
   // Contacts Financials tab (AdHocServiceCard) — no membership contract
   // required, invoice + receipt created together, always fully paid.
   const [adhocInvoiceTarget, setAdhocInvoiceTarget] = useState<null | {
-    contactId: string; contactName: string | null;
+    contactId: string; contactName: string | null; declarationId?: string | null;
   }>(null);
 
   const statusColor = (code: string) =>
@@ -762,33 +762,53 @@ const GroupSessionsPage: React.FC = () => {
                       )}
                     </div>
                     <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        disabled={confirmDeclaration.isPending}
-                        onClick={() => confirmDeclaration.mutate({ id: d.id, confirm: true })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                        style={{ backgroundColor: colors.semantic.success, color: '#fff' }}
-                      >
-                        <Check size={13} /> Confirm
-                      </button>
-                      <button
-                        disabled={confirmDeclaration.isPending}
-                        onClick={() => confirmDeclaration.mutate({ id: d.id, confirm: false })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-50"
-                        style={{ ...sub, borderColor: colors.utility.primaryText + '22' }}
-                      >
-                        Reject
-                      </button>
-                      {/* Contact-less invoice — for a payment (e.g. a guest fee)
-                          that has no billing event to confirm against. Doesn't
-                          touch this declaration; independent of Confirm/Reject. */}
-                      {d.member_contact_id && (
+                      {/* Guest fees (no billing_event_id) have nothing for
+                          Confirm to record against — it would silently flip
+                          the status with no ledger action. So: no invoice yet
+                          -> only "Invoice" (+ Reject) is offered; once
+                          create_adhoc_invoice has stamped this declaration,
+                          Confirm reappears exactly like a normal contract due. */}
+                      {d.is_guest_fee && !d.adhoc_invoice_id ? (
+                        d.member_contact_id && (
+                          <button
+                            onClick={() => setAdhocInvoiceTarget({ contactId: d.member_contact_id as string, contactName: d.member_name, declarationId: d.id })}
+                            title="Create a contact-less invoice for this member"
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1"
+                            style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                          >
+                            <Receipt size={13} /> Invoice
+                          </button>
+                        )
+                      ) : (
+                        <>
+                          {d.adhoc_invoice_id && (
+                            <span className="text-[10px] font-mono mr-1" style={sub} title="Invoice already created for this declaration">
+                              {d.adhoc_invoice_number || 'Invoiced'}
+                            </span>
+                          )}
+                          <button
+                            disabled={confirmDeclaration.isPending}
+                            onClick={() => confirmDeclaration.mutate({ id: d.id, confirm: true })}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                            style={{ backgroundColor: colors.semantic.success, color: '#fff' }}
+                          >
+                            <Check size={13} /> Confirm
+                          </button>
+                        </>
+                      )}
+                      {/* Once an invoice already exists for this declaration,
+                          rejecting it would leave real, recorded money behind
+                          a "rejected" declaration — nothing reverses the
+                          invoice, so that's a worse gap than just hiding the
+                          button. Confirm is the only closing action from here. */}
+                      {!d.adhoc_invoice_id && (
                         <button
-                          onClick={() => setAdhocInvoiceTarget({ contactId: d.member_contact_id as string, contactName: d.member_name })}
-                          title="Create a contact-less invoice for this member"
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border inline-flex items-center gap-1"
+                          disabled={confirmDeclaration.isPending}
+                          onClick={() => confirmDeclaration.mutate({ id: d.id, confirm: false })}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border disabled:opacity-50"
                           style={{ ...sub, borderColor: colors.utility.primaryText + '22' }}
                         >
-                          <Receipt size={13} /> Invoice
+                          Reject
                         </button>
                       )}
                     </div>
@@ -1696,6 +1716,7 @@ const GroupSessionsPage: React.FC = () => {
           onClose={() => setAdhocInvoiceTarget(null)}
           contactId={adhocInvoiceTarget.contactId}
           contactName={adhocInvoiceTarget.contactName}
+          declarationId={adhocInvoiceTarget.declarationId}
           onSuccess={() => {
             setAdhocInvoiceTarget(null);
             declarationsQuery.refetch();

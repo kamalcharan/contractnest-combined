@@ -151,6 +151,10 @@ export interface CreateAdhocInvoicePayload {
   payment_date?: string | null;
   reference_number?: string | null;
   notes?: string | null;
+  /** When set, stamps the source Group Session declaration with the
+   * resulting invoice id (same transaction) so the Payments-to-confirm
+   * panel can switch that row from "Invoice" to "Confirm". */
+  declaration_id?: string | null;
 }
 
 export interface CreateAdhocInvoiceResponse {
@@ -164,6 +168,7 @@ export interface CreateAdhocInvoiceResponse {
   total_amount: number;
   currency: string;
   status: string;
+  declaration_id?: string | null;
 }
 
 /**

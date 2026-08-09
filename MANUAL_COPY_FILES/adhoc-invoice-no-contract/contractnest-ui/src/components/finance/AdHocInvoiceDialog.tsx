@@ -29,6 +29,10 @@ interface AdHocInvoiceDialogProps {
   onClose: () => void;
   contactId: string;
   contactName?: string | null;
+  /** When opened from a Group Session declaration, stamps that declaration
+   * with the resulting invoice id so its row can switch from "Invoice" to
+   * "Confirm". Omit when there's no declaration (e.g. Contacts Financials tab). */
+  declarationId?: string | null;
   onSuccess?: (invoiceNumber: string) => void;
 }
 
@@ -69,6 +73,7 @@ const AdHocInvoiceDialog: React.FC<AdHocInvoiceDialogProps> = ({
   onClose,
   contactId,
   contactName,
+  declarationId,
   onSuccess,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -156,6 +161,7 @@ const AdHocInvoiceDialog: React.FC<AdHocInvoiceDialogProps> = ({
         payment_date: paymentDate,
         reference_number: referenceNumber.trim() || null,
         notes: notes.trim() || null,
+        declaration_id: declarationId || null,
       });
 
       addToast({ type: 'success', title: 'Invoice created', message: `${result.invoice_number} · Receipt ${result.receipt_number}` });
