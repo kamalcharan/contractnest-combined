@@ -1,0 +1,198 @@
+===================================================================
+BUSINESS MODEL V4 - PER-CONTRACT MODE (Mode A / wallet billing)
+===================================================================
+STATUS: DB layer complete, applied live, proven end to end. NO UI/API
+built yet - this is backend-only so far. See "STILL PENDING" below.
+
+Branch folder : business-model-v4-wallet
+Submodules    : contractnest-edge (main) - migration only, already applied
+
+*** NOT A CATALOG-STUDIO TEMPLATE ***
+Free/Quarterly/Yearly are all capped-allowance PLANS: subscribe once,
+get N contracts included, hit the cap, done. Per-contract is pay-as-
+you-go: no cap, every contract/RFQ creation deducts real money from a
+pre-funded balance, indefinitely, for as long as it lasts. That is a
+different mechanism, not a different price point, so it is not a
+t_cat_templates row - it is two new RPCs plus one new trigger.
+
+-------------------------------------------------------------------
+WHAT billing_mode ACTUALLY IS
+-------------------------------------------------------------------
+The column value is 'per_contract' - matches the existing CHECK
+constraint chk_tenant_context_billing_mode
+(freemium / poc / per_contract / plan / exempt). Internal naming
+(wallet_balance_paise, topup_wallet(), trg_fn_wallet_charge,
+credit_type='wallet' in the journal) stays "wallet" throughout - that
+is what this actually is in plain English - only the billing_mode
+COLUMN VALUE has to match the constraint's spelling.
+
+-------------------------------------------------------------------
+THE THREE RULES, AS BUILT
+-------------------------------------------------------------------
+  ₹200 per contract, ₹400 per RFQ - deducted from wallet_balance_paise
+    the MOMENT the row is created (BEFORE INSERT trigger)
+  Hard block on insufficient balance - the INSERT itself fails with
+    an exception, nothing is created. Owner decision 2026-08-09,
+    explicitly different from the soft/never-block posture Free/
+    Quarterly/Yearly have (D3) - running out of money to pay for a
+    contract is treated differently from running out of a plan's
+    included allowance.
+  15 WhatsApp + 15 Email credits granted per creation - reuses the
+    metering machinery that already exists (trg_fn_contract_consumption,
+    unchanged); topup_wallet() just sets credit_grant_rates the same
+    way subscribe_tenant_to_plan does for a plan.
+  Minimum top-up ₹1,000 (100000 paise) - enforced in topup_wallet(),
+    BELOW_MINIMUM error otherwise.
+
+-------------------------------------------------------------------
+DELIBERATELY NOT BUILT: 1-YEAR EXPIRY
+-------------------------------------------------------------------
+BUSINESS_MODEL_V3_SPEC.md Section 5.1 calls the proper FIFO top-up-lot
+expiry system "the largest single piece of work the commercial model
+implies" - a real lots ledger, oldest-first consumption, a per-lot
+expiry job. Owner decision 2026-08-09: ship without expiry first, same
+posture notification credits already have (D2 - nothing expires).
+wallet_balance_paise is a single running balance; top-ups only add to
+it, nothing ever removes value except spend. Revisit as its own piece
+of work if/when expiry is wanted.
+
+-------------------------------------------------------------------
+ALREADY APPLIED TO THE LIVE DATABASE
+-------------------------------------------------------------------
+    v4_wallet_1_get_tenant_context_exclude_wallet_topup
+    v4_wallet_2_plan_lapse_exclude_wallet_topup
+    v4_wallet_3_topup_wallet_function
+    v4_wallet_3b_fix_billing_mode_value
+    v4_wallet_4_apply_topup_and_payment_trigger
+    v4_wallet_5_charge_trigger
+    v4_wallet_6_fix_credit_flags_billing_mode_value
+The .sql file (024_wallet_mode.sql) is the CONSOLIDATED, FINAL,
+TESTED record - it already has the 3b and 6 fixes folded in, so
+running it fresh on another environment needs only the one file, not
+the sequence of patches above. Do NOT run it again on THIS database.
+
+-------------------------------------------------------------------
+A REAL PRE-EXISTING BUG FOUND WHILE TESTING (fixed, part 6 above)
+-------------------------------------------------------------------
+trg_fn_context_credit_flags (built in Phase A, months before this
+session) computed "is this tenant active enough to send notifications"
+from a hardcoded list of billing_mode values that included 'wallet' -
+a value that was NEVER valid. The real CHECK constraint has always
+said 'per_contract'. Because per_contract/wallet mode had never been
+exercised by any real tenant before today, this was completely silent:
+the credit-grant call failed a NOT NULL constraint, caught by the
+caller's blanket exception handler, logged only as a RAISE WARNING
+nobody was watching. Caught by testing a real charge event live:
+usage_contracts and the 15/15 credit grant were both stubbornly zero
+after a contract creation that should have moved both. Traced to this
+one line, fixed, retested - confirmed working after the fix.
+
+This means per-contract/wallet billing_mode has been silently broken
+since Phase A, on a codepath nothing had ever exercised. Worth knowing
+in case anything else assumes billing_mode can be 'wallet' rather than
+'per_contract' - a repo-wide grep for the string 'wallet' against
+billing_mode comparisons would catch any other latent copies of this
+same mistake.
+
+-------------------------------------------------------------------
+TESTED LIVE, END TO END, THEN CLEANED UP
+-------------------------------------------------------------------
+Built a disposable test tenant, then ran the real sequence:
+  1. topup_wallet(tenant, 100000 paise, NULL) -> contract CN-1006
+     raised, ₹1,000, balance_pending: true
+  2. Tried to create a contract for this tenant BEFORE paying -> hard
+     blocked: "Insufficient wallet balance: have 0 paise, need 20000
+     paise. Top up to continue." Nothing was created.
+  3. Invoice INV-10006 (₹1,000, unpaid) flipped to paid -> wallet_
+     balance_paise jumped 0 -> 100000, billing_mode='per_contract',
+     limit_contracts/limit_rfqs both NULL, credit_grant_rates=
+     {whatsapp:15, email:15}.
+  4. Created a real contract (is_live=true) -> succeeded, wallet
+     100000 -> 80000 (-₹200), usage_contracts +1.
+  5. Created a real RFQ -> succeeded, wallet 80000 -> 40000 (-₹400).
+  6. [bug found and fixed here - see above]
+  7. Re-ran a contract creation after the fix -> wallet 40000 ->
+     20000, AND credits_whatsapp/credits_email both +15 - the
+     existing metering trigger now actually fires for this mode.
+  8. Drained wallet to exactly 0 with one more contract.
+  9. Tried one more contract at balance=0 -> hard blocked again.
+  10. Created an is_live=FALSE (test environment) contract at
+      balance=0 -> succeeded, uncharged - test environment is never
+      charged real money, same posture Phase B gave notification
+      credits.
+  11. get_tenant_context returned wallet.balance_paise=0, billing_
+      mode='per_contract', credits.whatsapp=30, credits.email=30
+      (15+15 from the two post-fix creations), subscription=null
+      (the wallet top-up contract correctly does NOT show as "the
+      plan").
+  12. Deleted every row this created - journal, context, invoice,
+      all 6 contracts, the contact, the tenant. Verified zero rows
+      remain.
+
+-------------------------------------------------------------------
+STILL PENDING - THIS IS BACKEND ONLY
+-------------------------------------------------------------------
+  1. No UI. There is no "Top up wallet" screen anywhere - the
+     pricing-plans page (Phase D's home for credit packs) has no
+     per-contract section. Building one is straightforward - same
+     pattern as the credit-pack purchase already there, an amount
+     input instead of a fixed price, calling a new topup_wallet API
+     endpoint - but it does not exist yet.
+  2. No API layer. topup_wallet() has no route, controller, or
+     service method anywhere in contractnest-api - only callable via
+     direct RPC today (as tested above).
+  3. Nobody is actually on per_contract billing_mode yet - this is
+     proven mechanism, not a live feature. First real tenant needs
+     the UI/API above to use it themselves; until then it is only
+     reachable by someone with direct database access.
+  4. RFQ-derived-contract double-charge gap (documented in the SQL
+     comments above trg_fn_wallet_charge) - not fixable until
+     t_contracts gets an rfq linkage column, which is Sprint 3 /
+     RFQ-handover scope.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/024_wallet_mode.sql  [NEW]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy files
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-wallet\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "Wallet mode migration file copied (already applied live - this is the record only)" -ForegroundColor Green
+
+-------------------------------------------------------------------
+NOTHING TO DEPLOY OR RUN
+-------------------------------------------------------------------
+No edge function changed. The migration is already applied to the
+live database. This copy is purely so the .sql file exists in your
+local checkout, matching every other phase's record-keeping.
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : yes - topup_wallet runs inside
+                           create_contract_transaction's transaction;
+                           the deduction in trg_fn_wallet_charge runs
+                           BEFORE INSERT, inside the same transaction
+                           as the contract creation itself, so a
+                           charge and its contract commit or roll
+                           back together
+  Race conditions        : yes - trg_fn_wallet_charge takes
+                           FOR UPDATE on the tenant context row before
+                           checking balance, so two concurrent
+                           contract creates cannot both pass the
+                           balance check against the same money
+  Error handling          : yes - hard block via RAISE EXCEPTION is
+                           the intended behavior here (owner decision,
+                           different from the soft plans); topup_wallet
+                           and fn_apply_wallet_topup each have their
+                           own EXCEPTION handlers returning a JSON
+                           error rather than a bare 500
+  Toasts / Loaders        : n/a - no UI in this phase
+===================================================================
