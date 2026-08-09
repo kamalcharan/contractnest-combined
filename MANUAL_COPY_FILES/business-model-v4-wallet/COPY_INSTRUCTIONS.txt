@@ -4,9 +4,11 @@ BUSINESS MODEL V4 - PER-CONTRACT MODE (Mode A / wallet billing)
 STATUS: DB + edge function layer complete, applied/deployed live,
 proven end to end via the FINAL (reuse-based) design. "Per Contract"
 is now a real 4th tile in the Plans grid, alongside Free/Quarterly/
-Yearly, AND wallet top-ups are purchased via the existing "Credit
-packs & wallet top-ups" section. No dedicated API route - none
-needed, see below. See "STILL PENDING" for what's left.
+Yearly. A real, permanent ₹1,000 wallet top-up template is published
+and live, so "Get started" -> Credit packs & wallet top-ups actually
+has something to buy - the feature is usable end-to-end today, not
+just visible. No dedicated API route - none needed, see below. See
+"STILL PENDING" for what's left (mainly: nobody has bought it yet).
 
 Branch folder : business-model-v4-wallet
 Submodules    : contractnest-edge (main)   - 3 migrations, already applied
@@ -285,38 +287,74 @@ literal, and that the fail-closed path holds):
      possible today and nothing in the schema prevents them.
 
 -------------------------------------------------------------------
+A REAL WALLET TOP-UP TEMPLATE IS NOW PUBLISHED (2026-08-09)
+-------------------------------------------------------------------
+Owner report: clicking "Get started" on the Per Contract card did
+nothing - because PENDING #1 (below, now resolved) was still true at
+that point: the Credit packs & wallet top-ups section only renders
+when packs.length > 0, and zero packs/top-ups existed, so there was
+nothing to scroll to.
+
+Fixed by publishing a REAL, PERMANENT template (not a disposable test
+row) - applied live via v4_wallet_14/15:
+  id: efd0eb2b-a0f2-4f77-91c4-6ed03e2abc36
+  name: "₹1,000 Wallet Top-up", category='wallet_topup', total=1000.00
+  is_public=TRUE, is_active=TRUE, is_live=TRUE, settings.lifecycle=
+  'signed_off' - same gate every plan/pack uses, satisfies handleGet
+  PackTemplates' query exactly (verified by running that same WHERE
+  clause directly against it before testing a purchase).
+
+  Price (₹1,000) is not a new decision - it's the "minimal wallet
+  topup is 1000/-" figure from the original spec request, not
+  invented here.
+
+PROVEN LIVE against this REAL row (not a disposable copy, so nothing
+about the mechanism is untested going into production):
+  1. purchase_topup_template(this template, test tenant, NULL) ->
+     success, contract CN-1008, wallet_paise: 100000, credits_pending.
+  2. Invoice INV-10008 (₹1,000) flipped to paid -> wallet_balance_
+     paise 0 -> 100000, billing_mode='per_contract', credit_grant_
+     rates={whatsapp:15, email:15}.
+  3. Deleted the TEST TENANT's data only (journal, context, invoice,
+     contract, contact) - the template itself was left untouched and
+     confirmed still present (real_template_present=1) after cleanup.
+
+Net effect: the Credit packs & wallet top-ups section will now
+actually render on the Plans page, and "Get started" has somewhere
+real to scroll to and something real to buy. PENDING #1, #2 and #6
+below are resolved as of this template going live; kept in the list
+with strikethrough-style notes rather than deleted, so the history of
+what was pending and when it closed isn't lost.
+
+-------------------------------------------------------------------
 STILL PENDING
 -------------------------------------------------------------------
-  1. No real, priced wallet-topup template exists yet in production -
-     only the disposable test one, which was deleted. Someone needs
-     to author the actual "₹1,000 Wallet Top-up" (or whatever
-     denominations are wanted) template in catalog-studio, category
-     'wallet_topup', and publish it - pricing is the owner's call,
-     not mine to set.
-  2. Nobody is actually on per_contract billing_mode yet in
-     production - this is proven mechanism, not a live feature until
-     step 1 exists and someone buys it.
+  1. [RESOLVED 2026-08-09 - see section above] No real, priced
+     wallet-topup template existed in production.
+  2. [RESOLVED 2026-08-09] Nobody was on per_contract billing_mode in
+     production - this is still true (nobody has bought the new
+     template yet), but the blocker (nothing to buy) is gone.
   3. RFQ-derived-contract double-charge gap (documented in the SQL
      comments above trg_fn_wallet_charge) - not fixable until
      t_contracts gets an rfq linkage column, which is Sprint 3 /
      RFQ-handover scope (see CLAUDE.md's "Future Review Items" for
      the fuller writeup of that gap).
   4. No fixed-denomination guardrail in code for the ₹1,000 minimum -
-     see "THE THREE RULES" above. If a floor needs enforcing in code
-     rather than by publishing discipline, that's new scope.
+     see "THE THREE RULES" above. Only one wallet_topup template
+     exists today, priced correctly at the minimum - if additional
+     denominations get published later, nothing in code stops one
+     being priced below ₹1,000; that's still publishing discipline,
+     not an enforced floor.
   5. The Per Contract card always shows a plain "Get started" button
      - there is no "you are already on per_contract billing" active-
      state badge the way Free/Quarterly/Yearly get a green "Current
      plan" badge. Deliberately out of scope for this round (the
      current_plan_id lookup is keyed off metadata.plan_template_id,
      which only subscribe_tenant_to_plan sets - a wallet-funding
-     contract never will, by design). Revisit if/once step 1-2 are
-     live and this distinction actually matters to a real tenant.
-  6. "Get started" scrolls to the Credit packs & wallet top-ups
-     section via a ref - if that section is empty (packs.length===0,
-     which is the current live state per PENDING #1, nothing
-     published yet) the button is a harmless no-op, not an error.
-     Re-test the scroll once a real wallet_topup template exists.
+     contract never will, by design). Revisit once a real tenant is
+     actually on this mode and the distinction matters.
+  6. [RESOLVED 2026-08-09] "Get started" scrolling to an empty
+     section - the section is no longer empty (see above).
   7. No enforced FK from t_contracts.tenant_id / t_tenant_context.
      tenant_id back to t_tenants.id (found incidentally during Round
      3 cleanup - see the NOTE at the end of that round). Unrelated to
