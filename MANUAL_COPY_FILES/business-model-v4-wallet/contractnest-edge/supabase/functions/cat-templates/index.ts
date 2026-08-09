@@ -329,7 +329,7 @@ async function handleGetPlanTemplates(
   const buildQuery = (withLatest: boolean) => {
     let q = supabase
       .from('t_cat_templates')
-      .select('id, name, display_name, description, category, tags, blocks, currency, subtotal, total, settings, is_live, created_at, updated_at')
+      .select('id, name, display_name, description, category, tags, blocks, currency, subtotal, total, settings, is_live, sequence_no, created_at, updated_at')
       .eq('tenant_id', platform.id)
       .eq('is_active', true)
       // Exclude packs AND wallet top-ups. Nothing about a plan's own
@@ -337,7 +337,9 @@ async function handleGetPlanTemplates(
       // tagged consistently), but neither of these must ever render as a
       // plan card — a pack has no limits and its one_time grant would be
       // mislabeled as a per-creation rate; a wallet top-up has no metering
-      // at all and would render as a plan with nothing in it.
+      // at all and would render as a plan with nothing in it. 'per_contract'
+      // IS meant to render here — it is a billing mode, displayed alongside
+      // the capped plans, just with no price/term/cap of its own.
       .not('category', 'in', '("topup_pack","wallet_topup")')
       // ALWAYS live, never ctx.isLive. The plan catalogue is ContractNest's
       // own commercial model, which exists once — a tenant switching to its
@@ -355,7 +357,12 @@ async function handleGetPlanTemplates(
       .eq('is_public', true);
 
     if (withLatest) q = q.eq('is_latest', true);
-    return q.order('total', { ascending: true });
+    // sequence_no, not total — Per Contract's total is 0 (nothing is paid
+    // upfront), which would tie it with Free under a price sort and put it
+    // second instead of last. sequence_no is the author's explicit display
+    // order, and happens to already match ascending price for the three
+    // capped plans, so this changes nothing for them.
+    return q.order('sequence_no', { ascending: true });
   };
 
   let { data, error } = await buildQuery(true);
@@ -420,6 +427,12 @@ async function handleGetPlanTemplates(
 
     const limits: Record<string, number> = {};
     const grants: Record<string, number> = {};
+    // Paise per creation, keyed the same as limits ('contracts'/'rfqs') — only
+    // ever populated for the 'per_contract' category template. trg_fn_wallet_
+    // charge reads the SAME block, live, from the database — this is not a
+    // parallel copy of the rate, it is the one place both the charge and the
+    // display read from.
+    const rates: Record<string, number> = {};
     const flags: string[] = [];
 
     for (const b of blocks) {
@@ -427,6 +440,7 @@ async function handleGetPlanTemplates(
       if (!m) continue;
       if (m.mode === 'limit' && m.limits) Object.assign(limits, m.limits);
       if ((m.mode === 'per_creation' || m.mode === 'one_time') && m.grants) Object.assign(grants, m.grants);
+      if (m.mode === 'per_creation_charge' && m.rates) Object.assign(rates, m.rates);
       if (m.mode === 'flag' && m.flag) flags.push(m.flag);
     }
 
@@ -434,11 +448,16 @@ async function handleGetPlanTemplates(
       id: t.id,
       name: t.display_name || t.name,
       description: t.description,
+      // Only 'per_contract' is acted on by the UI today (a distinct, no-cap
+      // card) — returned generically rather than a one-off boolean so a
+      // future distinct category doesn't need another field bolted on.
+      category: t.category,
       currency: t.currency || 'INR',
       price: Number(t.total ?? 0),
       term: { value: defaults.duration_value ?? null, unit: defaults.duration_unit ?? null },
       limits,
       grants,
+      rates,
       flags,
       updated_at: t.updated_at,
     };
