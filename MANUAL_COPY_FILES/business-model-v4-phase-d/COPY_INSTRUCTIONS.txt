@@ -6,10 +6,54 @@ live end to end (purchase -> contract -> invoice -> payment -> credits
 -> idempotent re-payment), then cleaned up. D1 (author the real packs
 and set their prices) is still yours - see "STILL PENDING" below.
 
+UPDATE (same day): fixed a real 500 hit by pulse@p.com on the
+Subscription page - see "SECOND ROUND" below. Pull this folder again
+even if you already copied it once.
+
 Branch folder : business-model-v4-phase-d
 Submodules    : contractnest-edge (main)  - migration (applied) + edge fn (NOT deployed)
                 contractnest-api  (main)  - routes, controller, service, types
-                contractnest-ui   (main)  - serviceURLs, two new hooks, pricing-plans page
+                contractnest-ui   (main)  - serviceURLs, two new hooks, pricing-plans page,
+                                            Subscription page (empty state)
+
+-------------------------------------------------------------------
+SECOND ROUND: fixed the 500 on /businessmodel/tenants/subscription
+-------------------------------------------------------------------
+Root cause, two things stacked:
+
+1. tenantContextController.ts's getContext mapped ANY success:false
+   from get_tenant_context to HTTP 500 - including a plain "tenant has
+   no context row yet", which is a normal state, not a server error.
+   133 of 135 tenants have no t_tenant_context row today, so every one
+   of them hit this. Fixed: that RPC-level success:false now returns
+   200; the frontend renders it as "No plan yet", not an error. Real
+   failures (network, RPC exception) already return 500 from the
+   catch block below it - untouched.
+
+2. The Subscription page's error gate (`if (error || !ctx?.success)`)
+   treated "no plan yet" identically to a real failure. Split into two
+   branches - a real `error` still shows the red banner; `!ctx.success`
+   now renders a dedicated "No plan yet -> See plans" empty state,
+   reusing the copy/button that already existed for the on-plan-but-
+   lapsed case, just before any of the limits/usage/credits sections
+   that assume a real context row exists.
+
+NOT a migration gap - traced why pulse@p.com expected a plan to exist:
+/settings/businessmodel/admin/pricing-plans/assign.tsx's "Assign Plan"
+button (`handleConfirmAssign`) is a stub - `await new Promise(resolve
+=> setTimeout(resolve, 1500))` then a success toast, no API call at
+all. Whoever assigned Pulse Hospital a plan there got a fake success
+and nothing was ever written anywhere. Left untouched deliberately:
+it is on the admin page already marked "leave alone, deprecating" in
+the POA, and fixing it properly means building a real "admin
+subscribes a tenant" feature via subscribe_tenant_to_plan - new scope,
+not a bug fix, and not requested yet.
+
+ALREADY DONE, LIVE, FOR YOUR TESTING: Pulse Hospital (Pulse Hospital)
+subscribed to the real Free plan for real - contract CN-1004. This is
+not test data and was not cleaned up - it is there so you can see both
+states: reload the page as pulse@p.com now and it should show a real
+"Your plan: Free, 3 contracts left" hero, not the empty state.
 
 *** COPY ORDER ***
 business-model-v3-sprint1 -> business-model-v4-phase-b
@@ -150,9 +194,11 @@ contractnest-api/src/types/catalogStudioTypes.ts                        [MODIFIE
 contractnest-api/src/services/catTemplatesService.ts                    [MODIFIED - +listPackTemplates, +purchasePack]
 contractnest-api/src/controllers/catalogStudioController.ts             [MODIFIED - +getPackTemplates, +purchasePack]
 contractnest-api/src/routes/catalogStudioRoutes.ts                      [MODIFIED - +2 routes, above /templates/:id]
+contractnest-api/src/controllers/tenantContextController.ts             [MODIFIED - fixed success:false -> 500 bug]
 contractnest-ui/src/services/serviceURLs.ts                             [MODIFIED - +PACKS, +PACKS_PURCHASE]
 contractnest-ui/src/hooks/queries/usePackTemplates.ts                   [NEW]
 contractnest-ui/src/hooks/mutations/usePurchasePack.ts                  [NEW]
+contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx  [MODIFIED - "No plan yet" empty state]
 contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx  [MODIFIED - +Credit packs section]
 
 -------------------------------------------------------------------
