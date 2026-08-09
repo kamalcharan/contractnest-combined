@@ -1,0 +1,225 @@
+===================================================================
+BUSINESS MODEL V4 - PLAN SWITCHING (upgrade/downgrade)
+===================================================================
+STATUS: Applied live, proven end to end (Free -> Quarterly -> Yearly,
+two switches in a row), deployed nowhere new (no edge/API change
+needed - see below). UI still needs a dev-server test.
+
+Branch folder : business-model-v4-plan-switching
+Submodules    : contractnest-edge (main) - 1 migration, already applied
+                contractnest-ui (main)   - Switch button enabled +
+                                            confirm modal + switch-
+                                            aware toast
+
+-------------------------------------------------------------------
+WHY THIS EXISTED AS A GAP
+-------------------------------------------------------------------
+Every plan card but the current one showed a disabled "Switch"
+button. That wasn't cosmetic - subscribe_tenant_to_plan hard-refused
+a second subscription (ALREADY_SUBSCRIBED) because superseding an
+existing plan contract was an unanswered product decision. Owner
+decision, 2026-08-09, in two parts:
+  1. Switch is IMMEDIATE - the old plan ends right now, the new one
+     starts right now. No "at next renewal" deferral.
+  2. The old plan's unused allowance (remaining contract/RFQ headroom)
+     and any accrued notification credits are FORFEITED, not carried
+     over - a switch resets usage and credits to 0 and applies the
+     new plan's limits/grants fresh, same as a first-time subscribe.
+
+-------------------------------------------------------------------
+REUSE, NOT A PARALLEL PIPE
+-------------------------------------------------------------------
+No new RPC, no new edge route, no new UI mutation:
+  - subscribe_tenant_to_plan (the SAME RPC that already handles first-
+    time subscribe) now also handles switching. Requesting the exact
+    plan you're already on is still refused (ALREADY_SUBSCRIBED) -
+    that's a no-op, not a switch; only requesting a DIFFERENT plan
+    while already on one triggers switch logic.
+  - Ending the old plan contract goes through update_contract_status
+    - the existing generic contract status-transition function every
+      other cancellation in the system already uses - instead of a
+      raw UPDATE. That's what gives the switch a real audit trail
+      (a row in t_contract_history, the same JTD event a manual
+      cancellation gets) for free, rather than a status flip nobody
+      can trace later.
+  - The new plan contract is raised through the EXACT SAME code path
+    as a first-time subscribe (same create_contract_transaction call,
+    same block-building loop) - the only two differences are: the old
+    contract gets cancelled first, and usage/credits reset instead of
+    being left alone.
+  - The edge function (POST /cat-templates/subscribe) and the UI's
+    useSubscribeToPlan mutation are UNCHANGED - both already just
+    forward whatever the RPC returns. was_switch/previous_contract_id
+    are new fields in that same response, not a new endpoint.
+
+-------------------------------------------------------------------
+t_contracts HAS NO 'superseded' STATUS - USED 'cancelled'
+-------------------------------------------------------------------
+chk_t_contracts_status only allows: draft, pending_review,
+pending_acceptance, active, completed, cancelled, expired, sent,
+quotes_received, awarded, converted_to_contract. 'cancelled' is the
+closest existing fit for "this plan contract no longer applies." The
+REAL reason is recorded in the t_contract_history note - "Superseded
+by switch to plan: Quarterly" - not left to be guessed from the bare
+status. Live-verified this note is exactly what lands in the audit
+trail (see TESTED LIVE below).
+
+-------------------------------------------------------------------
+ALREADY APPLIED TO THE LIVE DATABASE
+-------------------------------------------------------------------
+    v4_switch_1_subscribe_handles_plan_switch
+Do NOT run this again on THIS database - it's live. The .sql file
+(028_plan_switching.sql) is the consolidated, final, tested record
+for a fresh environment.
+
+No edge function changed - cat-templates' handleSubscribeToPlan
+already just proxies the RPC's response through unchanged; the new
+was_switch/previous_contract_id fields ride the same response shape.
+Nothing to redeploy.
+
+-------------------------------------------------------------------
+TESTED LIVE, END TO END - THEN CLEANED UP
+-------------------------------------------------------------------
+Disposable test tenant, real sequence:
+  1. Subscribed to Free -> CN-1009, was_switch: false (first-time
+     subscribe unaffected).
+  2. Tried subscribing to Free AGAIN (same plan) -> still refused,
+     ALREADY_SUBSCRIBED, exactly as before this change - confirms a
+     same-plan resubscribe is a no-op, not treated as a switch.
+  3. Simulated real usage before switching: usage_contracts=3 (Free's
+     full 3-contract cap used up), credits_whatsapp=7, credits_email=4.
+  4. Switched to Quarterly -> success, was_switch: true, new contract
+     CN-1010, previous_contract_id correctly pointed at CN-1009.
+     CN-1009's status confirmed 'cancelled'; t_contract_history shows
+     both the original 'created' entry AND the new 'status_changed'
+     entry with note "Superseded by switch to plan: Quarterly".
+     t_tenant_context confirmed FULLY reset and reapplied: usage_
+     contracts/usage_rfqs/credits_whatsapp/credits_email all back to
+     0, limit_contracts=50 (Quarterly's cap, not Free's 3),
+     credit_grant_rates={whatsapp:20,email:20} (Quarterly's grant,
+     not Free's none).
+  5. Switched AGAIN, Quarterly -> Yearly -> success, was_switch: true,
+     new contract CN-1011, previous_contract_id pointed at CN-1010
+     (proves this isn't a one-shot - CN-1010 correctly went to
+     'cancelled' too, chaining cleanly).
+  6. Ran the exact query handleGetPlanTemplates uses to resolve
+     "current plan" against this tenant, despite TWO cancelled
+     contracts now sitting in its history -> correctly returned
+     exactly one row, CN-1011 / Yearly. No ambiguity from the
+     cancelled contracts leaking into "current plan" detection.
+  7. Deleted every row this created (journal, context, history,
+     events, blocks, invoices, all 3 contracts, the contact, the
+     test tenant). Verified tenant_left=0, contracts_left=0,
+     contact_left=0.
+
+-------------------------------------------------------------------
+STILL PENDING
+-------------------------------------------------------------------
+  1. UI not yet copied/tested in a real browser - see STEP 3 below.
+  2. No proration - a switch mid-term is billed the new plan's FULL
+     price, not a prorated difference. Matches "immediate + forfeit"
+     the owner chose; revisit only if proration is later wanted.
+  3. Switching AWAY FROM per_contract (wallet) billing_mode was not
+     in scope here and is untouched - subscribe_tenant_to_plan's
+     v_existing lookup only ever matches PLAN contracts (excludes
+     metadata.source='topup_purchase'), so a per_contract tenant can
+     still separately subscribe to a plan without this code path
+     even noticing the wallet balance. Whether that SHOULD switch
+     billing_mode away from 'per_contract' is a product question
+     nobody has asked yet - flagging it, not answering it.
+  4. Downgrading FROM a paid plan back to Free works mechanically
+     (Free is just another template with is_public=true) but was not
+     specifically exercised in testing beyond the Quarterly->Yearly
+     leg - the code path is identical either direction, low risk, but
+     worth a manual click-through once the UI is live.
+
+-------------------------------------------------------------------
+FILES
+-------------------------------------------------------------------
+contractnest-edge/supabase/migrations/business-model-v2/028_plan_switching.sql   [NEW]
+contractnest-ui/src/hooks/mutations/useSubscribeToPlan.ts                        [MODIFIED - was_switch/previous_contract_id fields]
+contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx [MODIFIED - Switch enabled + SwitchConfirmModal + switch-aware toast]
+
+-------------------------------------------------------------------
+STEP 1: Navigate to project
+-------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+-------------------------------------------------------------------
+STEP 2: Copy files
+-------------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-plan-switching\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-v4-plan-switching\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Plan switching files copied (migration already applied live - this is the record only; UI needs a dev-server test)" -ForegroundColor Green
+
+NOTE: the pricing-plans/index.tsx here is the FULL current file (it
+carries forward everything from business-model-v4-wallet too - the
+Per Contract card, the wallet top-up section). Copying it overwrites
+that same file with this superset; you do not need to copy the
+wallet folder's copy of this file separately, this one already
+includes it.
+
+-------------------------------------------------------------------
+STEP 3: Test locally
+-------------------------------------------------------------------
+cd contractnest-ui && npm run dev
+# Open Settings > Business Model > Pricing Plans as a tenant admin
+# who is on Free (or any plan).
+# Confirm:
+#   - Quarterly/Yearly now show an ENABLED "Switch" button (not the
+#     old disabled greyed-out one).
+#   - Clicking it opens a confirm modal: "Switch to Quarterly?" with
+#     the forfeiture warning text, Cancel / Switch plan buttons.
+#   - Cancel closes the modal with no request sent.
+#   - Switch plan fires the request, shows a spinner, then a toast
+#     "Switched to Quarterly" (not "You are on Quarterly" - that
+#     wording is reserved for a genuine first subscribe).
+#   - The page re-renders: Free now shows plain "Subscribe" again (no
+#     longer "Current plan"), Quarterly shows "Current plan", Yearly
+#     shows "Switch".
+#   - Repeat once more (Quarterly -> Yearly) to confirm it isn't a
+#     one-shot.
+
+-------------------------------------------------------------------
+NOTHING TO DEPLOY ON THE BACKEND
+-------------------------------------------------------------------
+The migration is already applied to the live database. No edge
+function changed - nothing to redeploy. Only the two UI files are
+genuinely new to your local checkout's dev server.
+
+-------------------------------------------------------------------
+PRODUCTION CHECKLIST
+-------------------------------------------------------------------
+  Transaction management : yes - the cancellation (update_contract_
+                           status) and the new subscription (create_
+                           contract_transaction) both run inside
+                           subscribe_tenant_to_plan's single call;
+                           the whole function is wrapped in its own
+                           EXCEPTION handler that returns a JSON
+                           error rather than partially applying a
+                           switch
+  Race conditions        : yes - update_contract_status takes
+                           FOR UPDATE on the old contract row before
+                           transitioning it, same locking pattern
+                           every other status change in the system
+                           already relies on
+  Error handling          : yes - a failed cancellation (SWITCH_
+                           CANCEL_FAILED) or failed new-contract
+                           creation (CONTRACT_CREATE_FAILED) each
+                           return a specific JSON error rather than
+                           silently leaving the tenant in a half-
+                           switched state; verified the exact-same-
+                           plan case still returns ALREADY_SUBSCRIBED
+                           unchanged
+  Toasts / Loaders        : yes - reuses the exact same subscribe
+                           mutation's addToast/Loader2 wiring already
+                           on this page; only the toast TITLE differs
+                           (switch vs subscribe wording) based on the
+                           was_switch flag in the response
+  Confirmation UX         : yes - a Switch click never fires the
+                           request directly; it opens SwitchConfirmModal
+                           first (same visual pattern as the existing
+                           DeleteConfirmModal in catalog-studio/
+                           templates-list.tsx), spelling out exactly
+                           what gets forfeited before the tenant commits
+===================================================================
