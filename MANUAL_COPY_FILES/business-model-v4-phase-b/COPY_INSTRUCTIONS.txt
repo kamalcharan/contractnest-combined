@@ -23,13 +23,15 @@ WHAT WAS ALREADY APPLIED TO THE LIVE DATABASE
 The .sql file is the consolidated record. Do NOT run it again.
 
 -------------------------------------------------------------------
-WHAT IS NOT YET LIVE - YOU MUST DEPLOY THE WORKER
+DEPLOYED AND CONFIRMED WORKING (checked live 2026-08-09)
 -------------------------------------------------------------------
-The database half is live: unpayable messages now PARK at creation and
-release themselves on a top-up. The worker half is not: nothing charges
-a credit until jtd-worker is redeployed. That intermediate state is
-safe and coherent - parking works, charging does not - but Phase B is
-not finished until you deploy.
+The worker was redeployed at some point after this folder was handed
+off - confirmed by pulling the live function source directly and
+diffing it against this folder's index.ts: byte-identical. Real
+proof it is actually charging, not just deployed: t_credit_journal
+has 3 rows with reference_type='jtd', transaction_type='deduction' -
+genuine sends that got charged, not test data. 0 JTDs are currently
+sitting in no_credits. Phase B is fully live: DB + worker both.
 
 -------------------------------------------------------------------
 FILES
@@ -54,8 +56,10 @@ Copy-Item "MANUAL_COPY_FILES\business-model-v4-phase-b\contractnest-ui\*"   -Des
 Write-Host "Phase B files copied" -ForegroundColor Green
 
 -------------------------------------------------------------------
-STEP 3: Deploy the worker  (REQUIRED)
+STEP 3: Deploy the worker - ALREADY DONE, skip
 -------------------------------------------------------------------
+Confirmed live and matching. If a future change touches jtd-worker
+again and needs a manual redeploy:
 cd contractnest-edge
 supabase functions deploy jtd-worker --project-ref uwyqhzotluikawcboldr
 cd ..
