@@ -1,0 +1,270 @@
+═══════════════════════════════════════════════════
+FEATURE: Contact-less (adhoc) invoicing — no contract required
+Branch folder: adhoc-invoice-no-contract
+═══════════════════════════════════════════════════
+
+⚠️ APPLY AFTER groupsession-chair-salutation, NOT INSTEAD OF IT
+--------------------------------------------------------------------
+This batch's copies of useGroupSessionsDashboard.ts, ContactPicker.tsx and
+operations/group-sessions/index.tsx are CUMULATIVE — they contain
+everything from groupsession-chair-salutation PLUS this batch's changes.
+If you already copied that batch, copying this one over it is correct and
+complete.
+
+⚠️ IMPORTANT — this batch ALSO restores a feature that was silently lost
+between earlier batches, if you haven't already applied it
+--------------------------------------------------------------------
+Found while building this feature: groupsession-dues-record-payment (the
+batch that added the "Record Payment" button + RecordPaymentDialog wiring
+to the Dues grid) and groupsession-salutation-wiring were built as two
+INDEPENDENT branches off the same original file — salutation-wiring was not
+built on top of dues-record-payment. So if you copied batches in the order
+they were delivered (dues-record-payment, then salutation-wiring, then
+chair-salutation), the LATER copies silently overwrote and DROPPED the
+Record Payment button and RecordPaymentDialog wiring — group-sessions/
+index.tsx would have had salutations but no working "Record Payment" button
+in the Dues grid's status modal.
+
+This batch's copy of operations/group-sessions/index.tsx has BOTH features
+together (verified: RecordPaymentDialog import + recordPaymentTarget state +
+the "Record Payment" button + its dialog render are all present, alongside
+every salutation change and this batch's new adhoc-invoice wiring). Copying
+this batch's file resolves the gap regardless of what order you applied
+earlier batches in — you do not need to re-copy dues-record-payment
+separately.
+
+
+WHAT THIS DOES
+------------------
+Adds a way to bill and settle a payment for a CONTACT who has no membership
+contract at all — e.g. a Group Session guest fee (the gap flagged in
+CLAUDE.md: "guest session payments have nowhere to post"). Per your spec:
+  1. Select a contact (entry points: Group Sessions "Payments to confirm"
+     panel per-row "Invoice" button, and the Contacts Financials tab's
+     existing "Create Adhoc Service" card, previously wired to nothing)
+  2. Opens a new invoice-creation dialog (there was no existing one to
+     reuse — the old INV-10010-style page is read-only, no create logic)
+  3. Pick items from Catalog Studio — reuses BlockLibraryMini +
+     BlockCardSelectable, the SAME card component Contract Wizard uses
+     (both "select" catalog cards and "FlyBy" quick-add cards for one-off
+     items not in the catalog)
+  4. Invoice + receipt are created together in ONE transaction, always
+     fully paid at creation — no separate "record payment" step
+
+
+DATABASE — 1 new RPC + 2 schema changes + 2 RPCs patched
+------------------------------------------------------------
+ALREADY APPLIED to production live via Supabase MCP, verified against real
+and test data. The migration file below is the source-of-record copy —
+DO NOT RE-RUN IT.
+
+  contractnest-edge/supabase/migrations/finance/001_adhoc_invoice_no_contract.sql
+
+  - t_invoices.contract_id: NOT NULL -> nullable
+  - t_invoices: + contact_id (uuid, FK t_contacts), + line_items (jsonb)
+  - t_invoices: + CHECK (contract_id IS NOT NULL OR contact_id IS NOT NULL)
+  - t_invoice_receipts.contract_id: NOT NULL -> nullable
+  - NEW RPC: create_adhoc_invoice(p_payload jsonb) — creates the invoice
+    (status='paid' immediately) + a settling receipt, same number-generation
+    and receipt-insert pattern as the existing record_invoice_payment RPC,
+    just with contract_id NULL throughout. Tested live end-to-end against a
+    test-tenant contact (is_live=false) before touching anything real.
+  - get_tenant_receivables: 2 of its 4 near-identical internal `inv` CTEs
+    changed from INNER to LEFT JOIN t_contracts (the other 2 are scoped to
+    open/unpaid invoices, which an always-paid adhoc invoice can never be —
+    deliberately left untouched to keep the blast radius minimal on an
+    already-complex function). Verified live: BBB's real 49-invoice
+    collected_total (313500) and invoice_count (49) unchanged before/after;
+    the test adhoc invoice's amount correctly appeared in collected_total
+    and the invoice list with a new is_adhoc:true flag.
+  - get_contact_cockpit_summary: STEP 7 (invoice list) and STEP 8 (payment
+    pattern) now UNION in invoices where contract_id IS NULL AND
+    contact_id = the contact — unreachable through the existing
+    buyer_id/CNAK-accessor JOIN chain since there's no contract at all.
+    STEP 6 (outstanding balance) untouched — same reasoning as above.
+    Verified live against a real contract-linked contact (total_paid 248500
+    unchanged) and the test adhoc-invoice contact (correctly appears).
+
+
+FILES CHANGED — contractnest-api
+------------------------------------
+  src/services/invoiceService.ts        (NEW) — direct-RPC service, same
+                                          pattern as groupSessionsDashboardService
+                                          (service-role client, .rpc() call).
+  src/controllers/invoiceController.ts  (NEW) — validates payload, calls
+                                          the service, unwraps the RPC's
+                                          self-reported success/error.
+  src/routes/invoiceRoutes.ts           (NEW) — POST /api/invoices/adhoc
+  src/index.ts                          — registers the new route at
+                                          /api/invoices (same load/register
+                                          try-catch pattern as every other
+                                          route group in this file).
+
+
+FILES CHANGED — contractnest-ui
+----------------------------------
+  src/services/serviceURLs.ts
+      New top-level INVOICES.ADHOC endpoint (sibling to GROUP_SESSIONS,
+      not nested under CONTRACTS since this isn't contract-scoped).
+
+  src/hooks/queries/useInvoiceQueries.ts
+      New useCreateAdhocInvoice() mutation. On success invalidates
+      financeKeys.all (Receivables) and the contact's cockpit query via the
+      existing useInvalidateContactCockpit().invalidateForContact() helper
+      — reused, not reimplemented.
+
+  src/components/finance/AdHocInvoiceDialog.tsx (NEW)
+      The invoice-creation dialog. Item picker is BlockLibraryMini exactly
+      as Contract Wizard uses it (both select and FlyBy cards). Settlement
+      fields (payment method/date/reference/notes) mirror
+      RecordPaymentDialog's offline-mode fields. No tax-rate UI in this
+      first version — the RPC accepts a tax_amount but the form doesn't
+      collect one yet (out of scope for this pass; total = sum of line
+      items).
+
+  src/components/services/AdHocServiceCard.tsx
+      Wired the previously-dead "Create Adhoc Service" button (Contacts ->
+      Financials tab) to open AdHocInvoiceDialog with its existing
+      contactId prop. Nothing else on this card touched (the "3 Adhoc
+      services this month" stat is still a hardcoded placeholder — not
+      part of this batch's scope).
+
+  src/pages/operations/group-sessions/index.tsx
+      - Restored the Record Payment feature dropped between earlier
+        batches (see the IMPORTANT note above).
+      - New "Invoice" button per row in the Payments-to-confirm panel
+        (next to Confirm/Reject, independent of them) — opens
+        AdHocInvoiceDialog for that declaration's member_contact_id
+        (already fetched, previously unused in this panel).
+      - AdHocInvoiceDialog rendered once at the page's top level (reachable
+        from any view) via a new adhocInvoiceTarget state.
+
+  src/hooks/queries/useGroupSessionsDashboard.ts
+  src/components/common/ContactPicker.tsx
+      Unchanged from groupsession-chair-salutation — included here only
+      because group-sessions/index.tsx depends on their salutation fields;
+      copying keeps all three files consistent.
+
+
+PRODUCTION CHECKLIST
+---------------------
+  Transaction Management : create_adhoc_invoice's invoice insert + receipt
+                            insert are one PL/pgSQL function body — a single
+                            Postgres transaction; any failure (bad contact,
+                            zero total, sequence exhaustion) rolls back both.
+  Race Condition Handling : Invoice/receipt numbers use the same
+                            get_next_formatted_sequence + self-healing retry
+                            loop (up to 1000 attempts) already proven by
+                            record_invoice_payment and the contract-event
+                            scanner — row-locked via t_sequence_counters.
+  Error Handling          : RPC catches all exceptions, returns
+                            {success:false, error, details, error_code}
+                            (never raises past its own boundary). API
+                            controller validates contact_id/line_items/
+                            payment_method before calling the RPC, and
+                            separately surfaces an RPC-reported business
+                            failure (e.g. "Contact not found") as a 400, not
+                            a 500. Frontend surfaces both via the existing
+                            VaNiToast component.
+  Toasts                  : useVaNiToast (existing component) — success
+                            shows the invoice + receipt number, failure
+                            shows the specific error.
+  Loaders                 : Submit button shows a spinner + disables while
+                            createAdhocInvoice.isPending, same pattern as
+                            RecordPaymentDialog.
+
+
+VERIFICATION DONE BEFORE HANDOVER
+-------------------------------------
+Database: every new/changed RPC called directly against live Supabase
+(test-tenant data for create_adhoc_invoice's own behavior; real BBB data
+for the two regression checks on get_tenant_receivables and
+get_contact_cockpit_summary) — see specifics above.
+
+Typecheck: npx tsc -p tsconfig.app.json --noEmit
+  True baseline (measured this session via an isolated git worktree at
+  HEAD, since the "1190" figure quoted in earlier batches had drifted
+  stale): 1477 pre-existing errors, unrelated to this batch. This batch's
+  working tree: 1482 — a clean +5, all five being
+  `colors.utility.border does not exist` in the NEW AdHocInvoiceDialog.tsx
+  file, the exact same pre-existing type-vs-runtime gap already present 13
+  times in RecordPaymentDialog.tsx (part of the 1477 baseline) — not a new
+  category of problem, just the same tolerated pattern in a new file.
+  Zero regressions in any file this batch touches.
+
+API: npx tsc --noEmit -p tsconfig.json — zero errors attributable to the
+new/changed files (only pre-existing tsconfig deprecation warnings,
+unrelated to any code).
+
+NOT tested: no dev server / browser walkthrough was done in this remote
+session (no UI to click through here) — please run through the testing
+checklist below locally before merging.
+
+
+TESTING CHECKLIST
+---------------------
+[ ] Group Sessions -> Payments to confirm -> a declaration row with a real
+    member shows a new "Invoice" button (alongside Confirm/Reject) —
+    clicking it opens the invoice dialog pre-scoped to that member
+[ ] In the dialog: add a catalog item (select card) — price/name populate
+    automatically; add a FlyBy item — type a name and amount manually
+[ ] Remove a line item, change qty/price on another, confirm the running
+    total updates
+[ ] Fill in payment method/date/reference, submit — success toast shows
+    invoice + receipt numbers; dialog closes
+[ ] Contacts -> pick any contact -> Financials tab -> "Create Adhoc
+    Service" button now opens the same dialog (previously did nothing)
+[ ] After creating an adhoc invoice, check Finance -> Receivables: the
+    new invoice appears in collected totals
+[ ] Existing contract-based flows still work: Dues grid's "Record Payment"
+    button (this batch restores it — confirm it's actually there and
+    still opens RecordPaymentDialog correctly), normal contract invoice
+    list, Contact cockpit for a contract-linked contact
+[ ] Confirm nothing else on the Group Sessions page regressed
+
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-api\src\services\invoiceService.ts" -Destination "contractnest-api\src\services\invoiceService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-api\src\controllers\invoiceController.ts" -Destination "contractnest-api\src\controllers\invoiceController.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-api\src\routes\invoiceRoutes.ts" -Destination "contractnest-api\src\routes\invoiceRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Destination "contractnest-ui\src\hooks\queries\useGroupSessionsDashboard.ts" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\finance" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\components\finance\AdHocInvoiceDialog.tsx" -Destination "contractnest-ui\src\components\finance\AdHocInvoiceDialog.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\components\services\AdHocServiceCard.tsx" -Destination "contractnest-ui\src\components\services\AdHocServiceCard.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\components\common\ContactPicker.tsx" -Destination "contractnest-ui\src\components\common\ContactPicker.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\adhoc-invoice-no-contract\contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Destination "contractnest-ui\src\pages\operations\group-sessions\index.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui
+npm run dev
+
+cd ../contractnest-api
+npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
