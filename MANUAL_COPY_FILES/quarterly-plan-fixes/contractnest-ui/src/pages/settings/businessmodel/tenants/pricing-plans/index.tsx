@@ -405,14 +405,14 @@ const PricingPlansPage: React.FC = () => {
                   <button
                     type="button"
                     disabled
-                    title="Plan changes while a plan is active are handled by support — contact us to switch."
+                    title="Available once your current plan ends. To change plans sooner, contact support."
                     className="w-full py-2.5 rounded-xl text-sm font-semibold cursor-not-allowed"
                     style={{
                       backgroundColor: `${colors.utility.primaryText}10`,
                       color: colors.utility.secondaryText,
                     }}
                   >
-                    Switch
+                    Not available yet
                   </button>
                 ) : (
                   <button
