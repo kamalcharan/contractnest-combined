@@ -43,6 +43,22 @@ Also note (separate from these two files, DATA only - no code/copy needed):
   the template. No file copy needed for this part - it's already live in
   the database.
 
+  - contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+      - Removed the self-service "Switch" flow (SwitchConfirmModal, the
+        modal that said "This ends Free immediately and bills X, credits
+        forfeited"). That modal accurately described what the OLD backend
+        did, but the backend switch capability is now removed (see below)
+        - leaving the modal in place would have shown a real-looking
+        confirm dialog for an action that now just errors with
+        ALREADY_SUBSCRIBED. "Switch" is now a disabled button with an
+        honest tooltip when subscribed to a different plan, matching the
+        "Current plan" / disabled "Switch" / "Subscribe" three-state
+        pattern. Subscribe still works exactly the same and covers both
+        Buy and Renew.
+  - contractnest-ui/src/hooks/mutations/useSubscribeToPlan.ts
+      - Removed was_switch/previous_contract_id from the result type and
+        updated the header comment - the backend no longer returns them.
+
   ALSO APPLIED DIRECTLY TO SUPABASE (project uwyqhzotluikawcboldr), no
   local copy needed for these - already live:
   - t_cat_templates.subtotal/total for both Quarterly template copies
