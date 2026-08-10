@@ -43,6 +43,44 @@ Also note (separate from these two files, DATA only - no code/copy needed):
   the template. No file copy needed for this part - it's already live in
   the database.
 
+  - contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+      - Removed the self-service "Switch" flow (SwitchConfirmModal, the
+        modal that said "This ends Free immediately and bills X, credits
+        forfeited"). That modal accurately described what the OLD backend
+        did, but the backend switch capability is now removed (see below)
+        - leaving the modal in place would have shown a real-looking
+        confirm dialog for an action that now just errors with
+        ALREADY_SUBSCRIBED. "Switch" is now a disabled button with an
+        honest tooltip when subscribed to a different plan, matching the
+        "Current plan" / disabled "Switch" / "Subscribe" three-state
+        pattern. Subscribe still works exactly the same and covers both
+        Buy and Renew.
+  - contractnest-ui/src/hooks/mutations/useSubscribeToPlan.ts
+      - Removed was_switch/previous_contract_id from the result type and
+        updated the header comment - the backend no longer returns them.
+
+  ALSO APPLIED DIRECTLY TO SUPABASE (project uwyqhzotluikawcboldr), no
+  local copy needed for these - already live:
+  - t_cat_templates.subtotal/total for both Quarterly template copies
+    corrected from 5999 to 23996 (was stale - the block-level total_price
+    fix earlier never propagated to the template's own total column, which
+    is what subscribe_tenant_to_plan() actually bills off).
+  - subscribe_tenant_to_plan() (the real, working tenant self-service
+    subscribe/renew flow at /businessmodel/tenants/pricing-plans - reads
+    t_cat_templates.blocks[] directly server-side, completely bypassing
+    the wizard/ChecklistRow bug above) rewritten: (1) removed a
+    self-service "switch to a different plan mid-term" branch that had
+    been added live (cancels old contract, forfeits credits) - mid-term
+    plan changes are admin-intervention only per product decision, so ANY
+    active/pending plan contract now blocks a new subscribe regardless of
+    which template is requested; (2) renewal continuity - a renewal's
+    start_date now chains onto the prior (expired) plan contract's
+    end_date instead of always using now(), so the term boundary doesn't
+    slide just because the tenant renewed a few days late. See
+    MANUAL_COPY_FILES/quarterly-plan-fixes/contractnest-edge/.../
+    020_subscribe_no_switch_plus_renewal_chaining.sql for the full
+    definition (record-keeping only - already live, do not re-run).
+
   STILL OPEN: "Notification Credits - Quarterly" AND "Quarterly Allowance"
   (both metering-category blocks) still show unchecked in Edit mode
   despite the DB being verified correct on every axis checked so far:
