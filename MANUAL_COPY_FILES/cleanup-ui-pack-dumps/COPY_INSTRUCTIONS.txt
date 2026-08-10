@@ -1,0 +1,72 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: cleanup-ui-pack-dumps
+Files Changed:
+  - contractnest-ui/.gitignore  - adds "ui-pack*.txt" / repomix patterns so
+    AI-context code dumps can never be committed again
+  - contractnest-ui/ui-pack.txt            - DELETE (5.9 MB Repomix dump)
+  - contractnest-ui/ui-pack-full.txt       - DELETE (6.3 MB Repomix dump)
+  - contractnest-ui/ui-pack-cockpits.txt   - DELETE (172 KB Repomix dump)
+
+Submodules Affected: contractnest-ui only
+
+WHY: These three files are Repomix "packed repository" dumps (~12.4 MB,
+311k lines) accidentally committed to contractnest-ui main on 2026-08-08
+during the business-model session. They are AI-analysis context files,
+not source code. Nothing imports or reads them; deleting them cannot
+break anything. They bloat every clone/pull.
+
+DELIBERATELY NOT TOUCHED in this batch (per discussion 2026-08-10):
+  - [DEBUG metering match] console.log in ServiceBlocksStep.tsx (~line 715)
+  - [DEBUG hydrate] console.log in ContractWizard/index.tsx (~line 842)
+  Both stay until the metering-block Edit-mode checkbox bug they diagnose
+  is fixed; they are removed as part of that fix.
+
+Production Checklist:
+  Transaction Management: N/A - no code, no DB
+  Race Condition Handling: N/A
+  Error Handling: N/A
+  Toasts: N/A
+  Loaders: N/A
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: APPLY LOCALLY
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Delete the dump files + copy the updated .gitignore
+─────────────────────────────────
+Remove-Item "contractnest-ui\ui-pack.txt" -Force
+Remove-Item "contractnest-ui\ui-pack-full.txt" -Force
+Remove-Item "contractnest-ui\ui-pack-cockpits.txt" -Force
+Copy-Item "MANUAL_COPY_FILES\cleanup-ui-pack-dumps\contractnest-ui\.gitignore" -Destination "contractnest-ui\.gitignore" -Force
+
+Write-Host "✅ Dump files deleted, .gitignore updated" -ForegroundColor Green
+
+STEP 3: Sanity check (nothing to build or restart)
+─────────────────────────────────
+cd contractnest-ui
+git status
+# Expect: 3 deletions + modified .gitignore, nothing else.
+# The app does not reference these files - no dev-server restart needed.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] git status in contractnest-ui shows exactly:
+        deleted: ui-pack.txt
+        deleted: ui-pack-full.txt
+        deleted: ui-pack-cockpits.txt
+        modified: .gitignore
+- [ ] npm run dev still starts (trivially true - nothing imports these)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Confirm "Tested, proceed with merge" and Phase 2 commit/push
+commands will follow.
+═══════════════════════════════════════════════════
