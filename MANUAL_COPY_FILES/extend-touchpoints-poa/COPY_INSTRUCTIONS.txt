@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: extend-touchpoints-poa
+Files Changed:
+  - ClaudeDocumentation/BusinessModel/EXTEND_POA.md  [NEW]
+      Plan of action for the "Extend" (customer touchpoints) feature +
+      the agreed business-model realignment it sits on. Documentation
+      only — no code, no DB change.
+
+Submodules Affected: ClaudeDocumentation only
+
+Captures the 2026-08-10 owner decisions:
+  - Vikuna=seller / tenant=buyer / plan=template / buy=assign-template
+  - subscribe_tenant_to_plan to be slimmed; settlement trigger replaces
+    in-RPC entitlement application
+  - Free plan by default for every tenant
+  - Feature "Extend" (route /extend), touchpoints Website/WhatsApp/Email
+  - Pricing: 700/700/0 per annum ex-GST; chatbot later
+  - Hosted checkout /buy/:storefrontKey + iframe embed strategy
+
+Production Checklist: N/A (documentation)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILE
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\extend-touchpoints-poa\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Write-Host "✅ EXTEND_POA.md copied" -ForegroundColor Green
+
+Nothing to build, run, or test — documentation only.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Confirm and Phase 2 (commit to ClaudeDocumentation master) follows.
+═══════════════════════════════════════════════════
