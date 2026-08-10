@@ -1,0 +1,181 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — EXTEND BUILD (Phases 0–3)
+═══════════════════════════════════════════════════
+Branch: extend-touchpoints-build
+Date: 2026-08-10
+Spec: ClaudeDocumentation/BusinessModel/EXTEND_POA.md (staged in
+      MANUAL_COPY_FILES/extend-touchpoints-poa/)
+
+*** DATABASE IS ALREADY LIVE — DO NOT RE-RUN THE SQL ***
+All migrations below were applied to production (uwyqhzotluikawcboldr) via
+the Supabase MCP this session, each live-tested with disposable tenants and
+cleaned up. The .sql file in this batch is the consolidated repo record.
+
+WHAT IS LIVE IN THE DATABASE ALREADY:
+  1. QUARTERLY TEMPLATE REPAIRED (the "metering checkboxes unchecked" bug):
+     the live is_latest version (v3) had LOST both metering blocks — the
+     Aug-10 data migration had fixed the STALE v1 row nothing reads. The two
+     metering blocks are spliced back into v3 (blocks + wizard_state).
+     Quarterly now lists/sells with limits {contracts:50} and grants
+     {whatsapp:20, email:20}. THE UI MATCHING LOGIC WAS NEVER WRONG — the
+     two [DEBUG ...] console.logs can now be removed (see NEXT STEPS).
+  2. YEARLY TEMPLATE REPAIRED: both metering entries pointed at the FREEMIUM
+     block id, the service entry pointed at the FREE plan's block, and there
+     was no wizard_state (an Edit+save would have repeated Quarterly's data
+     loss). Dedicated catalog blocks created (live+test), template
+     repointed, wizard_state generated.
+  3. ENTITLEMENTS SETTLEMENT LAYER: fn_apply_contract_entitlements + two
+     triggers on t_contracts. Entitlements (limits/grant-rates/flags) now
+     ride the CONTRACT lifecycle — a manually assigned plan template
+     entitles exactly like a self-service subscribe. Idempotent via
+     metadata.entitlements_applied_at; fails OPEN (warning, never blocks).
+     New column: t_tenant_context.addons_extra (flags without a dedicated
+     column — the Extend touchpoint flags live here).
+  4. subscribe_tenant_to_plan SLIMMED: entitlement application removed
+     (delegated to the triggers); new p_computed_events parameter so the
+     API can pass the REAL billing schedule (a Quarterly subscribe now
+     produces 4 × ₹5,999 events — verified live — instead of one ₹23,996
+     upfront event). 3-arg overload dropped.
+  5. FREE BY DEFAULT: Free template flagged settings.default_plan=true;
+     trg_zz_default_plan_on_signup subscribes every new real tenant;
+     BACKFILL RAN — all 21 real active tenants are now on a plan (test
+     tenants deliberately excluded). get_tenant_context now returns
+     addons_extra merged into `addons`.
+  6. EXTEND STOREFRONT LAYER: t_touchpoints + RPCs (create/list/pause,
+     public resolve_storefront + purchase_from_storefront). A live
+     touchpoint already exists: Vikuna's Free plan on the website route —
+     first dogfood storefront. Purchase pipe live-tested end to end
+     (anonymous buyer → contact + channels in seller's book → contract →
+     pending_acceptance → CNAK → /contracts/review link) and cleaned up.
+
+Files Changed (this batch):
+  contractnest-edge/
+    supabase/migrations/business-model-v2/029_extend_v5_phase0_phase1.sql [NEW — record only]
+    supabase/functions/cat-templates/index.ts   [MODIFIED — /plans returns
+        wizard_state+defaults; /subscribe forwards computed_events.
+        ⚠ NEEDS DEPLOY — see STEP 4]
+  contractnest-api/src/
+    services/extendService.ts                   [NEW]
+    controllers/extendController.ts             [NEW]
+    routes/extendRoutes.ts                      [NEW — /api/extend]
+    routes/storefrontPublicRoutes.ts            [NEW — /api/storefront, public]
+    services/catTemplatesService.ts             [MODIFIED — subscribe carries computed_events]
+    controllers/catalogStudioController.ts      [MODIFIED — derives events from
+        the plan's wizard_state via contractEventsDerivationService]
+    types/catalogStudioTypes.ts                 [MODIFIED — PlanTemplate fields]
+    index.ts                                    [MODIFIED — route registration]
+  contractnest-ui/
+    src/pages/buy/index.tsx                     [NEW — public hosted checkout /buy/:key]
+    src/pages/extend/index.tsx                  [NEW — /extend touchpoint hub]
+    src/hooks/queries/useTouchpoints.ts         [NEW]
+    src/hooks/queries/useTenantContext.ts       [MODIFIED — addons typing]
+    src/services/serviceURLs.ts                 [MODIFIED — EXTEND endpoints]
+    src/App.tsx                                 [MODIFIED — /buy + /extend routes]
+    src/utils/constants/industryMenus.ts        [MODIFIED — Extend nav item]
+    public/embed.js                             [NEW — website embed widget]
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+Production Checklist:
+  Transaction Management: yes — settlement rides the contract transaction
+    (deferred constraint trigger at COMMIT); storefront purchase is
+    create_contract_transaction + update_contract_status, each atomic
+  Race Condition Handling: yes — entitlements idempotent on a metadata
+    marker (safe across both triggers + re-activation); touchpoint
+    storefront_key UNIQUE; public routes have a light per-IP throttle
+  Error Handling: yes — settlement fails OPEN (never blocks a contract);
+    subscribe falls back to the old single-event shape if derivation is
+    unavailable; public endpoints return friendly, non-leaking errors
+  Toasts: existing VaNiToast on /extend (publish/pause/copy feedback)
+  Loaders: existing Loader2 patterns on /buy and /extend
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\extend-touchpoints-build\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\extend-touchpoints-build\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\extend-touchpoints-build\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "✅ Extend build files copied!" -ForegroundColor Green
+
+STEP 3: Restart the API (new routes) + start the UI
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+
+# separate terminal
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+STEP 4: Deploy the cat-templates edge function (ONE command)
+─────────────────────────────────
+# The DB-side RPC already accepts computed_events and falls back safely,
+# so nothing is broken meanwhile — but the correct quarterly billing on
+# subscribe only becomes live once this deploys (v28):
+cd contractnest-edge
+supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+cd ..
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Catalog Studio → Templates → Edit "Quarterly" (live env): all FOUR
+      blocks now show CHECKED, including "Quarterly Allowance" and
+      "Notification credits per contract" (the bug that ended the last
+      session — root cause was version-chain data, fixed live)
+- [ ] Edit "Yearly": four blocks, all checked, no duplicates
+- [ ] /businessmodel/tenants/pricing-plans: Quarterly card shows
+      50 contracts + 20/20 credits again
+- [ ] Any real tenant → /businessmodel/tenants/subscription: shows the
+      Free plan (backfill) instead of "No plan yet"
+- [ ] New left-nav item "Extend" → /extend loads: hero, three route cards
+      (Website ₹700/yr · WhatsApp ₹700/yr · Email Free); as the PLATFORM
+      admin all three show "Included"; as a normal tenant they show locked
+      with an Unlock CTA
+- [ ] /extend as admin: publish "Free" to Website → link created; the row
+      shows copy / open / pause actions; "copy embed" (globe icon) puts a
+      script tag on the clipboard
+- [ ] Open the copied /buy/<key> link in an incognito window: hosted
+      checkout renders (seller strip, price, what-you-get, 30-second form)
+- [ ] Fill the form and submit: you land on /contracts/review?cnak=…
+      (the EXISTING public review flow); a contract appears in the seller's
+      book with a 'storefront' contact
+- [ ] Subscribe a test tenant to Quarterly (after STEP 4's edge deploy):
+      contract's Events show 4 × ₹5,999 quarterly — not one ₹23,996
+- [ ] embed.js: paste the copied snippet into any local html file — a
+      "Get Free" button renders and opens the checkout overlay
+
+═══════════════════════════════════════════════════
+📌 NEXT STEPS / STILL OPEN (deliberate)
+═══════════════════════════════════════════════════
+  1. AUTHOR THE THREE TOUCHPOINT PRODUCTS in catalog-studio (owner action,
+     per decision "it wont happen from any backend code"): three templates,
+     category 'topup_pack', each with ONE metering block mode='flag' —
+     flags addon_extend_website / addon_extend_whatsapp / addon_extend_email
+     — priced ₹700 / ₹700 / ₹0, signed off + public. They then appear on the
+     pricing page packs section; buying one sets the flag via the LIVE
+     settlement path and unlocks the route on /extend.
+  2. Remove the two temp DEBUG console.logs (ServiceBlocksStep.tsx
+     "[DEBUG metering match]", ContractWizard/index.tsx "[DEBUG hydrate]")
+     once the checkbox fix is confirmed in the browser — the bug's root
+     cause was data, not matching.
+  3. RENEW primitive (annual touchpoint/plan expiry → renewal flow) — not
+     built; plan lapse still just zeroes limits. Needed before the first
+     ₹700 add-on's year ends.
+  4. JTD offer sends (send an offer to selected contacts via email/WhatsApp
+     from /extend) — deferred; wa.me / mailto share links cover it today.
+     WhatsApp bulk sends need approved MSG91 templates first.
+  5. Payment on the storefront: buyers land in the existing review/accept
+     flow. The accept+pay leg there uses the seller's configured payment
+     path — verify the online-gateway leg end to end with a PAID template
+     before promoting paid storefronts.
+  6. vani onboarding "choose a plan" step — future, per owner.
+═══════════════════════════════════════════════════
