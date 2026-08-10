@@ -1,0 +1,94 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: quarterly-plan-fixes
+Files Changed:
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+      - Field label changed "Visits" -> "Quantity" (matches Catalog Studio's
+        terminology for the same underlying `quantity` field).
+  - contractnest-api/src/index.ts
+      - Registered the previously-unwired Cadence Settings route.
+        cadenceSettingsRoutes.ts / controller / service already existed but
+        were never `require()`d or mounted in index.ts, so every call to
+        GET/PUT /api/settings/cadence (fired unconditionally by the Contract
+        Wizard's Events Preview step) was 404ing. Added the load block
+        (matching the existing safe-require pattern used for tax settings)
+        and the `app.use('/api/settings/cadence', cadenceSettingsRoutes)`
+        mount, in the same try/catch + console.log style as neighboring
+        routes. No other routes touched.
+
+Submodules Affected: contractnest-ui, contractnest-api
+
+Production Checklist:
+  Transaction Management: N/A - no DB writes in either change
+  Race Condition Handling: N/A
+  Error Handling: Yes - new route registration wrapped in the same
+    try/catch + captureException pattern as every other route in index.ts
+  Toasts: N/A - no new user-facing async action introduced
+  Loaders: N/A
+
+Also note (separate from these two files, DATA only - no code/copy needed):
+  The "Quarterly" platform subscription template (t_cat_templates,
+  Supabase project uwyqhzotluikawcboldr) was reconfigured directly via
+  migration this session: 12-month duration, 7-day grace period, Payment
+  acceptance method, Quarterly Plan block set to quarterly billing cycle
+  (4 x Rs.5,999 = Rs.23,996/year), and `settings.wizard_state` populated
+  so the block checklist and "What type of contract" (Subscription)
+  correctly hydrate in both "New Contract -> From Template" and "Edit
+  Template" modes. This was applied to both the live and test copies of
+  the template. No file copy needed for this part - it's already live in
+  the database.
+
+  STILL OPEN: "Notification Credits - Quarterly" block still shows
+  unchecked in Edit mode despite the DB being verified correct - cause not
+  yet found (ruled out: stale cache, duplicate block rows, id-matching
+  logic in ServiceBlocksStep.tsx/catBlockAdapter.ts). Waiting on a
+  DevTools Network response capture to pin down the actual id the running
+  app receives for that block.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\quarterly-plan-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\quarterly-plan-fixes\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+# API (restart required to pick up the new route registration)
+cd contractnest-api
+npm run dev
+
+# ContractNest UI (separate terminal)
+cd ../contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] GET http://localhost:5000/api/settings/cadence no longer 404s (check
+      Network tab when the Contract Wizard's Events Preview step loads)
+- [ ] In the Contract Wizard's block checklist (any step showing a priced
+      block's Quantity/Visits field), the field label reads "Quantity"
+      instead of "Visits"
+- [ ] Existing "N visit(s)" narrative text elsewhere on the row (badges,
+      coverage-ambiguity sentences) is UNCHANGED - only the field label
+      above the input was touched
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
