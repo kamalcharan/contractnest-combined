@@ -1,0 +1,92 @@
+═══════════════════════════════════════════════════════════════════
+FEATURE: payment-gated-plan-topup
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+────────────────────────────────────────────
+Plan subscribe/switch and pack purchase now collect real Razorpay
+payment before entitlements (contract limits, notification credits,
+Extend addon flags) are granted. Previously every plan/pack activated
+and granted its full entitlement instantly, with zero payment ever
+collected — a paid plan like Yearly (INR 19,999) was effectively free.
+
+Also adds the Website/WhatsApp Extend touchpoint packs and fixes the
+Quarterly plan's duration.
+
+SUBMODULES AFFECTED
+────────────────────────────────────────────
+  - contractnest-edge (edge function + migration file, source-of-record
+    only — the DB functions and edge function are ALREADY LIVE on
+    Supabase; you do not need to run the migration or redeploy)
+  - contractnest-ui   (Razorpay checkout wiring, pack flag rendering)
+  - contractnest-api  (response type updates only, no runtime behavior)
+
+IMPORTANT — DB/EDGE ALREADY LIVE
+────────────────────────────────────────────
+The migration file and the cat-templates edge function under
+contractnest-edge/ in this folder are copies for your records — the
+actual database functions and the edge function have ALREADY been
+applied/deployed directly to your Supabase project. Copying the
+contractnest-edge files below into your local checkout keeps your
+source tree in sync but does NOT re-apply anything; nothing further
+to run there.
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files (overwrites in place — works regardless of git state)
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\payment-gated-plan-topup\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-gated-plan-topup\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-gated-plan-topup\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# In a separate terminal, if you also run the API locally:
+cd ../contractnest-api
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] Free plan subscribe still activates instantly, no payment popup
+- [ ] Subscribe/switch to Quarterly or Yearly (as a non-admin tenant)
+      opens a Razorpay checkout popup before the plan shows as active
+- [ ] Completing a test payment grants the plan's limits/credits —
+      check the Pricing Plans page shows "Current plan" and
+      /businessmodel/tenants/subscription reflects the new limits
+- [ ] /extend shows Website and WhatsApp cards as "Unlock — ₹700/yr"
+      (previously these had no real product behind them)
+- [ ] Buying a Website or WhatsApp Touchpoint pack opens Razorpay
+      checkout; after payment, the corresponding channel unlocks on
+      /extend
+- [ ] Dismissing/cancelling the Razorpay popup leaves the button
+      re-clickable (not stuck in a permanent loading state)
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════
+
+NOTE ON GIT STATE
+────────────────────────────────────────────
+These same changes were also committed and pushed earlier to a branch
+called claude/init-submodules-2qx34t on each submodule + the combined
+repo — that was done before you'd tested anything, out of the normal
+process. The commands above do NOT touch git at all (no checkout, no
+stash) — they just overwrite files directly, so they'll apply cleanly
+on top of whatever uncommitted local state you currently have. You can
+ignore the pushed branches for now; once you confirm "tested, working"
+here, we can either fast-forward those branches to match your tested
+copy, or just re-push from a clean state — your call at that point.
