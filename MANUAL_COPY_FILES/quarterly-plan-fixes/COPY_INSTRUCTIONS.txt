@@ -6,6 +6,10 @@ Files Changed:
   - contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
       - Field label changed "Visits" -> "Quantity" (matches Catalog Studio's
         terminology for the same underlying `quantity` field).
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+      - TEMPORARY debug console.log added inside instanceFor() to diagnose
+        the metering-block checked-state mismatch (see note below). Not a
+        real fix yet - remove once the cause is found.
   - contractnest-api/src/index.ts
       - Registered the previously-unwired Cadence Settings route.
         cadenceSettingsRoutes.ts / controller / service already existed but
@@ -39,12 +43,23 @@ Also note (separate from these two files, DATA only - no code/copy needed):
   the template. No file copy needed for this part - it's already live in
   the database.
 
-  STILL OPEN: "Notification Credits - Quarterly" block still shows
-  unchecked in Edit mode despite the DB being verified correct - cause not
-  yet found (ruled out: stale cache, duplicate block rows, id-matching
-  logic in ServiceBlocksStep.tsx/catBlockAdapter.ts). Waiting on a
-  DevTools Network response capture to pin down the actual id the running
-  app receives for that block.
+  STILL OPEN: "Notification Credits - Quarterly" AND "Quarterly Allowance"
+  (both metering-category blocks) still show unchecked in Edit mode
+  despite the DB being verified correct on every axis checked so far:
+  no duplicate block rows, id passthrough in catBlockAdapter.ts confirmed
+  clean, block_type_id -> m_category_details resolves to sub_cat_name
+  'metering' correctly for both, matching logic in ServiceBlocksStep.tsx
+  is plain id equality with no metering-specific branching. Network tab
+  capture did not turn up the request. Added a TEMPORARY debug console.log
+  inside `instanceFor()` in ServiceBlocksStep.tsx (search for "DEBUG
+  metering match" to find/remove it later) that fires for every
+  metering-category candidate block and prints: the id it's searching
+  for, whether a match was found, and the full selectedBlocks array (id/
+  name/categoryId) at that moment. Open the browser Console tab (not
+  Network) on the Edit-mode screen and paste back what it logs for
+  "Quarterly Allowance" and "Notification Credits — Quarterly" - that
+  will show definitively whether the ids actually match or not at
+  runtime. Remove this console.log once the mismatch is found and fixed.
 
 ═══════════════════════════════════════════════════
 💻 PHASE 1: COPY FILES FOR LOCAL TESTING
