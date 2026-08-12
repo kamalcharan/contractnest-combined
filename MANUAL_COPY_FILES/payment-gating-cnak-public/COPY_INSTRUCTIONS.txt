@@ -20,13 +20,16 @@ Files Changed:
   contractnest-ui/
     src/hooks/useIntegrations.ts                    ConfigField 'image' type
     src/components/integrations/DynamicFormField.tsx image upload UI (preview/replace/remove)
-    src/services/serviceURLs.ts                     UPLOAD_QR endpoint constant
+    src/services/serviceURLs.ts                     UPLOAD_QR + PUBLIC_PAYMENT_* endpoint constants
+    src/components/contracts/review/PublicPaymentSection.tsx (NEW) payment step for /contract-review
+    src/pages/contracts/review/index.tsx            payment section wiring + Accept button swap
 
   contractnest-edge/  (docs only — already live)
     supabase/migrations/business-model-v2/031_generalize_payment_gated_entitlements.sql
     supabase/migrations/business-model-v2/032_public_payment_collection.sql
     supabase/migrations/business-model-v2/033_fix_record_invoice_payment_acceptance_method.sql
     supabase/migrations/business-model-v2/034_offline_upi_qr_and_declaration_listing.sql
+    supabase/migrations/business-model-v2/035_respond_to_contract_payment_gate.sql
 
 Production Checklist:
   ✅ Transaction Management: reuses record_invoice_payment_with_allocations (existing,
@@ -37,11 +40,20 @@ Production Checklist:
   ✅ Toasts: vaniToast (existing component) on QR upload success/failure
   ✅ Loaders: spinner on the QR upload button while uploading
 
-WHAT'S NOT DONE YET (separate next step, not part of this batch):
-  - /contract-review (CNAK) page has no UI wired to any of this yet — no Pay button,
-    no offline-UPI declare form, no "seller has been notified" fallback message.
-    Items 2 & 3 are backend-only right now; test them via curl/Postman (see below).
-  - respond_to_contract still has no payment check of its own.
+NOW ALSO INCLUDED (added after the first cut of this batch):
+  - /contract-review page payment step: Razorpay checkout button, offline-UPI
+    VPA + QR + declare-reference form, and the "[Tenant] has been notified and
+    will connect with you for further steps" fallback when neither is
+    configured. The Accept button is replaced for payment-gated contracts.
+  - respond_to_contract payment gate (migration 035, live): plain accept on an
+    unpaid payment-gated contract is refused server-side (PAYMENT_REQUIRED).
+  - Cadence picker is disabled for payment-gated contracts (invoice is
+    generated from the proposed plan when the payment step loads; a later
+    cadence switch would desync the invoice).
+
+WHAT'S STILL NOT DONE (separate next steps):
+  - Tenant-facing UI to review/confirm pending declarations (routes exist:
+    GET /api/payments/declarations, POST /api/payments/declarations/:id/confirm).
   - Pricing-card visual redesign — separate, already-agreed item.
 
 ═══════════════════════════════════════════════════
@@ -76,11 +88,15 @@ Copy-Item "$src\contractnest-api\src\routes\integrationRoutes.ts" -Destination "
 Copy-Item "$src\contractnest-ui\src\hooks\useIntegrations.ts" -Destination "contractnest-ui\src\hooks\useIntegrations.ts" -Force
 Copy-Item "$src\contractnest-ui\src\components\integrations\DynamicFormField.tsx" -Destination "contractnest-ui\src\components\integrations\DynamicFormField.tsx" -Force
 Copy-Item "$src\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\contracts\review" | Out-Null
+Copy-Item "$src\contractnest-ui\src\components\contracts\review\PublicPaymentSection.tsx" -Destination "contractnest-ui\src\components\contracts\review\PublicPaymentSection.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\contracts\review\index.tsx" -Destination "contractnest-ui\src\pages\contracts\review\index.tsx" -Force
 
 Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\031_generalize_payment_gated_entitlements.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\031_generalize_payment_gated_entitlements.sql" -Force
 Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\032_public_payment_collection.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\032_public_payment_collection.sql" -Force
 Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\033_fix_record_invoice_payment_acceptance_method.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\033_fix_record_invoice_payment_acceptance_method.sql" -Force
 Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\034_offline_upi_qr_and_declaration_listing.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\034_offline_upi_qr_and_declaration_listing.sql" -Force
+Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\035_respond_to_contract_payment_gate.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\035_respond_to_contract_payment_gate.sql" -Force
 
 Write-Host "✅ All files copied!" -ForegroundColor Green
 
@@ -90,19 +106,30 @@ Write-Host "✅ All files copied!" -ForegroundColor Green
 cd contractnest-api && npm run dev
 cd ..\contractnest-ui && npm run dev   (separate terminal)
 
+  All click-testable on the /contract-review page now (open a payment-gated
+  contract's CNAK link: /contract-review?cnak=...&secret=...):
+
   [ ] Settings → Integrations → Offline UPI card → upload a QR image (PNG/JPG)
       → preview shows, "Replace"/remove work, persists after page reload
-  [ ] POST /api/contracts/public/payment-context {cnak, secret_code} on a
-      payment-gated (acceptance_method='payment') pending_acceptance contract
-      → can_collect_payment reflects what's actually configured for that tenant
-  [ ] POST /api/contracts/public/create-order → real Razorpay order comes back
-      (needs a tenant with Razorpay configured)
-  [ ] Complete a test Razorpay payment, POST /api/contracts/public/verify-payment
-      → invoice flips to paid AND contract flips pending_acceptance → active
-  [ ] POST /api/contracts/public/declare-payment with a reference → row appears
-      in GET /api/payments/declarations (authenticated, as that tenant)
-  [ ] POST /api/payments/declarations/:id/confirm → invoice pays + contract
-      activates; with {confirm:false} on a fresh declaration → marked rejected
+  [ ] FALLBACK: tenant with NO Razorpay and NO offline UPI → page shows
+      "[Tenant] has been notified and will connect with you for the further
+      steps" — no Pay button anywhere; Accept is replaced by the
+      "Accepted on payment" notice; Reject still works
+  [ ] RAZORPAY: tenant with Razorpay configured → "Pay ₹X now" opens the
+      checkout popup; complete a test payment → success screen appears,
+      invoice flips to paid, contract flips pending_acceptance → active
+  [ ] OFFLINE UPI: tenant with offline UPI configured → VPA shows copyable +
+      the uploaded QR renders; enter a reference, "I've paid" → "Payment
+      reference submitted" state; second declare attempt says already pending
+  [ ] TENANT CONFIRM (curl/Postman — no UI yet):
+      GET /api/payments/declarations shows the pending row;
+      POST /api/payments/declarations/:id/confirm → invoice pays + contract
+      activates; {confirm:false} on a fresh declaration → rejected
+  [ ] SERVER GATE: POST /api/contracts/public/respond with action=accept on an
+      unpaid payment-gated contract → 400 PAYMENT_REQUIRED (button is hidden
+      in the UI, this proves the backstop)
+  [ ] REGRESSION: a signoff (non-payment) contract's review page still shows
+      the normal Accept Contract button and accepting works
 
 ⚠️ DO NOT RUN STEPS 4-11 BELOW UNTIL THE ABOVE IS CONFIRMED WORKING.
 Per this repo's CLAUDE.md: no submodule commit, no merge, until you say
