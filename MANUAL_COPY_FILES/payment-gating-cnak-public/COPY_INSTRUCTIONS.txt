@@ -1,0 +1,127 @@
+═══════════════════════════════════════════════════
+📦 payment-gating-cnak-public — Items 1, 2, 3
+═══════════════════════════════════════════════════
+
+Submodules affected: contractnest-api, contractnest-ui, contractnest-edge (docs only —
+migrations already applied live via Supabase MCP, these .sql files are source-of-record
+copies for git. DO NOT re-run them against the DB.)
+
+WHAT THIS BATCH DOES
+─────────────────────────────────────────────────
+Fixes a hard dependency bug, then builds items 1-2-3 of the payment-gating POA:
+
+  0. BUG FIX (already live): record_invoice_payment checked
+     acceptance_method = 'manual' instead of 'payment' when deciding whether to
+     auto-activate a fully-paid pending_acceptance contract. Without this fix,
+     items 2 and 3 below would record a payment but the contract would stay
+     stuck in pending_acceptance forever.
+
+  1. Offline UPI / QR upload — settings/integrations
+     - ConfigField gets a new 'image' type (useIntegrations.ts)
+     - DynamicFormField.tsx renders an upload control for it (preview, replace, remove)
+     - New POST /api/integrations/upload-qr (multer, mirrors the tenant-profile logo
+       upload pattern) — uploads to Firebase Storage, returns a URL
+     - DB: offline_upi provider's config_schema gained a qr_image_url field
+       (already live, migration 034)
+     The uploaded URL is saved through the EXISTING save-integration flow (no new
+     save endpoint) — the frontend just includes qr_image_url in credentials like
+     any other field.
+
+  2. Public Razorpay payment (CNAK-scoped, no login)
+     - POST /api/contracts/public/payment-context — resolves CNAK+secret to
+       {tenant_id, invoice_id, amount, currency, gateway_configured,
+       offline_upi_configured, can_collect_payment}. THE CNAK PAGE MUST CHECK
+       can_collect_payment before showing any Pay button — if false, show
+       "[Tenant] has been notified and will connect with you for further steps"
+       instead of attempting payment. This is enforced server-side too: create-order
+       will fail with NO_GATEWAY if Razorpay isn't configured.
+     - POST /api/contracts/public/create-order — creates a Razorpay order,
+       reusing the existing authenticated paymentGatewayService (tenant_id is
+       resolved server-side from the CNAK, never trusted from the client)
+     - POST /api/contracts/public/verify-payment — verifies the Razorpay
+       checkout callback, same reuse pattern. This is what ultimately calls
+       record_invoice_payment and auto-activates the contract once fully paid.
+
+  3. Public offline-UPI declare + tenant confirm
+     - POST /api/contracts/public/offline-upi-config — VPA + QR for the CNAK-scoped buyer
+     - POST /api/contracts/public/declare-payment — buyer declares a UPI reference
+       (stays 'pending' until the tenant confirms)
+     - GET  /api/payments/declarations (authenticated) — tenant lists pending
+       declarations to review
+     - POST /api/payments/declarations/:id/confirm (authenticated) — tenant
+       confirms (records payment, auto-activates) or rejects (confirm:false)
+
+WHAT THIS BATCH DOES NOT DO (deliberately out of scope — separate next step)
+─────────────────────────────────────────────────
+- No UI wiring on /contract-review itself yet: no Pay button, no offline-UPI
+  declare form, no "notified, will connect" fallback message on the page. The
+  backend now supports all of that; the page doesn't call it yet. Test items 2
+  and 3 via curl/Postman with a real CNAK+secret until that's built.
+- No tenant-facing UI for reviewing/confirming pending declarations (item 3's
+  list/confirm routes exist but nothing calls them yet).
+- respond_to_contract still has no payment check of its own (a plain Accept on
+  a payment-gated contract still isn't blocked) — this was flagged as a
+  separate, later POA step.
+- Pricing-card visual redesign — separate, already-agreed, not part of 1-2-3.
+
+WORTH KNOWING
+─────────────────────────────────────────────────
+- Discovered but NOT touched (pre-existing, out of scope of 1-2-3):
+  get_tenant_gateway_credentials filters by the 'payment_gateway' integration
+  TYPE, which offline_upi also sits under (shares Razorpay's type_id). An
+  unpinned lookup (p_provider = null) can match offline_upi instead of
+  razorpay non-deterministically if a tenant has both configured. My new
+  checkGatewayConfigured() explicitly pins p_provider='razorpay' to avoid
+  this, but the existing authenticated create-order/create-link/verify-payment
+  paths still call it unpinned — worth a follow-up look.
+
+═══════════════════════════════════════════════════
+💻 STEP 1: Copy files
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied." -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+🧪 STEP 2: Test
+═══════════════════════════════════════════════════
+cd contractnest-api && npm run dev
+cd ../contractnest-ui && npm run dev   (separate terminal)
+
+Item 1 (UI click-test):
+  [ ] Settings → Integrations → find the Offline UPI / Payments card
+  [ ] Upload a QR image (PNG/JPG) — preview appears, "Replace"/"remove" work
+  [ ] Save — reload the page, QR persists
+  [ ] Confirm it appears at GET /api/contracts/public/offline-upi-config for a
+      real CNAK+secret on a contract belonging to that tenant
+
+Items 2 & 3 (API-level — no page UI yet, use curl/Postman):
+  [ ] POST /api/contracts/public/payment-context {cnak, secret_code} on a
+      payment-gated (acceptance_method='payment') pending_acceptance contract
+      → check can_collect_payment reflects whatever's actually configured
+  [ ] POST /api/contracts/public/create-order → verify a real Razorpay order
+      comes back (needs a tenant with Razorpay configured)
+  [ ] Complete a test payment in Razorpay checkout, POST
+      /api/contracts/public/verify-payment → confirm the invoice flips to
+      paid AND the contract flips pending_acceptance → active
+  [ ] POST /api/contracts/public/declare-payment with a reference → confirm a
+      row appears in GET /api/payments/declarations (authenticated, as that tenant)
+  [ ] POST /api/payments/declarations/:id/confirm → confirm invoice pays +
+      contract activates; POST with {confirm:false} on a fresh declaration →
+      confirm it's marked rejected, not paid
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test and confirm:
+  → "Tested, working — proceed with merge"
+  → "Issue found: [describe]"
+
+Also decide: do you want the /contract-review page UI wiring (Pay button,
+offline-UPI declare form, the "notified, will connect" fallback) done next, or
+folded into this same batch before merge?
+═══════════════════════════════════════════════════
