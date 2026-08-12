@@ -1,127 +1,179 @@
 ═══════════════════════════════════════════════════
-📦 payment-gating-cnak-public — Items 1, 2, 3
+📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
+Branch: claude/init-submodules-2qx34t
+Submodules Affected: contractnest-api, contractnest-ui, contractnest-edge (docs-only —
+migrations already applied live via Supabase MCP; the .sql files here are
+source-of-record copies for git, DO NOT re-run them against the DB)
 
-Submodules affected: contractnest-api, contractnest-ui, contractnest-edge (docs only —
-migrations already applied live via Supabase MCP, these .sql files are source-of-record
-copies for git. DO NOT re-run them against the DB.)
+Files Changed:
+  contractnest-api/
+    src/services/publicPaymentService.ts          (NEW) CNAK-scoped payment RPC wrapper
+    src/services/integrationService.ts             QR image upload (Firebase Storage)
+    src/controllers/contractController.ts           5 new public payment endpoints
+    src/controllers/paymentGatewayController.ts     declaration list/confirm (authenticated)
+    src/controllers/integrationController.ts        QR upload controller
+    src/routes/contractRoutes.ts                    public payment routes
+    src/routes/paymentGatewayRoutes.ts               declaration routes
+    src/routes/integrationRoutes.ts                  QR upload route (multer)
 
-WHAT THIS BATCH DOES
-─────────────────────────────────────────────────
-Fixes a hard dependency bug, then builds items 1-2-3 of the payment-gating POA:
+  contractnest-ui/
+    src/hooks/useIntegrations.ts                    ConfigField 'image' type
+    src/components/integrations/DynamicFormField.tsx image upload UI (preview/replace/remove)
+    src/services/serviceURLs.ts                     UPLOAD_QR endpoint constant
 
-  0. BUG FIX (already live): record_invoice_payment checked
-     acceptance_method = 'manual' instead of 'payment' when deciding whether to
-     auto-activate a fully-paid pending_acceptance contract. Without this fix,
-     items 2 and 3 below would record a payment but the contract would stay
-     stuck in pending_acceptance forever.
+  contractnest-edge/  (docs only — already live)
+    supabase/migrations/business-model-v2/031_generalize_payment_gated_entitlements.sql
+    supabase/migrations/business-model-v2/032_public_payment_collection.sql
+    supabase/migrations/business-model-v2/033_fix_record_invoice_payment_acceptance_method.sql
+    supabase/migrations/business-model-v2/034_offline_upi_qr_and_declaration_listing.sql
 
-  1. Offline UPI / QR upload — settings/integrations
-     - ConfigField gets a new 'image' type (useIntegrations.ts)
-     - DynamicFormField.tsx renders an upload control for it (preview, replace, remove)
-     - New POST /api/integrations/upload-qr (multer, mirrors the tenant-profile logo
-       upload pattern) — uploads to Firebase Storage, returns a URL
-     - DB: offline_upi provider's config_schema gained a qr_image_url field
-       (already live, migration 034)
-     The uploaded URL is saved through the EXISTING save-integration flow (no new
-     save endpoint) — the frontend just includes qr_image_url in credentials like
-     any other field.
+Production Checklist:
+  ✅ Transaction Management: reuses record_invoice_payment_with_allocations (existing,
+     transactional); unique partial index blocks duplicate pending declarations
+  ✅ Race Condition Handling: FOR UPDATE locks in the underlying RPCs (pre-existing,
+     unchanged); ON CONFLICT on the declarations table
+  ✅ Error Handling: every new endpoint validates inputs, maps RPC failures to HTTP codes
+  ✅ Toasts: vaniToast (existing component) on QR upload success/failure
+  ✅ Loaders: spinner on the QR upload button while uploading
 
-  2. Public Razorpay payment (CNAK-scoped, no login)
-     - POST /api/contracts/public/payment-context — resolves CNAK+secret to
-       {tenant_id, invoice_id, amount, currency, gateway_configured,
-       offline_upi_configured, can_collect_payment}. THE CNAK PAGE MUST CHECK
-       can_collect_payment before showing any Pay button — if false, show
-       "[Tenant] has been notified and will connect with you for further steps"
-       instead of attempting payment. This is enforced server-side too: create-order
-       will fail with NO_GATEWAY if Razorpay isn't configured.
-     - POST /api/contracts/public/create-order — creates a Razorpay order,
-       reusing the existing authenticated paymentGatewayService (tenant_id is
-       resolved server-side from the CNAK, never trusted from the client)
-     - POST /api/contracts/public/verify-payment — verifies the Razorpay
-       checkout callback, same reuse pattern. This is what ultimately calls
-       record_invoice_payment and auto-activates the contract once fully paid.
-
-  3. Public offline-UPI declare + tenant confirm
-     - POST /api/contracts/public/offline-upi-config — VPA + QR for the CNAK-scoped buyer
-     - POST /api/contracts/public/declare-payment — buyer declares a UPI reference
-       (stays 'pending' until the tenant confirms)
-     - GET  /api/payments/declarations (authenticated) — tenant lists pending
-       declarations to review
-     - POST /api/payments/declarations/:id/confirm (authenticated) — tenant
-       confirms (records payment, auto-activates) or rejects (confirm:false)
-
-WHAT THIS BATCH DOES NOT DO (deliberately out of scope — separate next step)
-─────────────────────────────────────────────────
-- No UI wiring on /contract-review itself yet: no Pay button, no offline-UPI
-  declare form, no "notified, will connect" fallback message on the page. The
-  backend now supports all of that; the page doesn't call it yet. Test items 2
-  and 3 via curl/Postman with a real CNAK+secret until that's built.
-- No tenant-facing UI for reviewing/confirming pending declarations (item 3's
-  list/confirm routes exist but nothing calls them yet).
-- respond_to_contract still has no payment check of its own (a plain Accept on
-  a payment-gated contract still isn't blocked) — this was flagged as a
-  separate, later POA step.
-- Pricing-card visual redesign — separate, already-agreed, not part of 1-2-3.
-
-WORTH KNOWING
-─────────────────────────────────────────────────
-- Discovered but NOT touched (pre-existing, out of scope of 1-2-3):
-  get_tenant_gateway_credentials filters by the 'payment_gateway' integration
-  TYPE, which offline_upi also sits under (shares Razorpay's type_id). An
-  unpinned lookup (p_provider = null) can match offline_upi instead of
-  razorpay non-deterministically if a tenant has both configured. My new
-  checkGatewayConfigured() explicitly pins p_provider='razorpay' to avoid
-  this, but the existing authenticated create-order/create-link/verify-payment
-  paths still call it unpinned — worth a follow-up look.
+WHAT'S NOT DONE YET (separate next step, not part of this batch):
+  - /contract-review (CNAK) page has no UI wired to any of this yet — no Pay button,
+    no offline-UPI declare form, no "seller has been notified" fallback message.
+    Items 2 & 3 are backend-only right now; test them via curl/Postman (see below).
+  - respond_to_contract still has no payment check of its own.
+  - Pricing-card visual redesign — separate, already-agreed item.
 
 ═══════════════════════════════════════════════════
-💻 STEP 1: Copy files
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
 ═══════════════════════════════════════════════════
+
+STEP 1: Pull the Feature Branch
+─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/init-submodules-2qx34t
+git pull origin claude/init-submodules-2qx34t
 
-Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
-Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
-Copy-Item "MANUAL_COPY_FILES\payment-gating-cnak-public\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+STEP 2: Verify Files Received
+─────────────────────────────────
+ls MANUAL_COPY_FILES\payment-gating-cnak-public
+type MANUAL_COPY_FILES\payment-gating-cnak-public\COPY_INSTRUCTIONS.txt
 
-Write-Host "Files copied." -ForegroundColor Green
+STEP 3: Copy All Files (PowerShell)
+─────────────────────────────────
+$src = "MANUAL_COPY_FILES\payment-gating-cnak-public"
+
+Copy-Item "$src\contractnest-api\src\services\publicPaymentService.ts" -Destination "contractnest-api\src\services\publicPaymentService.ts" -Force
+Copy-Item "$src\contractnest-api\src\services\integrationService.ts" -Destination "contractnest-api\src\services\integrationService.ts" -Force
+Copy-Item "$src\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\contractController.ts" -Force
+Copy-Item "$src\contractnest-api\src\controllers\paymentGatewayController.ts" -Destination "contractnest-api\src\controllers\paymentGatewayController.ts" -Force
+Copy-Item "$src\contractnest-api\src\controllers\integrationController.ts" -Destination "contractnest-api\src\controllers\integrationController.ts" -Force
+Copy-Item "$src\contractnest-api\src\routes\contractRoutes.ts" -Destination "contractnest-api\src\routes\contractRoutes.ts" -Force
+Copy-Item "$src\contractnest-api\src\routes\paymentGatewayRoutes.ts" -Destination "contractnest-api\src\routes\paymentGatewayRoutes.ts" -Force
+Copy-Item "$src\contractnest-api\src\routes\integrationRoutes.ts" -Destination "contractnest-api\src\routes\integrationRoutes.ts" -Force
+
+Copy-Item "$src\contractnest-ui\src\hooks\useIntegrations.ts" -Destination "contractnest-ui\src\hooks\useIntegrations.ts" -Force
+Copy-Item "$src\contractnest-ui\src\components\integrations\DynamicFormField.tsx" -Destination "contractnest-ui\src\components\integrations\DynamicFormField.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+
+Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\031_generalize_payment_gated_entitlements.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\031_generalize_payment_gated_entitlements.sql" -Force
+Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\032_public_payment_collection.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\032_public_payment_collection.sql" -Force
+Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\033_fix_record_invoice_payment_acceptance_method.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\033_fix_record_invoice_payment_acceptance_method.sql" -Force
+Copy-Item "$src\contractnest-edge\supabase\migrations\business-model-v2\034_offline_upi_qr_and_declaration_listing.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\034_offline_upi_qr_and_declaration_listing.sql" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════
-🧪 STEP 2: Test
+🧪 TESTING CHECKLIST — do this BEFORE Step 4 below
 ═══════════════════════════════════════════════════
 cd contractnest-api && npm run dev
-cd ../contractnest-ui && npm run dev   (separate terminal)
+cd ..\contractnest-ui && npm run dev   (separate terminal)
 
-Item 1 (UI click-test):
-  [ ] Settings → Integrations → find the Offline UPI / Payments card
-  [ ] Upload a QR image (PNG/JPG) — preview appears, "Replace"/"remove" work
-  [ ] Save — reload the page, QR persists
-  [ ] Confirm it appears at GET /api/contracts/public/offline-upi-config for a
-      real CNAK+secret on a contract belonging to that tenant
-
-Items 2 & 3 (API-level — no page UI yet, use curl/Postman):
+  [ ] Settings → Integrations → Offline UPI card → upload a QR image (PNG/JPG)
+      → preview shows, "Replace"/remove work, persists after page reload
   [ ] POST /api/contracts/public/payment-context {cnak, secret_code} on a
       payment-gated (acceptance_method='payment') pending_acceptance contract
-      → check can_collect_payment reflects whatever's actually configured
-  [ ] POST /api/contracts/public/create-order → verify a real Razorpay order
-      comes back (needs a tenant with Razorpay configured)
-  [ ] Complete a test payment in Razorpay checkout, POST
-      /api/contracts/public/verify-payment → confirm the invoice flips to
-      paid AND the contract flips pending_acceptance → active
-  [ ] POST /api/contracts/public/declare-payment with a reference → confirm a
-      row appears in GET /api/payments/declarations (authenticated, as that tenant)
-  [ ] POST /api/payments/declarations/:id/confirm → confirm invoice pays +
-      contract activates; POST with {confirm:false} on a fresh declaration →
-      confirm it's marked rejected, not paid
+      → can_collect_payment reflects what's actually configured for that tenant
+  [ ] POST /api/contracts/public/create-order → real Razorpay order comes back
+      (needs a tenant with Razorpay configured)
+  [ ] Complete a test Razorpay payment, POST /api/contracts/public/verify-payment
+      → invoice flips to paid AND contract flips pending_acceptance → active
+  [ ] POST /api/contracts/public/declare-payment with a reference → row appears
+      in GET /api/payments/declarations (authenticated, as that tenant)
+  [ ] POST /api/payments/declarations/:id/confirm → invoice pays + contract
+      activates; with {confirm:false} on a fresh declaration → marked rejected
+
+⚠️ DO NOT RUN STEPS 4-11 BELOW UNTIL THE ABOVE IS CONFIRMED WORKING.
+Per this repo's CLAUDE.md: no submodule commit, no merge, until you say
+"tested, working — proceed with merge."
 
 ═══════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
+🚀 PHASE 2 — ONLY AFTER YOU CONFIRM TESTING PASSED
 ═══════════════════════════════════════════════════
-Test and confirm:
-  → "Tested, working — proceed with merge"
-  → "Issue found: [describe]"
 
-Also decide: do you want the /contract-review page UI wiring (Pay button,
-offline-UPI declare form, the "notified, will connect" fallback) done next, or
-folded into this same batch before merge?
-═══════════════════════════════════════════════════
+STEP 4: Commit API Changes
+─────────────────────────────────
+cd contractnest-api
+git status
+git add src/services/publicPaymentService.ts src/services/integrationService.ts src/controllers/contractController.ts src/controllers/paymentGatewayController.ts src/controllers/integrationController.ts src/routes/contractRoutes.ts src/routes/paymentGatewayRoutes.ts src/routes/integrationRoutes.ts
+git commit -m "feat: CNAK public payment collection + declaration confirm + QR upload"
+git push origin main
+cd ..
+
+STEP 5: Commit UI Changes
+─────────────────────────────────
+cd contractnest-ui
+git status
+git add src/hooks/useIntegrations.ts src/components/integrations/DynamicFormField.tsx src/services/serviceURLs.ts
+git commit -m "feat: QR image upload field for config-only integrations (offline UPI)"
+git push origin main
+cd ..
+
+STEP 6: Commit Edge Changes (docs only — migrations already applied live)
+─────────────────────────────────
+cd contractnest-edge
+git status
+git add supabase/migrations/business-model-v2/031_generalize_payment_gated_entitlements.sql supabase/migrations/business-model-v2/032_public_payment_collection.sql supabase/migrations/business-model-v2/033_fix_record_invoice_payment_acceptance_method.sql supabase/migrations/business-model-v2/034_offline_upi_qr_and_declaration_listing.sql
+git commit -m "docs: source-of-record migrations 031-034 (already applied live)"
+git push origin main
+cd ..
+
+STEP 7-9: FamilyKnows / ContractNest-Mobile / ClaudeDocumentation
+─────────────────────────────────
+Not affected — no changes in this batch. Skip.
+
+STEP 10: Update Parent Repo Submodule References
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git add contractnest-api contractnest-ui contractnest-edge
+git commit -m "chore: update submodules — CNAK public payment collection"
+git push origin claude/init-submodules-2qx34t
+
+STEP 11: Merge to Master
+─────────────────────────────────
+git checkout master
+git pull origin master
+git merge claude/init-submodules-2qx34t
+
+# If merge conflicts in submodules:
+cd [conflicted-submodule]
+git checkout main
+git pull origin main
+cd ..
+git add [conflicted-submodule]
+
+git commit -m "Merge claude/init-submodules-2qx34t — CNAK public payment collection"
+git push origin master
+
+STEP 12: Verify Everything is Clean
+─────────────────────────────────
+git status
+git submodule status
+# Should show: "nothing to commit, working tree clean"
+
+STEP 13: Restart Dev Server & Final Retest
+─────────────────────────────────
+cd contractnest-api && npm run dev
+cd ..\contractnest-ui && npm run dev
+# Hard refresh browser: Ctrl+F5
