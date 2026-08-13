@@ -100,6 +100,37 @@ ROUND 2 (owner feedback, same day)
     send per late buyer, tone matched to lateness — clearly tagged
     "coming with wiring", nothing sends.
 
+ROUND 3 — WIRING A1–A3 (⚠ REAL DATA, REAL WRITES)
+--------------------------------------------------
+Money In and To Pay now run on LIVE data; the sample layer remains only
+where marked.
+
+  A1  Money In ← get_tenant_receivables (same source as /ops/finance, so
+      the two agree by construction): headline + signals from summary,
+      buyer stories grouped from events[], invoice chips from invoices[]
+      (chips open the REAL viewer at /contracts/:id/invoice/:invoiceId).
+      To Pay ← get_tenant_payables, read-only.
+  A2  NEW shared component components/finance/InstalmentActionModal.tsx —
+      the Dues-tab methodology: click any instalment chip (or a
+      contract's Record payment button) → modal fetches that contract's
+      events FRESH (for version + current status), offers ONLY the
+      state-machine transitions (useTransitionMap) with a two-step
+      confirm, plus the EXISTING RecordPaymentDialog pre-ticked to the
+      selected events. One write path; the Dues tab itself is untouched
+      and can adopt this component later.
+  A3  Every successful write → receivables refetch → chips, sentences,
+      headline recompute.
+
+  ⚠ LIVE WRITES: Record Payment creates a REAL receipt and a status
+    change REALLY relabels an instalment, in whichever environment the
+    Live/Test toggle points at. Test in TEST mode first (the toggle top
+    right), or use a known-throwaway instalment in Live.
+
+  Still sample (wires with A4): the green "arrived without paperwork"
+  strip (tagged as such on screen) and the composer's Save. The
+  /invoices/:id sample viewer remains only for those sample chips —
+  all REAL invoice chips route to the existing contract-invoice page.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
@@ -128,6 +159,21 @@ ROUND 2 (owner feedback, same day)
 - [ ] Wrong-side visits: /money-in in Expense (and /to-pay in Revenue)
       show the polite cross-pointer, not the workspace
 - [ ] Dark mode + phone width on all of the above
+
+ROUND 3 (wired) — verify against /ops/finance side by side:
+- [ ] Money In headline totals match Finance (AR/AP) Receivables numbers
+- [ ] Sonali (CN-1014, 5 of 12 late per Finance) appears with the same
+      chips: 01 Apr ₹1,500 · 134d etc.
+- [ ] TEST MODE: click an instalment chip → modal shows the instalment
+      with its real current status + allowed transitions only
+- [ ] TEST MODE: Record Payment → receipt created → chip turns green,
+      headline drops, /ops/finance and the Dues tab show the same state
+- [ ] TEST MODE: a status transition asks for confirm, applies, and the
+      row sentence updates
+- [ ] Invoice chip opens the real /contracts/:id/invoice/:invoiceId page
+- [ ] To Pay (Expense mode) loads real payables; View bill opens the
+      invoice page
+- [ ] Loading spinner and error+Retry states show (throttle network)
 
 ═══════════════════════════════════════════════════
 ⏸️ WAITING FOR CONFIRMATION
