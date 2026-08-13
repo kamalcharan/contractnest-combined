@@ -74,6 +74,10 @@ App.tsx / Sidebar.tsx / industryMenus.ts before copying.
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 Copy-Item "MANUAL_COPY_FILES\money-in-ux-layer\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\money-in-ux-layer\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\money-in-ux-layer\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# edge copy = migration record only (already applied live — nothing to run)
+# then RESTART the API dev server so declarations pick up the env filter
 
 cd contractnest-ui
 npm run dev
