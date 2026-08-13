@@ -1,0 +1,119 @@
+═══════════════════════════════════════════════════
+FIX: "Couldn't load dues" on Operations → Group Sessions → Dues
+Branch folder: fix-group-sessions-dues-urls
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (1 file)
+
+  contractnest-api    — NOT touched
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+No database change. No migration. No RPC change. No API change.
+The RPC, the route and the controller were all already correct and live.
+
+
+FILES
+-----
+  contractnest-ui/src/services/serviceURLs.ts
+
+
+ROOT CAUSE
+----------
+Three keys the Group Sessions dashboard calls were missing from the
+GROUP_SESSIONS block of serviceURLs.ts:
+
+  DUES                 → used by useGroupSessionDues
+  OCC_ASSIGN           → used by useAssignChair
+  OCC_ASSIGN_DEFAULT   → used by useAssignChairDefault
+
+API_ENDPOINTS.GROUP_SESSIONS.DUES was therefore undefined, and calling
+DUES(blockId, fyStart) threw "is not a function". React Query caught
+the throw and rendered the tab's error state — "Couldn't load dues."
+Nothing was wrong with the data or the backend.
+
+This was verified end to end:
+  - gs_dues_matrix(BBB, Saturday Network Meeting, live, null) returns
+    49 rows, 12 months, fy 2026-04-01 → 2027-03-31, today 2026-08-13
+    (IST), ~126 kB. Healthy.
+  - GET /api/group-sessions/dues/:blockId exists in
+    groupSessionsDashboardRoutes.ts and IS registered in index.ts.
+  - Only the frontend URL map was missing the entries.
+
+Introduced by contractnest-ui commit ba6b0c2 (2026-08-10, "chore:
+update contractnest-ui") — a pricing-plans/subscription change that
+added ~40 lines of subscription URLs to this file and, in the same
+whole-file replacement, silently deleted these three group-session
+lines. Last good commit is daeaabe (2026-08-09).
+
+This is the third time these keys have been lost this way. The
+comment that shipped in daeaabe records an earlier occurrence of the
+same thing for OCC_ASSIGN. The mechanism is the whole-file copy step
+of this workflow: a batch whose serviceURLs.ts was built from a
+baseline predating the group-session additions reverts them on copy.
+Losing a key does not break the build — it fails only at runtime — so
+nothing catches it before a user hits the tab.
+
+
+WHAT CHANGED
+------------
+The three keys restored, verbatim from daeaabe, in their original
+positions, plus a comment recording why they must not be dropped
+again. The resulting key set is byte-identical to the last known good
+version of this block. Nothing else in the file was touched.
+
+Note: DUE_PAID is left exactly as-is. It is defined but unused, and
+points at a route that does not exist in contractnest-api — a leftover
+from the still-unmerged dues-status-marking batch. Removing it is
+unrelated cleanup and was deliberately NOT done here.
+
+
+═══════════════════════════════════════════════════
+PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy File
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-group-sessions-dues-urls\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+STEP 3: Restart Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh the browser: Ctrl+F5
+# (Vite caches the old module; a plain refresh may not pick it up.)
+
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Operations → Group Sessions → Dues tab loads (no "Couldn't
+      load dues"), showing the member × month grid
+- [ ] "All plans" and "In arrears" chips show real counts, not 0
+- [ ] Grid shows 49 members across Apr 2026 – Mar 2027
+- [ ] Clicking a month cell with an open balance opens the status
+      dialog and shows the green "Record Payment" button
+- [ ] Assign a chair to a single occurrence (was also broken by the
+      same missing keys — OCC_ASSIGN)
+- [ ] Set the default chair for future occurrences (OCC_ASSIGN_DEFAULT)
+- [ ] Occurrence → attendance list still loads and "Mark" works
+      (unchanged, but it shares this file — worth one click)
+
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
