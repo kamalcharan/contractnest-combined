@@ -1,0 +1,54 @@
+BATCH: plan-billing-surface
+Builds the approved design: Subscription rebuilt + NEW /billing route.
+Usage/meter deliberately NOT built (JTD infra — to discuss separately).
+
+ORDER: copy payment-gating-cnak-public, then broken-items-b5-b8, then this.
+This batch supersedes their versions of Subscription/index.tsx and serviceURLs.ts.
+
+NO NEW MONEY CODE. Paying reuses the existing chain end to end:
+  useCreateOrder -> payment-gateway -> verify_gateway_payment
+    -> record_invoice_payment  (the single money-writer)
+The only new thing is a READ aggregator and the succession columns.
+
+SUBMODULES: contractnest-edge (SQL only), contractnest-api, contractnest-ui
+No edge function redeploy needed in this batch.
+
+FILES
+  contractnest-edge/supabase/migrations/business-model-v2/
+    038_plan_succession_and_billing_overview.sql        NOT APPLIED
+      - succeeds_contract_id / succeeded_by_contract_id / succession_reason
+        (+ indexes, mirror trigger, backfill from the existing JSONB link)
+      - get_tenant_billing_overview() — one read behind both pages
+      Depends on 037 sections 1,2,3,5 (already applied and verified).
+
+  contractnest-api/src/services/billingOverviewService.ts     NEW
+  contractnest-api/src/controllers/billingController.ts       + getBillingOverview
+  contractnest-api/src/routes/billingRoutes.ts                + GET /api/billing/overview
+
+  contractnest-ui/src/hooks/queries/useBillingOverview.ts     NEW
+  contractnest-ui/src/services/serviceURLs.ts                 + BILLING.OVERVIEW
+  contractnest-ui/src/pages/.../tenants/Subscription/index.tsx  rebuilt
+  contractnest-ui/src/pages/.../tenants/billing/index.tsx     NEW route
+  contractnest-ui/src/App.tsx                                 registers /billing
+
+TYPE-CHECK: zero new errors, verified by diffing against a clean baseline.
+The 3 errors that remain (App.tsx business-profile, smart-forms serviceURLs,
+GroupSearchOptions) are all present in the untouched tree. The overlay
+actually resolves one baseline error (EQUIPMENT_TAGS).
+
+STILL NEEDED FOR THE FULL DESIGN — not in this batch
+  - 037 section 4 : subscribe_tenant_to_plan -> 4 x Rs.5,999 instead of one
+                    Rs.23,996. Until applied, the Pay button correctly shows
+                    the single lump sum, because that is what the schedule says.
+  - Queued plans  : buying while a plan runs still CANCELS the running one.
+                    The UI already renders next_plan when one exists.
+  - Payment-first : contract still created before payment. Unchanged here.
+
+PRODUCTION CHECKLIST
+  Transaction Management  - read-only RPC; succession mirror is one trigger
+                            in the same transaction as the write.
+  Race Conditions         - unchanged; no new writes.
+  Error Handling          - typed codes surfaced from payment-gateway
+                            (NO_GATEWAY / OFFLINE_ONLY carry seller name).
+  Toasts                  - existing useVaNiToast.
+  Loaders                 - existing Loader2 + payingId/payingInvoiceId guards.
