@@ -131,6 +131,38 @@ where marked.
   /invoices/:id sample viewer remains only for those sample chips —
   all REAL invoice chips route to the existing contract-invoice page.
 
+ROUND 4 — A4: paperwork goes real + navigation polish
+-----------------------------------------------------
+  · Green strip ← LIVE pending guest-fee declarations (no billing event,
+    no adhoc invoice yet). Rejected/confirmed declarations disappear on
+    their own — the RPC returns pending only. (This fixes "I rejected
+    Test Guest but it still shows": that was the sample layer.)
+  · Composer is REAL: Bill To uses the existing ContactPicker (live
+    contact search); ?from=declaration:<id> seeds contact, item, amount
+    and UPI reference; Save calls create_adhoc_invoice — invoice +
+    receipt in ONE transaction, declaration stamped so the Payments-to-
+    confirm row flips from "Invoice" to "Confirm". Success returns to
+    Money In with the new invoice number in the toast.
+    Backend truth surfaced in UI: adhoc invoices are always fully paid
+    on creation, so Save requires the payment block ON.
+  · Group Sessions "Invoice" button now opens the composer (page), not
+    the old AdHocInvoiceDialog modal — same stamping behavior. The
+    dialog code remains in the tree, unused, for deliberate retirement.
+    ⚠ 4th shared edited file: pages/operations/group-sessions/index.tsx
+    (full HEAD copy + that one onClick) — reconcile local edits first.
+  · Navigation from cards: buyer NAME → /contacts/:id (contact profile);
+    CONTRACT numbers (top right of card) → /contracts/:id. Both work
+    without expanding the card.
+  · Active lens is now visible: an orange "showing: late ✕" chip appears
+    on the control line whenever a headline/signal filter is on.
+  · Where at-risk/aging show: the signal sentences directly UNDER the
+    headline. Aging only appears once an invoice is >30 days from issue
+    — BBB's were issued 24-25 Jul, so it starts firing ~23 Aug. The
+    signal appears the day the fact becomes true.
+
+⚠ A4 WRITES: "Generate invoice" → Save creates a REAL invoice + receipt
+  and stamps the declaration. Test in TEST mode first.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
