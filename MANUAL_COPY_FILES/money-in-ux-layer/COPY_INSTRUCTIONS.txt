@@ -181,6 +181,24 @@ ROUND 6 — /api/invoices route restored (THE "invoice not working" fix)
   Money In strip → Generate invoice → Save should return an INV number,
   and the declaration row in Payments-to-confirm flips to "Confirm".
 
+ROUND 7 — Bill To picker: fixed + rebuilt (+ Add-contact drawer)
+----------------------------------------------------------------
+  Two problems, two fixes:
+  · "Search won't work" was a CLIPPING bug: SideCard had overflow-hidden,
+    which swallowed the shared ContactPicker's absolutely-positioned
+    dropdown — results rendered, invisibly. overflow-hidden removed AND
+    the new picker renders results in normal flow so no container can
+    ever clip them again.
+  · New pages/invoices/BillToPicker.tsx replaces ContactPicker in the
+    composer: always-visible search box (no click-to-open), searches
+    NAME OR MOBILE (the backend list RPC — bbb-foundation/045 — already
+    matches any channel value, digits-only), each result shows the phone
+    underneath, and the last row is always "+ Add new contact" → a
+    right-side drawer (Name*, Mobile*, Email optional) creating via the
+    EXISTING useCreateContact (individual · buyer · current environment)
+    and auto-selecting the result. Typing an unmatched name/number
+    pre-fills the drawer. The shared ContactPicker is untouched.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════

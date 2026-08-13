@@ -262,7 +262,9 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = (p) => {
 export const SideCard: React.FC<{ title: string; children: React.ReactNode; trailing?: React.ReactNode }> = ({ title, children, trailing }) => {
   const { colors } = useInvoiceTheme();
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}15` }}>
+    // no overflow-hidden: it silently clipped absolutely-positioned children
+    // (the contact picker's dropdown) — "search won't work" in disguise
+    <div className="rounded-xl border" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}15` }}>
       <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: `${colors.utility.primaryText}10` }}>
         <h3 className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>{title}</h3>
         {trailing}
