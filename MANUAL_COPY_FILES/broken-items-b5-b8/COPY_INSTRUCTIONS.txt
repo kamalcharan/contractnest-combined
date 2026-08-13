@@ -1,0 +1,46 @@
+BATCH: broken-items-b5-b8
+Broken items B5, B6, B7, B8 + the "₹23,996 in a single go" schedule defect.
+
+ORDER MATTERS: copy MANUAL_COPY_FILES\payment-gating-cnak-public FIRST.
+This batch builds on it and supersedes its versions of:
+  - contractnest-edge/supabase/functions/cat-templates/index.ts
+  - contractnest-ui/src/hooks/queries/usePlanTemplates.ts
+  - contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-ui   (contractnest-api: none)
+
+FILES
+  contractnest-edge/supabase/migrations/business-model-v2/037_payment_settlement_and_billing_rhythm.sql
+      NEW. Sections 1,2,3,5 ALREADY APPLIED to production and verified.
+      Sections 4 (subscribe_tenant_to_plan), 6 (get_tenant_context), 7 (wallet
+      minimum trigger) are NOT applied — they change live behaviour and are
+      waiting on your go-ahead. Re-running the whole file is safe/idempotent.
+
+  contractnest-edge/supabase/functions/payment-gateway/index.ts
+      B5. Gateway now resolves from the invoice owner (seller), not the
+      x-tenant-id header (payer). Needs redeploy.
+
+  contractnest-edge/supabase/functions/cat-templates/index.ts
+      B6 server half — /plans and /packs now return `seller` capability.
+      Needs redeploy.
+
+  contractnest-ui/src/hooks/queries/usePlanTemplates.ts     B6 types
+  contractnest-ui/src/hooks/queries/useTenantContext.ts     B8 types
+  contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx
+      B6 gate + banner, B7 wallet card buys directly
+  contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+      B8 payment-pending state + billing-event countdown
+
+TYPE-CHECK: zero new errors from these files (verified against the full UI
+tree). The one error reported in Subscription/index.tsx is pre-existing
+(the WaitingCredits cast, original line 338) and deliberately not touched.
+
+PRODUCTION CHECKLIST
+  Transaction Management  - RPCs are single-statement/SECURITY DEFINER;
+                            verify_gateway_payment keeps its FOR UPDATE lock.
+  Race Conditions         - unchanged locking; B6 gate prevents the
+                            create-then-fail window that left orphan invoices.
+  Error Handling          - settlement failures return typed codes
+                            (NOT_A_PARTY 403 / NOT_FOUND 404 / NO_GATEWAY 400).
+  Toasts                  - existing useVaNiToast (addToast).
+  Loaders                 - existing Loader2 spinners + pendingPlanId/PackId.
