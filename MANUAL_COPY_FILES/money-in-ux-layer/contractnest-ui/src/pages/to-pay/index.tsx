@@ -126,9 +126,10 @@ const ToPayPage: React.FC = () => {
         const open = openRows.has(v.name);
         const accent = v.owed <= 0.001 ? green : v.lateAmt > 0 ? red : colors.semantic.warning;
         return (
-          <div key={v.name} style={{ borderBottom: hairline }}>
+          <div key={v.name} className="rounded-2xl border mb-3 overflow-hidden"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}14` }}>
             <button onClick={() => setOpenRows((set) => { const n = new Set(set); n.has(v.name) ? n.delete(v.name) : n.add(v.name); return n; })}
-              className="w-full py-4 flex items-center gap-4 text-left group">
+              className="w-full px-4 py-4 flex items-center gap-4 text-left group">
               <span className="w-1 self-stretch rounded-full flex-none" style={{ backgroundColor: `${accent}66` }} />
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-bold truncate" style={ink}>{v.name}</p>
@@ -143,7 +144,7 @@ const ToPayPage: React.FC = () => {
             </button>
 
             {open && (
-              <div className="pb-5 pl-5 space-y-2.5">
+              <div className="pb-5 pl-9 pr-5 space-y-2.5">
                 {v.bills.map((b) => {
                   const c = b.balance <= 0.001 ? green : b.days_overdue > 0 ? red : colors.utility.secondaryText;
                   return (
