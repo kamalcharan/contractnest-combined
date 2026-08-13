@@ -562,7 +562,8 @@ export const API_ENDPOINTS = {
     DETAIL: (type: string, providerId: string) => `/api/integrations/${type}/${providerId}`,
     TEST: '/api/integrations/test',
     TOGGLE_STATUS: (id: string) => `/api/integrations/${id}/status`,
-    DELETE: (id: string) => `/api/integrations/${id}`
+    DELETE: (id: string) => `/api/integrations/${id}`,
+    UPLOAD_QR: '/api/integrations/upload-qr'
   },
   
   // BUSINESS MODEL ENDPOINTS - PRESERVED
@@ -1033,6 +1034,12 @@ export const API_ENDPOINTS = {
      // Public access (no auth required)
    PUBLIC_VALIDATE: '/api/contracts/public/validate',
     PUBLIC_RESPOND: '/api/contracts/public/respond',
+    // Public payment collection (CNAK-scoped, no auth)
+    PUBLIC_PAYMENT_CONTEXT: '/api/contracts/public/payment-context',
+    PUBLIC_CREATE_ORDER: '/api/contracts/public/create-order',
+    PUBLIC_VERIFY_PAYMENT: '/api/contracts/public/verify-payment',
+    PUBLIC_OFFLINE_UPI_CONFIG: '/api/contracts/public/offline-upi-config',
+    PUBLIC_DECLARE_PAYMENT: '/api/contracts/public/declare-payment',
 
 
     // CNAK Claim endpoint
