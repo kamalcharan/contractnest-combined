@@ -35,7 +35,7 @@ const InvoiceViewPage: React.FC = () => {
   if (!invoice) {
     return (
       <div className="p-6 max-w-3xl mx-auto">
-        <button onClick={() => navigate('/invoices')} className="inline-flex items-center gap-1.5 text-xs font-bold mb-4" style={sub}>
+        <button onClick={() => navigate('/money-in')} className="inline-flex items-center gap-1.5 text-xs font-bold mb-4" style={sub}>
           <ArrowLeft size={14} /> All invoices
         </button>
         <EmptyState title="Invoice not found" hint="It may have been removed, or the link is stale." />
@@ -55,7 +55,7 @@ const InvoiceViewPage: React.FC = () => {
       {/* page bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/invoices')}
+          <button onClick={() => navigate('/money-in')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold"
             style={{ ...sub, borderColor: `${colors.utility.primaryText}20` }}>
             <ArrowLeft size={14} /> Back

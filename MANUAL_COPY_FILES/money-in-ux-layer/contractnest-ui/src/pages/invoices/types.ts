@@ -79,3 +79,21 @@ export const daysLate = (inv: InvoiceSummary, todayISO: string): number => {
   const ms = new Date(todayISO).getTime() - new Date(inv.due_date).getTime();
   return Math.max(0, Math.floor(ms / 86_400_000));
 };
+
+/** One instalment of a buyer's schedule (billing event). */
+export interface Instalment {
+  date: string;                    // ISO
+  amount: number;
+  status: 'paid' | 'due' | 'overdue';
+}
+
+/** A buyer's whole money story — the unit of the Money In worklist. */
+export interface BuyerRow {
+  contact_id: string;
+  name: string;
+  is_guest: boolean;
+  plan_label: string | null;       // "Quarterly · CN-1021"
+  instalments: Instalment[];
+  invoice_ids: string[];           // → SAMPLE_INVOICES
+  receipts: InvoiceReceipt[];
+}

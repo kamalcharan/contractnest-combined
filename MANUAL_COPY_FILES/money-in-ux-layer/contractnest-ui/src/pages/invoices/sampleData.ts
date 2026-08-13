@@ -15,7 +15,7 @@
 // entitlements (addons_extra) once the plan-entitlement wiring lands.
 // ============================================================================
 
-import type { CatalogLineOption, InvoiceDetail, InvoiceSummary, UnattachedReceipt } from './types';
+import type { BuyerRow, CatalogLineOption, InvoiceDetail, InvoiceSummary, UnattachedReceipt } from './types';
 
 export const UX_SAMPLE_MODE = true;
 
@@ -93,4 +93,48 @@ export const SAMPLE_CONTACTS: { id: string; name: string; hasContract: boolean }
 export const SAMPLE_UNATTACHED_RECEIPTS: UnattachedReceipt[] = [
   { id: 'ur-1', contact_id: 'ct-1', contact_name: 'Tejaswinni ni Bappudi Sundar', amount: 600, method: 'UPI', reference: 'bappuditeju-2@okaxis', received_on: '2026-08-08', description: 'Guest Participation Fee' },
   { id: 'ur-2', contact_id: 'ct-4', contact_name: 'Test Guest — Adhoc Invoice QA', amount: 600, method: 'UPI', reference: 'testupi@okaxis', received_on: '2026-08-09', description: 'Guest Participation Fee' },
+];
+
+/** Money In worklist — buyer stories mirroring live BBB shapes.
+ *  Wiring: get_tenant_receivables (by contact) + GET /api/invoices. */
+export const SAMPLE_BUYERS: BuyerRow[] = [
+  { contact_id: 'b-1', name: 'VASANTH JOSHI', is_guest: false, plan_label: 'Half-yearly · CN-1022',
+    instalments: [ { date: '2026-04-01', amount: 9000, status: 'paid' }, { date: '2026-07-01', amount: 4500, status: 'overdue' }, { date: '2026-08-03', amount: 4500, status: 'overdue' } ],
+    invoice_ids: ['inv-02'], receipts: [ { id: 'r1', amount: 9000, method: 'UPI', reference: '412998801x', received_on: '2026-04-02' } ] },
+  { contact_id: 'ct-2', name: 'CHARAN KAMAL', is_guest: false, plan_label: 'Quarterly · CN-1021',
+    instalments: [ { date: '2026-04-01', amount: 4875, status: 'paid' }, { date: '2026-07-01', amount: 4875, status: 'paid' }, { date: '2026-10-01', amount: 4875, status: 'due' }, { date: '2027-01-01', amount: 4875, status: 'due' } ],
+    invoice_ids: ['inv-01'], receipts: [ { id: 'r1', amount: 4500, method: 'UPI', reference: '658553716134', received_on: '2026-07-25' }, { id: 'r2', amount: 1500, method: 'Cash', reference: null, received_on: '2026-08-01' } ] },
+  { contact_id: 'b-3', name: 'Sudhir Sarma J', is_guest: false, plan_label: 'Quarterly · CN-1038',
+    instalments: [ { date: '2026-07-01', amount: 4500, status: 'overdue' }, { date: '2026-08-03', amount: 3000, status: 'overdue' } ],
+    invoice_ids: ['inv-06'], receipts: [] },
+  { contact_id: 'ct-5', name: 'Srilekha Kulkarni', is_guest: false, plan_label: 'Monthly · CN-1037',
+    instalments: [ { date: '2026-08-01', amount: 3000, status: 'overdue' }, { date: '2026-08-03', amount: 3000, status: 'overdue' } ],
+    invoice_ids: ['inv-09'], receipts: [] },
+  { contact_id: 'b-5', name: 'AJAY BALKRISHNA TALIKHEDKAR', is_guest: false, plan_label: 'Pro-rata · CN-1045',
+    instalments: [ { date: '2026-08-01', amount: 4500, status: 'paid' }, { date: '2026-08-01', amount: 1500, status: 'overdue' } ],
+    invoice_ids: ['inv-03'], receipts: [ { id: 'r1', amount: 4500, method: 'Bank Transfer', reference: 'NEFT-88121', received_on: '2026-08-01' } ] },
+  { contact_id: 'b-6', name: 'M. GURURAJARAO', is_guest: false, plan_label: 'Yearly · CN-1020',
+    instalments: [ { date: '2026-07-24', amount: 19500, status: 'paid' } ],
+    invoice_ids: ['inv-04'], receipts: [ { id: 'r1', amount: 19500, method: 'UPI', reference: '551200938876', received_on: '2026-07-24' } ] },
+  { contact_id: 'b-7', name: 'PHANI KUMAR SHARMA', is_guest: false, plan_label: 'Yearly · CN-1027',
+    instalments: [ { date: '2026-07-24', amount: 19500, status: 'paid' } ],
+    invoice_ids: ['inv-05'], receipts: [ { id: 'r1', amount: 19500, method: 'Cheque', reference: 'CHQ 004417', received_on: '2026-07-24' } ] },
+  { contact_id: 'ct-1', name: 'Tejaswinni ni Bappudi Sundar', is_guest: true, plan_label: null,
+    instalments: [ { date: '2026-08-08', amount: 600, status: 'paid' } ],
+    invoice_ids: ['inv-07'], receipts: [ { id: 'r1', amount: 600, method: 'UPI', reference: 'bappuditeju-2@okaxis', received_on: '2026-08-08' } ] },
+];
+
+/** To Pay — vendor stories (expense side). Wiring: get_tenant_payables. */
+export interface VendorBill { id: string; label: string; amount: number; due: string; status: 'paid' | 'due' | 'overdue' }
+export interface VendorRow { id: string; name: string; note: string | null; bills: VendorBill[]; isPlatform?: boolean }
+export const SAMPLE_VENDORS: VendorRow[] = [
+  { id: 'v-1', name: 'Hotel Silver Oak — venue', note: 'Saturday meeting hall', bills: [
+    { id: 'vb-1', label: 'Hall hire · August', amount: 24000, due: '2026-08-05', status: 'overdue' },
+    { id: 'vb-2', label: 'Hall hire · September', amount: 24000, due: '2026-09-05', status: 'due' } ] },
+  { id: 'v-2', name: 'Annapurna Caterers', note: 'breakfast service', bills: [
+    { id: 'vb-3', label: 'Catering · 8 Aug session', amount: 13800, due: '2026-08-18', status: 'due' } ] },
+  { id: 'v-3', name: 'ContractNest', note: 'your platform subscription', isPlatform: true, bills: [
+    { id: 'vb-4', label: 'Quarterly plan · Q2', amount: 5999, due: '2026-11-13', status: 'due' } ] },
+  { id: 'v-4', name: 'PrintKraft', note: 'member kit printing', bills: [
+    { id: 'vb-5', label: 'Badges + banners', amount: 8600, due: '2026-07-28', status: 'overdue' } ] },
 ];

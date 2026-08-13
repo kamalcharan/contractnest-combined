@@ -139,7 +139,7 @@ const InvoiceComposerPage: React.FC = () => {
       {/* page bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/invoices')}
+          <button onClick={() => navigate('/money-in')}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold"
             style={{ ...sub, borderColor: `${colors.utility.primaryText}20` }}>
             <ArrowLeft size={14} /> Back
