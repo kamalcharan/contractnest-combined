@@ -237,6 +237,11 @@ BEGIN
     WHERE c.tenant_id = v_platform AND c.buyer_id = v_contact
       AND i.is_active = TRUE
       AND i.status NOT IN ('paid','cancelled')
+      -- Cancelling a contract does NOT cancel its invoices today (a known
+      -- open leak). Without this the tenant is billed for a contract that
+      -- no longer exists — seen live: a cancelled wallet top-up kept a
+      -- Rs.1,000 invoice and inflated the total to Rs.24,996.
+      AND c.status <> 'cancelled'
       AND COALESCE(i.balance, i.total_amount - COALESCE(i.amount_paid,0)) > 0;
 
     -- ── payment attempts ───────────────────────────────────────────────
@@ -319,7 +324,12 @@ BEGIN
         -- DISTINCT ON id, not UNION: the current contract appears in both
         -- walks, and a plain UNION would only dedupe it when the depth
         -- column happened to match too — so it would list twice.
-        both AS (
+        -- Named chain_rows, NOT `both`: BOTH is a reserved word in Postgres
+        -- (TRIM(BOTH ...)) and fails as a bare CTE name. Caught on apply.
+        -- DISTINCT ON id, not UNION: the current contract appears in both
+        -- walks, and a plain UNION would only dedupe it when the depth
+        -- column matched too — so it would list twice.
+        chain_rows AS (
             SELECT DISTINCT ON (u.id) u.*
             FROM (SELECT * FROM back UNION ALL SELECT * FROM fwd) u
             ORDER BY u.id, u.depth
@@ -338,7 +348,7 @@ BEGIN
                    'is_current',       (b.id = v_plan.id)
                ) ORDER BY b.created_at), '[]'::JSONB)
           INTO v_chain
-        FROM both b;
+        FROM chain_rows b;
     END IF;
 
     RETURN jsonb_build_object(
