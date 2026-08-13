@@ -71,11 +71,15 @@ async function getGatewayCredentials(
   supabase: any,
   tenantId: string,
   encryptionKey: string,
-  provider?: string
+  provider?: string,
+  isLive?: boolean
 ): Promise<{ success: boolean; provider?: string; credentials?: any; isLive?: boolean; error?: string }> {
   const { data, error } = await supabase.rpc('get_tenant_gateway_credentials', {
     p_tenant_id: tenantId,
-    p_provider: provider || null
+    p_provider: provider || null,
+    // Environment must match. Previously the newest-updated row won whatever
+    // its environment, so a re-saved TEST gateway could take LIVE money.
+    p_is_live: typeof isLive === 'boolean' ? isLive : null
   });
 
   if (error) {
@@ -91,7 +95,36 @@ async function getGatewayCredentials(
 
   // Decrypt credentials
   try {
-    const decrypted = await decryptData(info.credentials, encryptionKey);
+    // UNWRAP FIRST. The integrations function stores credentials as
+    // `{ encrypted: "<base64>" }` (see integrations/index.ts — it builds
+    // credentialsJsonb = { encrypted: ... } on save, and unwraps the same way
+    // on read), and for config-only providers it also keeps a plaintext
+    // `public` copy alongside. Only the very oldest rows are a bare base64
+    // string.
+    //
+    // This function passed the raw JSONB straight to decryptData, so atob()
+    // received an object and threw "Failed to decode base64" — meaning every
+    // tenant whose gateway was saved in the current format could not be
+    // charged at all. It stayed hidden because the credential lookup used to
+    // resolve to the PAYER, who typically has no gateway and failed earlier
+    // with NO_GATEWAY; once the lookup correctly resolved to the seller
+    // (vikuna, saved in the new format) this surfaced immediately.
+    const raw = info.credentials;
+    const encryptedString =
+      raw && typeof raw === 'object' && typeof raw.encrypted === 'string'
+        ? raw.encrypted
+        : raw;
+
+    if (typeof encryptedString !== 'string') {
+      console.error('[PayGateway] Credentials are not decryptable; keys:',
+        raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw);
+      return {
+        success: false,
+        error: 'Stored payment credentials are in an unrecognised format. Re-save the gateway in Settings → Integrations.',
+      };
+    }
+
+    const decrypted = await decryptData(encryptedString, encryptionKey);
     return {
       success: true,
       provider: info.provider,
@@ -224,7 +257,7 @@ async function handleCreateOrder(
   }
 
   // 1. Get gateway credentials — the SELLER's, resolved from the invoice.
-  const gw = await getGatewayCredentials(supabase, settle.settlementTenantId!, encryptionKey, 'razorpay');
+  const gw = await getGatewayCredentials(supabase, settle.settlementTenantId!, encryptionKey, 'razorpay', isLive);
   if (!gw.success) {
     return jsonResponse({ success: false, error: gw.error, code: 'NO_GATEWAY' }, 400);
   }
@@ -345,7 +378,7 @@ async function handleCreateLink(
   }
 
   // 1. Get gateway credentials — the SELLER's, resolved from the invoice.
-  const gw = await getGatewayCredentials(supabase, settle.settlementTenantId!, encryptionKey, 'razorpay');
+  const gw = await getGatewayCredentials(supabase, settle.settlementTenantId!, encryptionKey, 'razorpay', isLive);
   if (!gw.success) {
     return jsonResponse({ success: false, error: gw.error, code: 'NO_GATEWAY' }, 400);
   }
@@ -507,7 +540,7 @@ async function handleVerifyPayment(
   const settlementTenantId = reqRow.tenant_id;
 
   // 1. Get gateway credentials (need key_secret for signature verification)
-  const gw = await getGatewayCredentials(supabase, settlementTenantId, encryptionKey, 'razorpay');
+  const gw = await getGatewayCredentials(supabase, settlementTenantId, encryptionKey, 'razorpay', isLive);
   if (!gw.success) {
     return jsonResponse({ success: false, error: gw.error, code: 'NO_GATEWAY' }, 400);
   }

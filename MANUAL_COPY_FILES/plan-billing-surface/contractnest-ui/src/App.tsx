@@ -249,6 +249,7 @@ import InvoiceDetailPage from './pages/settings/businessmodel/admin/billing/invo
 import PricingPlansPage from './pages/settings/businessmodel/tenants/pricing-plans';
 import SubscriptionPage from './pages/settings/businessmodel/tenants/Subscription';
 import TenantBillingPage from './pages/settings/businessmodel/tenants/billing';
+import TenantUsagePage from './pages/settings/businessmodel/tenants/usage';
 // REMOVED: CreditsPage import - Credits functionality now merged into SubscriptionPage
 
 // Contacts pages
@@ -1017,6 +1018,22 @@ const AppContent: React.FC = () => {
             }
           >
             <Route index element={<TenantBillingPage />} />
+          </Route>
+
+          {/* Usage — the live meter. UI ONLY: the page renders sample figures
+              and is deliberately not connected, because the meter belongs on
+              top of the JTD infrastructure and that design conversation has
+              not happened yet. It carries its own "not connected" banner so a
+              reader cannot mistake the sample for their own account. */}
+          <Route
+            path="/businessmodel/tenants/usage"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<TenantUsagePage />} />
           </Route>
 
           {/* Legacy routes - redirect to new structure */}
