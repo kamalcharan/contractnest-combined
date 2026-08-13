@@ -2,7 +2,8 @@
 // Invoices — composer (/invoices/new) · WIRED (A4)
 // ----------------------------------------------------------------------------
 // The document-first replacement for AdHocInvoiceDialog, now real:
-//   · Bill To ← the EXISTING ContactPicker (real contact search)
+//   · Bill To ← BillToPicker: always-visible search (name OR mobile — the
+//     list RPC matches channel values), inline results, + Add-contact drawer
 //   · ?from=declaration:<id> seeds contact, line, amount and UPI reference
 //     from a pending guest-fee declaration (Money In strip / Group Sessions)
 //   · Save → useCreateAdhocInvoice → create_adhoc_invoice: invoice + receipt
@@ -19,7 +20,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, X, LayoutGrid, ChevronDown, ChevronRight, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
-import ContactPicker from '@/components/common/ContactPicker';
+import BillToPicker from './BillToPicker';
 import { useContact } from '@/hooks/useContacts';
 import { usePendingDeclarations } from '@/hooks/queries/useGroupSessionsDashboard';
 import { useCreateAdhocInvoice } from '@/hooks/queries/useInvoiceQueries';
@@ -322,10 +323,9 @@ const InvoiceComposerPage: React.FC = () => {
         {/* ═══════ RIGHT: sidecar ═══════ */}
         <div className="space-y-4">
           <SideCard title="Bill To">
-            <ContactPicker
+            <BillToPicker
               value={contactId}
               onChange={(id) => setContactId(id)}
-              placeholder="Search contact…"
             />
             {contactId && (
               <p className="text-[11px] mt-2" style={sub}>
