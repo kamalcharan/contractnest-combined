@@ -122,6 +122,18 @@ export const SAMPLE_BUYERS: BuyerRow[] = [
   { contact_id: 'ct-1', name: 'Tejaswinni ni Bappudi Sundar', is_guest: true, plan_label: null,
     instalments: [ { date: '2026-08-08', amount: 600, status: 'paid' } ],
     invoice_ids: ['inv-07'], receipts: [ { id: 'r1', amount: 600, method: 'UPI', reference: 'bappuditeju-2@okaxis', received_on: '2026-08-08' } ] },
+  { contact_id: 'ct-4', name: 'Test Guest — Adhoc Invoice QA', is_guest: true, plan_label: null,
+    instalments: [ { date: '2026-08-09', amount: 600, status: 'due' } ],
+    invoice_ids: ['inv-08'], receipts: [] },
+  { contact_id: 'b-9', name: 'KRISHNAMURTHY RATAN', is_guest: false, plan_label: 'Monthly · CN-1018',
+    instalments: [ { date: '2026-07-01', amount: 1500, status: 'paid' }, { date: '2026-08-18', amount: 1500, status: 'due' } ],
+    invoice_ids: [], receipts: [ { id: 'r1', amount: 1500, method: 'UPI', reference: '77120943x', received_on: '2026-07-01' } ] },
+  { contact_id: 'b-10', name: 'R RADHA', is_guest: false, plan_label: 'Monthly · CN-1030',
+    instalments: [ { date: '2026-08-20', amount: 1500, status: 'due' } ],
+    invoice_ids: [], receipts: [] },
+  { contact_id: 'b-11', name: 'MOHAN BORGAONKER', is_guest: false, plan_label: 'Monthly · CN-1022',
+    instalments: [ { date: '2026-09-05', amount: 1500, status: 'due' } ],
+    invoice_ids: [], receipts: [] },
 ];
 
 /** To Pay — vendor stories (expense side). Wiring: get_tenant_payables. */
