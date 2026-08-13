@@ -458,7 +458,10 @@ const ContractReviewPage: React.FC = () => {
   // Payment-gated contract awaiting the buyer: acceptance IS the payment.
   // The Accept button is replaced by the payment section, and the server
   // (respond_to_contract) refuses a plain accept anyway (PAYMENT_REQUIRED).
-  const isPaymentGated = contract?.acceptance_method === 'payment'
+  // 'manual' is the legacy spelling of 'payment' — contracts created before
+  // the mapper stopped squashing payment → manual (migration 036) still carry
+  // it, and they are payment-gated exactly the same way.
+  const isPaymentGated = (contract?.acceptance_method === 'payment' || contract?.acceptance_method === 'manual')
     && contract?.status === 'pending_acceptance'
     && (contract?.grand_total || contract?.total_value || 0) > 0;
 
@@ -961,8 +964,9 @@ const ContractReviewPage: React.FC = () => {
                 <p style={{ fontSize: 14, fontWeight: 600, color: colors.text }}>{paymentLabel}</p>
                 <p style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2, textTransform: 'capitalize' }}>
                   {contract.acceptance_method === 'digital_signature' ? 'Signoff Required'
-                    : contract.acceptance_method === 'payment' ? 'Payment Required'
-                    : contract.acceptance_method === 'manual' ? 'Manual Acceptance'
+                    /* 'manual' is the legacy spelling of payment-gated, from
+                       before the mapper stopped squashing it (migration 036) */
+                    : (contract.acceptance_method === 'payment' || contract.acceptance_method === 'manual') ? 'Payment Required'
                     : contract.acceptance_method === 'auto' ? 'Auto Accept' : contract.acceptance_method || '—'}
                 </p>
               </div>
