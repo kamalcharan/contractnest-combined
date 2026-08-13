@@ -6,15 +6,15 @@
 // one is an ALWAYS-VISIBLE search box: type a name OR a mobile number (the
 // list RPC — bbb-foundation/045 — matches any channel value, digits-only),
 // rows show the phone underneath, and the last row is always "+ Add new
-// contact", opening a minimal drawer (name, mobile, optional email) that
-// creates via the EXISTING useCreateContact and selects the result.
+// contact", opening the EXISTING QuickAddContactDrawer (the same one the
+// Contract Wizard's buyer step uses) and selecting the created contact.
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, UserPlus, X, Check, Loader2, Phone } from 'lucide-react';
+import { Search, UserPlus, Check, Loader2, Phone } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { vaniToast } from '@/components/common/toast/VaNiToast';
-import { useContactList, useCreateContact, useContact, type Contact } from '@/hooks/useContacts';
+import { useContactList, useContact, type Contact } from '@/hooks/useContacts';
+import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
 
 interface BillToPickerProps {
   value: string | undefined;
@@ -59,38 +59,8 @@ const BillToPicker: React.FC<BillToPickerProps> = ({ value, onChange }) => {
   const { data: selected } = useContact(value || '');
   const selectedName = selected ? nameOf(selected as any) : null;
 
-  // ── Add-contact drawer ──
+  // ── Add-contact: the EXISTING QuickAddContactDrawer, not a duplicate ──
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newMobile, setNewMobile] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const createContact = useCreateContact();
-
-  const canCreate = newName.trim().length >= 2 && newMobile.replace(/\D/g, '').length >= 10 && !createContact.loading;
-
-  const createAndSelect = async () => {
-    if (!canCreate) return;
-    try {
-      const channels: any[] = [
-        { channel_type: 'mobile', value: newMobile.trim(), country_code: '+91', is_primary: true, is_verified: false },
-      ];
-      if (newEmail.trim()) channels.push({ channel_type: 'email', value: newEmail.trim(), is_primary: false, is_verified: false });
-      const created = await createContact.mutate({
-        type: 'individual',
-        name: newName.trim(),
-        classifications: ['buyer'],
-        status: 'active',
-        contact_channels: channels,
-      } as any);
-      onChange(created.id, nameOf(created as any));
-      setDrawerOpen(false);
-      setNewName(''); setNewMobile(''); setNewEmail('');
-      setQuery('');
-      vaniToast.success(`${nameOf(created as any)} added and selected.`);
-    } catch (e: any) {
-      vaniToast.error(e?.message || 'Could not create the contact.');
-    }
-  };
 
   const inputStyle: React.CSSProperties = { ...ink, borderColor: `${colors.utility.primaryText}25`, backgroundColor: 'transparent' };
 
@@ -149,7 +119,7 @@ const BillToPicker: React.FC<BillToPickerProps> = ({ value, onChange }) => {
             {!loading && (results || []).length === 0 && debounced && (
               <p className="px-3 py-2.5 text-[11px]" style={sub}>No one matches “{debounced}”.</p>
             )}
-            <button onClick={() => { setDrawerOpen(true); if (!newName && debounced && !/^\d+$/.test(debounced)) setNewName(debounced); if (!newMobile && /^\d[\d\s-]*$/.test(debounced)) setNewMobile(debounced); }}
+            <button onClick={() => setDrawerOpen(true)}
               className="w-full px-3 py-2.5 text-left flex items-center gap-2 text-xs font-bold"
               style={{ color: brand, backgroundColor: `${brand}0d` }}>
               <UserPlus size={13} /> Add new contact{debounced ? ` — “${debounced}”` : ''}
@@ -158,47 +128,15 @@ const BillToPicker: React.FC<BillToPickerProps> = ({ value, onChange }) => {
         )}
       </div>
 
-      {/* ── Add-contact drawer ── */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-[70] flex justify-end" style={{ backgroundColor: 'rgba(15,15,20,0.45)' }}
-          onClick={() => !createContact.loading && setDrawerOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm h-full overflow-y-auto p-6"
-            style={{ backgroundColor: colors.utility.primaryBackground, borderLeft: `1px solid ${colors.utility.primaryText}14` }}>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-sm font-extrabold" style={ink}>New contact</p>
-              <button onClick={() => setDrawerOpen(false)} style={sub}><X size={16} /></button>
-            </div>
-            <p className="text-[11px] mb-5" style={sub}>
-              Just enough to invoice them — everything else can be filled in later on their profile.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={sub}>Name *</label>
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} autoFocus
-                  placeholder="Full name" className="w-full px-3 py-2 rounded-lg border text-sm" style={inputStyle} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={sub}>Mobile *</label>
-                <input value={newMobile} onChange={(e) => setNewMobile(e.target.value)} inputMode="tel"
-                  placeholder="10-digit mobile" className="w-full px-3 py-2 rounded-lg border text-sm" style={inputStyle} />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider mb-1" style={sub}>Email (optional)</label>
-                <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} inputMode="email"
-                  placeholder="name@example.com" className="w-full px-3 py-2 rounded-lg border text-sm" style={inputStyle} />
-              </div>
-              <button onClick={createAndSelect} disabled={!canCreate}
-                className="w-full py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-40"
-                style={{ backgroundColor: brand }}>
-                {createContact.loading ? 'Adding…' : 'Add & select'}
-              </button>
-              <p className="text-[10px]" style={sub}>
-                Saved as an individual buyer contact in the current environment.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuickAddContactDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSuccess={(contactId) => {
+          setDrawerOpen(false);
+          setQuery('');
+          onChange(contactId);
+        }}
+      />
     </>
   );
 };
