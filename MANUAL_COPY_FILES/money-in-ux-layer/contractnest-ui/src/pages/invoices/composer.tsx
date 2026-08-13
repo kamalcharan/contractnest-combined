@@ -1,32 +1,40 @@
 // ============================================================================
-// Invoices — composer (/invoices/new) · UX layer
-// The SAME document paper as the viewer / contract-invoice page, with the
-// cells editable in place — you compose the document you will send, not a
-// form about it. Bill To + payment live in the right sidecar (2026-08-09
-// decisions). Receipt-first: money that arrived before any invoice existed
-// (declared guest fees, cash) is offered for attachment, so the invoice is
-// born settled — the BBB reality where payment precedes paperwork.
+// Invoices — composer (/invoices/new) · WIRED (A4)
+// ----------------------------------------------------------------------------
+// The document-first replacement for AdHocInvoiceDialog, now real:
+//   · Bill To ← the EXISTING ContactPicker (real contact search)
+//   · ?from=declaration:<id> seeds contact, line, amount and UPI reference
+//     from a pending guest-fee declaration (Money In strip / Group Sessions)
+//   · Save → useCreateAdhocInvoice → create_adhoc_invoice: invoice + receipt
+//     in one transaction, declaration stamped so Payments-to-confirm flips
+//     that row from "Invoice" to "Confirm"
+// Backend constraint, surfaced honestly: create_adhoc_invoice always creates
+// a FULLY PAID invoice (invoice + receipt together). So Save requires the
+// payment block ON; unpaid standalone invoices are a later capability.
+// The catalog typeahead still offers sample suggestions (free text is real).
 // ============================================================================
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Search, LayoutGrid, ChevronDown, ChevronRight, Wallet, Link2 } from 'lucide-react';
+import { ArrowLeft, Plus, X, LayoutGrid, ChevronDown, ChevronRight, Wallet } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
+import ContactPicker from '@/components/common/ContactPicker';
+import { useContact } from '@/hooks/useContacts';
+import { usePendingDeclarations } from '@/hooks/queries/useGroupSessionsDashboard';
+import { useCreateAdhocInvoice } from '@/hooks/queries/useInvoiceQueries';
 import {
   fmtMoney, fmtDate, useInvoiceTheme, IncludedBadge, FreeReceiptsBadge,
   InvoicePaper, DocTh, SideCard, paperInk, paperSub, paperFaint,
 } from './ui';
-import { SAMPLE_CATALOG, SAMPLE_CONTACTS, SAMPLE_UNATTACHED_RECEIPTS, TODAY_ISO, canCreateAdhocInvoice } from './sampleData';
-import type { CatalogLineOption, UnattachedReceipt } from './types';
+import { SAMPLE_CATALOG, TODAY_ISO, canCreateAdhocInvoice } from './sampleData';
+import type { CatalogLineOption } from './types';
 
 interface DraftLine { key: number; name: string; category: string | null; description: string; rate: number; qty: number; tax_rate: number }
 interface DraftPayment { method: string; date: string; reference: string }
 
 const PAYMENT_METHODS = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card', 'Other'];
 
-// Editable paper cell — dashed underline signals "type here", like the
-// AdHocInvoiceDialog's item field, but living inside the real document.
 const cellInput = (extra?: React.CSSProperties): React.CSSProperties => ({
   color: paperInk,
   borderColor: '#d1d5db',
@@ -37,73 +45,66 @@ const cellInput = (extra?: React.CSSProperties): React.CSSProperties => ({
 const InvoiceComposerPage: React.FC = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { currentTenant } = useAuth();
+  const { currentTenant, perspective } = useAuth();
   const { colors, ink, sub } = useInvoiceTheme();
   const brand = colors.brand.primary;
   const keyRef = useRef(1);
 
-  // Receipt-first hand-off: /invoices/new?from=receipt:<id> arrives from the
-  // Money In strip (one link per waiting receipt). ?prefill=guest kept as a
-  // legacy alias for the first sample receipt.
+  // ── declaration hand-off: /invoices/new?from=declaration:<id> ────────────
   const fromParam = params.get('from') || '';
-  const receiptParamId = fromParam.startsWith('receipt:')
-    ? fromParam.slice('receipt:'.length)
-    : (params.get('prefill') === 'guest' ? 'ur-1' : null);
-  const seedReceipt = SAMPLE_UNATTACHED_RECEIPTS.find((r) => r.id === receiptParamId) || null;
-
-  const [contactId, setContactId] = useState<string | null>(seedReceipt ? seedReceipt.contact_id : null);
-  const [contactQuery, setContactQuery] = useState('');
-  const [contactOpen, setContactOpen] = useState(false);
-
-  const [lines, setLines] = useState<DraftLine[]>(
-    seedReceipt ? [{ key: 0, name: seedReceipt.description || 'Received payment', category: seedReceipt.description ? 'Guest Fees' : null, description: '', rate: seedReceipt.amount, qty: 1, tax_rate: 0 }] : []
+  const declarationId = fromParam.startsWith('declaration:') ? fromParam.slice('declaration:'.length) : null;
+  const declarationsQuery = usePendingDeclarations({ enabled: !!declarationId });
+  const seed = useMemo(
+    () => (declarationId ? (declarationsQuery.data || []).find((d) => d.id === declarationId) || null : null),
+    [declarationId, declarationsQuery.data]
   );
+
+  const [contactId, setContactId] = useState<string | undefined>(undefined);
+  const [lines, setLines] = useState<DraftLine[]>([]);
+  const [seeded, setSeeded] = useState(false);
   const [addQuery, setAddQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [openCats, setOpenCats] = useState<Set<string>>(new Set());
+  const [recordPayment, setRecordPayment] = useState(true);
+  const [payment, setPayment] = useState<DraftPayment>({ method: 'Cash', date: TODAY_ISO, reference: '' });
 
-  const [attachedReceiptId, setAttachedReceiptId] = useState<string | null>(seedReceipt?.id ?? null);
-  const [recordPayment, setRecordPayment] = useState(!!seedReceipt);
-  const [payment, setPayment] = useState<DraftPayment>({
-    method: seedReceipt?.method ?? 'Cash',
-    date: seedReceipt?.received_on ?? TODAY_ISO,
-    reference: seedReceipt?.reference ?? '',
-  });
+  // Apply the declaration seed once it arrives (query is async).
+  if (seed && !seeded) {
+    setSeeded(true);
+    if (seed.member_contact_id) setContactId(seed.member_contact_id);
+    setLines([{
+      key: keyRef.current++,
+      name: seed.label || seed.block_name || 'Guest Participation Fee',
+      category: seed.block_name || null,
+      description: seed.block_name ? `${seed.block_name}${seed.created_at ? `, ${fmtDate(seed.created_at)}` : ''}` : '',
+      rate: seed.amount || 0, qty: 1, tax_rate: 0,
+    }]);
+    setRecordPayment(true);
+    setPayment({
+      method: seed.upi_reference ? 'UPI' : 'Cash',
+      date: (seed.created_at || TODAY_ISO).slice(0, 10),
+      reference: seed.upi_reference || '',
+    });
+  }
 
-  const contact = SAMPLE_CONTACTS.find((c) => c.id === contactId) || null;
+  // Selected contact (same hook ContactPicker itself uses) → paper Bill To.
+  const { data: selectedContact } = useContact(contactId || '');
+  const contactName = selectedContact
+    ? ((selectedContact as any).company_name || (selectedContact as any).name || (selectedContact as any).displayName || 'Selected contact')
+    : (seed?.member_name || null);
+
+  const createAdhoc = useCreateAdhocInvoice();
+
   const subtotal = lines.reduce((s, l) => s + l.rate * l.qty, 0);
   const taxTotal = lines.reduce((s, l) => s + (l.rate * l.qty * l.tax_rate) / 100, 0);
   const total = subtotal + taxTotal;
-  const paidOnCreation = recordPayment ? total : 0;
-
-  // Money already sitting in the system for this contact, with no invoice.
-  const waitingReceipts: UnattachedReceipt[] = useMemo(
-    () => (contact ? SAMPLE_UNATTACHED_RECEIPTS.filter((r) => r.contact_id === contact.id && r.id !== attachedReceiptId) : []),
-    [contact, attachedReceiptId]
-  );
-
-  const attachReceipt = (r: UnattachedReceipt) => {
-    setAttachedReceiptId(r.id);
-    setRecordPayment(true);
-    setPayment({ method: r.method, date: r.received_on, reference: r.reference ?? '' });
-    if (lines.length === 0 && r.description) {
-      setLines([{ key: keyRef.current++, name: r.description, category: null, description: '', rate: r.amount, qty: 1, tax_rate: 0 }]);
-    }
-    vaniToast.success(`${fmtMoney(r.amount)} received on ${fmtDate(r.received_on)} attached — the invoice will be born settled.`);
-  };
 
   const matchingCatalog = useMemo(() => {
     const q = addQuery.trim().toLowerCase();
     if (!q) return [];
     return SAMPLE_CATALOG.filter((c) => c.name.toLowerCase().includes(q) || c.category.toLowerCase().includes(q)).slice(0, 6);
   }, [addQuery]);
-
-  const matchingContacts = useMemo(() => {
-    const q = contactQuery.trim().toLowerCase();
-    const base = q ? SAMPLE_CONTACTS.filter((c) => c.name.toLowerCase().includes(q)) : SAMPLE_CONTACTS;
-    return base.slice(0, 6);
-  }, [contactQuery]);
 
   const addFromCatalog = (opt: CatalogLineOption) => {
     setLines((ls) => [...ls, { key: keyRef.current++, name: opt.name, category: opt.category, description: '', rate: opt.rate, qty: 1, tax_rate: opt.tax_rate }]);
@@ -117,11 +118,43 @@ const InvoiceComposerPage: React.FC = () => {
   const patchLine = (key: number, patch: Partial<DraftLine>) =>
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
-  const canSave = !!contact && lines.length > 0 && total > 0;
-  const save = () => {
-    if (!canSave) return;
-    vaniToast.success('UX preview — saving wires to create_adhoc_invoice in the next batch.');
+  // Backend creates invoice + receipt together (always fully paid), so a
+  // payment is required — not a UI whim, the transaction's shape.
+  const canSave = !!contactId && lines.length > 0 && total > 0 && recordPayment && !createAdhoc.isPending;
+
+  const save = async () => {
+    if (!canSave || !contactId) return;
+    try {
+      const result = await createAdhoc.mutateAsync({
+        contact_id: contactId,
+        currency: 'INR',
+        line_items: lines.map((l) => ({
+          name: l.name + (l.description ? ` — ${l.description}` : ''),
+          qty: l.qty,
+          unit_price: l.rate,
+          amount: l.rate * l.qty,
+        })),
+        tax_amount: taxTotal > 0 ? taxTotal : undefined,
+        payment_method: payment.method,
+        payment_date: payment.date || null,
+        reference_number: payment.reference || null,
+        declaration_id: declarationId,
+      });
+      vaniToast.success(`${result.invoice_number} created — ${fmtMoney(result.total_amount)} received, receipt ${result.receipt_number} attached.`);
+      navigate('/money-in');
+    } catch (e: any) {
+      vaniToast.error(e?.message || 'Could not create the invoice.');
+    }
   };
+
+  if (perspective === 'expense') {
+    return (
+      <div className="p-8 max-w-2xl mx-auto text-center">
+        <h1 className="text-lg font-extrabold mb-2" style={ink}>Invoices are created on the revenue side</h1>
+        <button onClick={() => navigate('/to-pay')} className="text-sm font-bold" style={{ color: brand }}>Go to To Pay</button>
+      </div>
+    );
+  }
 
   if (!canCreateAdhocInvoice) {
     return (
@@ -153,20 +186,24 @@ const InvoiceComposerPage: React.FC = () => {
           </button>
           <div>
             <h1 className="text-lg font-extrabold leading-tight" style={ink}>New Invoice</h1>
-            <p className="text-[11px]" style={sub}>Number assigned on save{contact ? ` · ${contact.name}` : ''}</p>
+            <p className="text-[11px]" style={sub}>
+              Number assigned on save{contactName ? ` · ${contactName}` : ''}
+              {seed ? ' · from a declared payment' : ''}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <IncludedBadge />
           <button onClick={save} disabled={!canSave}
+            title={!recordPayment ? 'Standalone invoices settle on creation — turn the payment block on.' : undefined}
             className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-40 hover:opacity-90"
-            style={{ backgroundColor: recordPayment ? colors.semantic.success : brand }}>
-            {recordPayment && total > 0 ? `Save — ${fmtMoney(total)} received` : 'Save invoice'}
+            style={{ backgroundColor: colors.semantic.success }}>
+            {createAdhoc.isPending ? 'Saving…' : total > 0 ? `Save — ${fmtMoney(total)} received` : 'Save invoice'}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-6 items-start" style={{ gridTemplateColumns: '1fr 280px' }}>
+      <div className="grid gap-6 items-start" style={{ gridTemplateColumns: '1fr 300px' }}>
         {/* ═══════ LEFT: the document, editable in place ═══════ */}
         <InvoicePaper
           brand={brand}
@@ -174,12 +211,12 @@ const InvoiceComposerPage: React.FC = () => {
           businessName={currentTenant?.name || 'Your Business'}
           invoiceNumber={<span style={{ color: paperFaint }}>on save</span>}
           issuedDate={fmtDate(TODAY_ISO)}
-          dueDate={recordPayment ? fmtDate(payment.date) : fmtDate(TODAY_ISO)}
-          invoiceToName={contact ? contact.name : <span style={{ color: paperFaint }}>Choose a contact →</span>}
-          invoiceToLines={contact && !contact.hasContract ? ['No membership contract — settled directly'] : []}
+          dueDate={fmtDate(payment.date || TODAY_ISO)}
+          invoiceToName={contactName || <span style={{ color: paperFaint }}>Choose a contact →</span>}
+          invoiceToLines={contactName && !seed ? [] : seed ? ['No membership contract — settled directly'] : []}
           billToRows={[
-            { label: 'Total Due', value: <b>{fmtMoney(Math.max(0, total - paidOnCreation))}</b> },
-            ...(recordPayment ? [{ label: 'Payment', value: `${payment.method} · ${fmtDate(payment.date)}` }] : []),
+            { label: 'Total Due', value: <b>{fmtMoney(0)}</b> },
+            { label: 'Payment', value: `${payment.method}${payment.date ? ` · ${fmtDate(payment.date)}` : ''}` },
           ]}
           table={
             <>
@@ -231,7 +268,6 @@ const InvoiceComposerPage: React.FC = () => {
                   </tr>
                 ))}
 
-                {/* add-line row — typeahead over the catalog, free text allowed */}
                 <tr className="border-t" style={{ borderColor: '#f3f4f6' }}>
                   <td colSpan={6} className="py-3 px-4">
                     <div className="relative flex items-center gap-2">
@@ -242,7 +278,7 @@ const InvoiceComposerPage: React.FC = () => {
                           onFocus={() => setAddOpen(true)}
                           onChange={(e) => { setAddQuery(e.target.value); setAddOpen(true); }}
                           onKeyDown={(e) => { if (e.key === 'Enter') (matchingCatalog[0] ? addFromCatalog(matchingCatalog[0]) : addFreeText()); }}
-                          placeholder="Add item — type to search your catalog, or enter free text…"
+                          placeholder="Add item — type a name and press Enter…"
                           className="w-full pl-8 pr-3 py-2 rounded-lg border text-sm"
                           style={{ color: paperInk, borderColor: '#e5e7eb', backgroundColor: '#fafafa' }}
                         />
@@ -278,68 +314,32 @@ const InvoiceComposerPage: React.FC = () => {
           subtotal={subtotal}
           taxRows={taxTotal > 0 ? [{ label: 'Tax', amount: taxTotal }] : []}
           grandTotal={total}
-          amountPaid={paidOnCreation}
-          balanceDue={Math.max(0, total - paidOnCreation)}
+          amountPaid={recordPayment ? total : 0}
+          balanceDue={recordPayment ? 0 : total}
           notes={null}
         />
 
         {/* ═══════ RIGHT: sidecar ═══════ */}
         <div className="space-y-4">
           <SideCard title="Bill To">
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={sub} />
-              <input
-                value={contact && !contactOpen ? contact.name : contactQuery}
-                onFocus={() => { setContactOpen(true); setContactQuery(''); }}
-                onChange={(e) => setContactQuery(e.target.value)}
-                placeholder="Search contact…"
-                className="w-full pl-8 pr-3 py-2 rounded-lg border text-xs" style={sideInput}
-              />
-              {contactOpen && (
-                <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl border shadow-lg overflow-hidden"
-                  style={{ backgroundColor: colors.utility.primaryBackground, borderColor: `${colors.utility.primaryText}20` }}>
-                  {matchingContacts.map((c) => (
-                    <button key={c.id} onClick={() => { setContactId(c.id); setContactOpen(false); setAttachedReceiptId(null); }}
-                      className="w-full px-3 py-2 text-left hover:brightness-95"
-                      style={{ backgroundColor: colors.utility.primaryBackground }}>
-                      <span className="block text-xs font-semibold" style={ink}>{c.name}</span>
-                      <span className="block text-[10px]" style={sub}>{c.hasContract ? 'Member · active contract' : 'No contract — ad-hoc invoice'}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            {contact && !contact.hasContract && (
-              <p className="text-[11px] mt-2" style={sub}>No contract needed — this invoice stands on its own.</p>
+            <ContactPicker
+              value={contactId}
+              onChange={(id) => setContactId(id)}
+              placeholder="Search contact…"
+            />
+            {contactId && (
+              <p className="text-[11px] mt-2" style={sub}>
+                No contract needed — this invoice stands on its own and settles directly.
+              </p>
             )}
           </SideCard>
 
-          {/* Receipt-first: money that arrived before this invoice existed */}
-          {waitingReceipts.length > 0 && (
-            <SideCard title="Already received — no invoice yet">
-              <div className="space-y-3">
-                {waitingReceipts.map((r) => (
-                  <div key={r.id} className="rounded-lg border p-2.5" style={{ borderColor: `${colors.semantic.success}40`, backgroundColor: `${colors.semantic.success}0d` }}>
-                    <p className="text-[13px] font-bold" style={ink}>{fmtMoney(r.amount)} · {r.method}</p>
-                    <p className="text-[11px] mb-2" style={sub}>{fmtDate(r.received_on)}{r.reference ? ` · ${r.reference}` : ''}{r.description ? ` · ${r.description}` : ''}</p>
-                    <button onClick={() => attachReceipt(r)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white"
-                      style={{ backgroundColor: colors.semantic.success }}>
-                      <Link2 size={12} /> Attach to this invoice
-                    </button>
-                  </div>
-                ))}
-                <p className="text-[10px]" style={sub}>Attaching makes this invoice the record for money already in hand — it opens as paid.</p>
-              </div>
-            </SideCard>
-          )}
-
           <SideCard title="Payment" trailing={<FreeReceiptsBadge />}>
             <label className="flex items-center gap-2 pb-2 cursor-pointer">
-              <input type="checkbox" checked={recordPayment} onChange={(e) => { setRecordPayment(e.target.checked); if (!e.target.checked) setAttachedReceiptId(null); }} />
+              <input type="checkbox" checked={recordPayment} onChange={(e) => setRecordPayment(e.target.checked)} />
               <span className="text-xs font-semibold" style={ink}>Money already received — record it now</span>
             </label>
-            {recordPayment && (
+            {recordPayment ? (
               <div className="space-y-2.5 mt-1">
                 <select value={payment.method} onChange={(e) => setPayment((p) => ({ ...p, method: e.target.value }))}
                   className="w-full px-2.5 py-2 rounded-lg border text-xs" style={sideInput}>
@@ -354,6 +354,11 @@ const InvoiceComposerPage: React.FC = () => {
                   <Wallet size={12} /> A receipt is attached on save — the invoice opens as paid.
                 </p>
               </div>
+            ) : (
+              <p className="text-[11px] mt-1" style={sub}>
+                Standalone invoices settle on creation for now — an unpaid
+                standalone invoice is a later capability. Turn this back on to save.
+              </p>
             )}
           </SideCard>
         </div>

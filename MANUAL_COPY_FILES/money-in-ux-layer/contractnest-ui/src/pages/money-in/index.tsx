@@ -23,7 +23,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import InstalmentActionModal from '@/components/finance/InstalmentActionModal';
 import { useReceivables, type FinanceEvent, type FinanceInvoice } from '@/hooks/queries/useFinanceQueries';
 import { fmtMoney, fmtDate, useInvoiceTheme, Pill, useStatusMeta } from '../invoices/ui';
-import { SAMPLE_UNATTACHED_RECEIPTS } from '../invoices/sampleData';
+import { usePendingDeclarations } from '@/hooks/queries/useGroupSessionsDashboard';
 
 type Lens = 'everything' | 'late' | 'risk' | 'docs' | 'upcoming' | 'settled';
 
@@ -43,6 +43,7 @@ interface ContractGroup {
 }
 interface BuyerStory {
   key: string;
+  buyerId: string | null;
   name: string;
   direct: boolean;                    // no buyer contact on file
   contracts: ContractGroup[];
@@ -85,6 +86,16 @@ const MoneyInPage: React.FC = () => {
   const receivablesQuery = useReceivables({ enabled: perspective === 'revenue' });
   const data = receivablesQuery.data;
 
+  // A4: money that arrived with no paperwork = pending guest-fee
+  // declarations not yet stamped with an adhoc invoice. The RPC returns
+  // pending only, so rejected/confirmed rows drop out on their own.
+  const declarationsQuery = usePendingDeclarations({ enabled: perspective === 'revenue' });
+  const waitingReceipts = useMemo(
+    () => (declarationsQuery.data || []).filter(
+      (d) => d.is_guest_fee && !d.adhoc_invoice_id && d.member_contact_id && (d.amount || 0) > 0),
+    [declarationsQuery.data]
+  );
+
   const mono: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' };
   const hairline = `1px solid ${colors.utility.primaryText}12`;
 
@@ -117,6 +128,7 @@ const MoneyInPage: React.FC = () => {
       const oldest = late.reduce((m, e) => Math.max(m, e.days_overdue), 0);
       out.push({
         key,
+        buyerId: evs[0].buyer_id,
         name: evs[0].buyer_name || evs[0].contract_name || evs[0].contract_number,
         direct: !evs[0].buyer_id,
         contracts,
@@ -241,7 +253,6 @@ const MoneyInPage: React.FC = () => {
     );
   }
 
-  const shownReceipts = receiptsExpanded ? SAMPLE_UNATTACHED_RECEIPTS : SAMPLE_UNATTACHED_RECEIPTS.slice(0, 2);
   const lateStories = stories.filter((x) => x.lateAmount > 0);
 
   return (
@@ -304,32 +315,31 @@ const MoneyInPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── paperwork strip — SAMPLE until A4 wires declarations ── */}
-      {SAMPLE_UNATTACHED_RECEIPTS.length > 0 && (
+      {/* ── paperwork strip — live pending guest-fee declarations ── */}
+      {waitingReceipts.length > 0 && (
         <div className="mt-6 rounded-2xl px-5 py-4" style={{ backgroundColor: `${green}0f`, border: `1px solid ${green}35` }}>
           <p className="text-sm mb-2.5" style={ink}>
             <span className="font-extrabold tabular-nums" style={{ color: green }}>
-              {fmtMoney(SAMPLE_UNATTACHED_RECEIPTS.reduce((s, r) => s + r.amount, 0))}
+              {fmtMoney(waitingReceipts.reduce((s, r) => s + (r.amount || 0), 0))}
             </span>{' '}
             has already arrived without paperwork:
-            <span className="ml-2 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded align-middle" style={{ ...mono, color: colors.utility.secondaryText, backgroundColor: `${colors.utility.primaryText}0d` }}>sample · wires with A4</span>
           </p>
           <div className="space-y-2">
-            {shownReceipts.map((r) => (
+            {(receiptsExpanded ? waitingReceipts : waitingReceipts.slice(0, 2)).map((r) => (
               <div key={r.id} className="flex items-center gap-3">
                 <p className="text-[13px] flex-1 min-w-0 truncate" style={ink}>
-                  <b className="tabular-nums">{fmtMoney(r.amount)}</b> · {r.contact_name}
-                  <span style={sub}> · {r.method}{r.reference ? ` · ${r.reference}` : ''} · {fmtDate(r.received_on)}</span>
+                  <b className="tabular-nums">{fmtMoney(r.amount || 0)}</b> · {r.member_name || 'Guest'}
+                  <span style={sub}> · {r.upi_reference ? `UPI · ${r.upi_reference}` : 'declared'} · {fmtDate(r.created_at)}</span>
                 </p>
-                <button onClick={() => navigate(`/invoices/new?from=receipt:${r.id}`)}
+                <button onClick={() => navigate(`/invoices/new?from=declaration:${r.id}`)}
                   className="flex-none text-[11px] font-bold px-3 py-1.5 rounded-full text-white" style={{ backgroundColor: green }}>
                   Generate invoice
                 </button>
               </div>
             ))}
-            {SAMPLE_UNATTACHED_RECEIPTS.length > 2 && !receiptsExpanded && (
+            {waitingReceipts.length > 2 && !receiptsExpanded && (
               <button onClick={() => setReceiptsExpanded(true)} className="text-[11px] font-bold" style={{ color: green }}>
-                and {SAMPLE_UNATTACHED_RECEIPTS.length - 2} more…
+                and {waitingReceipts.length - 2} more…
               </button>
             )}
           </div>
@@ -341,6 +351,13 @@ const MoneyInPage: React.FC = () => {
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] flex-none" style={{ ...sub, ...mono }}>
           {rows.length} of {stories.length} buyers · {lens === 'upcoming' ? 'soonest first' : 'most late first'}
         </p>
+        {lens !== 'everything' && (
+          <button onClick={() => setLens('everything')}
+            className="flex-none inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+            style={{ ...mono, color: brand, backgroundColor: `${brand}14`, border: `1px solid ${brand}40` }}>
+            showing: {lens} ✕
+          </button>
+        )}
         <div className="relative ml-auto w-full max-w-[240px]">
           <Search size={13} className="absolute left-0 top-1/2 -translate-y-1/2" style={sub} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="name · contract · INV-…"
@@ -364,7 +381,12 @@ const MoneyInPage: React.FC = () => {
               <span className="w-1 self-stretch rounded-full flex-none" style={{ backgroundColor: `${accent}66` }} />
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-bold truncate" style={ink}>
-                  {b.name}
+                  <span
+                    role="link"
+                    className={b.buyerId ? 'hover:underline underline-offset-2 cursor-pointer' : undefined}
+                    title={b.buyerId ? 'Open contact profile' : undefined}
+                    onClick={(e) => { if (b.buyerId) { e.stopPropagation(); navigate(`/contacts/${b.buyerId}`); } }}
+                  >{b.name}</span>
                   {b.direct && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: brand, backgroundColor: `${brand}14` }}>direct</span>}
                   {b.atRisk && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: red, backgroundColor: `${red}14` }}>at risk</span>}
                 </p>
@@ -377,7 +399,15 @@ const MoneyInPage: React.FC = () => {
                   ? <p className="text-lg font-extrabold tabular-nums" style={ink}>{fmtMoney(b.open)}</p>
                   : <p className="text-lg font-extrabold tabular-nums" style={{ color: green }}>✓</p>}
                 <p className="text-[10px]" style={{ ...sub, ...mono }}>
-                  {b.contracts.map((c) => c.contract_number).join(' · ')}
+                  {b.contracts.map((c, i) => (
+                    <span key={c.contract_id}>
+                      {i > 0 && ' · '}
+                      <span role="link" className="hover:underline underline-offset-2 cursor-pointer" title="Open contract"
+                        onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.contract_id}`); }}>
+                        {c.contract_number}
+                      </span>
+                    </span>
+                  ))}
                 </p>
               </div>
               <ChevronDown size={16} className={`flex-none transition-transform ${open ? 'rotate-180' : ''} opacity-40 group-hover:opacity-80`} style={ink} />
