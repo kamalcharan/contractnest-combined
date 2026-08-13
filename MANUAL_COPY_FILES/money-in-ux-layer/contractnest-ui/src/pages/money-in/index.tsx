@@ -358,8 +358,9 @@ const MoneyInPage: React.FC = () => {
         const open = openRows.has(b.key);
         const accent = b.open <= 0.001 ? green : b.atRisk ? red : b.lateAmount > 0 ? red : amber;
         return (
-          <div key={b.key} style={{ borderBottom: hairline }}>
-            <button onClick={() => toggleRow(b.key)} className="w-full py-4 flex items-center gap-4 text-left group">
+          <div key={b.key} className="rounded-2xl border mb-3 overflow-hidden"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}14` }}>
+            <button onClick={() => toggleRow(b.key)} className="w-full px-4 py-4 flex items-center gap-4 text-left group">
               <span className="w-1 self-stretch rounded-full flex-none" style={{ backgroundColor: `${accent}66` }} />
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-bold truncate" style={ink}>
@@ -383,7 +384,7 @@ const MoneyInPage: React.FC = () => {
             </button>
 
             {open && (
-              <div className="pb-5 pl-5 space-y-4">
+              <div className="pb-5 pl-9 pr-5 space-y-4">
                 {b.contracts.map((c) => {
                   const openIds = c.events.filter((e) => chipState(e) !== 'paid' && e.id).map((e) => e.id as string);
                   return (
