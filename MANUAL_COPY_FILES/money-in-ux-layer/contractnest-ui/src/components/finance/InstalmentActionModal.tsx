@@ -1,24 +1,26 @@
 // ============================================================================
-// InstalmentActionModal — the Dues-tab action methodology, shared.
+// InstalmentActionModal — the Dues-tab dialog, cloned as a shared component.
 // ----------------------------------------------------------------------------
-// Opened from an instalment chip (Money In; later any surface). Offers, for
-// the selected billing event(s) of ONE contract:
-//   · Record Payment — the EXISTING RecordPaymentDialog (same write path as
-//     Contract Detail and the Dues tab), pre-ticked to these events
-//   · Status corrections — ONLY the transitions the tenant's own state
-//     machine allows (useTransitionMap), applied through
-//     useContractEventOperations.updateEvent WITH the event's version so a
-//     concurrent edit fails loudly instead of silently losing the race.
-//
-// The receivables payload doesn't carry event versions, so this modal fetches
-// the contract's events fresh on open — that supplies both the version and
-// the current status, protecting against a stale list behind the click.
-// Deliberately mirrors the group-sessions Dues markCell behavior WITHOUT
-// refactoring that page — Dues can adopt this component later, on purpose.
+// Layout, styles and flow mirror the Group Sessions Dues markCell/markConfirm
+// dialogs verbatim (owner: "use the logic and approach we have in Dues"):
+//   · title + "month · contract" subtitle
+//   · full-width green Record Payment (the EXISTING RecordPaymentDialog,
+//     pre-ticked to these events) — hidden once nothing is still owed
+//   · per instalment: amount · date, status pill, then tinted rounded-lg
+//     transition chips offering ONLY what the tenant's state machine allows;
+//     terminal statuses say "X is final — cannot be changed from here"
+//   · bottom full-width Close
+//   · a STACKED confirm dialog ("Mark as Waived?") with consequence copy and
+//     the action button colored by the target status
+// One deliberate logic addition: the receivables payload carries no event
+// `version`, so this modal fetches the contract's events fresh on open —
+// the same optimistic-concurrency rule Dues follows (version travels with
+// the write; losing a race silently would be worse than a visible error).
+// The Dues tab keeps its inline copy untouched; it can adopt this later.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
-import { X, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import RecordPaymentDialog from '@/components/contracts/RecordPaymentDialog';
@@ -26,10 +28,12 @@ import { useContractEvents, useContractEventOperations } from '@/hooks/queries/u
 import { useStatusMap, useTransitionMap } from '@/hooks/queries/useEventStatusConfigQueries';
 import type { ContractEvent } from '@/types/contractEvents';
 
-const fmtMoney = (n: number, currency = 'INR'): string =>
+const money = (n: number, currency = 'INR'): string =>
   `${currency === 'INR' ? '₹' : currency + ' '}${Math.round(n).toLocaleString('en-IN')}`;
-const fmtDate = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const fmtShort = (iso: string | null): string =>
+  iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
+const monthLabelOf = (iso: string | null): string | null =>
+  iso ? new Date(iso).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : null;
 
 interface InstalmentActionModalProps {
   isOpen: boolean;
@@ -52,8 +56,8 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
   const ink: React.CSSProperties = { color: colors.utility.primaryText };
   const sub: React.CSSProperties = { color: colors.utility.secondaryText };
 
-  const statusMap = useStatusMap('billing');
-  const transitionMap = useTransitionMap('billing');
+  const billingStatusMap = useStatusMap('billing');
+  const billingTransitions = useTransitionMap('billing');
   const { updateEvent, isUpdating } = useContractEventOperations();
 
   // Fresh events for THIS contract — source of version + current status.
@@ -67,44 +71,47 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
     return all.filter((e) => eventIds.includes(e.id));
   }, [eventsQuery.data, eventIds]);
 
-  const [confirm, setConfirm] = useState<null | { event: ContractEvent; to: string }>(null);
+  const [markConfirm, setMarkConfirm] = useState<null | { event: ContractEvent; to: string }>(null);
   const [payOpen, setPayOpen] = useState(false);
 
   if (!isOpen) return null;
 
-  const statusLabel = (code: string) => statusMap[code]?.display_name || code.replace(/_/g, ' ');
-  const statusColor = (code: string) => statusMap[code]?.hex_color || colors.utility.secondaryText;
+  const statusLabel = (code: string) => billingStatusMap[code]?.display_name || code.replace(/_/g, ' ');
+  const statusColor = (code: string) => billingStatusMap[code]?.hex_color || colors.utility.secondaryText;
   const openEvents = events.filter((e) => (e.amount || 0) - (e.amount_settled || 0) > 0.001);
+  const monthLabel = events.length === 1 ? monthLabelOf(events[0].scheduled_date) : null;
 
-  const applyTransition = async () => {
-    if (!confirm) return;
+  const applyMark = async () => {
+    if (!markConfirm) return;
+    const { event, to } = markConfirm;
     try {
-      // version travels with the write — losing a concurrent edit silently
-      // would be worse than an error the user can see (Dues-tab rule).
-      await updateEvent({ eventId: confirm.event.id, updateData: { status: confirm.to, version: confirm.event.version } as any });
-      setConfirm(null);
+      // version travels with the write — another surface can be changing the
+      // same instalment, and losing that race silently would be worse than
+      // an error the user can see. (Dues-tab rule, kept.)
+      await updateEvent({ eventId: event.id, updateData: { status: to, version: event.version } as any });
+      setMarkConfirm(null);
       onChanged();
       eventsQuery.refetch();
     } catch {
-      // useContractEventOperations already toasts the failure.
-      setConfirm(null);
+      // useContractEventOperations already surfaces a toast on failure.
+      setMarkConfirm(null);
     }
   };
 
   return (
     <>
-      <div role="dialog" aria-modal="true" aria-label="Instalment actions"
+      <div
+        role="dialog" aria-modal="true" aria-label="Change instalment status"
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ backgroundColor: 'rgba(15,15,20,0.55)' }} onClick={onClose}>
+        style={{ backgroundColor: 'rgba(15,15,20,0.55)' }}
+        onClick={onClose}
+      >
         <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl border p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, borderColor: `${colors.utility.primaryText}18` }}>
-          <div className="flex items-start justify-between gap-3 mb-1">
-            <div>
-              <p className="text-sm font-bold" style={ink}>{buyerName || 'Instalment'}</p>
-              <p className="text-xs" style={sub}>{contractNumber || contractId}</p>
-            </div>
-            <button onClick={onClose} style={sub}><X size={16} /></button>
-          </div>
+          style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '18' }}>
+          <p className="text-sm font-bold" style={ink}>{buyerName || 'Instalment'}</p>
+          <p className="text-xs mb-4" style={sub}>
+            {monthLabel ? `${monthLabel} · ` : ''}{contractNumber || contractId}
+          </p>
 
           {eventsQuery.isLoading ? (
             <div className="py-8 flex justify-center"><LoadingSpinner size="md" /></div>
@@ -114,45 +121,46 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
             </p>
           ) : (
             <>
-              {/* A real receipt, distinct from the status chips below — this
-                  creates a receipt and settles the invoice. Hidden once
-                  nothing here is still owed. (Same rule as the Dues tab.) */}
+              {/* A real receipt, distinct from the status chips below —
+                  this creates a real receipt and settles the invoice.
+                  Hidden once nothing here is still owed. */}
               {openEvents.length > 0 && (
                 <button
                   onClick={() => setPayOpen(true)}
-                  className="w-full my-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 text-white"
-                  style={{ backgroundColor: colors.semantic.success }}
+                  className="w-full mb-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5"
+                  style={{ backgroundColor: colors.semantic.success, color: '#fff' }}
                 >
                   <Wallet size={13} /> Record Payment
                 </button>
               )}
 
               {events.map((ev) => {
-                const allowed = transitionMap[ev.status] || [];
-                const open = (ev.amount || 0) - (ev.amount_settled || 0);
+                const allowed = billingTransitions[ev.status] || [];
                 return (
                   <div key={ev.id} className="mb-3 pb-3 border-b last:border-b-0 last:mb-0 last:pb-0"
-                    style={{ borderColor: `${colors.utility.primaryText}10` }}>
+                    style={{ borderColor: colors.utility.primaryText + '10' }}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold tabular-nums" style={ink}>
-                        {fmtMoney(ev.amount || 0, currency)}
-                        <span className="font-normal" style={sub}> · {fmtDate(ev.scheduled_date)}</span>
-                        {open > 0.001 && (ev.amount_settled || 0) > 0 && (
-                          <span className="font-normal" style={{ color: colors.semantic.success }}> · {fmtMoney(ev.amount_settled || 0, currency)} received</span>
-                        )}
+                        {money(ev.amount || 0, currency)}
+                        <span className="font-normal" style={sub}> · {fmtShort(ev.scheduled_date)}</span>
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold"
                         style={{ backgroundColor: `${statusColor(ev.status)}1c`, color: statusColor(ev.status), border: `1px solid ${statusColor(ev.status)}45` }}>
                         {statusLabel(ev.status)}
                       </span>
                     </div>
-                    {allowed.length > 0 && (
+                    {allowed.length === 0 ? (
+                      <p className="text-[11px]" style={sub}>
+                        {statusLabel(ev.status)} is final — this instalment cannot be changed from here.
+                      </p>
+                    ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {allowed.map((to) => (
-                          <button key={to} onClick={() => setConfirm({ event: ev, to })}
-                            disabled={isUpdating}
-                            className="px-2.5 py-1 rounded-full border text-[11px] font-semibold disabled:opacity-50"
-                            style={{ color: statusColor(to), borderColor: `${statusColor(to)}50` }}>
+                          <button key={to}
+                            onClick={() => setMarkConfirm({ event: ev, to })}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold border"
+                            style={{ backgroundColor: statusColor(to) + '18', borderColor: statusColor(to) + '45', color: statusColor(to) }}
+                          >
                             {statusLabel(to)}
                           </button>
                         ))}
@@ -161,30 +169,56 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
                   </div>
                 );
               })}
-
-              {/* two-step confirm — a status change relabels money; it should
-                  never happen on a single stray tap */}
-              {confirm && (
-                <div className="mt-3 rounded-lg border px-3 py-2.5 flex items-center justify-between gap-3"
-                  style={{ borderColor: `${colors.semantic.warning}55`, backgroundColor: `${colors.semantic.warning}10` }}>
-                  <p className="text-xs" style={ink}>
-                    Mark {fmtMoney(confirm.event.amount || 0, currency)} · {fmtDate(confirm.event.scheduled_date)} as{' '}
-                    <b style={{ color: statusColor(confirm.to) }}>{statusLabel(confirm.to)}</b>?
-                  </p>
-                  <div className="flex gap-1.5 flex-none">
-                    <button onClick={applyTransition} disabled={isUpdating}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-white disabled:opacity-50"
-                      style={{ backgroundColor: colors.semantic.warning }}>
-                      {isUpdating ? '…' : 'Confirm'}
-                    </button>
-                    <button onClick={() => setConfirm(null)} className="px-2 py-1.5 text-[11px] font-semibold" style={sub}>Cancel</button>
-                  </div>
-                </div>
-              )}
             </>
           )}
+
+          <button onClick={onClose}
+            className="w-full mt-4 py-2 rounded-lg border text-xs font-semibold"
+            style={{ borderColor: colors.utility.secondaryText + '30', ...ink }}>
+            Close
+          </button>
         </div>
       </div>
+
+      {/* Stacked confirm — a status change relabels money and must never
+          happen on a single stray tap. Same layering as the Dues tab. */}
+      {markConfirm && (
+        <div
+          role="dialog" aria-modal="true" aria-label="Confirm status change"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(15,15,20,0.65)' }}
+          onClick={() => !isUpdating && setMarkConfirm(null)}
+        >
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl border p-5"
+            style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '18' }}>
+            <p className="text-sm font-bold mb-2" style={ink}>
+              Mark as {statusLabel(markConfirm.to)}?
+            </p>
+            <p className="text-xs mb-1" style={sub}>
+              <b style={ink}>{buyerName || contractNumber}</b>
+              {monthLabelOf(markConfirm.event.scheduled_date) ? <> · {monthLabelOf(markConfirm.event.scheduled_date)}</> : null} ·{' '}
+              <b style={ink}>{money(markConfirm.event.amount || 0, currency)}</b>
+            </p>
+            <p className="text-xs mb-4" style={sub}>
+              {(billingStatusMap[markConfirm.to]?.is_terminal && markConfirm.to !== 'paid')
+                ? 'This writes the amount off. It stops counting as arrears here and in Finance.'
+                : 'This changes what the buyer is shown as owing.'}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setMarkConfirm(null)} disabled={isUpdating}
+                className="flex-1 py-2 rounded-lg border text-xs font-semibold disabled:opacity-40"
+                style={{ borderColor: colors.utility.secondaryText + '30', ...ink }}>
+                Cancel
+              </button>
+              <button onClick={applyMark} disabled={isUpdating}
+                className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-60"
+                style={{ backgroundColor: statusColor(markConfirm.to) }}>
+                {isUpdating ? 'Saving…' : `Mark ${statusLabel(markConfirm.to)}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {payOpen && (
         <RecordPaymentDialog
