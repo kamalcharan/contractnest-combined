@@ -198,7 +198,7 @@ import OpsServiceSchedulePage from './pages/operations/services';
 import GroupSessionsPage from './pages/operations/group-sessions';
 import InvoicesHubPage from './pages/invoices';
 import InvoiceComposerPage from './pages/invoices/composer';
-import InvoiceViewPage from './pages/invoices/view';
+import StandaloneInvoicePage from './pages/invoices/view';
 import OpsAppointmentsPage from './pages/operations/appointments';
 import AppointmentsPage from './pages/appointments';
 import InviteSellersPage from './pages/contracts/invite';
@@ -688,7 +688,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<InvoicesHubPage />} />
             <Route path="new" element={<InvoiceComposerPage />} />
-            <Route path=":invoiceId" element={<InvoiceViewPage />} />
+            <Route path=":invoiceId" element={<StandaloneInvoicePage />} />
           </Route>
 
           {/* Operations → Appointments — Stage 3 */}
