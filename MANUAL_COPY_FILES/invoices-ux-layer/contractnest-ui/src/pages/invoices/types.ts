@@ -23,9 +23,25 @@ export interface InvoiceSummary {
 export interface InvoiceLine {
   id: string;
   name: string;
+  category: string | null;         // small subtitle under the item name
+  description: string | null;      // the document's Description column
   rate: number;
   qty: number;
   tax_rate: number;                // percent, 0 for none
+}
+
+/** Money that arrived BEFORE any invoice existed (declared UPI at check-in,
+ *  cash in hand). The composer offers to attach it, so the invoice is born
+ *  settled — receipt-first invoicing, the BBB guest-fee reality. */
+export interface UnattachedReceipt {
+  id: string;
+  contact_id: string;
+  contact_name: string;
+  amount: number;
+  method: string;
+  reference: string | null;
+  received_on: string;             // ISO date
+  description: string | null;      // e.g. "Guest Participation Fee"
 }
 
 export interface InvoiceReceipt {

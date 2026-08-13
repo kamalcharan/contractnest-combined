@@ -15,7 +15,7 @@
 // entitlements (addons_extra) once the plan-entitlement wiring lands.
 // ============================================================================
 
-import type { CatalogLineOption, InvoiceDetail, InvoiceSummary } from './types';
+import type { CatalogLineOption, InvoiceDetail, InvoiceSummary, UnattachedReceipt } from './types';
 
 export const UX_SAMPLE_MODE = true;
 
@@ -42,7 +42,7 @@ export const SAMPLE_INVOICES: InvoiceSummary[] = [
 export const SAMPLE_DETAILS: Record<string, InvoiceDetail> = {
   'inv-01': {
     ...SAMPLE_INVOICES[0],
-    lines: [{ id: 'l1', name: 'Saturday Network Meeting — Annual Membership 2026-27', rate: 19500, qty: 1, tax_rate: 0 }],
+    lines: [{ id: 'l1', name: 'Saturday Network Meeting', category: 'Group Session', description: 'Annual membership 2026-27 — meets every alternate Saturday', rate: 19500, qty: 1, tax_rate: 0 }],
     receipts: [
       { id: 'r1', amount: 4500, method: 'UPI', reference: '658553716134', received_on: D('2026-07-25') },
       { id: 'r2', amount: 1500, method: 'Cash', reference: null, received_on: D('2026-08-01') },
@@ -51,7 +51,7 @@ export const SAMPLE_DETAILS: Record<string, InvoiceDetail> = {
   },
   'inv-07': {
     ...SAMPLE_INVOICES[6],
-    lines: [{ id: 'l1', name: 'Guest Participation Fee', rate: 600, qty: 1, tax_rate: 0 }],
+    lines: [{ id: 'l1', name: 'Guest Participation Fee', category: 'Guest Fees', description: 'Saturday Network Meeting, 8 Aug 2026', rate: 600, qty: 1, tax_rate: 0 }],
     receipts: [{ id: 'r1', amount: 600, method: 'UPI', reference: 'bappuditeju-2@okaxis', received_on: D('2026-08-08') }],
     notes: 'Guest at Saturday Network Meeting, 8 Aug — no membership contract, settled directly.',
   },
@@ -61,7 +61,7 @@ export const SAMPLE_DETAILS: Record<string, InvoiceDetail> = {
 export const detailFor = (inv: InvoiceSummary): InvoiceDetail =>
   SAMPLE_DETAILS[inv.id] ?? {
     ...inv,
-    lines: [{ id: 'l1', name: 'Saturday Network Meeting — Membership 2026-27', rate: inv.total_amount, qty: 1, tax_rate: 0 }],
+    lines: [{ id: 'l1', name: 'Saturday Network Meeting', category: 'Group Session', description: 'Membership 2026-27 — meets every alternate Saturday', rate: inv.total_amount, qty: 1, tax_rate: 0 }],
     receipts: inv.amount_settled > 0
       ? [{ id: 'r1', amount: inv.amount_settled, method: 'UPI', reference: null, received_on: inv.issued_date }]
       : [],
@@ -85,4 +85,12 @@ export const SAMPLE_CONTACTS: { id: string; name: string; hasContract: boolean }
   { id: 'ct-3', name: 'Pavan Kulkarni', hasContract: true },
   { id: 'ct-4', name: 'Test Guest — Adhoc Invoice QA', hasContract: false },
   { id: 'ct-5', name: 'Srilekha Kulkarni', hasContract: true },
+];
+
+/** Money received with NO invoice yet — the receipt-first reality (declared
+ *  guest fees at check-in, cash in hand). Wiring: pending payment
+ *  declarations without an adhoc_invoice_id + unlinked receipts. */
+export const SAMPLE_UNATTACHED_RECEIPTS: UnattachedReceipt[] = [
+  { id: 'ur-1', contact_id: 'ct-1', contact_name: 'Tejaswinni ni Bappudi Sundar', amount: 600, method: 'UPI', reference: 'bappuditeju-2@okaxis', received_on: '2026-08-08', description: 'Guest Participation Fee' },
+  { id: 'ur-2', contact_id: 'ct-4', contact_name: 'Test Guest — Adhoc Invoice QA', amount: 600, method: 'UPI', reference: 'testupi@okaxis', received_on: '2026-08-09', description: 'Guest Participation Fee' },
 ];

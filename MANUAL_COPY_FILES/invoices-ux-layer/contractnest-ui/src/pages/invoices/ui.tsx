@@ -1,11 +1,15 @@
 // ============================================================================
 // Invoices section — shared UI primitives
-// Product-led idiom: job language, derived status, document-first chrome.
-// All colors come from the theme context — no hardcoded palette.
+// The document card reproduces the EXISTING contract-invoice page design
+// (pages/contracts/invoice/index.tsx) so every invoice in the product looks
+// identical: white print-faithful paper, brand accent bars, brand-tinted
+// items table with a Description column, the same financial summary block.
+// The paper is deliberately always-light (like the existing page) — it is a
+// document, not a panel; the app chrome around it stays theme-aware.
 // ============================================================================
 
 import React from 'react';
-import { Receipt, IndianRupee, BadgeCheck } from 'lucide-react';
+import { Building2, Receipt, IndianRupee, BadgeCheck } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { InvoiceStatus } from './types';
 
@@ -18,9 +22,9 @@ export const useInvoiceTheme = () => {
     sub: { color: colors.utility.secondaryText } as React.CSSProperties,
     card: {
       backgroundColor: colors.utility.secondaryBackground,
-      border: `1px solid ${colors.utility.primaryText}14`,
+      border: `1px solid ${colors.utility.primaryText}15`,
     } as React.CSSProperties,
-    hairline: { borderColor: `${colors.utility.primaryText}12` } as React.CSSProperties,
+    hairline: { borderColor: `${colors.utility.primaryText}10` } as React.CSSProperties,
   };
 };
 
@@ -28,7 +32,7 @@ export const fmtMoney = (n: number, currency = 'INR'): string =>
   `${currency === 'INR' ? '₹' : currency + ' '}${Math.round(n).toLocaleString('en-IN')}`;
 
 export const fmtDate = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 /** Derived status → semantic color + human label. Never a raw enum on screen. */
 export const useStatusMeta = () => {
@@ -38,7 +42,7 @@ export const useStatusMeta = () => {
     if (status === 'cancelled') return { label: 'Cancelled', color: colors.utility.secondaryText };
     if (status === 'draft') return { label: 'Draft', color: colors.utility.secondaryText };
     if (overdue) return { label: 'Overdue', color: colors.semantic.error };
-    if (status === 'partially_paid') return { label: 'Partly paid', color: colors.semantic.warning };
+    if (status === 'partially_paid') return { label: 'Partially Paid', color: colors.semantic.warning };
     return { label: 'Awaiting payment', color: colors.semantic.warning };
   };
 };
@@ -93,74 +97,177 @@ export const EmptyState: React.FC<{ title: string; hint?: string }> = ({ title, 
   );
 };
 
-// ─── Document chrome ─────────────────────────────────────────────────────────
-// The branded frame shared by viewer and composer: brand accent bar, business
-// identity, INVOICE title + meta, then whatever children the page provides.
-// App chrome (back button, actions) lives OUTSIDE this card, on the page.
+// ─── Document paper (mirrors pages/contracts/invoice/index.tsx) ─────────────
+// Fixed light palette on purpose: the document prints/PDFs as-is and must
+// look identical to the contract-invoice page in both app themes.
 
-export interface DocumentMetaRow {
-  label: string;
-  value: React.ReactNode;
+export const paperInk = '#1f2937';
+export const paperSub = '#6b7280';   // gray-500
+export const paperFaint = '#9ca3af'; // gray-400
+
+/** Table header cell — same classes as the existing invoice page. */
+export const DocTh: React.FC<{ right?: boolean; brand: string; children: React.ReactNode }> = ({ right, brand, children }) => (
+  <th
+    className={`${right ? 'text-right' : 'text-left'} py-3 px-4 text-[0.65rem] font-bold uppercase tracking-wider`}
+    style={{ color: brand }}
+  >
+    {children}
+  </th>
+);
+
+export interface InvoicePaperProps {
+  brand: string;
+  brandSecondary?: string;
+  businessName: string;
+  businessLines?: (string | null | undefined)[]; // address / phone / email / GSTIN
+  invoiceNumber: React.ReactNode;
+  issuedDate: React.ReactNode;
+  dueDate: React.ReactNode;
+  dueDateColor?: string;
+  invoiceToName: React.ReactNode;
+  invoiceToLines?: React.ReactNode[];
+  billToRows: { label: string; value: React.ReactNode }[];
+  /** Fully-formed <thead>+<tbody> content for the items table. */
+  table: React.ReactNode;
+  subtotal: number;
+  taxRows?: { label: string; amount: number }[];
+  grandTotal: number;
+  amountPaid?: number;
+  balanceDue?: number;
+  currency?: string;
+  notes?: string | null;
 }
 
-export const InvoiceDocumentFrame: React.FC<{
-  businessName: string;
-  businessSub?: string | null;
-  metaRows: DocumentMetaRow[];
-  billToName: React.ReactNode;
-  billToSub?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ businessName, businessSub, metaRows, billToName, billToSub, children }) => {
-  const { colors, ink, sub, hairline } = useInvoiceTheme();
-  const brand = colors.brand.primary;
-  const initials = businessName.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-
+export const InvoicePaper: React.FC<InvoicePaperProps> = (p) => {
+  const currency = p.currency ?? 'INR';
+  const showPaid = (p.amountPaid ?? 0) > 0;
+  const balance = p.balanceDue ?? Math.max(0, p.grandTotal - (p.amountPaid ?? 0));
   return (
-    <div
-      className="rounded-2xl overflow-hidden border"
-      style={{ backgroundColor: colors.utility.primaryBackground, borderColor: `${colors.utility.primaryText}14` }}
-    >
-      {/* brand accent bar */}
-      <div style={{ height: 5, background: `linear-gradient(90deg, ${brand}, ${brand}66)` }} />
+    <div className="rounded-xl shadow-lg overflow-hidden" style={{ backgroundColor: '#ffffff', color: paperInk }}>
+      {/* Top accent bar */}
+      <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${p.brand}, ${p.brandSecondary || p.brand}80)` }} />
 
-      <div className="p-6 sm:p-8">
-        {/* identity row */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <span
-              className="h-12 w-12 rounded-xl inline-flex items-center justify-center text-base font-extrabold flex-none"
-              style={{ backgroundColor: `${brand}1a`, color: brand, border: `1px solid ${brand}40` }}
-            >
-              {initials}
-            </span>
-            <div className="min-w-0">
-              <p className="text-lg font-extrabold leading-tight truncate" style={ink}>{businessName}</p>
-              {businessSub && <p className="text-xs truncate" style={sub}>{businessSub}</p>}
+      <div className="p-8">
+        {/* Header: company + invoice meta */}
+        <div className="flex justify-between items-start mb-8 gap-6 flex-wrap">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Building2 className="h-8 w-8" style={{ color: p.brand }} />
+              <span className="text-xl font-bold" style={{ color: p.brand }}>{p.businessName}</span>
             </div>
+            {(p.businessLines ?? []).filter(Boolean).map((l, i) => (
+              <div key={i} className="text-sm max-w-xs leading-relaxed" style={{ color: paperSub }}>{l}</div>
+            ))}
           </div>
-
           <div className="text-right">
-            <p className="text-2xl font-extrabold tracking-wide" style={{ color: brand }}>INVOICE</p>
-            <div className="mt-1 space-y-0.5">
-              {metaRows.map((m) => (
-                <p key={m.label} className="text-xs" style={sub}>
-                  <span className="font-semibold">{m.label}:</span>{' '}
-                  <span style={ink}>{m.value}</span>
-                </p>
+            <h2 className="text-2xl font-extrabold tracking-tight mb-4" style={{ color: p.brand }}>INVOICE</h2>
+            <div className="space-y-2">
+              {([['Invoice #', p.invoiceNumber, undefined], ['Date Issued', p.issuedDate, undefined], ['Due Date', p.dueDate, p.dueDateColor]] as const).map(([label, value, color]) => (
+                <div key={label as string} className="flex justify-end gap-4 text-sm">
+                  <span className="min-w-[80px] text-right" style={{ color: paperFaint }}>{label}</span>
+                  <span className="font-semibold min-w-[120px] text-right" style={{ color: color || paperInk }}>{value}</span>
+                </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* bill-to strip */}
-        <div className="mt-6 pt-4 border-t" style={hairline}>
-          <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={sub}>Bill To</p>
-          <div className="text-sm font-bold" style={ink}>{billToName}</div>
-          {billToSub && <div className="text-xs mt-0.5" style={sub}>{billToSub}</div>}
+        <hr className="mb-8" style={{ borderColor: '#e5e7eb' }} />
+
+        {/* Invoice To / Bill To */}
+        <div className="grid grid-cols-2 gap-8 mb-8">
+          <div>
+            <h3 className="text-[0.65rem] font-bold uppercase tracking-widest mb-3" style={{ color: paperFaint }}>Invoice To</h3>
+            <div className="space-y-1">
+              <div className="text-sm font-bold" style={{ color: paperInk }}>{p.invoiceToName}</div>
+              {(p.invoiceToLines ?? []).map((l, i) => (
+                <div key={i} className="text-sm" style={{ color: paperSub }}>{l}</div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-[0.65rem] font-bold uppercase tracking-widest mb-3" style={{ color: paperFaint }}>Bill To</h3>
+            <div className="space-y-2">
+              {p.billToRows.map((r) => (
+                <div key={r.label} className="flex justify-between text-sm">
+                  <span style={{ color: paperSub }}>{r.label}</span>
+                  <span className="font-medium" style={{ color: '#374151' }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="mt-6">{children}</div>
+        {/* Items table */}
+        <div className="mb-8 rounded-lg overflow-x-auto border" style={{ borderColor: '#f3f4f6' }}>
+          <table className="w-full min-w-[560px]">{p.table}</table>
+        </div>
+
+        {/* Financial summary */}
+        <div className="flex justify-end mb-8">
+          <div className="w-80">
+            <div className="flex justify-between py-2 text-sm">
+              <span style={{ color: paperSub }}>Subtotal</span>
+              <span className="font-semibold" style={{ color: paperInk }}>{fmtMoney(p.subtotal, currency)}</span>
+            </div>
+            {(p.taxRows ?? []).map((t) => (
+              <div key={t.label} className="flex justify-between py-1.5 text-sm">
+                <span style={{ color: paperSub }}>{t.label}</span>
+                <span className="font-medium" style={{ color: '#374151' }}>{fmtMoney(t.amount, currency)}</span>
+              </div>
+            ))}
+            <div className="my-2 border-t-2" style={{ borderColor: '#d1d5db' }} />
+            <div className="flex justify-between py-2">
+              <span className="text-base font-bold" style={{ color: paperInk }}>Grand Total</span>
+              <span className="text-lg font-extrabold" style={{ color: p.brand }}>{fmtMoney(p.grandTotal, currency)}</span>
+            </div>
+            {showPaid && (
+              <>
+                <div className="flex justify-between py-1.5 text-sm">
+                  <span className="font-medium" style={{ color: '#059669' }}>Amount Paid</span>
+                  <span className="font-semibold" style={{ color: '#059669' }}>- {fmtMoney(p.amountPaid!, currency)}</span>
+                </div>
+                <div className="my-1 border-t" style={{ borderColor: '#e5e7eb' }} />
+                <div className="flex justify-between py-2">
+                  <span className="text-sm font-bold" style={{ color: paperInk }}>Balance Due</span>
+                  <span className="text-base font-extrabold" style={{ color: balance > 0 ? '#F59E0B' : '#10B981' }}>
+                    {fmtMoney(balance, currency)}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {p.notes && (
+          <div className="pt-6 border-t" style={{ borderColor: '#e5e7eb' }}>
+            <h3 className="text-[0.65rem] font-bold uppercase tracking-widest mb-2" style={{ color: paperFaint }}>Note</h3>
+            <p className="text-sm leading-relaxed" style={{ color: paperSub }}>{p.notes}</p>
+          </div>
+        )}
+
+        <div className="mt-8 pt-4 border-t text-center" style={{ borderColor: '#f3f4f6' }}>
+          <p className="text-[0.6rem]" style={{ color: '#d1d5db' }}>This is a computer-generated invoice. No signature required.</p>
+        </div>
       </div>
+
+      {/* Bottom accent bar */}
+      <div className="h-1" style={{ backgroundColor: `${p.brand}30` }} />
+    </div>
+  );
+};
+
+// ─── Sidecar cards (mirror the existing page's right column) ────────────────
+
+export const SideCard: React.FC<{ title: string; children: React.ReactNode; trailing?: React.ReactNode }> = ({ title, children, trailing }) => {
+  const { colors } = useInvoiceTheme();
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}15` }}>
+      <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+        <h3 className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>{title}</h3>
+        {trailing}
+      </div>
+      <div className="p-4">{children}</div>
     </div>
   );
 };
