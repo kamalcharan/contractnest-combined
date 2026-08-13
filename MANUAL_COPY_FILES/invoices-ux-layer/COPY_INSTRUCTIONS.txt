@@ -1,0 +1,150 @@
+═══════════════════════════════════════════════════
+FEATURE: Invoices — standalone section, UX layer (Batch 1 of 2)
+Branch folder: invoices-ux-layer
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (9 files: 6 new, 3 edited)
+
+  contractnest-api    — NOT touched
+  contractnest-edge   — NOT touched
+  ContractNest-Mobile — NOT touched
+  ClaudeDocumentation — NOT touched
+
+No database change. No migration. No API change. NO real data is read or
+written by the new pages in this batch — see "UX SAMPLE MODE" below.
+
+
+WHAT THIS IS
+------------
+The Invoices section as a first-class NAV area, product-led design per the
+Finance-Metered-V3 direction, translated into the app's own theme tokens
+(light + dark). Three pages:
+
+  /invoices          Hub — clickable totals strip (Outstanding / Overdue /
+                     Collected·Drafts), filter chips (All/Open/Overdue/
+                     Ad-hoc/Drafts), search, rows with a human reason line
+                     ("₹6,000 received · ₹13,500 open · 12d late").
+  /invoices/new      Composer — replaces the AdHocInvoiceDialog experience:
+                     app chrome outside, branded document inside (accent
+                     bar, logo block, INVOICE title, meta, Bill To strip),
+                     inline typeahead add-line grouped by catalog category
+                     + Browse-catalog accordion modal, editable rate/qty/
+                     tax, Bill To picker in the right sidecard, "money
+                     already received" payment block with receipt promise
+                     in plain language.
+  /invoices/:id      Viewer — same document chrome read-only, receipts
+                     section with the green "Receipts — unlimited · free"
+                     badge, Record payment button (stub), works for
+                     contract-linked AND ad-hoc invoices (closes the
+                     "ad-hoc invoice has no page" gap).
+
+PLG layer per the settled model:
+  - "Invoicing — included · unlimited" badge (no metering anywhere).
+  - Entitlement gate stub: canCreateAdhocInvoice in sampleData.ts. Set it
+    to false to preview the locked composer + "See plans" upsell state.
+
+PERSPECTIVE RULE (as agreed this session):
+  - NAV item "Invoices" renders ONLY in Revenue perspective. An invoice is
+    a seller's instrument.
+  - In Expense perspective the /invoices route stays reachable (for cross
+    links) and renders a pointer card to Finance (AR/AP) and Subscription
+    instead of the seller workspace.
+
+
+⚠ UX SAMPLE MODE
+----------------
+ALL data on these pages comes from src/pages/invoices/sampleData.ts —
+sample rows shaped exactly like live t_invoices reality (BBB amounts, two
+guest-fee ad-hoc cases, partial payments). Save/Record-payment actions
+show a toast instead of writing. This is deliberate: judge the UX freely,
+nothing can touch production. Batch 2 (wiring) replaces sampleData.ts with
+GET /api/invoices + GET /api/invoices/:id (new API pair), connects the
+composer to the existing create_adhoc_invoice flow, re-points the
+group-sessions / contacts entry buttons, and swaps the entitlement stub
+for the tenant-context flag.
+
+To preview the declaration hand-off flow now: /invoices/new?prefill=guest
+(pre-fills Tejaswinni's ₹600 guest fee + UPI reference, payment ON).
+
+
+FILES
+-----
+NEW  contractnest-ui/src/pages/invoices/types.ts        shared shapes (mirror t_invoices)
+NEW  contractnest-ui/src/pages/invoices/sampleData.ts   UX-phase data adapter (THE swap point)
+NEW  contractnest-ui/src/pages/invoices/ui.tsx          theme-aware primitives + document frame
+NEW  contractnest-ui/src/pages/invoices/index.tsx       hub
+NEW  contractnest-ui/src/pages/invoices/view.tsx        viewer
+NEW  contractnest-ui/src/pages/invoices/composer.tsx    composer
+EDIT contractnest-ui/src/utils/constants/industryMenus.ts
+       + revenueOnly?: boolean on MenuItem
+       + Invoices nav entry between Contracts and Requests
+EDIT contractnest-ui/src/components/layout/Sidebar.tsx
+       + perspective from useAuth(); revenueOnly items filtered out on expense
+EDIT contractnest-ui/src/App.tsx
+       + 3 imports, /invoices route block (index / new / :invoiceId)
+
+⚠ The three EDITED files are full-file copies built from origin/main HEAD
+(69ea357) + only these additive changes. If you have local uncommitted
+edits in App.tsx / Sidebar.tsx / industryMenus.ts, reconcile before
+copying — this is the exact mechanism that has previously reverted the
+group-session serviceURLs keys.
+
+Production checklist:
+  Transaction Management: N/A — no writes in this batch (sample mode)
+  Race Condition Handling: N/A — read-only UI state
+  Error Handling: not-found state on viewer; disabled/locked states on composer
+  Toasts: existing vaniToast used for all stubbed actions
+  Loaders: none needed in sample mode — Batch 2 adds LoadingSpinner with real queries
+
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\invoices-ux-layer\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Sidebar shows "Invoices" between Contracts and Requests (Revenue)
+- [ ] Switch to Expense → Invoices nav item disappears; typing /invoices
+      manually shows the pointer card (Finance / Subscription), not the hub
+- [ ] Hub: totals strip numbers; clicking Outstanding / Overdue / Drafts
+      filters the list (click again to clear); search works
+- [ ] Row click → viewer: branded document, lines, totals, Received /
+      Balance due, receipts section with reference numbers
+- [ ] "New invoice" → composer: pick a contact (note the "No contract —
+      ad-hoc invoice" subtitle), add a line by typing (catalog dropdown),
+      add free text, Browse catalog modal, edit rate/qty/tax
+- [ ] Payment block: toggle on → method/date/reference; Save button turns
+      green and reads "Save — ₹X received"
+- [ ] /invoices/new?prefill=guest — guest fee + UPI reference pre-filled
+- [ ] Dark mode + mobile width: document, tables (scroll inside card), nav
+- [ ] Set canCreateAdhocInvoice=false in sampleData.ts → composer shows
+      the plan-upsell lock; hub's New invoice disables (revert after)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "UX approved — proceed with wiring (Batch 2)"
+  → "Change: [what to adjust]"
+NO merge commands until you confirm.
+═══════════════════════════════════════════════════
