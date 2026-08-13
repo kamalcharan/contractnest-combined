@@ -137,6 +137,40 @@ async function getGatewayCredentials(
   }
 }
 
+// A gateway failure is not one kind of thing. Razorpay rejecting the API key
+// ("Authentication failed") is a PERMANENT configuration fault that no amount
+// of retrying will clear — the seller has to re-save their keys. Returning 502
+// for it tells the caller "upstream is having a moment, try again", so the
+// tenant retries forever against a wall and nobody is told what to fix.
+//
+// 502 is kept for what it means: the gateway genuinely could not be reached.
+function classifyGatewayError(rawError: string | undefined, sellerName?: string) {
+  const msg = (rawError || '').toLowerCase();
+  const isAuth =
+    msg.includes('authentication failed') ||
+    msg.includes('unauthorized') ||
+    msg.includes('invalid api key') ||
+    msg.includes('key_id');
+
+  if (isAuth) {
+    const who = sellerName || 'The seller';
+    return {
+      status: 400,
+      code: 'GATEWAY_AUTH_FAILED',
+      // Addressed to the payer, who can do nothing about it themselves, so it
+      // says who has been told rather than issuing them an instruction.
+      error: `${who} cannot accept payments right now — their payment gateway rejected the request. They have been notified and will be in touch to complete this.`,
+      seller_message: 'Razorpay rejected your API keys. Re-save them in Settings → Integrations with the current key_id and key_secret from your Razorpay dashboard, and check the live/test environment matches.',
+    };
+  }
+
+  return {
+    status: 502,
+    code: 'GATEWAY_ERROR',
+    error: rawError || 'The payment gateway could not be reached. Please try again.',
+  };
+}
+
 // ─── Settlement Resolution (B5) ───────────────────────────
 //
 // WHO IS ASKING and WHOSE GATEWAY RUNS are two different questions, and
@@ -285,7 +319,13 @@ async function handleCreateOrder(
     });
 
     if (!result.success) {
-      return jsonResponse({ success: false, error: result.error, code: 'GATEWAY_ERROR' }, 502);
+      const cls = classifyGatewayError(result.error, settle.settlementTenantName);
+      console.error('[PayGateway] create-order gateway failure:', cls.code, result.error);
+      return jsonResponse({
+        success: false, error: cls.error, code: cls.code,
+        seller_name: settle.settlementTenantName,
+        seller_message: (cls as any).seller_message,
+      }, cls.status);
     }
 
     gatewayOrderId = result.order!.id;
@@ -416,7 +456,15 @@ async function handleCreateLink(
     });
 
     if (!result.success) {
-      return jsonResponse({ success: false, error: result.error, code: 'GATEWAY_ERROR' }, 502);
+      {
+        const cls = classifyGatewayError(result.error, settle.settlementTenantName);
+        console.error('[PayGateway] create-link gateway failure:', cls.code, result.error);
+        return jsonResponse({
+          success: false, error: cls.error, code: cls.code,
+          seller_name: settle.settlementTenantName,
+          seller_message: (cls as any).seller_message,
+        }, cls.status);
+      }
     }
 
     gatewayLinkId = result.link!.id;
