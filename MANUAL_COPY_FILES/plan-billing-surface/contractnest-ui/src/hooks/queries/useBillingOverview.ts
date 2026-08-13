@@ -64,8 +64,18 @@ export interface OutstandingInvoice {
   contract_id: string | null;
   contract_number: string | null;
   label: string;
+  /** The agreement total on this invoice — the whole contract value. */
   total: number;
+  /** Still owed across the WHOLE term. */
   balance: number;
+  /**
+   * What is payable TODAY: the instalments already fallen due, per the
+   * plan's billing events. The platform raises one invoice for the whole
+   * contract and settles it in parts (BBB pays Rs.1,500 a month into a
+   * single Rs.19,500 invoice), so `balance` is the term and `due_now` is
+   * the bill. Charge this one.
+   */
+  due_now: number;
   currency: string;
   due_date: string | null;
   issued_at: string | null;
@@ -131,6 +141,7 @@ export interface BillingOverview {
   plan: OverviewPlan | null;
   rhythm: OverviewRhythm;
   next_plan: NextPlan | null;
+  /** `total` is the sum of DUE NOW across bills, not the term total. */
   outstanding: { total: number; invoices: OutstandingInvoice[] };
   attempts: PaymentAttempt[];
   history: HistoryEntry[];

@@ -105,7 +105,10 @@ const BillingPage: React.FC = () => {
     setPayingContractId(inv.contract_id);
     try {
       const order = await createOrder.mutateAsync({
-        invoice_id: inv.invoice_id, amount: inv.balance, currency: inv.currency,
+        // due_now, never balance: a quarterly subscriber is asked for this
+        // quarter, not the whole year. record_invoice_payment settles the
+        // single term invoice in parts, exactly as BBB already works.
+        invoice_id: inv.invoice_id, amount: inv.due_now, currency: inv.currency,
       });
       razorpay.openCheckout(order);
     } catch (err: any) {
@@ -188,7 +191,7 @@ const BillingPage: React.FC = () => {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider" style={{ color: warn }}>
-                {lastFailure ? 'Payment declined' : 'Outstanding'}
+                {lastFailure ? 'Payment declined' : 'Due now'}
               </span>
               <div className="text-4xl font-extrabold leading-none mt-2" style={{ color: warn }}>
                 {symbol}{Number(total).toLocaleString()}
@@ -196,7 +199,7 @@ const BillingPage: React.FC = () => {
               <p className="text-sm mt-3 max-w-md" style={{ color: dim }}>
                 {lastFailure
                   ? 'Your bank declined the card — no money left your account, and nothing about your plan changed. Try again, use another card, or pay by UPI.'
-                  : `Across ${outstanding.length} ${outstanding.length === 1 ? 'bill' : 'bills'}.`}
+                  : `Due now, across ${outstanding.length} ${outstanding.length === 1 ? 'bill' : 'bills'}. Later instalments are not included.`}
               </p>
             </div>
           </div>
@@ -209,7 +212,7 @@ const BillingPage: React.FC = () => {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-bold" style={{ color: ink }}>
-                      {symbol}{Number(inv.balance).toLocaleString()}
+                      {symbol}{Number(inv.due_now).toLocaleString()}
                     </span>
                     <span className="text-xs font-mono" style={{ color: dim }}>{inv.invoice_number}</span>
                     {inv.is_overdue && (
@@ -221,13 +224,20 @@ const BillingPage: React.FC = () => {
                     {inv.label}
                     {inv.contract_number ? ` · ${inv.contract_number}` : ''}
                     {inv.due_date ? ` · due ${fmtDate(inv.due_date)}` : ''}
+                    {/* The rest of the term, stated as context rather than
+                        as a demand — it is owed, but not today. */}
+                    {inv.balance > inv.due_now
+                      ? ` · ${symbol}${Number(inv.balance).toLocaleString()} over the term`
+                      : ''}
                   </p>
                 </div>
                 <button type="button" disabled={busy} onClick={() => pay(inv)}
                         className="px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 shrink-0 disabled:opacity-60"
                         style={{ backgroundColor: warn, color: '#fff' }}>
                   {payingId === inv.invoice_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                  {payingId === inv.invoice_id ? 'Opening…' : lastFailure ? 'Retry payment' : 'Pay now'}
+                  {payingId === inv.invoice_id
+                    ? 'Opening…'
+                    : `${lastFailure ? 'Retry' : 'Pay'} ${symbol}${Number(inv.due_now).toLocaleString()}`}
                 </button>
               </div>
             ))}

@@ -240,11 +240,17 @@ const SubscriptionPage: React.FC = () => {
           {awaiting ? (
             <div className="text-right">
               <div className="text-4xl font-extrabold leading-none" style={{ color: warn }}>
-                {symbol}{Number(activatingInvoice?.balance ?? plan.amount ?? 0).toLocaleString()}
+                {symbol}{Number(activatingInvoice?.due_now ?? plan.amount ?? 0).toLocaleString()}
               </div>
               <div className="text-xs font-semibold uppercase tracking-wider mt-1" style={{ color: dim }}>
                 due to activate
               </div>
+              {activatingInvoice && activatingInvoice.balance > activatingInvoice.due_now && (
+                <div className="text-xs mt-1.5" style={{ color: dim }}>
+                  first of {rhythm?.total_installments ?? 1} · {symbol}
+                  {Number(activatingInvoice.balance).toLocaleString()} over the term
+                </div>
+              )}
             </div>
           ) : rhythm && typeof rhythm.days_to_next === 'number' && rhythm.source !== 'none' ? (
             <div className="text-right">
@@ -286,13 +292,15 @@ const SubscriptionPage: React.FC = () => {
                 disabled={busy}
                 onClick={() => payInvoice(
                   activatingInvoice.invoice_id, activatingInvoice.contract_id,
-                  activatingInvoice.balance, activatingInvoice.currency, plan.name || 'Your plan',
+                  // The FIRST INSTALMENT activates the plan — not the whole
+                  // term. A quarterly plan asks for one quarter.
+                  activatingInvoice.due_now, activatingInvoice.currency, plan.name || 'Your plan',
                 )}
                 className="px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 shrink-0 disabled:opacity-60"
                 style={{ backgroundColor: warn, color: '#fff' }}
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {busy ? 'Opening…' : `Pay ${symbol}${Number(activatingInvoice.balance).toLocaleString()}`}
+                {busy ? 'Opening…' : `Pay ${symbol}${Number(activatingInvoice.due_now).toLocaleString()}`}
               </button>
             )}
           </div>
