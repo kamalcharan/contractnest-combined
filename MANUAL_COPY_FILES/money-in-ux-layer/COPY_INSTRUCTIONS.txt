@@ -80,6 +80,26 @@ npm run dev
 # Hard refresh: Ctrl+F5
 
 
+ROUND 2 (owner feedback, same day)
+----------------------------------
+  · Paperwork strip is line-item wise: one row + one [Generate invoice]
+    per waiting receipt (each prefills the composer with THAT receipt via
+    /invoices/new?from=receipt:<id>); >2 collapse behind "and N more…"
+  · Signal sentences under the headline, each a clickable lens:
+      RED    "2 buyers are at risk" — at risk = 2+ instalments behind OR
+             oldest arrear > 30 days (deliberately schedule-relative; a
+             raw %-unpaid flag would fire on every healthy instalment plan)
+      AMBER  "N invoices open past 30 days · N drafts never sent" — aging
+             documents; inside rows the offending invoice chip turns
+             amber with its age ("43d open")
+      BRAND  "₹X falls due in the next 7 days — N buyers" — forward lens
+             with a 7d/30d window toggle; rows sort soonest-first and
+             sentences flip to forward tense ("₹1,500 due tomorrow")
+  · Nudge preview drawer: "preview the messages" (and every row's Nudge
+    button) opens a drawer showing the exact WhatsApp text VaNi would
+    send per late buyer, tone matched to lateness — clearly tagged
+    "coming with wiring", nothing sends.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
@@ -87,8 +107,14 @@ npm run dev
 - [ ] Expense mode: sidebar shows "To Pay" (no "Money In")
 - [ ] /money-in headline: numbers read correctly; clicking the big number /
       the red late number / "see who's paid up" filters the list
-- [ ] Green strip: "₹1,200 has already arrived without paperwork…" →
-      Generate opens composer pre-filled (payment ON, UPI ref)
+- [ ] Green strip lists EACH receipt on its own line; each Generate
+      opens the composer pre-filled with that specific receipt
+      (Tejaswinni → her UPI ref; Test Guest → theirs)
+- [ ] Signals: "at risk" shows Vasanth (2 instalments, 43d) but NOT
+      Charan (75% unpaid yet on schedule); aging shows the draft; the
+      upcoming lens with 7d shows Krishnamurthy + R Radha, 30d adds Mohan
+- [ ] Nudge drawer opens from the footer link and from a row's Nudge
+      button; messages read correctly per buyer
 - [ ] Buyer rows: sentence + amount; expand → instalment chips (green/red),
       invoice chips open the paper viewer, receipts as mono lines,
       Record payment / Nudge buttons toast

@@ -42,26 +42,33 @@ const InvoiceComposerPage: React.FC = () => {
   const brand = colors.brand.primary;
   const keyRef = useRef(1);
 
-  const prefillGuest = params.get('prefill') === 'guest';
+  // Receipt-first hand-off: /invoices/new?from=receipt:<id> arrives from the
+  // Money In strip (one link per waiting receipt). ?prefill=guest kept as a
+  // legacy alias for the first sample receipt.
+  const fromParam = params.get('from') || '';
+  const receiptParamId = fromParam.startsWith('receipt:')
+    ? fromParam.slice('receipt:'.length)
+    : (params.get('prefill') === 'guest' ? 'ur-1' : null);
+  const seedReceipt = SAMPLE_UNATTACHED_RECEIPTS.find((r) => r.id === receiptParamId) || null;
 
-  const [contactId, setContactId] = useState<string | null>(prefillGuest ? 'ct-1' : null);
+  const [contactId, setContactId] = useState<string | null>(seedReceipt ? seedReceipt.contact_id : null);
   const [contactQuery, setContactQuery] = useState('');
   const [contactOpen, setContactOpen] = useState(false);
 
   const [lines, setLines] = useState<DraftLine[]>(
-    prefillGuest ? [{ key: 0, name: 'Guest Participation Fee', category: 'Guest Fees', description: 'Saturday Network Meeting, 8 Aug 2026', rate: 600, qty: 1, tax_rate: 0 }] : []
+    seedReceipt ? [{ key: 0, name: seedReceipt.description || 'Received payment', category: seedReceipt.description ? 'Guest Fees' : null, description: '', rate: seedReceipt.amount, qty: 1, tax_rate: 0 }] : []
   );
   const [addQuery, setAddQuery] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [openCats, setOpenCats] = useState<Set<string>>(new Set());
 
-  const [attachedReceiptId, setAttachedReceiptId] = useState<string | null>(prefillGuest ? 'ur-1' : null);
-  const [recordPayment, setRecordPayment] = useState(prefillGuest);
+  const [attachedReceiptId, setAttachedReceiptId] = useState<string | null>(seedReceipt?.id ?? null);
+  const [recordPayment, setRecordPayment] = useState(!!seedReceipt);
   const [payment, setPayment] = useState<DraftPayment>({
-    method: prefillGuest ? 'UPI' : 'Cash',
-    date: TODAY_ISO,
-    reference: prefillGuest ? 'bappuditeju-2@okaxis' : '',
+    method: seedReceipt?.method ?? 'Cash',
+    date: seedReceipt?.received_on ?? TODAY_ISO,
+    reference: seedReceipt?.reference ?? '',
   });
 
   const contact = SAMPLE_CONTACTS.find((c) => c.id === contactId) || null;
