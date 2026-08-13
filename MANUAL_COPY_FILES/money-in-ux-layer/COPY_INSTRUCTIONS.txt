@@ -1,0 +1,112 @@
+═══════════════════════════════════════════════════
+FEATURE: Money In / To Pay — merged money workspace, UX layer
+Branch folder: money-in-ux-layer
+⚠ SUPERSEDES MANUAL_COPY_FILES/invoices-ux-layer — copy THIS batch over it.
+  Every file the old batch created is either reused or overwritten by this
+  one; nothing stale is left behind.
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED
+-------------------
+  contractnest-ui   (11 files: 8 under src/pages, 3 edited shared files)
+
+  contractnest-api / contractnest-edge / Mobile / Docs — NOT touched.
+  No database change. No API change. UX SAMPLE MODE — all data from
+  pages/invoices/sampleData.ts; every write action toasts instead of writing.
+
+
+THE MODEL (owner decisions, 2026-08-13)
+---------------------------------------
+  · ONE money workspace per perspective:
+      Revenue  → "Money In"  (/money-in)   nav shows only in Revenue
+      Expense  → "To Pay"    (/to-pay)     nav shows only in Expense
+  · Money In MERGES receivables + invoices. No separate Invoices nav, no
+    tabs: one worklist of buyer stories, and each story holds its
+    instalments, its invoice documents (chips → paper viewer) and its
+    receipts. Search matches names, contracts AND invoice numbers.
+  · Design language: product-led briefing, not dashboard furniture. The
+    page opens with a spoken headline — "₹58,500 is owed to you.
+    ₹40,500 of it is late — 4 buyers, the oldest 43 days." — and the
+    underlined numbers ARE the filters. No stat-card row, no table
+    headers. Editorial type, mono microlabels, hairlines; brand color
+    as emphasis only. Works in light + dark via theme tokens.
+  · Receipt-first reality: money that arrived before its paperwork shows
+    as a green sentence up top ("₹1,200 has already arrived without
+    paperwork — Tejaswinni and one guest") → Generate opens the composer
+    pre-filled; the composer's "Already received" card attaches it and
+    the invoice is born settled.
+  · The invoice document pages keep the EXISTING contract-invoice paper
+    design (white printable card, brand accent bars, Description column,
+    Payment Summary / Invoice Details sidecar). /invoices/new composes
+    on that same paper, editable in place.
+  · /invoices (old hub URL) now redirects to /money-in. Composer and
+    viewer routes unchanged.
+  · VaNi nudges appear as a one-line offer explicitly tagged "coming" —
+    no promised automation that doesn't exist yet.
+  · To Pay mirrors the language on the expense side; your ContractNest
+    subscription appears as a vendor row (V5: plans are contracts),
+    linking to the Subscription page.
+
+FILES
+-----
+NEW   src/pages/money-in/index.tsx        the merged briefing page
+NEW   src/pages/to-pay/index.tsx          expense mirror
+REPL  src/pages/invoices/index.tsx        now a redirect → /money-in
+SAME  src/pages/invoices/view.tsx         paper viewer (back-link → /money-in)
+SAME  src/pages/invoices/composer.tsx     paper composer (back-link → /money-in)
+SAME  src/pages/invoices/ui.tsx           InvoicePaper + primitives
+UPD   src/pages/invoices/types.ts         + Instalment, BuyerRow, UnattachedReceipt
+UPD   src/pages/invoices/sampleData.ts    + SAMPLE_BUYERS, SAMPLE_VENDORS
+EDIT  src/utils/constants/industryMenus.ts  Money In (revenueOnly) + To Pay
+                                            (expenseOnly) replace 'Invoices'
+EDIT  src/components/layout/Sidebar.tsx     expenseOnly filter added
+EDIT  src/App.tsx                           /money-in, /to-pay routes; /invoices
+                                            index → redirect
+
+⚠ The three EDITED shared files are full copies of origin/main HEAD
+(69ea357) + only these changes. Reconcile any local uncommitted edits to
+App.tsx / Sidebar.tsx / industryMenus.ts before copying.
+
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\money-in-ux-layer\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Revenue mode: sidebar shows "Money In" (no "Invoices", no "To Pay")
+- [ ] Expense mode: sidebar shows "To Pay" (no "Money In")
+- [ ] /money-in headline: numbers read correctly; clicking the big number /
+      the red late number / "see who's paid up" filters the list
+- [ ] Green strip: "₹1,200 has already arrived without paperwork…" →
+      Generate opens composer pre-filled (payment ON, UPI ref)
+- [ ] Buyer rows: sentence + amount; expand → instalment chips (green/red),
+      invoice chips open the paper viewer, receipts as mono lines,
+      Record payment / Nudge buttons toast
+- [ ] Search finds "INV-10055" (via Charan's row) and contract numbers
+- [ ] Guest row (Tejaswinni) shows the guest tag with her ad-hoc invoice
+- [ ] /invoices redirects to /money-in; /invoices/new and /invoices/:id work
+- [ ] Viewer + composer: white paper design matches the contract invoice
+      page (accent bars, Description column, Payment Summary sidecar)
+- [ ] /to-pay: headline, vendor stories, ContractNest row tagged
+      "subscription" → Manage subscription navigates
+- [ ] Wrong-side visits: /money-in in Expense (and /to-pay in Revenue)
+      show the polite cross-pointer, not the workspace
+- [ ] Dark mode + phone width on all of the above
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "UX approved — proceed with wiring"
+  → "Change: [what to adjust]"
+NO merge commands until you confirm.
+═══════════════════════════════════════════════════
