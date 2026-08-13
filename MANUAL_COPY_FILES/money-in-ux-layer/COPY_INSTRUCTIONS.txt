@@ -167,6 +167,20 @@ ROUND 4 — A4: paperwork goes real + navigation polish
 ⚠ A4 WRITES: "Generate invoice" → Save creates a REAL invoice + receipt
   and stamps the declaration. Test in TEST mode first.
 
+ROUND 6 — /api/invoices route restored (THE "invoice not working" fix)
+----------------------------------------------------------------------
+  Root cause: contractnest-api commit e3900b2 (Aug 10) replaced index.ts
+  wholesale from a stale baseline and DELETED the /api/invoices
+  registration that had been added the day before (2cc04a1). Every adhoc
+  invoice call has 404'd since — which is also why NO adhoc invoice was
+  ever created and the QA declaration never got stamped, even from the
+  old dialog.
+  Fix: contractnest-api/src/index.ts (full HEAD copy + the restored
+  load/register blocks, with a comment warning future whole-file copies).
+  COPY the api folder and RESTART the API dev server, then:
+  Money In strip → Generate invoice → Save should return an INV number,
+  and the declaration row in Payments-to-confirm flips to "Confirm".
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
