@@ -1,58 +1,66 @@
 // ============================================================================
-// Money In (/money-in) · Revenue perspective · UX layer
+// Money In (/money-in) · Revenue perspective · WIRED (A1–A3)
 // ----------------------------------------------------------------------------
-// Receivables + invoices MERGED — one worklist of buyer stories, spoken in
-// briefing language: a headline states the situation, signal sentences under
-// it surface risk / aging paperwork / what's coming, and the emphasized
-// numbers ARE the filters. No stat cards, no table headers.
-//
-// Derived predicates (deliberately schedule-relative, not %-based):
-//   late     instalment past due
-//   at risk  2+ instalments behind OR oldest arrear > 30 days — a raw
-//            "% unpaid" flag would fire on every healthy instalment plan
-//   aging    invoice open past 30 days, or a draft never sent
-//   upcoming instalments due in the next 7/30 days
-// Data: ../invoices/sampleData (UX sample mode — wiring swaps that file).
+// Receivables + invoices merged into one briefing. LIVE DATA:
+//   · stories/headline/signals ← get_tenant_receivables (useReceivables) —
+//     the same source as /ops/finance, so the two agree by construction
+//   · instalment chip click → InstalmentActionModal (the Dues-tab
+//     methodology: state-machine transitions + the existing
+//     RecordPaymentDialog) — one write path, no parallel logic
+//   · after any write: refetch → chips, sentences and headline recompute
+// Derived predicates (schedule-relative, not %-based):
+//   late = open + past due · at risk = 2+ instalments behind OR oldest > 30d
+//   aging doc = draft, or open past 30 days since issue · upcoming = due in 7/30d
+// Still sample (A4): the "arrived without paperwork" strip + composer save.
+// VaNi nudges remain an honest "coming" preview.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, ChevronDown, FileText, Sparkles, Wallet, ArrowUpRight, X } from 'lucide-react';
+import { Plus, Search, ChevronDown, FileText, Sparkles, Wallet, ArrowUpRight, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { vaniToast } from '@/components/common/toast/VaNiToast';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import InstalmentActionModal from '@/components/finance/InstalmentActionModal';
+import { useReceivables, type FinanceEvent, type FinanceInvoice } from '@/hooks/queries/useFinanceQueries';
 import { fmtMoney, fmtDate, useInvoiceTheme, Pill, useStatusMeta } from '../invoices/ui';
-import { SAMPLE_BUYERS, SAMPLE_INVOICES, SAMPLE_UNATTACHED_RECEIPTS, TODAY_ISO, canCreateAdhocInvoice } from '../invoices/sampleData';
-import { isOverdue as invoiceOverdue, openBalance, type BuyerRow, type Instalment } from '../invoices/types';
+import { SAMPLE_UNATTACHED_RECEIPTS } from '../invoices/sampleData';
 
 type Lens = 'everything' | 'late' | 'risk' | 'docs' | 'upcoming' | 'settled';
-
-const dayMs = 86_400_000;
-const lateDays = (iso: string) => Math.max(0, Math.floor((new Date(TODAY_ISO).getTime() - new Date(iso).getTime()) / dayMs));
-const daysUntil = (iso: string) => Math.floor((new Date(iso).getTime() - new Date(TODAY_ISO).getTime()) / dayMs);
 
 const AGING_DAYS = 30;
 const RISK_ARREARS = 2;
 const RISK_DAYS = 30;
+const dayMs = 86_400_000;
+const daysSince = (iso: string | null): number =>
+  iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / dayMs)) : 0;
+const daysUntil = (iso: string | null): number =>
+  iso ? Math.floor((new Date(iso).getTime() - Date.now()) / dayMs) : Infinity;
 
-// One buyer's derived money story — every flag on this page comes from here.
-const storyOf = (b: BuyerRow, upcomingWindow: number) => {
-  const open = b.instalments.filter((i) => i.status !== 'paid').reduce((s, i) => s + i.amount, 0);
-  const late = b.instalments.filter((i) => i.status === 'overdue');
-  const lateAmount = late.reduce((s, i) => s + i.amount, 0);
-  const oldest = late.reduce((m, i) => Math.max(m, lateDays(i.date)), 0);
-  const received = b.receipts.reduce((s, r) => s + r.amount, 0);
-  const nextDue = b.instalments.find((i) => i.status === 'due');
-  const atRisk = late.length >= RISK_ARREARS || oldest > RISK_DAYS;
-  const docs = b.invoice_ids
-    .map((id) => SAMPLE_INVOICES.find((i) => i.id === id))
-    .filter((i): i is NonNullable<typeof i> => !!i);
-  const agingDocs = docs.filter((i) =>
-    i.status === 'draft' || (openBalance(i) > 0.001 && i.status !== 'cancelled' && lateDays(i.issued_date) > AGING_DAYS));
-  const upcoming = b.instalments.filter((i) => i.status === 'due' && daysUntil(i.date) >= 0 && daysUntil(i.date) <= upcomingWindow);
-  const upcomingAmount = upcoming.reduce((s, i) => s + i.amount, 0);
-  return { open, late, lateAmount, oldest, received, nextDue, atRisk, agingDocs, upcoming, upcomingAmount };
-};
-type Story = ReturnType<typeof storyOf>;
+interface ContractGroup {
+  contract_id: string;
+  contract_number: string;
+  events: FinanceEvent[];
+}
+interface BuyerStory {
+  key: string;
+  name: string;
+  direct: boolean;                    // no buyer contact on file
+  contracts: ContractGroup[];
+  invoices: FinanceInvoice[];
+  open: number;
+  lateAmount: number;
+  lateCount: number;
+  oldest: number;
+  received: number;
+  nextDue: FinanceEvent | null;
+  atRisk: boolean;
+  agingDocs: FinanceInvoice[];
+  upcoming: FinanceEvent[];
+  isGroupSession: boolean;
+}
+
+const chipState = (e: FinanceEvent): 'paid' | 'overdue' | 'due' =>
+  e.settled || e.open_amount <= 0.001 ? 'paid' : e.days_overdue > 0 ? 'overdue' : 'due';
 
 const MoneyInPage: React.FC = () => {
   const navigate = useNavigate();
@@ -70,67 +78,117 @@ const MoneyInPage: React.FC = () => {
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const [receiptsExpanded, setReceiptsExpanded] = useState(false);
   const [nudgeOpen, setNudgeOpen] = useState(false);
+  const [action, setAction] = useState<null | {
+    contractId: string; contractNumber: string | null; buyerName: string | null; eventIds: string[]; currency: string;
+  }>(null);
+
+  const receivablesQuery = useReceivables({ enabled: perspective === 'revenue' });
+  const data = receivablesQuery.data;
 
   const mono: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' };
   const hairline = `1px solid ${colors.utility.primaryText}12`;
 
-  // ── the situation ─────────────────────────────────────────────────────────
+  // ── A1: buyer stories derived from the live receivables payload ──────────
+  const stories: BuyerStory[] = useMemo(() => {
+    const events = data?.events || [];
+    const invoices = data?.invoices || [];
+    const byBuyer = new Map<string, FinanceEvent[]>();
+    for (const e of events) {
+      const key = e.buyer_id || e.buyer_name || e.contract_id;
+      if (!byBuyer.has(key)) byBuyer.set(key, []);
+      byBuyer.get(key)!.push(e);
+    }
+    const out: BuyerStory[] = [];
+    for (const [key, evs] of byBuyer) {
+      const contracts: ContractGroup[] = [];
+      for (const e of evs) {
+        let c = contracts.find((x) => x.contract_id === e.contract_id);
+        if (!c) { c = { contract_id: e.contract_id, contract_number: e.contract_number, events: [] }; contracts.push(c); }
+        c.events.push(e);
+      }
+      contracts.forEach((c) => c.events.sort((a, z) => (a.due_on || '').localeCompare(z.due_on || '')));
+      const contractIds = new Set(contracts.map((c) => c.contract_id));
+      const invs = invoices.filter((i) => contractIds.has(i.contract_id));
+      const openEvs = evs.filter((e) => chipState(e) !== 'paid');
+      const late = openEvs.filter((e) => e.days_overdue > 0);
+      const upcoming = openEvs
+        .filter((e) => e.days_overdue <= 0 && daysUntil(e.due_on) >= 0 && daysUntil(e.due_on) <= upWindow)
+        .sort((a, z) => daysUntil(a.due_on) - daysUntil(z.due_on));
+      const oldest = late.reduce((m, e) => Math.max(m, e.days_overdue), 0);
+      out.push({
+        key,
+        name: evs[0].buyer_name || evs[0].contract_name || evs[0].contract_number,
+        direct: !evs[0].buyer_id,
+        contracts,
+        invoices: invs,
+        open: openEvs.reduce((s, e) => s + e.open_amount, 0),
+        lateAmount: late.reduce((s, e) => s + e.open_amount, 0),
+        lateCount: late.length,
+        oldest,
+        received: invs.reduce((s, i) => s + (i.amount_paid || 0), 0),
+        nextDue: openEvs.filter((e) => e.days_overdue <= 0).sort((a, z) => (a.due_on || '').localeCompare(z.due_on || ''))[0] || null,
+        atRisk: late.length >= RISK_ARREARS || oldest > RISK_DAYS,
+        agingDocs: invs.filter((i) => i.status === 'draft' || (i.balance > 0.001 && i.status !== 'cancelled' && daysSince(i.issued_at) > AGING_DAYS)),
+        upcoming,
+        isGroupSession: evs.some((e) => e.is_group_session),
+      });
+    }
+    return out;
+  }, [data, upWindow]);
+
   const situation = useMemo(() => {
-    const stories = SAMPLE_BUYERS.map((b) => ({ b, s: storyOf(b, upWindow) }));
-    const sum = (f: (x: { b: BuyerRow; s: Story }) => number) => stories.reduce((t, x) => t + f(x), 0);
-    const agingInvoices = stories.flatMap((x) => x.s.agingDocs);
+    const s = data?.summary;
     return {
-      stories,
-      owed: sum((x) => x.s.open),
-      lateAmt: sum((x) => x.s.lateAmount),
-      lateBuyers: stories.filter((x) => x.s.lateAmount > 0).length,
-      oldest: stories.reduce((m, x) => Math.max(m, x.s.oldest), 0),
-      collected: sum((x) => x.s.received),
-      riskBuyers: stories.filter((x) => x.s.atRisk),
-      agingOpen: agingInvoices.filter((i) => i.status !== 'draft').length,
-      drafts: agingInvoices.filter((i) => i.status === 'draft').length,
-      upcomingAmt: sum((x) => x.s.upcomingAmount),
-      upcomingBuyers: stories.filter((x) => x.s.upcoming.length > 0).length,
+      owed: s?.total_outstanding ?? 0,
+      lateAmt: s?.overdue_total ?? 0,
+      lateBuyers: stories.filter((x) => x.lateAmount > 0).length,
+      oldest: stories.reduce((m, x) => Math.max(m, x.oldest), 0),
+      collected: s?.collected_total ?? 0,
+      riskBuyers: stories.filter((x) => x.atRisk),
+      agingOpen: stories.flatMap((x) => x.agingDocs).filter((i) => i.status !== 'draft').length,
+      drafts: s?.draft_count ?? 0,
+      upcomingAmt: upWindow === 7 ? (s?.upcoming_7_total ?? 0) : (s?.upcoming_30_total ?? 0),
+      upcomingBuyers: stories.filter((x) => x.upcoming.length > 0).length,
     };
-  }, [upWindow]);
+  }, [data, stories, upWindow]);
 
   const rows = useMemo(() => {
-    let r = [...situation.stories].sort((a, z) => z.s.oldest - a.s.oldest || z.s.open - a.s.open);
-    if (lens === 'late') r = r.filter((x) => x.s.lateAmount > 0);
-    if (lens === 'risk') r = r.filter((x) => x.s.atRisk);
-    if (lens === 'docs') r = r.filter((x) => x.s.agingDocs.length > 0);
-    if (lens === 'upcoming') r = r.filter((x) => x.s.upcoming.length > 0).sort((a, z) =>
-      Math.min(...a.s.upcoming.map((i) => daysUntil(i.date))) - Math.min(...z.s.upcoming.map((i) => daysUntil(i.date))));
-    if (lens === 'settled') r = r.filter((x) => x.s.open <= 0.001);
+    let r = [...stories].sort((a, z) => z.oldest - a.oldest || z.open - a.open);
+    if (lens === 'late') r = r.filter((x) => x.lateAmount > 0);
+    if (lens === 'risk') r = r.filter((x) => x.atRisk);
+    if (lens === 'docs') r = r.filter((x) => x.agingDocs.length > 0);
+    if (lens === 'upcoming') r = r.filter((x) => x.upcoming.length > 0)
+      .sort((a, z) => daysUntil(a.upcoming[0]?.due_on ?? null) - daysUntil(z.upcoming[0]?.due_on ?? null));
+    if (lens === 'settled') r = r.filter((x) => x.open <= 0.001);
     const q = search.trim().toLowerCase();
     if (q) r = r.filter((x) =>
-      x.b.name.toLowerCase().includes(q) ||
-      (x.b.plan_label || '').toLowerCase().includes(q) ||
-      x.b.invoice_ids.some((id) => SAMPLE_INVOICES.find((i) => i.id === id)?.invoice_number.toLowerCase().includes(q)));
+      x.name.toLowerCase().includes(q) ||
+      x.contracts.some((c) => c.contract_number.toLowerCase().includes(q)) ||
+      x.invoices.some((i) => i.invoice_number.toLowerCase().includes(q)));
     return r;
-  }, [situation, lens, search]);
+  }, [stories, lens, search]);
 
   const toggleLens = (l: Lens) => setLens((cur) => (cur === l ? 'everything' : l));
   const toggleRow = (id: string) =>
     setOpenRows((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const sentenceFor = (b: BuyerRow, s: Story): string => {
-    if (lens === 'upcoming' && s.upcoming.length > 0) {
-      const first = s.upcoming[0];
-      const d = daysUntil(first.date);
-      return `${fmtMoney(first.amount)} due ${d === 0 ? 'today' : d === 1 ? 'tomorrow' : fmtDate(first.date)}${s.lateAmount > 0 ? ` · plus ${fmtMoney(s.lateAmount)} already late` : ''}`;
+  // A3: one refetch closes the loop for every write made through the modal.
+  const onChanged = () => receivablesQuery.refetch();
+
+  const sentenceFor = (b: BuyerStory): string => {
+    if (lens === 'upcoming' && b.upcoming.length > 0) {
+      const first = b.upcoming[0];
+      const d = daysUntil(first.due_on);
+      return `${fmtMoney(first.open_amount)} due ${d <= 0 ? 'today' : d === 1 ? 'tomorrow' : fmtDate(first.due_on)}${b.lateAmount > 0 ? ` · plus ${fmtMoney(b.lateAmount)} already late` : ''}`;
     }
-    if (s.open <= 0.001) {
-      const last = b.receipts[b.receipts.length - 1];
-      return last ? `Paid up — last receipt ${fmtMoney(last.amount)} · ${fmtDate(last.received_on)}` : 'Paid up';
+    if (b.open <= 0.001) return b.received > 0 ? `Paid up — ${fmtMoney(b.received)} received` : 'Paid up';
+    if (b.atRisk) return `At risk — ${b.lateCount} instalment${b.lateCount === 1 ? '' : 's'} behind · ${b.oldest} days`;
+    if (b.lateAmount > 0) {
+      const part = b.received > 0 ? `${fmtMoney(b.received)} received, ` : 'nothing received, ';
+      return `${part}${fmtMoney(b.lateAmount)} late for ${b.oldest} days`;
     }
-    if (s.atRisk) return `At risk — ${s.late.length} instalment${s.late.length === 1 ? '' : 's'} behind · ${s.oldest} days`;
-    if (s.lateAmount > 0) {
-      const part = s.received > 0 ? `${fmtMoney(s.received)} received, ` : 'nothing received, ';
-      return `${part}${fmtMoney(s.lateAmount)} late for ${s.oldest} days`;
-    }
-    if (s.agingDocs.length > 0 && s.agingDocs[0].status === 'draft') return `Draft invoice never sent · ${s.agingDocs[0].invoice_number}`;
-    return s.nextDue ? `On track — next ${fmtMoney(s.nextDue.amount)} due ${fmtDate(s.nextDue.date)}` : 'On track';
+    if (b.agingDocs.length > 0 && b.agingDocs[0].status === 'draft') return `Draft invoice never sent · ${b.agingDocs[0].invoice_number}`;
+    return b.nextDue ? `On track — next ${fmtMoney(b.nextDue.open_amount)} due ${fmtDate(b.nextDue.due_on)}` : 'On track';
   };
 
   const Num: React.FC<{ v: string; color?: string; onClick?: () => void; active?: boolean }> = ({ v, color, onClick, active }) => (
@@ -141,7 +199,6 @@ const MoneyInPage: React.FC = () => {
     </button>
   );
 
-  // Signal sentence — one derived fact, one lens.
   const Signal: React.FC<{ color: string; active: boolean; onClick: () => void; children: React.ReactNode; trailing?: React.ReactNode }> =
     ({ color, active, onClick, children, trailing }) => (
       <div className="flex items-center gap-2">
@@ -170,8 +227,22 @@ const MoneyInPage: React.FC = () => {
     );
   }
 
+  if (receivablesQuery.isLoading) {
+    return <div className="py-24 flex justify-center"><LoadingSpinner size="lg" /></div>;
+  }
+  if (receivablesQuery.isError) {
+    return (
+      <div className="py-24 text-center">
+        <p className="text-sm mb-3" style={sub}>Couldn't load your money picture.</p>
+        <button onClick={() => receivablesQuery.refetch()} className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-full border" style={{ color: brand, borderColor: `${brand}45` }}>
+          <RefreshCw size={13} /> Retry
+        </button>
+      </div>
+    );
+  }
+
   const shownReceipts = receiptsExpanded ? SAMPLE_UNATTACHED_RECEIPTS : SAMPLE_UNATTACHED_RECEIPTS.slice(0, 2);
-  const lateStories = situation.stories.filter((x) => x.s.lateAmount > 0);
+  const lateStories = stories.filter((x) => x.lateAmount > 0);
 
   return (
     <div className="px-6 py-8 max-w-4xl mx-auto">
@@ -179,7 +250,7 @@ const MoneyInPage: React.FC = () => {
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4" style={{ ...sub, ...mono }}>
-            money in · {currentTenant?.name || 'your business'} · today
+            money in · {currentTenant?.name || 'your business'} · {data?.as_of ? fmtDate(data.as_of) : 'today'}
           </p>
           <h1 className="text-[26px] sm:text-[30px] leading-snug font-medium max-w-xl" style={ink}>
             <Num v={fmtMoney(situation.owed)} onClick={() => setLens('everything')} active={lens === 'everything'} /> is owed to you.
@@ -189,21 +260,21 @@ const MoneyInPage: React.FC = () => {
             ) : (<> Nothing is late.</>)}
           </h1>
           <p className="text-sm mt-3" style={sub}>
-            <span className="font-bold tabular-nums" style={{ color: green }}>{fmtMoney(situation.collected)}</span> collected so far this year ·{' '}
+            <span className="font-bold tabular-nums" style={{ color: green }}>{fmtMoney(situation.collected)}</span> collected so far ·{' '}
             <button onClick={() => toggleLens('settled')}
               className="underline-offset-4" style={{ color: colors.utility.secondaryText, textDecoration: lens === 'settled' ? 'underline' : 'none' }}>
               see who's paid up
             </button>
           </p>
         </div>
-        <button onClick={() => canCreateAdhocInvoice && navigate('/invoices/new')}
+        <button onClick={() => navigate('/invoices/new')}
           className="flex-none inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-bold text-white mt-1"
           style={{ backgroundColor: brand }}>
           <Plus size={14} /> New invoice
         </button>
       </div>
 
-      {/* ── signals: risk · aging paperwork · what's coming ── */}
+      {/* ── signals ── */}
       <div className="mt-6 space-y-2">
         {situation.riskBuyers.length > 0 && (
           <Signal color={red} active={lens === 'risk'} onClick={() => toggleLens('risk')}>
@@ -214,24 +285,26 @@ const MoneyInPage: React.FC = () => {
           <Signal color={amber} active={lens === 'docs'} onClick={() => toggleLens('docs')}>
             {situation.agingOpen > 0 && <><b>{situation.agingOpen} invoice{situation.agingOpen === 1 ? '' : 's'}</b> open past {AGING_DAYS} days</>}
             {situation.agingOpen > 0 && situation.drafts > 0 && ' · '}
-            {situation.drafts > 0 && <><b>{situation.drafts} draft{situation.drafts === 1 ? '' : 's'}</b> never sent</>}
+            {situation.drafts > 0 && <><b>{situation.drafts} draft{situation.drafts === 1 ? '' : 's'}</b> awaiting approval</>}
             {'. '}
           </Signal>
         )}
-        <Signal color={brand} active={lens === 'upcoming'} onClick={() => toggleLens('upcoming')}
-          trailing={lens === 'upcoming' && (
-            <span className="inline-flex rounded-full border overflow-hidden text-[10px] font-bold" style={{ borderColor: `${brand}45`, ...mono }}>
-              {([7, 30] as const).map((w) => (
-                <button key={w} onClick={() => setUpWindow(w)} className="px-2 py-0.5"
-                  style={{ backgroundColor: upWindow === w ? `${brand}22` : 'transparent', color: brand }}>{w}d</button>
-              ))}
-            </span>
-          )}>
-          <b className="tabular-nums">{fmtMoney(situation.upcomingAmt)}</b> falls due in the next {upWindow} days — {situation.upcomingBuyers} buyer{situation.upcomingBuyers === 1 ? '' : 's'}.{' '}
-        </Signal>
+        {situation.upcomingAmt > 0 && (
+          <Signal color={brand} active={lens === 'upcoming'} onClick={() => toggleLens('upcoming')}
+            trailing={lens === 'upcoming' && (
+              <span className="inline-flex rounded-full border overflow-hidden text-[10px] font-bold" style={{ borderColor: `${brand}45`, ...mono }}>
+                {([7, 30] as const).map((w) => (
+                  <button key={w} onClick={() => setUpWindow(w)} className="px-2 py-0.5"
+                    style={{ backgroundColor: upWindow === w ? `${brand}22` : 'transparent', color: brand }}>{w}d</button>
+                ))}
+              </span>
+            )}>
+            <b className="tabular-nums">{fmtMoney(situation.upcomingAmt)}</b> falls due in the next {upWindow} days — {situation.upcomingBuyers} buyer{situation.upcomingBuyers === 1 ? '' : 's'}.{' '}
+          </Signal>
+        )}
       </div>
 
-      {/* ── money that arrived before its paperwork — one line per receipt ── */}
+      {/* ── paperwork strip — SAMPLE until A4 wires declarations ── */}
       {SAMPLE_UNATTACHED_RECEIPTS.length > 0 && (
         <div className="mt-6 rounded-2xl px-5 py-4" style={{ backgroundColor: `${green}0f`, border: `1px solid ${green}35` }}>
           <p className="text-sm mb-2.5" style={ink}>
@@ -239,6 +312,7 @@ const MoneyInPage: React.FC = () => {
               {fmtMoney(SAMPLE_UNATTACHED_RECEIPTS.reduce((s, r) => s + r.amount, 0))}
             </span>{' '}
             has already arrived without paperwork:
+            <span className="ml-2 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded align-middle" style={{ ...mono, color: colors.utility.secondaryText, backgroundColor: `${colors.utility.primaryText}0d` }}>sample · wires with A4</span>
           </p>
           <div className="space-y-2">
             {shownReceipts.map((r) => (
@@ -265,7 +339,7 @@ const MoneyInPage: React.FC = () => {
       {/* ── control line ── */}
       <div className="mt-9 mb-2 flex items-center gap-4 pb-3" style={{ borderBottom: hairline }}>
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] flex-none" style={{ ...sub, ...mono }}>
-          {rows.length} of {SAMPLE_BUYERS.length} buyers · {lens === 'upcoming' ? 'soonest first' : 'most late first'}
+          {rows.length} of {stories.length} buyers · {lens === 'upcoming' ? 'soonest first' : 'most late first'}
         </p>
         <div className="relative ml-auto w-full max-w-[240px]">
           <Search size={13} className="absolute left-0 top-1/2 -translate-y-1/2" style={sub} />
@@ -277,57 +351,99 @@ const MoneyInPage: React.FC = () => {
 
       {/* ── the stories ── */}
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-sm" style={sub}>Nobody matches — clear the search or the filter above.</p>
-      ) : rows.map(({ b, s }) => {
-        const open = openRows.has(b.contact_id);
-        const accent = s.open <= 0.001 ? green : s.atRisk ? red : s.lateAmount > 0 ? red : amber;
+        <p className="py-16 text-center text-sm" style={sub}>
+          {stories.length === 0 ? 'No receivables yet — money appears here once contracts start billing.' : 'Nobody matches — clear the search or the filter above.'}
+        </p>
+      ) : rows.map((b) => {
+        const open = openRows.has(b.key);
+        const accent = b.open <= 0.001 ? green : b.atRisk ? red : b.lateAmount > 0 ? red : amber;
         return (
-          <div key={b.contact_id} style={{ borderBottom: hairline }}>
-            <button onClick={() => toggleRow(b.contact_id)} className="w-full py-4 flex items-center gap-4 text-left group">
+          <div key={b.key} style={{ borderBottom: hairline }}>
+            <button onClick={() => toggleRow(b.key)} className="w-full py-4 flex items-center gap-4 text-left group">
               <span className="w-1 self-stretch rounded-full flex-none" style={{ backgroundColor: `${accent}66` }} />
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] font-bold truncate" style={ink}>
                   {b.name}
-                  {b.is_guest && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: brand, backgroundColor: `${brand}14` }}>guest</span>}
-                  {s.atRisk && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: red, backgroundColor: `${red}14` }}>at risk</span>}
+                  {b.direct && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: brand, backgroundColor: `${brand}14` }}>direct</span>}
+                  {b.atRisk && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest align-middle px-1.5 py-0.5 rounded" style={{ ...mono, color: red, backgroundColor: `${red}14` }}>at risk</span>}
                 </p>
-                <p className="text-[13px] mt-0.5 truncate" style={{ color: s.lateAmount > 0 ? red : colors.utility.secondaryText }}>
-                  {sentenceFor(b, s)}
+                <p className="text-[13px] mt-0.5 truncate" style={{ color: b.lateAmount > 0 ? red : colors.utility.secondaryText }}>
+                  {sentenceFor(b)}
                 </p>
               </div>
               <div className="text-right flex-none">
-                {s.open > 0.001
-                  ? <p className="text-lg font-extrabold tabular-nums" style={ink}>{fmtMoney(s.open)}</p>
+                {b.open > 0.001
+                  ? <p className="text-lg font-extrabold tabular-nums" style={ink}>{fmtMoney(b.open)}</p>
                   : <p className="text-lg font-extrabold tabular-nums" style={{ color: green }}>✓</p>}
-                {b.plan_label && <p className="text-[10px]" style={{ ...sub, ...mono }}>{b.plan_label}</p>}
+                <p className="text-[10px]" style={{ ...sub, ...mono }}>
+                  {b.contracts.map((c) => c.contract_number).join(' · ')}
+                </p>
               </div>
               <ChevronDown size={16} className={`flex-none transition-transform ${open ? 'rotate-180' : ''} opacity-40 group-hover:opacity-80`} style={ink} />
             </button>
 
             {open && (
               <div className="pb-5 pl-5 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {b.instalments.map((i: Instalment, idx) => {
-                    const c = i.status === 'paid' ? green : i.status === 'overdue' ? red : colors.utility.secondaryText;
-                    return (
-                      <span key={idx} className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full"
-                        style={{ ...mono, color: c, backgroundColor: `${c}12`, border: `1px solid ${c}30` }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: c }} />
-                        {fmtDate(i.date)} · {fmtMoney(i.amount)}{i.status === 'overdue' ? ` · ${lateDays(i.date)}d` : ''}
-                      </span>
-                    );
-                  })}
-                </div>
+                {b.contracts.map((c) => {
+                  const openIds = c.events.filter((e) => chipState(e) !== 'paid' && e.id).map((e) => e.id as string);
+                  return (
+                    <div key={c.contract_id} className="space-y-2">
+                      {b.contracts.length > 1 && (
+                        <p className="text-[10px] font-bold uppercase tracking-[0.15em]" style={{ ...sub, ...mono }}>{c.contract_number}</p>
+                      )}
+                      {/* A2: each chip opens the shared action modal */}
+                      <div className="flex flex-wrap gap-2">
+                        {c.events.map((e, idx) => {
+                          const st = chipState(e);
+                          const col = st === 'paid' ? green : st === 'overdue' ? red : colors.utility.secondaryText;
+                          return (
+                            <button key={e.id ?? idx}
+                              onClick={() => e.id && setAction({ contractId: c.contract_id, contractNumber: c.contract_number, buyerName: b.name, eventIds: [e.id], currency: 'INR' })}
+                              disabled={!e.id}
+                              title={e.id ? 'Record a payment or correct this instalment' : undefined}
+                              className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full disabled:cursor-default hover:brightness-95"
+                              style={{ ...mono, color: col, backgroundColor: `${col}12`, border: `1px solid ${col}30` }}>
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} />
+                              {fmtDate(e.due_on)} · {fmtMoney(st === 'paid' ? e.amount : e.open_amount)}{st === 'overdue' ? ` · ${e.days_overdue}d` : ''}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="flex gap-2">
+                        {openIds.length > 0 && (
+                          <button
+                            onClick={() => setAction({ contractId: c.contract_id, contractNumber: c.contract_number, buyerName: b.name, eventIds: openIds, currency: 'INR' })}
+                            className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full text-white"
+                            style={{ backgroundColor: green }}>
+                            <Wallet size={13} /> Record payment
+                          </button>
+                        )}
+                        <button onClick={() => navigate(`/contracts/${c.contract_id}`)}
+                          className="text-xs font-bold px-3.5 py-2 rounded-full border" style={{ ...sub, borderColor: `${colors.utility.primaryText}22` }}>
+                          View contract
+                        </button>
+                        {b.lateAmount > 0 && (
+                          <button onClick={() => setNudgeOpen(true)}
+                            className="text-xs font-bold px-3.5 py-2 rounded-full border" style={{ color: brand, borderColor: `${brand}45` }}>
+                            Nudge on WhatsApp
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
 
-                {b.invoice_ids.length > 0 && (
+                {/* documents — real invoice pages */}
+                {b.invoices.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {b.invoice_ids.map((id) => {
-                      const inv = SAMPLE_INVOICES.find((i) => i.id === id);
-                      if (!inv) return null;
-                      const aging = s.agingDocs.some((d) => d.id === id);
-                      const meta = statusMeta(inv.status, invoiceOverdue(inv, TODAY_ISO));
+                    {b.invoices.map((inv) => {
+                      const aging = b.agingDocs.some((d) => d.id === inv.id);
+                      const meta = statusMeta(
+                        (inv.status === 'overdue' ? 'unpaid' : inv.status === 'bad_debt' ? 'cancelled' : inv.status) as any,
+                        inv.status === 'overdue' || inv.days_overdue > 0
+                      );
                       return (
-                        <button key={id} onClick={() => navigate(`/invoices/${id}`)}
+                        <button key={inv.id} onClick={() => navigate(`/contracts/${inv.contract_id}/invoice/${inv.id}`)}
                           className="inline-flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-lg border text-left hover:brightness-95"
                           style={{
                             backgroundColor: aging ? `${amber}10` : colors.utility.secondaryBackground,
@@ -336,7 +452,7 @@ const MoneyInPage: React.FC = () => {
                           <FileText size={13} style={{ color: aging ? amber : brand }} />
                           <span className="text-[11px] font-bold" style={ink}>{inv.invoice_number}</span>
                           {aging && inv.status !== 'draft' && (
-                            <span className="text-[10px] font-bold" style={{ ...mono, color: amber }}>{lateDays(inv.issued_date)}d open</span>
+                            <span className="text-[10px] font-bold" style={{ ...mono, color: amber }}>{daysSince(inv.issued_at)}d open</span>
                           )}
                           <Pill label={meta.label} color={meta.color} />
                         </button>
@@ -344,25 +460,6 @@ const MoneyInPage: React.FC = () => {
                     })}
                   </div>
                 )}
-
-                {b.receipts.map((r) => (
-                  <p key={r.id} className="text-[11.5px]" style={{ ...sub, ...mono }}>
-                    ↳ {fmtMoney(r.amount)} · {r.method}{r.reference ? ` · ${r.reference}` : ''} · {fmtDate(r.received_on)}
-                  </p>
-                ))}
-
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => vaniToast.info('Record Payment wires to the existing receipt flow in the next batch.')}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full text-white" style={{ backgroundColor: green }}>
-                    <Wallet size={13} /> Record payment
-                  </button>
-                  {s.open > 0.001 && (
-                    <button onClick={() => setNudgeOpen(true)}
-                      className="text-xs font-bold px-3.5 py-2 rounded-full border" style={{ color: brand, borderColor: `${brand}45` }}>
-                      Nudge on WhatsApp
-                    </button>
-                  )}
-                </div>
               </div>
             )}
           </div>
@@ -385,7 +482,21 @@ const MoneyInPage: React.FC = () => {
         receipts unlimited · invoicing included · nothing here is metered
       </p>
 
-      {/* ── nudge preview drawer — the messages VaNi would send, verbatim ── */}
+      {/* ── A2/A3: the shared action modal ── */}
+      {action && (
+        <InstalmentActionModal
+          isOpen={!!action}
+          onClose={() => setAction(null)}
+          contractId={action.contractId}
+          contractNumber={action.contractNumber}
+          buyerName={action.buyerName}
+          eventIds={action.eventIds}
+          currency={action.currency}
+          onChanged={onChanged}
+        />
+      )}
+
+      {/* ── nudge preview drawer (copy from live data; sending = coming) ── */}
       {nudgeOpen && (
         <div className="fixed inset-0 z-50 flex justify-end" style={{ backgroundColor: 'rgba(15,15,20,0.45)' }} onClick={() => setNudgeOpen(false)}>
           <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md h-full overflow-y-auto p-6"
@@ -398,16 +509,16 @@ const MoneyInPage: React.FC = () => {
               One WhatsApp per late buyer, tone matched to how late they are. Nothing sends yet —
               <span className="ml-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ ...mono, color: colors.utility.secondaryText, backgroundColor: `${colors.utility.primaryText}0d` }}>coming with wiring</span>
             </p>
-            {lateStories.map(({ b, s }) => (
-              <div key={b.contact_id} className="mb-4">
+            {lateStories.map((b) => (
+              <div key={b.key} className="mb-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.15em] mb-1.5" style={{ ...sub, ...mono }}>
-                  → {b.name.split(' ')[0]} · {s.oldest}d late
+                  → {b.name.split(' ')[0]} · {b.oldest}d late
                 </p>
                 <div className="rounded-2xl rounded-tl-sm px-4 py-3 text-[13px] leading-relaxed"
                   style={{ backgroundColor: `${green}12`, border: `1px solid ${green}30`, color: colors.utility.primaryText }}>
                   Namaste {b.name.split(' ')[0]} 🙏 — a gentle reminder from {currentTenant?.name || 'your group'}:{' '}
-                  <b>{fmtMoney(s.lateAmount)}</b> towards {b.plan_label ? b.plan_label.split(' · ')[1] : 'your membership'} is pending
-                  {s.oldest > 30 ? ` (open for ${s.oldest} days now)` : ''}. You can pay by UPI and reply here with the reference —
+                  <b>{fmtMoney(b.lateAmount)}</b> towards {b.contracts[0]?.contract_number || 'your membership'} is pending
+                  {b.oldest > 30 ? ` (open for ${b.oldest} days now)` : ''}. You can pay by UPI and reply here with the reference —
                   we'll receipt it the same day. Thank you!
                 </div>
               </div>
