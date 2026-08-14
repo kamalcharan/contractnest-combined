@@ -215,6 +215,26 @@ ROUND 8 — serviceURLs restored: adhoc save fix + a silent public-page bug
   before copying. UI-only fix — no API/DB change, no restart needed
   beyond Vite hard refresh.
 
+ROUND 9 — ad-hoc invoices are findable, and have a page
+--------------------------------------------------------
+  "No way to search or access invoices" — correct, and it was my bug:
+  Money In builds buyer rows from BILLING EVENTS, and an ad-hoc invoice
+  has none, so it was dropped from the page's data model entirely —
+  invisible AND unsearchable, even though get_tenant_receivables
+  already returns it (verified: 1 of 19 rows in the Test payload).
+  Fixed in three places:
+  · Money In: ad-hoc invoices now become their own story rows (grouped
+    by contact, tagged "ad-hoc"), or fold into an existing buyer's row.
+    Search by INV number / name now finds them.
+  · Invoice chips route correctly: contract-linked → the existing
+    contract-invoice page; ad-hoc → the standalone viewer.
+  · The standalone viewer at /invoices/:id is WIRED (was sample data).
+    New DB migration 069 get_invoice_detail (APPLIED LIVE — do not
+    re-run) returns the document from the invoice record itself: header,
+    line_items JSONB, receipts, bill-to contact. Contract-optional, so
+    it serves contract-linked invoices too. New API: GET /api/invoices/:id.
+  ⚠ Requires BOTH the api copy AND an API dev-server restart.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
@@ -243,6 +263,16 @@ ROUND 8 — serviceURLs restored: adhoc save fix + a silent public-page bug
 - [ ] Wrong-side visits: /money-in in Expense (and /to-pay in Revenue)
       show the polite cross-pointer, not the workspace
 - [ ] Dark mode + phone width on all of the above
+
+ROUND 9 (ad-hoc invoices):
+- [ ] TEST MODE: Money In shows a row for "Test Guest — Adhoc Invoice QA"
+      tagged ad-hoc, ₹600, "Paid up"
+- [ ] Typing INV-10069 in Money In's search finds that row
+- [ ] Expanding it shows the INV-10069 chip; clicking opens the document
+      page with the line item, ₹600 paid, receipt RCP-10071 (Cash)
+- [ ] A contract-linked invoice chip still opens the OLD contract-invoice
+      page (unchanged)
+- [ ] /invoices/<id> of a contract invoice also renders (same endpoint)
 
 ROUND 3 (wired) — verify against /ops/finance side by side:
 - [ ] Money In headline totals match Finance (AR/AP) Receivables numbers

@@ -145,6 +145,43 @@ const MoneyInPage: React.FC = () => {
         isGroupSession: evs.some((e) => e.is_group_session),
       });
     }
+
+    // Ad-hoc invoices have NO contract and NO billing events, so the grouping
+    // above never sees them — they were invisible on this page and therefore
+    // unsearchable, even though get_tenant_receivables returns them. Give each
+    // contact its own story row, or fold the invoice into an existing one.
+    const adhocByContact = new Map<string, FinanceInvoice[]>();
+    for (const inv of invoices.filter((i) => !i.contract_id)) {
+      const k = inv.buyer_id || inv.buyer_name || inv.id;
+      if (!adhocByContact.has(k)) adhocByContact.set(k, []);
+      adhocByContact.get(k)!.push(inv);
+    }
+    for (const [k, invs] of adhocByContact) {
+      const existing = out.find((x) => x.key === k);
+      if (existing) { existing.invoices = [...existing.invoices, ...invs]; continue; }
+      const openAmt = invs.reduce((t, i) => t + (i.balance || 0), 0);
+      const lateInvs = invs.filter((i) => (i.balance || 0) > 0.001 && i.days_overdue > 0);
+      const oldestLate = lateInvs.reduce((m, i) => Math.max(m, i.days_overdue), 0);
+      out.push({
+        key: k,
+        buyerId: invs[0].buyer_id ?? null,
+        name: invs[0].buyer_name || invs[0].buyer_company || 'Direct invoice',
+        direct: true,
+        contracts: [],
+        invoices: invs,
+        open: openAmt,
+        lateAmount: lateInvs.reduce((t, i) => t + (i.balance || 0), 0),
+        lateCount: lateInvs.length,
+        oldest: oldestLate,
+        received: invs.reduce((t, i) => t + (i.amount_paid || 0), 0),
+        nextDue: null,
+        atRisk: lateInvs.length >= RISK_ARREARS || oldestLate > RISK_DAYS,
+        agingDocs: invs.filter((i) => i.status === 'draft' ||
+          ((i.balance || 0) > 0.001 && i.status !== 'cancelled' && daysSince(i.issued_at) > AGING_DAYS)),
+        upcoming: [],
+        isGroupSession: false,
+      });
+    }
     return out;
   }, [data, upWindow]);
 
@@ -399,6 +436,7 @@ const MoneyInPage: React.FC = () => {
                   ? <p className="text-lg font-extrabold tabular-nums" style={ink}>{fmtMoney(b.open)}</p>
                   : <p className="text-lg font-extrabold tabular-nums" style={{ color: green }}>✓</p>}
                 <p className="text-[10px]" style={{ ...sub, ...mono }}>
+                  {b.contracts.length === 0 && 'ad-hoc'}
                   {b.contracts.map((c, i) => (
                     <span key={c.contract_id}>
                       {i > 0 && ' · '}
@@ -474,7 +512,10 @@ const MoneyInPage: React.FC = () => {
                         inv.status === 'overdue' || inv.days_overdue > 0
                       );
                       return (
-                        <button key={inv.id} onClick={() => navigate(`/contracts/${inv.contract_id}/invoice/${inv.id}`)}
+                        <button key={inv.id} onClick={() => navigate(
+                          // an ad-hoc invoice has no contract to route through
+                          inv.contract_id ? `/contracts/${inv.contract_id}/invoice/${inv.id}` : `/invoices/${inv.id}`
+                        )}
                           className="inline-flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-lg border text-left hover:brightness-95"
                           style={{
                             backgroundColor: aging ? `${amber}10` : colors.utility.secondaryBackground,

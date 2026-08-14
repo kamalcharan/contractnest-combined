@@ -1343,6 +1343,7 @@ export const API_ENDPOINTS = {
   // inconsistent, so match by brace depth, not by leading spaces.
   INVOICES: {
     ADHOC: '/api/invoices/adhoc',
+    DETAIL: (id: string) => `/api/invoices/${id}`,
   },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)
