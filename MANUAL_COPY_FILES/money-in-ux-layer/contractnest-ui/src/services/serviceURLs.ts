@@ -1344,6 +1344,7 @@ export const API_ENDPOINTS = {
   INVOICES: {
     ADHOC: '/api/invoices/adhoc',
     DETAIL: (id: string) => `/api/invoices/${id}`,
+    SEND: (id: string) => `/api/invoices/${id}/send`,
   },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)

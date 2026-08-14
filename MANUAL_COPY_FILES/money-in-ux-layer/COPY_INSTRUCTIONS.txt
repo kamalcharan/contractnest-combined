@@ -344,7 +344,89 @@ PART 2 of 3 — ONE OF EACH (dedupe) + THE INVOICE REGISTER
      (Contacts → Financials) still renders it. Retiring it fully is still
      an open item, not part of this batch.
 
-  Part 3 (not in this batch): JTD wiring for all invoice notifications.
+PART 3 of 3 — SEND INVOICE (manual, rule-gated)
+-----------------------------------------------
+  Owner decisions: MANUAL SEND ONLY (no trigger, no schedule); the send
+  carries a Razorpay link OR the tenant's offline UPI/QR; a banner points at
+  /settings/integrations when neither is configured; a tenant with no
+  integration can STILL invoice and capture offline; one thank-you for all.
+  Everything is generic — tenant + is_live come from auth context, no tenant
+  is special-cased anywhere.
+
+  REUSED, not rebuilt (the whole point of this part):
+    · automation rule notif_payment_request ("Standalone payment request")
+      via vani_rule_enabled() — the same gate run_contract_event_scanner
+      uses. Invoices obey the tenant's standing instructions instead of
+      getting a private switch. On BBB this rule is currently OFF, so Send
+      will correctly refuse and offer the link to turn it on.
+    · source type payment_request + the platform-level templates
+      payment_request_email / payment_request_whatsapp (variables already
+      match an invoice exactly: customer_name, tenant_name, invoice_number,
+      amount, currency, payment_link, expire_hours)
+    · paymentGatewayService.createLink() — "Create a payment link for
+      email/WhatsApp delivery", whose collection_mode values are literally
+      email_link / whatsapp_link
+    · contractController.getPublicPaymentContext's composition
+      (checkGatewayConfigured + offline UPI) — the app's existing single
+      source of truth for whether a tenant can collect
+    · useGatewayStatus() for the banner condition
+    · gs_member_whatsapp_phone(), trg_jtd_enqueue, vaniToast
+
+  MIGRATIONS 070 + 071 — BOTH ALREADY APPLIED LIVE. DO NOT RE-RUN.
+    070 fn_enqueue_invoice_notification — rule-gated, refuses rather than
+        failing silently (rule off / cancelled / no recipient / no address /
+        nothing owed / blank name), p_dry_run resolves without inserting.
+        Dedupe is an advisory lock + NOT EXISTS window, NOT ON CONFLICT:
+        trg_jtd_enqueue is BEFORE INSERT and calls pgmq.send(), so a
+        discarded row still leaves a phantom queue message. A unique index
+        would also be wrong — a human must be able to re-send later.
+    071 get_tenant_payment_config(tenant, is_live) — the offline-UPI lookup
+        existed twice already as public doors (get_public_offline_upi_config
+        by CNAK, gs_checkin_payment_config by token). This is the shared
+        body, and the authenticated third door. Verified live: BBB resolves
+        9849502193@kbl on Live and kamalcharan@okicici on Test — proving the
+        is_live scoping the older can_collect_payment silently drops.
+        071 also adds p_payment_link / p_qr_url and DROPS 070's 5-arg
+        signature so it cannot resolve by accident.
+
+  ⚠ WHATSAPP IS UNPROVEN. handlers/whatsapp.ts previously had NO branch for
+  payment_request, so it fell through to the positional fallback that file's
+  own comment warns is unreliable (template_variables round-trips through
+  jsonb; Postgres does not preserve key order). An explicit branch is now
+  there, written NAMED per the pre-Aug-2026 registration rule — but nobody
+  has verified against a handset whether that template was registered named
+  or positional. Getting it wrong fails SILENTLY: MSG91 accepts, returns a
+  request_id, the row reads 'sent', WhatsApp rejects on delivery. The branch
+  carries a one-line flip to positional in a comment. SEND ONE TO YOUR OWN
+  NUMBER FIRST.
+
+  The UI sends EMAIL only for now — one button, no channel picker, because
+  the WhatsApp template is unproven.
+
+  ⚠ BBB's live contractnest_email integration has is_active = false, so an
+  email send on BBB Live will not deliver today. WhatsApp is the active
+  channel there. Turn email on at /settings/integrations before testing on
+  Live, or test in the Test environment.
+
+  Also fixed: jtd-worker/index.ts never passed mediaUrl to the WhatsApp
+  handler, so components.header_1 (which the handler has always supported)
+  was dead. It now passes metadata.media_url — that is how the tenant's UPI
+  QR reaches a payer when there is no gateway link.
+
+  FILES
+  NEW   contractnest-edge/.../bbb-foundation/070_invoice_send_jtd.sql   (record)
+  NEW   contractnest-edge/.../bbb-foundation/071_tenant_payment_config.sql (record)
+  EDIT  contractnest-edge/supabase/functions/jtd-worker/index.ts         ⚠ redeploy
+  EDIT  contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts ⚠ redeploy
+  EDIT  contractnest-api/src/services/invoiceService.ts
+  EDIT  contractnest-api/src/controllers/invoiceController.ts
+  EDIT  contractnest-api/src/routes/invoiceRoutes.ts
+  EDIT  contractnest-ui/src/services/serviceURLs.ts        (+ INVOICES.SEND)
+  EDIT  contractnest-ui/src/pages/invoices/useInvoiceDetail.ts (+ useSendInvoice)
+  EDIT  contractnest-ui/src/pages/contracts/invoice/index.tsx  (button + banners)
+
+  ⚠ Requires an API restart. The jtd-worker edge function must be REDEPLOYED
+  for the WhatsApp branch and mediaUrl to take effect.
 
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
@@ -384,6 +466,26 @@ ROUND 9 (ad-hoc invoices):
 - [ ] A contract-linked invoice chip still opens the OLD contract-invoice
       page (unchanged)
 - [ ] /invoices/<id> of a contract invoice also renders (same endpoint)
+
+PART 3 (send invoice):
+- [ ] Open any invoice → "Send Invoice". With BBB's rule OFF, expect the
+      amber card: "Payment request notifications are switched off…" plus an
+      "Open Automation Rules" link that navigates there
+- [ ] Turn ON "Standalone payment request" in Automation Rules, come back,
+      Send again → button shows "Sending…" then a success toast naming the
+      recipient
+- [ ] The blue "No payment method is set up" banner appears only when the
+      tenant has NO active payment integration. BBB has offline UPI, so it
+      should NOT appear for BBB
+- [ ] A settled invoice refuses with "…is fully settled — there is nothing
+      to request." (not a generic error)
+- [ ] A contact with no email refuses naming that contact
+- [ ] Press Send twice quickly → second attempt says "already sent moments
+      ago" rather than queueing a duplicate
+- [ ] Check n_jtd: one row, source_type_code='payment_request',
+      template_key='payment_request_email', is_live matching your environment
+- [ ] WHATSAPP: do NOT test on a member. Send one to your own number and
+      LOOK AT THE HANDSET before trusting status='sent'
 
 PART 2 (dedupe + register):
 - [ ] REGRESSION FIRST — Group Sessions → Dues: click a month cell. The

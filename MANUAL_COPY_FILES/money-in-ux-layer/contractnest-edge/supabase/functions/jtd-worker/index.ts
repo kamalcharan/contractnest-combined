@@ -1,0 +1,711 @@
+// supabase/functions/jtd-worker/index.ts
+// JTD Worker - Polls PGMQ and processes jobs
+// Invoked via cron job or HTTP trigger
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Handler imports
+import { handleEmail } from './handlers/email.ts';
+import { handleSMS } from './handlers/sms.ts';
+import { handleWhatsApp } from './handlers/whatsapp.ts';
+import { handleInApp } from './handlers/inapp.ts';
+
+// Types
+interface JTDQueueMessage {
+  msg_id: number;
+  read_ct: number;
+  enqueued_at: string;
+  vt: string;
+  message: {
+    jtd_id: string;
+    tenant_id: string;
+    event_type_code: string;
+    channel_code: string;
+    source_type_code: string;
+    priority: number;
+    scheduled_at: string | null;
+    recipient_contact: string;
+    is_live: boolean;
+    created_at: string;
+  };
+}
+
+interface JTDRecord {
+  id: string;
+  tenant_id: string;
+  event_type_code: string;
+  channel_code: string;
+  source_type_code: string;
+  recipient_name: string;
+  recipient_contact: string;
+  payload: {
+    recipient_data?: Record<string, any>;
+    template_data?: Record<string, any>;
+  };
+  template_key: string;
+  template_variables: Record<string, any>;
+  metadata: Record<string, any>;
+  is_live: boolean;
+  retry_count: number;
+  max_retries: number;
+}
+
+interface ProcessResult {
+  success: boolean;
+  provider_message_id?: string;
+  error?: string;
+}
+
+// Constants
+const BATCH_SIZE = 10;
+const VISIBILITY_TIMEOUT = 60; // seconds
+const DEFAULT_MAX_RETRIES = 3;
+const VANI_UUID = '00000000-0000-0000-0000-000000000001';
+
+// Identity/access messages (owner decision 2026-07-22, extended 2026-08-01):
+// password reset, signup, team invitations, and the contract sign-off (CNAK)
+// link are exceptions to the global TEST-env guardrail, the per-tenant
+// channel kill switch, AND the per-tenant per-message-type toggle below — a
+// tenant that has turned off messaging (or restricted a message type) must
+// still be able to bring a teammate onto the platform or let a counterparty
+// actually reach the page where they sign. Blocking these isn't "saving
+// spend," it's a self-inflicted outage (nobody can sign, nobody can log in).
+// Password reset itself never enters this queue (Supabase Auth delivers it
+// directly; a non-'created' audit-only n_jtd row is inserted separately for
+// visibility and is never picked up here). Every other message (service/
+// payment reminders, group session notifications, RFQ, etc.) is business/
+// informational content and remains fully governed by rules + channels +
+// the per-message-type toggle.
+const GATE_EXEMPT_SOURCE_TYPES = new Set(['user_invite', 'user_created', 'contract_signoff']);
+
+// Initialize Supabase client with service role
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Read batch of messages from JTD queue
+ */
+async function readQueue(batchSize: number = BATCH_SIZE): Promise<JTDQueueMessage[]> {
+  const { data, error } = await supabase.rpc('jtd_read_queue', {
+    p_batch_size: batchSize,
+    p_visibility_timeout: VISIBILITY_TIMEOUT
+  });
+
+  if (error) {
+    console.error('Error reading queue:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Fetch full JTD record from database including retry info
+ */
+async function fetchJTDRecord(jtdId: string): Promise<JTDRecord | null> {
+  const { data, error } = await supabase
+    .from('n_jtd')
+    .select('id, tenant_id, event_type_code, channel_code, source_type_code, recipient_name, recipient_contact, payload, template_key, template_variables, metadata, is_live, retry_count, max_retries')
+    .eq('id', jtdId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching JTD record:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Delete message from queue (ALWAYS call this after processing)
+ */
+async function deleteMessage(msgId: number): Promise<void> {
+  const { error } = await supabase.rpc('jtd_delete_message', {
+    p_msg_id: msgId
+  });
+
+  if (error) {
+    console.error('Error deleting message:', error);
+    // Don't throw - we want to continue even if delete fails
+  }
+}
+
+/**
+ * Move message to DLQ after max retries
+ */
+async function archiveToDLQ(msgId: number, errorMessage: string): Promise<void> {
+  const { error } = await supabase.rpc('jtd_archive_to_dlq', {
+    p_msg_id: msgId,
+    p_error_message: errorMessage
+  });
+
+  if (error) {
+    console.error('Error archiving to DLQ:', error);
+  }
+}
+
+/**
+ * Update JTD status in database
+ * Column names: status_code, executed_at, completed_at, error_message, retry_count
+ */
+async function updateJTDStatus(
+  jtdId: string,
+  status: string,
+  providerMessageId?: string,
+  errorMessage?: string,
+  incrementRetry: boolean = false
+): Promise<void> {
+  const updateData: Record<string, any> = {
+    status_code: status,
+    updated_by: VANI_UUID,
+    updated_at: new Date().toISOString()
+  };
+
+  if (providerMessageId) {
+    updateData.provider_message_id = providerMessageId;
+  }
+
+  if (status === 'sent' || status === 'processing') {
+    updateData.executed_at = new Date().toISOString();
+  } else if (status === 'delivered' || status === 'completed') {
+    updateData.completed_at = new Date().toISOString();
+  } else if (status === 'failed') {
+    updateData.error_message = errorMessage;
+    updateData.last_retry_at = new Date().toISOString();
+  }
+
+  // Build query
+  let query = supabase.from('n_jtd').update(updateData).eq('id', jtdId);
+
+  const { error } = await query;
+
+  if (error) {
+    console.error('Error updating JTD status:', error);
+    throw error;
+  }
+
+  // Increment retry_count separately if needed
+  if (incrementRetry) {
+    // Fetch current retry_count and increment
+    const { data: currentRecord } = await supabase
+      .from('n_jtd')
+      .select('retry_count')
+      .eq('id', jtdId)
+      .single();
+
+    const newRetryCount = (currentRecord?.retry_count || 0) + 1;
+
+    await supabase
+      .from('n_jtd')
+      .update({ retry_count: newRetryCount })
+      .eq('id', jtdId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Credits (Business Model V4, Phase B)
+//
+// Until this, the worker sent and the balance never moved: nothing called
+// deduct_credits, and nothing ever wrote status_code = 'no_credits', so the
+// release machinery built in jtd-framework/003 had nothing to release.
+//
+// The three RPCs below hold all the rules — which messages are exempt, which
+// pool to spend from, and the idempotency that stops a retry paying twice —
+// so none of it is restated here. Every one of them fails open: a metering
+// problem must never stop a message or rewrite a sent one as failed.
+// ---------------------------------------------------------------------------
+
+/** Hold one credit before handing the message to the provider. */
+async function reserveCredit(
+  jtdId: string
+): Promise<{ ok: boolean; reason?: string; pool?: string }> {
+  const { data, error } = await supabase.rpc('jtd_reserve_credit', { p_jtd_id: jtdId });
+
+  if (error) {
+    // Fail open — same posture as the vani_rule_enabled gate below.
+    console.error(`JTD ${jtdId} jtd_reserve_credit failed, proceeding uncharged:`, error);
+    return { ok: true, reason: 'meter_error' };
+  }
+
+  return {
+    ok: data?.success === true,
+    reason: data?.reason,
+    pool: data?.pool
+  };
+}
+
+/** Convert the hold into a spend, once the provider has accepted. */
+async function chargeCredit(jtdId: string): Promise<void> {
+  const { data, error } = await supabase.rpc('jtd_charge_credit', { p_jtd_id: jtdId });
+
+  if (error) {
+    // The message is already gone. Losing the charge is recoverable; failing
+    // here is not.
+    console.error(`JTD ${jtdId} jtd_charge_credit failed (message WAS sent):`, error);
+    return;
+  }
+
+  if (data?.charged === false && data?.reason) {
+    console.log(`JTD ${jtdId} not charged: ${data.reason}`);
+  }
+}
+
+/** Give the hold back when the provider refused the message. */
+async function releaseCredit(jtdId: string): Promise<void> {
+  const { error } = await supabase.rpc('jtd_release_credit', { p_jtd_id: jtdId });
+  if (error) {
+    console.error(`JTD ${jtdId} jtd_release_credit failed:`, error);
+  }
+}
+
+/**
+ * Get template for JTD
+ */
+async function getTemplate(
+  sourceType: string,
+  channel: string,
+  tenantId: string
+): Promise<{ subject?: string; body: string; bodyHtml?: string; providerTemplateId?: string } | null> {
+  // First try tenant-specific template
+  let { data, error } = await supabase
+    .from('n_jtd_templates')
+    .select('subject, content, content_html, provider_template_id')
+    .eq('source_type_code', sourceType)
+    .eq('channel_code', channel)
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .single();
+
+  if (!data) {
+    // Fall back to system template (tenant_id is null)
+    const result = await supabase
+      .from('n_jtd_templates')
+      .select('subject, content, content_html, provider_template_id')
+      .eq('source_type_code', sourceType)
+      .eq('channel_code', channel)
+      .is('tenant_id', null)
+      .eq('is_active', true)
+      .single();
+
+    data = result.data;
+    error = result.error;
+  }
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('Error fetching template:', error);
+    return null;
+  }
+
+  if (!data) return null;
+
+  return {
+    subject: data.subject,
+    body: data.content,
+    bodyHtml: data.content_html,
+    providerTemplateId: data.provider_template_id
+  };
+}
+
+/**
+ * Replace template variables with actual values
+ * Variables format: {{variable_name}}
+ */
+function renderTemplate(template: string, data: Record<string, any>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    return data[key] !== undefined ? String(data[key]) : match;
+  });
+}
+
+/**
+ * Process a single JTD message
+ */
+async function processMessage(msg: JTDQueueMessage): Promise<void> {
+  const { message } = msg;
+  const { jtd_id } = message;
+
+  console.log(`Processing JTD ${jtd_id}`);
+
+  try {
+    // Fetch full JTD record from database (queue message only has basic info)
+    const jtdRecord = await fetchJTDRecord(jtd_id);
+    if (!jtdRecord) {
+      console.error(`JTD record not found: ${jtd_id}, deleting from queue`);
+      await deleteMessage(msg.msg_id);
+      return;
+    }
+
+    // Check retry limit BEFORE processing
+    const maxRetries = jtdRecord.max_retries || DEFAULT_MAX_RETRIES;
+    if (jtdRecord.retry_count >= maxRetries) {
+      console.log(`JTD ${jtd_id} exceeded max retries (${jtdRecord.retry_count}/${maxRetries}), marking as failed`);
+      await updateJTDStatus(jtd_id, 'failed', undefined, `Max retries (${maxRetries}) exceeded`);
+      await archiveToDLQ(msg.msg_id, `Max retries exceeded`);
+      await deleteMessage(msg.msg_id);
+      return;
+    }
+
+    const {
+      tenant_id,
+      channel_code,
+      source_type_code,
+      recipient_contact,
+      recipient_name,
+      payload,
+      template_variables,
+      metadata
+    } = jtdRecord;
+
+    // Build recipient_data from payload or construct from record
+    const recipient_data = payload?.recipient_data || {
+      email: channel_code === 'email' ? recipient_contact : undefined,
+      mobile: channel_code !== 'email' ? recipient_contact : undefined,
+      name: recipient_name
+    };
+
+    // Use template_variables from record
+    const template_data = template_variables || payload?.template_data || {};
+
+    console.log(`Processing JTD ${jtd_id} - ${source_type_code} via ${channel_code} (retry ${jtdRecord.retry_count}/${maxRetries})`);
+
+    const isGateExempt = GATE_EXEMPT_SOURCE_TYPES.has(source_type_code);
+    if (isGateExempt) {
+      console.log(`JTD ${jtd_id} (${source_type_code}) is an identity/access message — exempt from the TEST-env guardrail, tenant channel kill switch, and per-message-type toggle`);
+    }
+
+    // Global test-environment guardrail: TEST-env (is_live=false) records
+    // often carry real people's contact details (imported/seeded test
+    // data), so a test-environment action must never actually message a
+    // real inbox — regardless of tenant config. Unconditional, applies to
+    // every tenant, independent of the per-tenant check below. Identity
+    // messages (GATE_EXEMPT_SOURCE_TYPES) are exempt — see comment above.
+    if (!isGateExempt && jtdRecord.is_live === false && (channel_code === 'email' || channel_code === 'whatsapp')) {
+      console.log(`JTD ${jtd_id} blocked: TEST environment never sends real ${channel_code}`);
+      await deleteMessage(msg.msg_id);
+      await updateJTDStatus(jtd_id, 'failed', undefined, `Blocked: TEST environment does not send real ${channel_code}`, true);
+      await archiveToDLQ(msg.msg_id, `Blocked: TEST environment does not send real ${channel_code}`);
+      return;
+    }
+
+    // Tenant-level channel kill switch. n_jtd_tenant_config already exists
+    // for exactly this (is_active / channels_enabled), and the three
+    // enqueue-side callers check it before inserting into n_jtd — but this
+    // worker, the single chokepoint every queued message actually passes
+    // through regardless of which feature enqueued it, never re-checked it.
+    // That left no way to stop an already-queued message, or a message from
+    // any future enqueue path that skips the per-caller check. Re-checking
+    // here closes that gap for every tenant, not just the one that
+    // triggered this fix. Identity messages are exempt — see comment above.
+    if (!isGateExempt && (channel_code === 'email' || channel_code === 'whatsapp')) {
+      const { data: tenantConfig } = await supabase
+        .from('n_jtd_tenant_config')
+        .select('is_active, channels_enabled')
+        .eq('tenant_id', tenant_id)
+        .eq('is_live', jtdRecord.is_live)
+        .maybeSingle();
+
+      const channelBlocked = tenantConfig &&
+        (tenantConfig.is_active === false || tenantConfig.channels_enabled?.[channel_code] === false);
+
+      if (channelBlocked) {
+        console.log(`JTD ${jtd_id} blocked: ${channel_code} disabled for tenant ${tenant_id} (n_jtd_tenant_config)`);
+        await deleteMessage(msg.msg_id);
+        await updateJTDStatus(jtd_id, 'failed', undefined, `Blocked: ${channel_code} disabled for this tenant`, true);
+        await archiveToDLQ(msg.msg_id, `Blocked: ${channel_code} disabled for this tenant`);
+        return;
+      }
+    }
+
+    // Tenant-level PER-MESSAGE-TYPE toggle. Reads the VaNi rule
+    // `notif_<source_type_code>` via vani_rule_enabled(), which returns the
+    // tenant's t_vani_rules override if present, otherwise the template
+    // default from m_vani_rule_templates, otherwise true. Rules for these
+    // notifications are seeded in operations-loop/022_vani_notification_rules.sql;
+    // if a source type has no matching notif_* rule (e.g. `manual`, `system`,
+    // or any newly added source type that isn't in the rules catalog yet),
+    // vani_rule_enabled falls through to true — same opt-out model as the
+    // channel kill switch above.
+    // Identity/access messages are exempt — see comment above.
+    if (!isGateExempt) {
+      const { data: enabled, error: ruleErr } = await supabase.rpc('vani_rule_enabled', {
+        p_tenant_id: tenant_id,
+        p_rule_key: `notif_${source_type_code}`
+      });
+
+      if (ruleErr) {
+        // Loud on error, don't silently drop. The gate fails open (message
+        // proceeds) so a rules-lookup outage never causes a silent send stoppage
+        // for a live tenant. Logged so it shows up in edge-function logs.
+        console.error(`JTD ${jtd_id} vani_rule_enabled lookup failed for notif_${source_type_code}:`, ruleErr);
+      } else if (enabled === false) {
+        console.log(`JTD ${jtd_id} blocked: notif_${source_type_code} disabled for tenant ${tenant_id} (t_vani_rules)`);
+        await deleteMessage(msg.msg_id);
+        await updateJTDStatus(jtd_id, 'failed', undefined, `Blocked: ${source_type_code} disabled for this tenant`, true);
+        await archiveToDLQ(msg.msg_id, `Blocked: ${source_type_code} disabled for this tenant`);
+        return;
+      }
+    }
+
+    // Credit gate. Every gate above this point is about whether the tenant
+    // WANTS this message sent; this one is about whether they can pay for it.
+    // It comes last so a blocked message is never charged for.
+    //
+    // Most unpayable messages never get here — trg_jtd_credit_gate parks them
+    // at INSERT, before they reach the queue. This catches the race: the pool
+    // was fine when the message was queued and another send drained it before
+    // the worker picked it up.
+    const credit = await reserveCredit(jtd_id);
+    if (!credit.ok) {
+      console.log(`JTD ${jtd_id} parked: no ${channel_code} credits`);
+      // Waiting, not failing — no retry increment, no DLQ. The topup trigger
+      // (trg_context_release_jtds) re-queues it the moment credits arrive.
+      await deleteMessage(msg.msg_id);
+      await updateJTDStatus(
+        jtd_id,
+        'no_credits',
+        undefined,
+        `Waiting for ${channel_code} credits`
+      );
+      return;
+    }
+
+    // Update status to 'processing'
+    await updateJTDStatus(jtd_id, 'processing');
+
+    // Get template using source_type_code (e.g., 'user_invite')
+    const template = await getTemplate(source_type_code, channel_code, tenant_id);
+    if (!template) {
+      throw new Error(`No template found for ${source_type_code}/${channel_code}`);
+    }
+
+    // Render template with data
+    const renderedBody = renderTemplate(template.body, template_data);
+    const renderedBodyHtml = template.bodyHtml
+      ? renderTemplate(template.bodyHtml, template_data)
+      : undefined;
+    const renderedSubject = template.subject
+      ? renderTemplate(template.subject, template_data)
+      : undefined;
+
+    // Route to appropriate handler
+    let result: ProcessResult;
+
+    switch (channel_code) {
+      case 'email':
+        result = await handleEmail({
+          to: recipient_data.email || recipient_contact,
+          toName: recipient_name,
+          subject: renderedSubject || `Notification: ${source_type_code}`,
+          body: renderedBodyHtml || renderedBody,
+          templateId: template.providerTemplateId,
+          templateVariables: template_data,
+          metadata
+        });
+        break;
+
+      case 'sms':
+        result = await handleSMS({
+          to: recipient_data.mobile || recipient_contact,
+          countryCode: recipient_data.country_code,
+          body: renderedBody, // Plain text for SMS
+          metadata
+        });
+        break;
+
+      case 'whatsapp':
+        result = await handleWhatsApp({
+          to: recipient_data.mobile || recipient_contact,
+          countryCode: recipient_data.country_code,
+          templateName: template.providerTemplateId || metadata?.whatsapp_template || source_type_code,
+          templateData: template_data,
+          // Header image, when the enqueuer supplied one. The handler has
+          // always supported components.header_1 but nothing ever passed a
+          // URL, so the path was inert. Invoice sends use it to carry the
+          // tenant's UPI QR when they have no payment gateway.
+          mediaUrl: metadata?.media_url,
+          metadata
+        });
+        break;
+
+      case 'inapp':
+        result = await handleInApp({
+          userId: recipient_data.user_id,
+          tenantId: tenant_id,
+          title: renderedSubject || source_type_code,
+          body: renderedBody,
+          metadata
+        });
+        break;
+
+      default:
+        throw new Error(`Unknown channel: ${channel_code}`);
+    }
+
+    // ALWAYS delete from queue after processing (success or failure)
+    await deleteMessage(msg.msg_id);
+
+    if (result.success) {
+      // The provider has it. Turn the hold into a spend, and record which JTD
+      // spent it — this is what makes the chain readable end to end:
+      // contract -> grant -> balance -> JTD -> provider message id.
+      await chargeCredit(jtd_id);
+
+      // Success - update status
+      await updateJTDStatus(jtd_id, 'sent', result.provider_message_id);
+      console.log(`JTD ${jtd_id} sent successfully`);
+    } else {
+      // Nothing was sent, so nothing is owed. Give the hold back before the
+      // retry, or it stays locked against the pool until it is charged.
+      await releaseCredit(jtd_id);
+
+      // Failure - increment retry count and update status
+      const newRetryCount = jtdRecord.retry_count + 1;
+
+      if (newRetryCount >= maxRetries) {
+        // Max retries reached
+        await updateJTDStatus(jtd_id, 'failed', undefined, result.error, true);
+        await archiveToDLQ(msg.msg_id, result.error || 'Unknown error');
+        console.log(`JTD ${jtd_id} FAILED permanently after ${newRetryCount} retries: ${result.error}`);
+      } else {
+        // More retries available - update status but DON'T re-queue
+        // The scheduled job will pick it up based on status/retry_count
+        await updateJTDStatus(jtd_id, 'failed', undefined, result.error, true);
+        console.log(`JTD ${jtd_id} failed (retry ${newRetryCount}/${maxRetries}): ${result.error}`);
+      }
+    }
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Error processing JTD ${jtd_id}:`, errorMessage);
+
+    // ALWAYS delete from queue to prevent infinite retry loop
+    await deleteMessage(msg.msg_id);
+
+    // A hold may be outstanding — the throw can come from getTemplate or a
+    // handler, both of which run after the reservation. Release it before the
+    // retry so a template outage cannot silently lock up a tenant's pool.
+    await releaseCredit(jtd_id);
+
+    // Update status with error
+    try {
+      const jtdRecord = await fetchJTDRecord(jtd_id);
+      const maxRetries = jtdRecord?.max_retries || DEFAULT_MAX_RETRIES;
+      const currentRetry = jtdRecord?.retry_count || 0;
+
+      if (currentRetry + 1 >= maxRetries) {
+        await updateJTDStatus(jtd_id, 'failed', undefined, errorMessage, true);
+        await archiveToDLQ(msg.msg_id, errorMessage);
+        console.log(`JTD ${jtd_id} FAILED permanently: ${errorMessage}`);
+      } else {
+        await updateJTDStatus(jtd_id, 'failed', undefined, errorMessage, true);
+        console.log(`JTD ${jtd_id} failed, retry ${currentRetry + 1}/${maxRetries}`);
+      }
+    } catch (updateError) {
+      console.error(`Failed to update JTD ${jtd_id} status:`, updateError);
+    }
+  }
+}
+
+/**
+ * Main worker function - processes batch of messages
+ */
+async function processQueue(): Promise<{ processed: number; errors: number }> {
+  let processed = 0;
+  let errors = 0;
+
+  try {
+    const messages = await readQueue();
+    console.log(`Found ${messages.length} messages in queue`);
+
+    for (const msg of messages) {
+      try {
+        await processMessage(msg);
+        processed++;
+      } catch (error) {
+        errors++;
+        console.error('Message processing failed:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Queue processing failed:', error);
+    throw error;
+  }
+
+  return { processed, errors };
+}
+
+/**
+ * Process scheduled JTDs that are due
+ */
+async function processScheduled(): Promise<number> {
+  const { data, error } = await supabase.rpc('jtd_enqueue_scheduled');
+
+  if (error) {
+    console.error('Error processing scheduled JTDs:', error);
+    throw error;
+  }
+
+  const count = data || 0;
+  if (count > 0) {
+    console.log(`Enqueued ${count} scheduled JTDs`);
+  }
+
+  return count;
+}
+
+// HTTP Server
+serve(async (req) => {
+  // CORS headers
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Verify authorization (service role or cron secret)
+    const authHeader = req.headers.get('Authorization');
+    const cronSecret = req.headers.get('X-Cron-Secret');
+    const expectedCronSecret = Deno.env.get('CRON_SECRET');
+
+    if (!authHeader && cronSecret !== expectedCronSecret) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Process scheduled JTDs first
+    const scheduledCount = await processScheduled();
+
+    // Process queue
+    const { processed, errors } = await processQueue();
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        scheduled_enqueued: scheduledCount,
+        processed,
+        errors,
+        timestamp: new Date().toISOString()
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Worker error:', error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

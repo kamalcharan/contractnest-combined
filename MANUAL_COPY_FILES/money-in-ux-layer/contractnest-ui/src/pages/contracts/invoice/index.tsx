@@ -25,9 +25,11 @@ import {
   CheckCircle2,
   Clock,
   Wallet,
+  Loader2,
+  Settings2,
 } from 'lucide-react';
 import type { Invoice } from '@/types/contracts';
-import { useInvoiceDetail } from '@/pages/invoices/useInvoiceDetail';
+import { useInvoiceDetail, useSendInvoice, sendRefusal } from '@/pages/invoices/useInvoiceDetail';
 import { formatCurrency, formatDate, formatPaymentMode, stripHtml } from '@/utils/format';
 import { SideCard } from '@/pages/invoices/ui';
 
@@ -87,6 +89,32 @@ const InvoiceViewPage: React.FC = () => {
   const { data: invoiceData, isLoading: invoicesLoading } = useContractInvoices(contractId, { enabled: !!contractId });
   const { profile: tenantProfile, loading: profileLoading } = useTenantProfile();
   const { hasActiveGateway } = useGatewayStatus();
+
+  // Send Invoice. The channel choice is deliberately NOT a picker here — one
+  // button, one obvious action. WhatsApp becomes an option once its provider
+  // template is proven (see migration 070's closing note).
+  const sendInvoice = useSendInvoice();
+  const [ruleOff, setRuleOff] = useState<string | null>(null);
+
+  const handleSend = async () => {
+    if (!invoiceId) return;
+    setRuleOff(null);
+    try {
+      await sendInvoice.mutateAsync({ invoiceId, channel: 'email' });
+    } catch (err: any) {
+      const refusal = sendRefusal(err);
+      if (refusal?.reason === 'rule_disabled') {
+        // Not an error the user caused — it is a setting, one screen away.
+        setRuleOff(refusal.message);
+        return;
+      }
+      addToast({
+        type: 'error',
+        title: 'Not sent',
+        message: refusal?.message || 'The invoice could not be sent. Please try again.',
+      });
+    }
+  };
 
   // The document, straight off the invoice record (get_invoice_detail). This
   // makes the page CONTRACT-OPTIONAL: an ad-hoc invoice has no contract to
@@ -672,15 +700,55 @@ const InvoiceViewPage: React.FC = () => {
 
                 {/* Send Invoice */}
                 <button
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border transition-all hover:opacity-80"
+                  onClick={handleSend}
+                  disabled={sendInvoice.isPending}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold border transition-all hover:opacity-80 disabled:opacity-50"
                   style={{
                     borderColor: colors.utility.primaryText + '20',
                     color: colors.utility.primaryText,
                     backgroundColor: 'transparent',
                   }}
                 >
-                  <Send className="h-4 w-4" /> Send Invoice
+                  {sendInvoice.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Sending…
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" /> Send Invoice
+                    </>
+                  )}
                 </button>
+
+                {/* The rule is off. This is a setting, not a failure, so it
+                    offers the way to fix it rather than shouting an error. */}
+                {ruleOff && (
+                  <div className="rounded-lg border px-3 py-2.5 text-xs"
+                    style={{ borderColor: '#F59E0B55', backgroundColor: '#F59E0B12', color: colors.utility.primaryText }}>
+                    <p className="mb-1.5">{ruleOff}</p>
+                    <button onClick={() => navigate('/settings/configure/automation-rules')}
+                      className="font-bold inline-flex items-center gap-1" style={{ color: colors.brand.primary }}>
+                      <Settings2 className="h-3 w-3" /> Open Automation Rules
+                    </button>
+                  </div>
+                )}
+
+                {/* Scenario 2: no payment method configured at all. The
+                    invoice still sends and offline capture still works — this
+                    only points at where to set collection up. */}
+                {!hasActiveGateway && (
+                  <div className="rounded-lg border px-3 py-2.5 text-xs"
+                    style={{ borderColor: colors.brand.primary + '45', backgroundColor: colors.brand.primary + '0d', color: colors.utility.primaryText }}>
+                    <p className="mb-1.5">
+                      No payment method is set up, so this invoice goes out without a way to pay online.
+                      You can still record payment here once it arrives.
+                    </p>
+                    <button onClick={() => navigate('/settings/integrations')}
+                      className="font-bold inline-flex items-center gap-1" style={{ color: colors.brand.primary }}>
+                      <Settings2 className="h-3 w-3" /> Set up payments
+                    </button>
+                  </div>
+                )}
 
                 {/* Add Payment — only if not fully paid */}
                 {invoice.status !== 'paid' && balance > 0 && (
