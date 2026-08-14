@@ -199,6 +199,22 @@ ROUND 7 — Bill To picker: fixed + rebuilt (+ Add-contact drawer)
     and auto-selecting the result. Typing an unmatched name/number
     pre-fills the drawer. The shared ContactPicker is untouched.
 
+ROUND 8 — serviceURLs restored: adhoc save fix + a silent public-page bug
+-------------------------------------------------------------------------
+  "Invoice does not save — Cannot read properties of undefined (reading
+  'ADHOC')": the Aug-10 stale whole-file copy ALSO wiped the INVOICES
+  block from serviceURLs.ts (6th casualty of the same pattern). The batch
+  now SHIPS src/services/serviceURLs.ts: full HEAD + restorations of
+    · INVOICES.ADHOC            (adhoc invoice save — today's error)
+    · GROUP_SESSIONS.DUES/OCC_ASSIGN/OCC_ASSIGN_DEFAULT (re-included so
+      this batch alone is complete)
+    · CONTRACTS.PUBLIC_VALIDATE (used by the PUBLIC contract review page
+      — silently broken since Aug 10; found by a full 214-key audit of
+      used-vs-defined endpoints, which now passes clean)
+  ⚠ If you have local uncommitted edits to serviceURLs.ts, reconcile
+  before copying. UI-only fix — no API/DB change, no restart needed
+  beyond Vite hard refresh.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
