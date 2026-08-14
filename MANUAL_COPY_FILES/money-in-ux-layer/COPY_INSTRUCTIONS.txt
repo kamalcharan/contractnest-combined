@@ -389,16 +389,33 @@ PART 3 of 3 — SEND INVOICE (manual, rule-gated)
         071 also adds p_payment_link / p_qr_url and DROPS 070's 5-arg
         signature so it cannot resolve by accident.
 
-  ⚠ WHATSAPP IS UNPROVEN. handlers/whatsapp.ts previously had NO branch for
-  payment_request, so it fell through to the positional fallback that file's
-  own comment warns is unreliable (template_variables round-trips through
-  jsonb; Postgres does not preserve key order). An explicit branch is now
-  there, written NAMED per the pre-Aug-2026 registration rule — but nobody
-  has verified against a handset whether that template was registered named
-  or positional. Getting it wrong fails SILENTLY: MSG91 accepts, returns a
-  request_id, the row reads 'sent', WhatsApp rejects on delivery. The branch
-  carries a one-line flip to positional in a comment. SEND ONE TO YOUR OWN
-  NUMBER FIRST.
+  WHATSAPP — NO NEW TEMPLATE CODE. The first attempt added a hand-written
+  payment_request branch to handlers/whatsapp.ts. That was the wrong fix and
+  has been removed. n_jtd_templates.variables already declares each
+  template's variables IN ORDER, and always did — loadTemplate just never
+  selected the column, so the handler fell back to Object.values() over a
+  jsonb object whose key order Postgres does not preserve. That is why the
+  old comment claimed every new template needed its own branch.
+    · index.ts now selects `variables` and forwards it
+    · whatsapp.ts orders parameters from the declared list
+    · templates whose `variables` is [] keep the old behaviour untouched
+  Net effect: payment_request works with NO template-specific code, and so
+  will every future template. The remedy for an unreliable one is to
+  populate its `variables`, not to write a branch.
+
+  ⚠ Still unverified: whether payment_request was registered NAMED or
+  POSITIONAL. The generic path emits positional. If a handset shows
+  otherwise, the same declared names can emit named — one change in one
+  place, for all templates. Wrong style fails SILENTLY (MSG91 accepts,
+  returns a request_id, row reads 'sent', WhatsApp rejects on delivery).
+  SEND ONE TO YOUR OWN NUMBER FIRST.
+
+  ⚠ EMAIL NEEDS AN MSG91 TEMPLATE ID TOO. handlers/email.ts refuses without
+  one ("MSG91 requires a template_id for sending emails"), and
+  payment_request_email has provider_template_id = NULL, so email sends will
+  fail with an explicit error until either that id is filled in or the send
+  is pointed at payment_due_email_v1 (which has one, and whose variables are
+  also an invoice's). Owner decision pending.
 
   The UI sends EMAIL only for now — one button, no channel picker, because
   the WhatsApp template is unproven.

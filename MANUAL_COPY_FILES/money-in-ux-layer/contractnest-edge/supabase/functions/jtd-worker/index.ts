@@ -269,11 +269,11 @@ async function getTemplate(
   sourceType: string,
   channel: string,
   tenantId: string
-): Promise<{ subject?: string; body: string; bodyHtml?: string; providerTemplateId?: string } | null> {
+): Promise<{ subject?: string; body: string; bodyHtml?: string; providerTemplateId?: string; variables?: any } | null> {
   // First try tenant-specific template
   let { data, error } = await supabase
     .from('n_jtd_templates')
-    .select('subject, content, content_html, provider_template_id')
+    .select('subject, content, content_html, provider_template_id, variables')
     .eq('source_type_code', sourceType)
     .eq('channel_code', channel)
     .eq('tenant_id', tenantId)
@@ -284,7 +284,7 @@ async function getTemplate(
     // Fall back to system template (tenant_id is null)
     const result = await supabase
       .from('n_jtd_templates')
-      .select('subject, content, content_html, provider_template_id')
+      .select('subject, content, content_html, provider_template_id, variables')
       .eq('source_type_code', sourceType)
       .eq('channel_code', channel)
       .is('tenant_id', null)
@@ -306,7 +306,13 @@ async function getTemplate(
     subject: data.subject,
     body: data.content,
     bodyHtml: data.content_html,
-    providerTemplateId: data.provider_template_id
+    providerTemplateId: data.provider_template_id,
+    // The template's own declared variable list, IN ORDER. It was always
+    // stored and never read — which is why the WhatsApp handler fell back to
+    // Object.values() over a jsonb object, whose key order Postgres does not
+    // preserve. Passing it through is what makes that path reliable, for
+    // every template, without a hand-written branch per template.
+    variables: data.variables
   };
 }
 
@@ -526,6 +532,8 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
           // URL, so the path was inert. Invoice sends use it to carry the
           // tenant's UPI QR when they have no payment gateway.
           mediaUrl: metadata?.media_url,
+          // Declared order, straight from the template row.
+          templateVariableOrder: template.variables,
           metadata
         });
         break;
