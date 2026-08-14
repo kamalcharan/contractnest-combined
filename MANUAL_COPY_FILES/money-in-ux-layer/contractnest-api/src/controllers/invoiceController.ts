@@ -156,6 +156,7 @@ class InvoiceController {
 
     let paymentLink: string | null = null;
     let qrUrl: string | null = null;
+    let upiId: string | null = null;
 
     try {
       const gatewayConfigured = await publicPaymentService.checkGatewayConfigured(tenantId);
@@ -193,6 +194,9 @@ class InvoiceController {
           const pn = encodeURIComponent(cfg.data.payee_name || '');
           paymentLink = `upi://pay?pa=${vpa}&pn=${pn}&cu=INR&mc=0000`;
           qrUrl = cfg.data.qr_image_url || null;
+          // The raw upi:// scheme is unusable inside a message body, so the
+          // VPA travels separately and the RPC shows that instead.
+          upiId = cfg.data.upi_id || null;
         }
       }
     } catch (e: any) {
@@ -204,7 +208,7 @@ class InvoiceController {
 
     const result = await invoiceService.sendInvoice({
       tenantId, invoiceId, channel, userId: req.user?.id || null,
-      paymentLink, qrUrl,
+      paymentLink, qrUrl, upiId,
     });
 
     if (!result.success) {

@@ -128,6 +128,7 @@ class InvoiceService {
     dryRun?: boolean;
     paymentLink?: string | null;
     qrUrl?: string | null;
+    upiId?: string | null;
   }) {
     return this.call('fn_enqueue_invoice_notification', {
       p_tenant: params.tenantId,
@@ -137,6 +138,7 @@ class InvoiceService {
       p_dry_run: params.dryRun ?? false,
       p_payment_link: params.paymentLink ?? null,
       p_qr_url: params.qrUrl ?? null,
+      p_upi_id: params.upiId ?? null,
     });
   }
 }
