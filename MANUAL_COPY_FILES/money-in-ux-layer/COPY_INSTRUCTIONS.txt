@@ -235,6 +235,36 @@ ROUND 9 — ad-hoc invoices are findable, and have a page
     it serves contract-linked invoices too. New API: GET /api/invoices/:id.
   ⚠ Requires BOTH the api copy AND an API dev-server restart.
 
+PART 1 of 3 — ONE INVOICE VIEWER (standardisation)
+--------------------------------------------------
+  Owner: "reuse rather than building components every time." Correct —
+  I had rebuilt the invoice paper instead of reusing the real page, so
+  ad-hoc invoices got a viewer with no PDF / Print / Send / Add Payment.
+  Fixed by making the EXISTING page contract-optional:
+
+  · pages/contracts/invoice/index.tsx (the real viewer, 841 lines) now
+    also reads get_invoice_detail. Contract data still wins wherever it
+    exists, so contract invoices are UNCHANGED; when there is no
+    contract it falls back to the invoice record: contact name for
+    Invoice To, line_items for the items table, invoice payment_mode /
+    emi_total for Bill To. Only a missing INVOICE is fatal now.
+  · /invoices/:invoiceId renders that SAME component (App.tsx). Ad-hoc
+    invoices instantly gain Download PDF, Print, Send Invoice and the
+    Add Payment flow — none of which the duplicate had.
+  · DELETED pages/invoices/view.tsx (my duplicate viewer).
+  · pages/invoices/ui.tsx keeps InvoicePaper ONLY as the composer's
+    editable document; a scope note now says so, so no one re-creates a
+    second viewer there.
+  · Migration 069 extended (applied live) with emi_sequence, emi_total,
+    billing_cycle, payment_mode, receipts_count.
+
+  ⚠ Requires the api copy + API restart (GET /api/invoices/:id) and a UI
+  copy. REGRESSION CHECK FIRST: open a CONTRACT invoice (e.g. INV-10059
+  via a contract) and confirm it renders exactly as before.
+
+  Parts 2 and 3 (not in this batch): shared formatters/badge cleanup +
+  the invoice register; then JTD wiring for all invoice notifications.
+
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
@@ -273,6 +303,17 @@ ROUND 9 (ad-hoc invoices):
 - [ ] A contract-linked invoice chip still opens the OLD contract-invoice
       page (unchanged)
 - [ ] /invoices/<id> of a contract invoice also renders (same endpoint)
+
+PART 1 (one viewer):
+- [ ] REGRESSION: a contract invoice opened the old way renders exactly
+      as before — business address, Invoice To with email/phone, items
+      from contract blocks, tax breakdown, PDF/Print/Send/Add Payment
+- [ ] TEST MODE: the ad-hoc invoice (INV-10069) now opens on the SAME
+      page — with Download PDF and Print working, "No membership
+      contract — settled directly" under Invoice To, its ₹600 line item
+      and RCP-10071 in Invoice Details
+- [ ] Download PDF produces a file for the ad-hoc invoice too
+- [ ] Back button: contract invoice → contract; ad-hoc → Money In
 
 ROUND 3 (wired) — verify against /ops/finance side by side:
 - [ ] Money In headline totals match Finance (AR/AP) Receivables numbers

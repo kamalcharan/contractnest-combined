@@ -1,5 +1,6 @@
 -- Migration 069: get_invoice_detail — one invoice as a complete document
--- Already applied live (2026-08-14). Source-of-record copy — DO NOT RE-RUN.
+-- Already applied live (2026-08-14), incl. the EMI/billing-cycle/payment-mode
+-- and receipts_count additions. Source-of-record copy — DO NOT RE-RUN.
 --
 -- The existing invoice viewer is routed through a contract
 -- (/contracts/:id/invoice/:invoiceId) and builds its line items from the
@@ -70,8 +71,13 @@ BEGIN
       'balance', v_inv.balance, 'currency', v_inv.currency,
       'issued_at', v_inv.issued_at, 'due_date', v_inv.due_date, 'paid_at', v_inv.paid_at,
       'notes', v_inv.notes,
+      -- fields the existing viewer's Bill To / Invoice Details cards render,
+      -- so ONE page can be driven entirely by this payload
+      'emi_sequence', v_inv.emi_sequence, 'emi_total', v_inv.emi_total,
+      'billing_cycle', v_inv.billing_cycle, 'payment_mode', v_inv.payment_mode,
       'line_items', COALESCE(v_inv.line_items, '[]'::jsonb),
-      'receipts', v_receipts
+      'receipts', v_receipts,
+      'receipts_count', jsonb_array_length(v_receipts)
   ));
 END;
 $function$;

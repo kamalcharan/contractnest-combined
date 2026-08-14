@@ -198,7 +198,6 @@ import OpsServiceSchedulePage from './pages/operations/services';
 import GroupSessionsPage from './pages/operations/group-sessions';
 import InvoicesRedirect from './pages/invoices';
 import InvoiceComposerPage from './pages/invoices/composer';
-import StandaloneInvoicePage from './pages/invoices/view';
 import MoneyInPage from './pages/money-in';
 import ToPayPage from './pages/to-pay';
 import OpsAppointmentsPage from './pages/operations/appointments';
@@ -711,7 +710,9 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<InvoicesRedirect />} />
             <Route path="new" element={<InvoiceComposerPage />} />
-            <Route path=":invoiceId" element={<StandaloneInvoicePage />} />
+            {/* Same component as /contracts/:id/invoice/:invoiceId — one
+                viewer, contract optional. Ad-hoc invoices arrive here. */}
+            <Route path=":invoiceId" element={<InvoiceViewPage />} />
           </Route>
 
           {/* Operations → Appointments — Stage 3 */}

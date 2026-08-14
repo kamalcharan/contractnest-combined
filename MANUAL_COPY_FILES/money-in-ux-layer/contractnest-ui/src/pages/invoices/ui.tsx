@@ -1,5 +1,9 @@
 // ============================================================================
 // Invoices section — shared UI primitives
+// ⚠ SCOPE (2026-08-14): InvoicePaper/DocTh here are the COMPOSER's editable
+// document only. The read-only viewer is pages/contracts/invoice/index.tsx —
+// one page for contract-linked AND ad-hoc invoices — which owns PDF, Print,
+// Send and Add Payment. Do not re-create a viewer here.
 // The document card reproduces the EXISTING contract-invoice page design
 // (pages/contracts/invoice/index.tsx) so every invoice in the product looks
 // identical: white print-faithful paper, brand accent bars, brand-tinted
