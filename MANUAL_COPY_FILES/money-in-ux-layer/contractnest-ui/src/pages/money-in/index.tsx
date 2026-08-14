@@ -22,7 +22,8 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import InstalmentActionModal from '@/components/finance/InstalmentActionModal';
 import { useReceivables, type FinanceEvent, type FinanceInvoice } from '@/hooks/queries/useFinanceQueries';
-import { fmtMoney, fmtDate, useInvoiceTheme, Pill, useStatusMeta } from '../invoices/ui';
+import { useInvoiceTheme, Pill, useStatusMeta } from '../invoices/ui';
+import { fmtMoney, fmtDate, daysSince, daysUntil } from '@/utils/format';
 import { usePendingDeclarations } from '@/hooks/queries/useGroupSessionsDashboard';
 
 type Lens = 'everything' | 'late' | 'risk' | 'docs' | 'upcoming' | 'settled';
@@ -30,11 +31,6 @@ type Lens = 'everything' | 'late' | 'risk' | 'docs' | 'upcoming' | 'settled';
 const AGING_DAYS = 30;
 const RISK_ARREARS = 2;
 const RISK_DAYS = 30;
-const dayMs = 86_400_000;
-const daysSince = (iso: string | null): number =>
-  iso ? Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / dayMs)) : 0;
-const daysUntil = (iso: string | null): number =>
-  iso ? Math.floor((new Date(iso).getTime() - Date.now()) / dayMs) : Infinity;
 
 interface ContractGroup {
   contract_id: string;
@@ -313,6 +309,17 @@ const MoneyInPage: React.FC = () => {
               className="underline-offset-4" style={{ color: colors.utility.secondaryText, textDecoration: lens === 'settled' ? 'underline' : 'none' }}>
               see who's paid up
             </button>
+            {/* This page is grouped by buyer and scoped to the live picture, so
+                it cannot answer "where is INV-10059" — settled and cancelled
+                documents are correctly absent. The register can. */}
+            {(data?.invoices?.length ?? 0) > 0 && (
+              <> ·{' '}
+                <button onClick={() => navigate('/invoices')}
+                  className="underline-offset-4 hover:underline" style={{ color: colors.utility.secondaryText }}>
+                  all {data!.invoices.length} invoices
+                </button>
+              </>
+            )}
           </p>
         </div>
         <button onClick={() => navigate('/invoices/new')}

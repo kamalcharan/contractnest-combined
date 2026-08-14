@@ -49,9 +49,11 @@ THE MODEL (owner decisions, 2026-08-13)
 
 FILES
 -----
+NEW   src/utils/format.ts                 ONE home for money/date formatters
+NEW   src/pages/invoices/register.tsx     the invoice register (/invoices)
 NEW   src/pages/money-in/index.tsx        the merged briefing page
 NEW   src/pages/to-pay/index.tsx          expense mirror
-REPL  src/pages/invoices/index.tsx        now a redirect → /money-in
+REPL  src/pages/invoices/index.tsx        re-exports ./register (Part 2)
 SAME  src/pages/invoices/view.tsx         paper viewer (back-link → /money-in)
 SAME  src/pages/invoices/composer.tsx     paper composer (back-link → /money-in)
 SAME  src/pages/invoices/ui.tsx           InvoicePaper + primitives
@@ -262,8 +264,87 @@ PART 1 of 3 — ONE INVOICE VIEWER (standardisation)
   copy. REGRESSION CHECK FIRST: open a CONTRACT invoice (e.g. INV-10059
   via a contract) and confirm it renders exactly as before.
 
-  Parts 2 and 3 (not in this batch): shared formatters/badge cleanup +
-  the invoice register; then JTD wiring for all invoice notifications.
+PART 2 of 3 — ONE OF EACH (dedupe) + THE INVOICE REGISTER
+---------------------------------------------------------
+  A. utils/format.ts — NEW. formatCurrency / formatDate /
+     formatPaymentMode / stripHtml / fmtMoney / fmtDate / fmtDateShort /
+     fmtMonth / daysSince / daysUntil now have ONE implementation each.
+     They previously existed twice (pages/contracts/invoice/index.tsx and
+     pages/invoices/ui.tsx) and daysSince/daysUntil a third time in
+     money-in. Both money formats are KEPT ON PURPOSE and documented in
+     the file: DOCUMENT (printed invoice, Intl currency, "Aug 14, 2026")
+     vs BRIEFING (money screens, whole rupees, "14 Aug 2026"). Unifying
+     them would silently restyle already-signed-off printed invoices.
+     ui.tsx re-exports the briefing pair, so every existing
+     `from '../invoices/ui'` import keeps working untouched.
+
+  B. SideCard — the invoice viewer's "Payment Summary" and "Invoice
+     Details" cards were hand-rolled copies of ui.tsx's SideCard chrome.
+     They now use it. SideCard gained an opt-in `clip` prop: overflow
+     -hidden stays OFF by default (it was what clipped the contact
+     picker's dropdown and read as "search won't work"), and the viewer
+     passes `clip` so its cards look exactly as before.
+
+  C. NOT DONE, deliberately: replacing Pill with components/ui/badge.tsx.
+     That Badge is the shadcn semantic-variant one (bg-primary /
+     bg-destructive, driven by Tailwind CSS variables). It cannot carry
+     the theme-token colours (success / warning / error from useTheme)
+     that every money surface uses, so swapping would LOSE colour
+     fidelity — a downgrade, not standardisation. Pill stays as the one
+     status chip. Flagged here so it is not re-proposed.
+
+  D. Dues tab now uses the SHARED instalment dialog. The status picker,
+     the confirm step and the Record Payment hand-off existed twice —
+     once inline in group-sessions (≈115 lines) and once as
+     InstalmentActionModal. Group Sessions now renders the shared
+     component and its inline copies are deleted, along with markConfirm
+     / applyMark / recordPaymentTarget state and the now-unused
+     RecordPaymentDialog + useContractEventOperations imports.
+     The modal gained three optional props so nothing about the Dues
+     behaviour changed:
+       · events            — pre-loaded rows WITH their version. Dues has
+                             them (gs_dues_matrix returns version per
+                             cell), so adoption costs NO extra request.
+                             Money In has no version in its payload and
+                             keeps fetching, exactly as before.
+       · subtitle          — Dues' "month · contract" line.
+       · terminalConsequence — Dues' write-off wording also names the
+                             member's check-in page.
+     ⚠ One real behaviour rule encoded with it: when the CALLER supplied
+     the events, a successful write CLOSES the dialog. What we hold is a
+     snapshot the caller cannot update, so staying open would show a
+     stale status and offer transitions that would fail on a dead
+     version. This reproduces what Dues did before (mark → close →
+     grid refetches).
+
+  E. /invoices is now the INVOICE REGISTER (was: redirect to /money-in).
+     Money In stays the single nav entry per side — the register is NOT
+     in the nav, it is reached from Money In. It exists because a
+     story-shaped screen genuinely cannot answer "where is INV-10059":
+     Money In groups by buyer and shows the live picture, so settled and
+     cancelled documents are correctly absent from it.
+     Flat list, newest first with late rows on top. Lenses All / Open /
+     Late / Drafts / Paid / Ad-hoc (each shows its count, and hides
+     itself when zero). Search matches invoice number, buyer, company,
+     contract number and contract name. Rows open the ONE viewer from
+     Part 1 — contract route for contract invoices, /invoices/:id for
+     ad-hoc.
+     NO BACKEND WORK: get_tenant_receivables already returns the full
+     invoice array including is_adhoc, drafts and cancelled rows
+     (verified live). Same hook, same query key as Money In, so the two
+     screens cannot disagree and the page adds no load of its own.
+
+  F. Money In gained an "all N invoices" link next to "see who's paid up".
+
+  G. Dead code removed from group-sessions: AdHocInvoiceDialog's wiring
+     there became unreachable when A4 pointed the guest-fee button at the
+     full-page composer — nothing could set its state any more. The
+     import, the state and the JSX are gone from that file. The COMPONENT
+     itself is untouched, because components/services/AdHocServiceCard
+     (Contacts → Financials) still renders it. Retiring it fully is still
+     an open item, not part of this batch.
+
+  Part 3 (not in this batch): JTD wiring for all invoice notifications.
 
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
@@ -303,6 +384,38 @@ ROUND 9 (ad-hoc invoices):
 - [ ] A contract-linked invoice chip still opens the OLD contract-invoice
       page (unchanged)
 - [ ] /invoices/<id> of a contract invoice also renders (same endpoint)
+
+PART 2 (dedupe + register):
+- [ ] REGRESSION FIRST — Group Sessions → Dues: click a month cell. The
+      dialog must look and behave EXACTLY as before (member name,
+      "month · contract" subtitle, green Record Payment, per-instalment
+      chips, "X is final" for terminal ones, Close).
+- [ ] Dues: apply a status change → confirm copy still says "...here, in
+      Finance, and on the member's check-in page" → dialog closes → grid
+      refetches and the cell shows the new status
+- [ ] Dues: Record Payment from a cell still creates the receipt and the
+      grid updates
+- [ ] REGRESSION — a contract invoice still renders identically: Payment
+      Summary and Invoice Details cards unchanged (same padding, same
+      header, no doubled inset), amounts still show paise where present,
+      dates still read "Aug 14, 2026"
+- [ ] Money In and To Pay unchanged: amounts still whole rupees, dates
+      still "14 Aug 2026"
+- [ ] /invoices now opens the register (not a redirect); "← Money In"
+      goes back
+- [ ] Register lists BOTH contract and ad-hoc invoices; INV-10069 shows
+      with the "ad-hoc" tag
+- [ ] Register search finds INV-10069 by number, and by contact name
+- [ ] Lenses filter correctly and their counts add up; a lens with zero
+      rows is not shown at all
+- [ ] Register row → contract invoice opens the contract route; ad-hoc
+      opens /invoices/:id — both the same viewer
+- [ ] Money In: "all N invoices" link appears and lands on the register
+- [ ] Register in Expense mode shows the cross-pointer to To Pay
+- [ ] Group Sessions → Payments to confirm: the guest-fee "Invoice"
+      button still opens the full-page composer pre-filled (unchanged —
+      only the unreachable modal behind it was removed)
+- [ ] Dark mode + phone width
 
 PART 1 (one viewer):
 - [ ] REGRESSION: a contract invoice opened the old way renders exactly

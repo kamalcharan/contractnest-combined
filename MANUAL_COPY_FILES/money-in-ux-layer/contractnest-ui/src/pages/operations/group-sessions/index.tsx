@@ -56,9 +56,7 @@ import {
   type GsDuesCellEvent,
 } from '@/hooks/queries/useGroupSessionsDashboard';
 import { useStatusMap, useTransitionMap } from '@/hooks/queries/useEventStatusConfigQueries';
-import { useContractEventOperations } from '@/hooks/queries/useContractEventQueries';
-import RecordPaymentDialog from '@/components/contracts/RecordPaymentDialog';
-import AdHocInvoiceDialog from '@/components/finance/AdHocInvoiceDialog';
+import InstalmentActionModal from '@/components/finance/InstalmentActionModal';
 import QRCard from '@/components/group-sessions/QRCard';
 import { formatContactDisplayName } from '@/utils/constants/contacts';
 
@@ -338,53 +336,17 @@ const GroupSessionsPage: React.FC = () => {
   // forbids a transition, is honoured on this screen for free.
   const billingStatusMap = useStatusMap('billing');
   const billingTransitions = useTransitionMap('billing');
-  const { updateEvent, isUpdating } = useContractEventOperations();
-  // Which cell's menu is open, and which instalment inside it is being confirmed.
+  // Which cell's dialog is open. The dialog itself (status picker, confirm
+  // step and the Record Payment hand-off) is the shared InstalmentActionModal
+  // — Money In uses the same one.
   const [markCell, setMarkCell] = useState<null | {
     row: GsDuesRow; monthLabel: string; events: GsDuesCellEvent[];
-  }>(null);
-  const [markConfirm, setMarkConfirm] = useState<null | {
-    row: GsDuesRow; monthLabel: string; event: GsDuesCellEvent; to: string;
-  }>(null);
-
-  // A real receipt (cash, UPI, cheque…) — distinct from the status chips
-  // above, which only relabel an instalment (waived/cancelled/etc.) and never
-  // touch amount_settled or the invoice balance. Recording a payment goes
-  // through the same RecordPaymentDialog the Contract Detail page uses, so
-  // settlement stays in one place instead of a second, parallel write path.
-  const [recordPaymentTarget, setRecordPaymentTarget] = useState<null | {
-    contractId: string; eventIds: string[];
-  }>(null);
-
-  // Contact-less invoice, created from the Payments-to-confirm panel or the
-  // Contacts Financials tab (AdHocServiceCard) — no membership contract
-  // required, invoice + receipt created together, always fully paid.
-  const [adhocInvoiceTarget, setAdhocInvoiceTarget] = useState<null | {
-    contactId: string; contactName: string | null; declarationId?: string | null;
-    initialItems?: Array<{ blockId?: string | null; name: string; qty?: number; unitPrice: number }>;
   }>(null);
 
   const statusColor = (code: string) =>
     billingStatusMap[code]?.hex_color || colors.utility.secondaryText;
   const statusLabel = (code: string) =>
     billingStatusMap[code]?.display_name || code.replace(/_/g, ' ');
-
-  const applyMark = async () => {
-    if (!markConfirm) return;
-    const { event, to } = markConfirm;
-    try {
-      // version travels with the write — the contract page can be changing the
-      // same instalment, and losing that race silently would be worse than an
-      // error the user can see.
-      await updateEvent({ eventId: event.id, updateData: { status: to, version: event.version } as any });
-      setMarkConfirm(null);
-      setMarkCell(null);
-      duesQuery.refetch();
-    } catch {
-      // useContractEventOperations already surfaces a toast on failure.
-      setMarkConfirm(null);
-    }
-  };
 
   const duesCurrency = useMemo(() => {
     const set = new Set(filteredDues.map((r) => r.currency || 'INR'));
@@ -1121,135 +1083,28 @@ const GroupSessionsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Status picker. A month can hold more than one instalment, so it
-                lists them rather than assuming — and each offers only the
-                transitions the tenant's own state machine allows from where it
-                currently is. */}
+            {/* The instalment dialog is shared with Money In — one copy of the
+                status picker, the confirm step and the receipt hand-off, in
+                components/finance/InstalmentActionModal. The cell's events are
+                passed straight in: gs_dues_matrix already returns each one with
+                its `version`, so adopting the shared component costs no extra
+                request. */}
             {markCell && (
-              <div
-                role="dialog" aria-modal="true" aria-label="Change instalment status"
-                className="fixed inset-0 z-50 flex items-center justify-center p-4"
-                style={{ backgroundColor: 'rgba(15,15,20,0.55)' }}
-                onClick={() => setMarkCell(null)}
-              >
-                <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl border p-5"
-                  style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '18' }}>
-                  <p className="text-sm font-bold" style={ink}>{displayName(markCell.row)}</p>
-                  <p className="text-xs mb-4" style={sub}>
-                    {markCell.monthLabel} · {markCell.row.contract_number}
-                  </p>
-
-                  {/* A real receipt, distinct from the status chips below —
-                      this creates a real receipt and settles the invoice.
-                      Hidden once nothing here is still owed. */}
-                  {markCell.events.some((ev) => ev.amount - ev.settled > 0.001) && (
-                    <button
-                      onClick={() => {
-                        setRecordPaymentTarget({
-                          contractId: markCell.row.contract_id,
-                          eventIds: markCell.events.map((ev) => ev.id),
-                        });
-                        setMarkCell(null);
-                      }}
-                      className="w-full mb-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5"
-                      style={{ backgroundColor: colors.semantic.success, color: '#fff' }}
-                    >
-                      <Wallet size={13} /> Record Payment
-                    </button>
-                  )}
-
-                  {markCell.events.map((ev) => {
-                    const allowed = billingTransitions[ev.status] || [];
-                    return (
-                      <div key={ev.id} className="mb-3 pb-3 border-b last:border-b-0 last:mb-0 last:pb-0"
-                        style={{ borderColor: colors.utility.primaryText + '10' }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold tabular-nums" style={ink}>
-                            {money(ev.amount, markCell.row.currency)}
-                            <span className="font-normal" style={sub}> · {fmtShort(ev.date)}</span>
-                          </span>
-                          <Pill label={statusLabel(ev.status)} accent={statusColor(ev.status)} />
-                        </div>
-                        {allowed.length === 0 ? (
-                          <p className="text-[11px]" style={sub}>
-                            {statusLabel(ev.status)} is final — this instalment cannot be changed from here.
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {allowed.map((to) => (
-                              <button key={to}
-                                onClick={() => setMarkConfirm({ row: markCell.row, monthLabel: markCell.monthLabel, event: ev, to })}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold border"
-                                style={{ backgroundColor: statusColor(to) + '18', borderColor: statusColor(to) + '45', color: statusColor(to) }}
-                              >
-                                {statusLabel(to)}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <button onClick={() => setMarkCell(null)}
-                    className="w-full mt-4 py-2 rounded-lg border text-xs font-semibold"
-                    style={{ borderColor: colors.utility.secondaryText + '30', ...ink }}>
-                    Close
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Confirm. This moves money out of what a member is told they owe —
-                on this grid, in Finance, and on their own check-in page — so it
-                names the member, month and amount rather than acting on a tap. */}
-            {markConfirm && (
-              <div
-                role="dialog" aria-modal="true" aria-label="Confirm status change"
-                className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-                style={{ backgroundColor: 'rgba(15,15,20,0.65)' }}
-                onClick={() => !isUpdating && setMarkConfirm(null)}
-              >
-                <div onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-2xl border p-5"
-                  style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '18' }}>
-                  <p className="text-sm font-bold mb-2" style={ink}>
-                    Mark as {statusLabel(markConfirm.to)}?
-                  </p>
-                  <p className="text-xs mb-1" style={sub}>
-                    <b style={ink}>{displayName(markConfirm.row)}</b> · {markConfirm.monthLabel} ·{' '}
-                    <b style={ink}>{money(markConfirm.event.amount, markConfirm.row.currency)}</b>
-                  </p>
-                  <p className="text-xs mb-4" style={sub}>
-                    {(billingStatusMap[markConfirm.to]?.is_terminal && markConfirm.to !== 'paid')
-                      ? 'This writes the amount off. It stops counting as arrears here, in Finance, and on the member\u2019s check-in page.'
-                      : 'This changes what the member is shown as owing.'}
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setMarkConfirm(null)} disabled={isUpdating}
-                      className="flex-1 py-2 rounded-lg border text-xs font-semibold disabled:opacity-40"
-                      style={{ borderColor: colors.utility.secondaryText + '30', ...ink }}>
-                      Cancel
-                    </button>
-                    <button onClick={applyMark} disabled={isUpdating}
-                      className="flex-1 py-2 rounded-lg text-xs font-bold text-white disabled:opacity-60"
-                      style={{ backgroundColor: statusColor(markConfirm.to) }}>
-                      {isUpdating ? 'Saving\u2026' : `Mark ${statusLabel(markConfirm.to)}`}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {recordPaymentTarget && (
-              <RecordPaymentDialog
-                isOpen={!!recordPaymentTarget}
-                onClose={() => setRecordPaymentTarget(null)}
-                contractId={recordPaymentTarget.contractId}
-                preselectedEventIds={recordPaymentTarget.eventIds}
-                onSuccess={() => {
-                  setRecordPaymentTarget(null);
-                  duesQuery.refetch();
-                }}
+              <InstalmentActionModal
+                isOpen={!!markCell}
+                onClose={() => setMarkCell(null)}
+                contractId={markCell.row.contract_id}
+                contractNumber={markCell.row.contract_number}
+                buyerName={displayName(markCell.row)}
+                eventIds={markCell.events.map((ev) => ev.id)}
+                events={markCell.events.map((ev) => ({
+                  id: ev.id, version: ev.version, status: ev.status,
+                  amount: ev.amount, settled: ev.settled, date: ev.date,
+                }))}
+                currency={markCell.row.currency || 'INR'}
+                subtitle={`${markCell.monthLabel} · ${markCell.row.contract_number}`}
+                terminalConsequence={'This writes the amount off. It stops counting as arrears here, in Finance, and on the member\u2019s check-in page.'}
+                onChanged={() => duesQuery.refetch()}
               />
             )}
 
@@ -1715,20 +1570,6 @@ const GroupSessionsPage: React.FC = () => {
       {view === 'roster' && selectedSession && renderRoster()}
       {view === 'occurrence' && selectedOcc && selectedSession && renderOccurrence()}
 
-      {adhocInvoiceTarget && (
-        <AdHocInvoiceDialog
-          isOpen={!!adhocInvoiceTarget}
-          onClose={() => setAdhocInvoiceTarget(null)}
-          contactId={adhocInvoiceTarget.contactId}
-          contactName={adhocInvoiceTarget.contactName}
-          declarationId={adhocInvoiceTarget.declarationId}
-          initialItems={adhocInvoiceTarget.initialItems}
-          onSuccess={() => {
-            setAdhocInvoiceTarget(null);
-            declarationsQuery.refetch();
-          }}
-        />
-      )}
     </div>
   );
 };

@@ -1,9 +1,10 @@
 // ============================================================================
-// InstalmentActionModal — the Dues-tab dialog, cloned as a shared component.
+// InstalmentActionModal — THE instalment dialog. One copy, two callers.
 // ----------------------------------------------------------------------------
-// Layout, styles and flow mirror the Group Sessions Dues markCell/markConfirm
-// dialogs verbatim (owner: "use the logic and approach we have in Dues"):
-//   · title + "month · contract" subtitle
+// Originally cloned from the Group Sessions Dues tab (owner: "use the logic and
+// approach we have in Dues"). In Part 2 the Dues tab was moved onto this
+// component, so the markup now exists once instead of twice:
+//   · title + subtitle ("month · contract")
 //   · full-width green Record Payment (the EXISTING RecordPaymentDialog,
 //     pre-ticked to these events) — hidden once nothing is still owed
 //   · per instalment: amount · date, status pill, then tinted rounded-lg
@@ -12,11 +13,15 @@
 //   · bottom full-width Close
 //   · a STACKED confirm dialog ("Mark as Waived?") with consequence copy and
 //     the action button colored by the target status
-// One deliberate logic addition: the receivables payload carries no event
-// `version`, so this modal fetches the contract's events fresh on open —
-// the same optimistic-concurrency rule Dues follows (version travels with
-// the write; losing a race silently would be worse than a visible error).
-// The Dues tab keeps its inline copy untouched; it can adopt this later.
+//
+// TWO WAYS TO SUPPLY THE INSTALMENTS, and the difference matters:
+//   · `events` given  — the caller already holds them WITH their `version`
+//     (Dues: gs_dues_matrix returns it per cell). No network call at all.
+//   · `events` absent — the receivables payload carries no `version`, so this
+//     component fetches the contract's billing events itself (Money In).
+// Either way the version travels with the write: another surface can be
+// changing the same instalment, and losing that race silently would be worse
+// than an error the user can see.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
@@ -26,14 +31,33 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import RecordPaymentDialog from '@/components/contracts/RecordPaymentDialog';
 import { useContractEvents, useContractEventOperations } from '@/hooks/queries/useContractEventQueries';
 import { useStatusMap, useTransitionMap } from '@/hooks/queries/useEventStatusConfigQueries';
+import { fmtMoney, fmtDateShort, fmtMonth } from '@/utils/format';
 import type { ContractEvent } from '@/types/contractEvents';
 
-const money = (n: number, currency = 'INR'): string =>
-  `${currency === 'INR' ? '₹' : currency + ' '}${Math.round(n).toLocaleString('en-IN')}`;
-const fmtShort = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—';
-const monthLabelOf = (iso: string | null): string | null =>
-  iso ? new Date(iso).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : null;
+/**
+ * The minimum an instalment needs to be actionable here. Deliberately narrower
+ * than ContractEvent so callers holding a different row shape (GsDuesCellEvent)
+ * can pass theirs straight through — the two differ only in field names.
+ */
+export interface InstalmentRow {
+  id: string;
+  /** Optimistic-concurrency token — PATCH /api/contract-events/:id needs it. */
+  version: number;
+  /** Real status code, matching m_event_status_config. */
+  status: string;
+  amount: number;
+  settled: number;
+  date: string | null;
+}
+
+const fromContractEvent = (e: ContractEvent): InstalmentRow => ({
+  id: e.id,
+  version: (e as any).version,
+  status: e.status,
+  amount: e.amount || 0,
+  settled: (e as any).amount_settled || 0,
+  date: e.scheduled_date ?? null,
+});
 
 interface InstalmentActionModalProps {
   isOpen: boolean;
@@ -43,13 +67,28 @@ interface InstalmentActionModalProps {
   buyerName?: string | null;
   /** Billing event ids this modal acts on (usually the clicked chip's id). */
   eventIds: string[];
+  /**
+   * Pre-loaded instalments, when the caller already has them with versions.
+   * Supplying these skips the fetch entirely — and `eventIds` is then only a
+   * fallback, since these rows already say exactly what to act on.
+   */
+  events?: InstalmentRow[];
   currency?: string;
+  /** Overrides the derived "month · contract" line under the title. */
+  subtitle?: React.ReactNode;
+  /**
+   * Consequence sentence shown when confirming a move to a terminal status
+   * other than paid. Defaults to the Finance wording; Group Sessions passes a
+   * version that also names the member's check-in page.
+   */
+  terminalConsequence?: string;
   /** Fired after any successful write so the caller can refetch its lists. */
   onChanged: () => void;
 }
 
 const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
-  isOpen, onClose, contractId, contractNumber, buyerName, eventIds, currency = 'INR', onChanged,
+  isOpen, onClose, contractId, contractNumber, buyerName, eventIds,
+  events: suppliedEvents, currency = 'INR', subtitle, terminalConsequence, onChanged,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -60,38 +99,52 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
   const billingTransitions = useTransitionMap('billing');
   const { updateEvent, isUpdating } = useContractEventOperations();
 
-  // Fresh events for THIS contract — source of version + current status.
+  // Fetched ONLY when the caller has nothing to give us.
+  const needsFetch = !suppliedEvents;
   const eventsQuery = useContractEvents(
     { contract_id: contractId, event_type: 'billing', per_page: 100, sort_by: 'scheduled_date', sort_order: 'asc' },
-    { enabled: isOpen && !!contractId }
+    { enabled: isOpen && needsFetch && !!contractId }
   );
 
-  const events: ContractEvent[] = useMemo(() => {
-    const all = eventsQuery.data?.items || [];
-    return all.filter((e) => eventIds.includes(e.id));
-  }, [eventsQuery.data, eventIds]);
+  const events: InstalmentRow[] = useMemo(() => {
+    if (suppliedEvents) return suppliedEvents;
+    return (eventsQuery.data?.items || [])
+      .filter((e) => eventIds.includes(e.id))
+      .map(fromContractEvent);
+  }, [suppliedEvents, eventsQuery.data, eventIds]);
 
-  const [markConfirm, setMarkConfirm] = useState<null | { event: ContractEvent; to: string }>(null);
+  const [markConfirm, setMarkConfirm] = useState<null | { event: InstalmentRow; to: string }>(null);
   const [payOpen, setPayOpen] = useState(false);
 
   if (!isOpen) return null;
 
   const statusLabel = (code: string) => billingStatusMap[code]?.display_name || code.replace(/_/g, ' ');
   const statusColor = (code: string) => billingStatusMap[code]?.hex_color || colors.utility.secondaryText;
-  const openEvents = events.filter((e) => (e.amount || 0) - (e.amount_settled || 0) > 0.001);
-  const monthLabel = events.length === 1 ? monthLabelOf(events[0].scheduled_date) : null;
+  const openEvents = events.filter((e) => e.amount - e.settled > 0.001);
+  const derivedSubtitle = subtitle ?? (
+    <>{events.length === 1 && fmtMonth(events[0].date) ? `${fmtMonth(events[0].date)} · ` : ''}{contractNumber || contractId}</>
+  );
+
+  // After a write the instalment's status AND version have both moved on.
+  // When we fetched the rows ourselves we can just refetch and stay open.
+  // When the CALLER supplied them, what we hold is a snapshot it cannot update
+  // — leaving the dialog open would show a stale status and offer transitions
+  // that would fail on the dead version. So we close and let the caller's own
+  // refetch redraw. (This is exactly what the Dues tab did before it adopted
+  // this component: mark → both dialogs close → grid refetches.)
+  const afterWrite = () => {
+    onChanged();
+    if (needsFetch) eventsQuery.refetch();
+    else onClose();
+  };
 
   const applyMark = async () => {
     if (!markConfirm) return;
     const { event, to } = markConfirm;
     try {
-      // version travels with the write — another surface can be changing the
-      // same instalment, and losing that race silently would be worse than
-      // an error the user can see. (Dues-tab rule, kept.)
       await updateEvent({ eventId: event.id, updateData: { status: to, version: event.version } as any });
       setMarkConfirm(null);
-      onChanged();
-      eventsQuery.refetch();
+      afterWrite();
     } catch {
       // useContractEventOperations already surfaces a toast on failure.
       setMarkConfirm(null);
@@ -109,11 +162,9 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
         <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-2xl border p-5"
           style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '18' }}>
           <p className="text-sm font-bold" style={ink}>{buyerName || 'Instalment'}</p>
-          <p className="text-xs mb-4" style={sub}>
-            {monthLabel ? `${monthLabel} · ` : ''}{contractNumber || contractId}
-          </p>
+          <p className="text-xs mb-4" style={sub}>{derivedSubtitle}</p>
 
-          {eventsQuery.isLoading ? (
+          {needsFetch && eventsQuery.isLoading ? (
             <div className="py-8 flex justify-center"><LoadingSpinner size="md" /></div>
           ) : events.length === 0 ? (
             <p className="py-6 text-center text-sm" style={sub}>
@@ -141,8 +192,8 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
                     style={{ borderColor: colors.utility.primaryText + '10' }}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-bold tabular-nums" style={ink}>
-                        {money(ev.amount || 0, currency)}
-                        <span className="font-normal" style={sub}> · {fmtShort(ev.scheduled_date)}</span>
+                        {fmtMoney(ev.amount, currency)}
+                        <span className="font-normal" style={sub}> · {fmtDateShort(ev.date)}</span>
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold"
                         style={{ backgroundColor: `${statusColor(ev.status)}1c`, color: statusColor(ev.status), border: `1px solid ${statusColor(ev.status)}45` }}>
@@ -181,7 +232,7 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
       </div>
 
       {/* Stacked confirm — a status change relabels money and must never
-          happen on a single stray tap. Same layering as the Dues tab. */}
+          happen on a single stray tap. */}
       {markConfirm && (
         <div
           role="dialog" aria-modal="true" aria-label="Confirm status change"
@@ -196,12 +247,13 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
             </p>
             <p className="text-xs mb-1" style={sub}>
               <b style={ink}>{buyerName || contractNumber}</b>
-              {monthLabelOf(markConfirm.event.scheduled_date) ? <> · {monthLabelOf(markConfirm.event.scheduled_date)}</> : null} ·{' '}
-              <b style={ink}>{money(markConfirm.event.amount || 0, currency)}</b>
+              {fmtMonth(markConfirm.event.date) ? <> · {fmtMonth(markConfirm.event.date)}</> : null} ·{' '}
+              <b style={ink}>{fmtMoney(markConfirm.event.amount, currency)}</b>
             </p>
             <p className="text-xs mb-4" style={sub}>
               {(billingStatusMap[markConfirm.to]?.is_terminal && markConfirm.to !== 'paid')
-                ? 'This writes the amount off. It stops counting as arrears here and in Finance.'
+                ? (terminalConsequence
+                  || 'This writes the amount off. It stops counting as arrears here and in Finance.')
                 : 'This changes what the buyer is shown as owing.'}
             </p>
             <div className="flex gap-2">
@@ -228,8 +280,7 @@ const InstalmentActionModal: React.FC<InstalmentActionModalProps> = ({
           preselectedEventIds={openEvents.map((e) => e.id)}
           onSuccess={() => {
             setPayOpen(false);
-            onChanged();
-            eventsQuery.refetch();
+            afterWrite();
           }}
         />
       )}

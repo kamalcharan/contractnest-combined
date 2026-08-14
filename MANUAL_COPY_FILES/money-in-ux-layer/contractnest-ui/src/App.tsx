@@ -196,7 +196,7 @@ import OpsCockpitPage from './pages/ops/cockpit';
 import FinancePage from './pages/operations/finance';
 import OpsServiceSchedulePage from './pages/operations/services';
 import GroupSessionsPage from './pages/operations/group-sessions';
-import InvoicesRedirect from './pages/invoices';
+import InvoiceRegisterPage from './pages/invoices';
 import InvoiceComposerPage from './pages/invoices/composer';
 import MoneyInPage from './pages/money-in';
 import ToPayPage from './pages/to-pay';
@@ -678,8 +678,9 @@ const AppContent: React.FC = () => {
           </Route>
 
           {/* Money In / To Pay — one money workspace per perspective.
-              /invoices stays alive: index redirects to Money In, while the
-              composer and the document viewer remain real destinations. */}
+              /invoices is the register: not in the nav, reached from Money In
+              when someone is after a specific document rather than the
+              picture. Composer and viewer sit under it. */}
           <Route
             path="/money-in"
             element={
@@ -708,7 +709,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<InvoicesRedirect />} />
+            <Route index element={<InvoiceRegisterPage />} />
             <Route path="new" element={<InvoiceComposerPage />} />
             {/* Same component as /contracts/:id/invoice/:invoiceId — one
                 viewer, contract optional. Ad-hoc invoices arrive here. */}

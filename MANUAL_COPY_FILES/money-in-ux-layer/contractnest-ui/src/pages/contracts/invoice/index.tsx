@@ -28,39 +28,16 @@ import {
 } from 'lucide-react';
 import type { Invoice } from '@/types/contracts';
 import { useInvoiceDetail } from '@/pages/invoices/useInvoiceDetail';
+import { formatCurrency, formatDate, formatPaymentMode, stripHtml } from '@/utils/format';
+import { SideCard } from '@/pages/invoices/ui';
 
 // ═══════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════
 
-const formatCurrency = (value?: number, currency?: string) => {
-  if (!value && value !== 0) return '\u2014';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: currency || 'INR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
-const formatDate = (d?: string) => {
-  if (!d) return '\u2014';
-  return new Date(d).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
-// Block descriptions are stored as HTML (template editor) — print plain text
-const stripHtml = (value?: string) => (value || '').replace(/<[^>]+>/g, '').trim();
-
-const formatPaymentMode = (mode?: string, emiMonths?: number) => {
-  if (!mode) return '';
-  if (mode === 'emi') return `EMI (${emiMonths || 0} months)`;
-  if (mode === 'defined') return 'As per billing schedule';
-  return mode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-};
+// formatCurrency / formatDate / formatPaymentMode / stripHtml moved to
+// utils/format.ts in Part 2 — they were duplicated in pages/invoices/ui.tsx.
+// Same implementations, byte for byte: this page renders identically.
 
 // Recurring blocks store the per-cycle rate in unit_price and the full-term
 // value in total_price (e.g. monthly ₹1,500 × 12 = ₹18,000) while quantity
@@ -727,25 +704,8 @@ const InvoiceViewPage: React.FC = () => {
             </div>
 
             {/* Payment Summary Card */}
-            <div
-              className="rounded-xl border overflow-hidden"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: colors.utility.primaryText + '15',
-              }}
-            >
-              <div
-                className="px-4 py-3 border-b"
-                style={{ borderColor: colors.utility.primaryText + '10' }}
-              >
-                <h3
-                  className="text-[0.65rem] font-bold uppercase tracking-wider"
-                  style={{ color: colors.utility.secondaryText }}
-                >
-                  Payment Summary
-                </h3>
-              </div>
-              <div className="p-4 space-y-3">
+            <SideCard title="Payment Summary" clip>
+              <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span style={{ color: colors.utility.secondaryText }}>Invoice Total</span>
                   <span className="font-bold" style={{ color: colors.utility.primaryText }}>
@@ -782,28 +742,11 @@ const InvoiceViewPage: React.FC = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </SideCard>
 
             {/* Invoice Details Card */}
-            <div
-              className="rounded-xl border overflow-hidden"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: colors.utility.primaryText + '15',
-              }}
-            >
-              <div
-                className="px-4 py-3 border-b"
-                style={{ borderColor: colors.utility.primaryText + '10' }}
-              >
-                <h3
-                  className="text-[0.65rem] font-bold uppercase tracking-wider"
-                  style={{ color: colors.utility.secondaryText }}
-                >
-                  Invoice Details
-                </h3>
-              </div>
-              <div className="p-4 space-y-2.5">
+            <SideCard title="Invoice Details" clip>
+              <div className="space-y-2.5">
                 {[
                   {
                     label: 'Type',
@@ -844,7 +787,7 @@ const InvoiceViewPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </SideCard>
           </div>
         </div>
       </div>

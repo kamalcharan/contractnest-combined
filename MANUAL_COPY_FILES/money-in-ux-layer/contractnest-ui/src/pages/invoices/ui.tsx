@@ -32,11 +32,12 @@ export const useInvoiceTheme = () => {
   };
 };
 
-export const fmtMoney = (n: number, currency = 'INR'): string =>
-  `${currency === 'INR' ? '₹' : currency + ' '}${Math.round(n).toLocaleString('en-IN')}`;
-
-export const fmtDate = (iso: string | null): string =>
-  iso ? new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+// Formatters live in ONE place now (utils/format.ts) — they used to be
+// implemented here AND inside pages/contracts/invoice/index.tsx. Re-exported
+// rather than moved-and-rewired so every existing `from '../invoices/ui'`
+// import keeps working untouched.
+export { fmtMoney, fmtDate, fmtDateShort, fmtMonth, daysSince, daysUntil } from '@/utils/format';
+import { fmtMoney } from '@/utils/format';
 
 /** Derived status → semantic color + human label. Never a raw enum on screen. */
 export const useStatusMeta = () => {
@@ -263,12 +264,25 @@ export const InvoicePaper: React.FC<InvoicePaperProps> = (p) => {
 
 // ─── Sidecar cards (mirror the existing page's right column) ────────────────
 
-export const SideCard: React.FC<{ title: string; children: React.ReactNode; trailing?: React.ReactNode }> = ({ title, children, trailing }) => {
+/**
+ * The right-column card used by BOTH the composer and the read-only invoice
+ * viewer (pages/contracts/invoice/index.tsx) — its three sidecars were
+ * hand-rolled copies of this exact chrome until Part 2.
+ *
+ * `clip` opts into overflow-hidden. It is OFF by default on purpose: it
+ * silently clipped absolutely-positioned children (the contact picker's
+ * dropdown) and read to the user as "search won't work". The viewer passes
+ * `clip` because it has no popovers and its cards were drawn that way.
+ */
+export const SideCard: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  trailing?: React.ReactNode;
+  clip?: boolean;
+}> = ({ title, children, trailing, clip }) => {
   const { colors } = useInvoiceTheme();
   return (
-    // no overflow-hidden: it silently clipped absolutely-positioned children
-    // (the contact picker's dropdown) — "search won't work" in disguise
-    <div className="rounded-xl border" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}15` }}>
+    <div className={`rounded-xl border${clip ? ' overflow-hidden' : ''}`} style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}15` }}>
       <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: `${colors.utility.primaryText}10` }}>
         <h3 className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>{title}</h3>
         {trailing}
