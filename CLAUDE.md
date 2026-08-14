@@ -721,6 +721,36 @@ Findings, condensed (ask for the full per-question detail if it wasn't carried i
 **Current state**: nothing built yet on top of these findings — pure research + design exploration, both paused for a fresh session per user request.
 **When to revisit**: next session, before writing code, resolve: (a) finish the playground fix (restore the document's own branded header + Invoice-To/Bill-To strip inside the card, app chrome outside it); (b) decide whether the new standalone page becomes the **view** destination for adhoc invoices too (not just create), since none exists today; (c) decide whether `/ops/finance` needs a real row/marker for adhoc invoices so the money in its totals is traceable, or whether the Contact Cockpit is deemed sufficient; (d) decide modal-vs-full-page for the two existing staged entry points (Group Sessions guest-fee "Invoice" button, Contacts "Create Adhoc Service" card) — keep the fast modal for those two contexts and add the new page as the general-purpose entry, or retire the modal and route everything through the new page for one uniform pattern (leaning toward keeping both, per the assistant's earlier note, but not yet decided by the user); (e) worth folding in while touching this code: extract the shared retrying sequence-number helper noted above, and make the sidecard's "Receipts" count clickable/scroll-to the receipts section rather than static text.
 
+### Finance (AR/AP) menu is superseded — CONFIRMED, cleanup deferred (2026-08-14)
+`/ops/finance` ("Finance (AR/AP)", `industryMenus.ts` line ~42) has exactly two views, `ViewMode = 'receivables' | 'payables'`, and both are now covered:
+| Finance view | Replacement |
+|---|---|
+| Receivables (revenue) | **Money In** `/money-in` |
+| Payables (expense) | **To Pay** `/to-pay` |
+
+Both read the same RPCs (`get_tenant_receivables` / `get_tenant_payables`) through the same hooks, so they agree by construction.
+
+**One real gap before deleting**: Finance shows a **"Collected this month"** KPI (with all-time as its subtitle). Money In shows all-time only (`summary.collected_total`). Port that figure to Money In first, or the number is lost. Neither page uses the `ageing` buckets the RPC returns, so nothing is lost there. `FINANCE_ENDPOINTS.TAX_SUMMARY` exists but no page calls it — unrelated to this retirement.
+
+**Current state**: menu entry and page both still live; nothing removed. **When to revisit**: owner's review, then remove the `ops-finance` menu entry, delete `pages/operations/finance/`, and check `useFinanceQueries` for now-unused exports. Also retire the 100% mock `/vani/finance/receivables` at the same time.
+
+### Extend menu 404 — root cause found and fixed (2026-08-14)
+`/extend` 404'd although the page, its hooks and the menu entry all shipped in `69ea357`. Cause: **`App.tsx` had no `/extend` route and `serviceURLs.ts` had no `EXTEND` block — in any commit**. `useTouchpoints` therefore also threw on `API_ENDPOINTS.EXTEND.TOUCHPOINTS`. The backend was never the problem: `extendRoutes.ts` / `extendController.ts` / `extendService.ts` exist and are registered, serving `/api/extend/touchpoints`.
+
+Both files are **whole-file copies** in `MANUAL_COPY_FILES/money-in-ux-layer/`, so copying that batch over a checkout that had the route replaced it with a version derived from `69ea357`, which lacks it. **This is the seventh occurrence of the stale-whole-file-copy regression, and the first known to have been caused by the assistant's own batch.**
+
+Fixed by restoring both: the `/extend` route in `App.tsx` and an `EXTEND: { TOUCHPOINTS, TOUCHPOINT(id) }` block at the correct top-level brace depth in `serviceURLs.ts`.
+
+**When to revisit**: the durable fix is the long-deferred startup smoke-check that asserts every `API_ENDPOINTS.*` section referenced anywhere in the UI actually exists, and that every menu `path` resolves to a route. Three of the four remaining undefined sections (`BUSINESS_MODEL` — the file defines `BUSINESSMODEL` without the underscore — `CHAT.*`, `PRODUCTS.*`) are the same latent bug waiting to surface the same way.
+
+### Payment-received thank-you — built, OFF until templates registered (2026-08-14)
+Migration 073. Fires off `t_invoice_receipts` (every payment path lands there) via `AFTER INSERT` trigger → `fn_enqueue_payment_received`, gated by `notif_payment_received`.
+
+**The load-bearing detail**: group-session receipts are excluded, because `gs_confirm_declaration` already sends `group_session_payment_thankyou` on the same receipt. **71 of BBB's 74 receipts are group-session** — without the exclusion, 71 members get two thank-yous for one payment.
+
+**Current state**: templates `payment_received_whatsapp` / `payment_received_email` exist with `provider_template_id` NULL; rule is OFF. Register in MSG91 → set the provider ids → then enable the rule, in that order.
+**When to revisit**: consolidating `group_session_payment_thankyou` into the general one would remove the exclusion entirely and genuinely deliver "one message for all" — it needs a template change plus re-approval, so it was not bundled here.
+
 ---
 
 ## ⚠️ Session Reminders

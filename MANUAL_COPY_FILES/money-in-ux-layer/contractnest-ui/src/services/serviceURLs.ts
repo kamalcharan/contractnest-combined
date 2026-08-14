@@ -1341,6 +1341,15 @@ export const API_ENDPOINTS = {
   // ⚠ Deleted on 2026-08-10 by a stale whole-file copy; restored 2026-08-13.
   // MUST stay at the TOP LEVEL of API_ENDPOINTS — this file's indentation is
   // inconsistent, so match by brace depth, not by leading spaces.
+  // Extend — customer touchpoints (website / WhatsApp / email storefronts).
+  // Backed by contractnest-api/src/routes/extendRoutes.ts, which has been
+  // registered and working the whole time; only this block was missing, which
+  // is why /extend 404'd and useTouchpoints threw on EXTEND.TOUCHPOINTS.
+  EXTEND: {
+    TOUCHPOINTS: '/api/extend/touchpoints',
+    TOUCHPOINT: (id: string) => `/api/extend/touchpoints/${id}`,
+  },
+
   INVOICES: {
     ADHOC: '/api/invoices/adhoc',
     DETAIL: (id: string) => `/api/invoices/${id}`,

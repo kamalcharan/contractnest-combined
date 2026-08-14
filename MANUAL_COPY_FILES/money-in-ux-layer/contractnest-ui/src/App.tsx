@@ -198,6 +198,7 @@ import OpsServiceSchedulePage from './pages/operations/services';
 import GroupSessionsPage from './pages/operations/group-sessions';
 import InvoiceRegisterPage from './pages/invoices';
 import InvoiceComposerPage from './pages/invoices/composer';
+import ExtendPage from './pages/extend';
 import MoneyInPage from './pages/money-in';
 import ToPayPage from './pages/to-pay';
 import OpsAppointmentsPage from './pages/operations/appointments';
@@ -675,6 +676,20 @@ const AppContent: React.FC = () => {
             }
           >
             <Route index element={<GroupSessionsPage />} />
+          </Route>
+
+          {/* Extend — customer touchpoints (website / WhatsApp / email).
+              The page, its hooks and the menu entry all shipped; only this
+              route was missing, so the menu item 404'd. */}
+          <Route
+            path="/extend"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ExtendPage />} />
           </Route>
 
           {/* Money In / To Pay — one money workspace per perspective.
