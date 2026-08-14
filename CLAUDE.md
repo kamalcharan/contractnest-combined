@@ -721,6 +721,23 @@ Findings, condensed (ask for the full per-question detail if it wasn't carried i
 **Current state**: nothing built yet on top of these findings — pure research + design exploration, both paused for a fresh session per user request.
 **When to revisit**: next session, before writing code, resolve: (a) finish the playground fix (restore the document's own branded header + Invoice-To/Bill-To strip inside the card, app chrome outside it); (b) decide whether the new standalone page becomes the **view** destination for adhoc invoices too (not just create), since none exists today; (c) decide whether `/ops/finance` needs a real row/marker for adhoc invoices so the money in its totals is traceable, or whether the Contact Cockpit is deemed sufficient; (d) decide modal-vs-full-page for the two existing staged entry points (Group Sessions guest-fee "Invoice" button, Contacts "Create Adhoc Service" card) — keep the fast modal for those two contexts and add the new page as the general-purpose entry, or retire the modal and route everything through the new page for one uniform pattern (leaning toward keeping both, per the assistant's earlier note, but not yet decided by the user); (e) worth folding in while touching this code: extract the shared retrying sequence-number helper noted above, and make the sidecard's "Receipts" count clickable/scroll-to the receipts section rather than static text.
 
+### NEXT SESSION — Finance review list (owner, 2026-08-14)
+Six items to work through together. Findings gathered while logging them, so this starts from facts rather than a restated list.
+
+**1. "Collected this month"** — the one figure lost if Finance (AR/AP) is deleted. `/ops/finance` shows it as a KPI with all-time as its subtitle; Money In shows all-time only (`summary.collected_total`). `get_tenant_receivables` already returns `collected_this_month`, so this is a display change in `pages/money-in/index.tsx`, not an RPC change.
+
+**2. Bring out the existing GST records.** Three tables exist: `t_tax_rates` (11 rows, **2 on BBB**), `t_tax_settings` (13 rows, 1 on BBB) and `t_tax_info` — which is **completely empty, 0 rows platform-wide**. `t_tax_info` is the likely home of GSTIN / registration details, so "bringing out GST records" probably means it was never populated or never wired, not that data is hidden. Confirm what `t_tax_info` is meant to hold before building any UI on it. UI that already exists: `components/TaxSettings/` (`TaxRatesPanel`, `TaxRateCard`, `AddTaxRateModal`, `TaxDisplayPanel`, `DeleteTaxRateDialog`). `FINANCE_ENDPOINTS.TAX_SUMMARY` (`/api/finance/tax-summary`) exists and **no page calls it**.
+
+**3. Invoice not working with tax.** Measured: **18 invoices platform-wide carry `tax_amount > 0`, and 0 of them are BBB's** — while BBB has 2 tax rates configured. So the mechanism works somewhere and does not reach BBB's invoices. Start by finding which path sets `tax_amount` (contract activation vs `run_contract_event_scanner` vs `create_adhoc_invoice`) and why BBB's contracts produce zero. Note `create_adhoc_invoice` takes `tax_amount` as a caller-supplied parameter and the composer currently sends 0.
+
+**4. Contract blocks not working with tax.** Related to 3 and probably upstream of it: if blocks carry no tax rate, invoices derived from them cannot. Check how a tax rate is attached to a block in the Block Wizard / Contract Wizard, and whether the mapper carries it into `t_contract_blocks`.
+
+**5. Hide menu 'Finance'** — see the section below; superseded by Money In + To Pay, with item 1 as the only gap. `industryMenus.ts`, submenu id `ops-finance`.
+
+**6. Hide menu 'VaNi (old)'** — `industryMenus.ts` id `vani-old`, label "VaNi (old)", path `/vani/dashboard`. Its own code comment already says *"mock/reference pages parked here until the cleanup pass removes them"*, so hiding it is the intended end state. Retire `/vani/finance/receivables` (100% mock data) in the same pass.
+
+**Approach for 5 and 6**: hide first (comment out the menu entries, as was done for the contact Overview tab), leave the pages in place, and delete code in a separate pass once nothing is missed. **Do not delete Finance before item 1 is ported.**
+
 ### Finance (AR/AP) menu is superseded — CONFIRMED, cleanup deferred (2026-08-14)
 `/ops/finance` ("Finance (AR/AP)", `industryMenus.ts` line ~42) has exactly two views, `ViewMode = 'receivables' | 'payables'`, and both are now covered:
 | Finance view | Replacement |
