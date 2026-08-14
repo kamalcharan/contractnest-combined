@@ -24,6 +24,7 @@ import BillToPicker from './BillToPicker';
 import { useContact } from '@/hooks/useContacts';
 import { usePendingDeclarations } from '@/hooks/queries/useGroupSessionsDashboard';
 import { useCreateAdhocInvoice } from '@/hooks/queries/useInvoiceQueries';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
 import {
   fmtMoney, fmtDate, useInvoiceTheme, IncludedBadge, FreeReceiptsBadge,
   InvoicePaper, DocTh, SideCard, paperInk, paperSub, paperFaint,
@@ -125,6 +126,17 @@ const InvoiceComposerPage: React.FC = () => {
 
   const save = async () => {
     if (!canSave || !contactId) return;
+    // Pre-flight: name the problem instead of throwing a bare TypeError.
+    // INVOICES.ADHOC has been wiped from serviceURLs twice by stale
+    // whole-file copies; if the running bundle is missing it, say so.
+    const endpoint = (API_ENDPOINTS as any)?.INVOICES?.ADHOC;
+    if (!endpoint) {
+      // eslint-disable-next-line no-console
+      console.error('[adhoc save] API_ENDPOINTS.INVOICES is', (API_ENDPOINTS as any)?.INVOICES,
+        '— the bundle in memory lacks the INVOICES block. Restart Vite / hard-refresh.');
+      vaniToast.error('Invoice endpoint missing from this build — restart the dev server and hard-refresh.');
+      return;
+    }
     try {
       const result = await createAdhoc.mutateAsync({
         contact_id: contactId,
@@ -141,10 +153,15 @@ const InvoiceComposerPage: React.FC = () => {
         reference_number: payment.reference || null,
         declaration_id: declarationId,
       });
-      vaniToast.success(`${result.invoice_number} created — ${fmtMoney(result.total_amount)} received, receipt ${result.receipt_number} attached.`);
+      vaniToast.success(`${result?.invoice_number ?? 'Invoice'} created — ${fmtMoney(result?.total_amount ?? total)} received${result?.receipt_number ? `, receipt ${result.receipt_number} attached` : ''}.`);
       navigate('/money-in');
     } catch (e: any) {
-      vaniToast.error(e?.message || 'Could not create the invoice.');
+      // full detail to the console — the toast truncates, and the response
+      // body carries the RPC's own error text when it refuses.
+      // eslint-disable-next-line no-console
+      console.error('[adhoc save] failed:', e, '| response:', e?.response?.data);
+      const apiMsg = e?.response?.data?.error?.message || e?.response?.data?.message;
+      vaniToast.error(apiMsg || e?.message || 'Could not create the invoice.');
     }
   };
 
