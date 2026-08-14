@@ -1,0 +1,50 @@
+COPY INSTRUCTIONS — tax-rate-delete-response-shape-fix
+=================================================
+
+SUBMODULES AFFECTED: contractnest-edge (migration file only — SOURCE
+CONTROL TRACKING, the actual fix is ALREADY LIVE, see below)
+
+⚠️ SAME AS THE LAST BATCH: the bug ("Delete Failed: Invalid delete
+response format", and the follow-on "already deleted" on a second
+click) is ALREADY FIXED IN PRODUCTION. I applied this migration
+directly to the live Supabase project and re-verified the full
+create -> delete cycle against throwaway test data, confirming the
+response now includes success:true + deletedRate, then cleaned up.
+
+Copying this file does NOT need to happen before you can use tax
+rate delete again — it already works right now. This copy is purely
+to get the fix into git source control (same reasoning as the prior
+batch).
+
+FILES IN THIS FOLDER -> DESTINATION (relative to contractnest-combined root):
+
+1. contractnest-edge\supabase\migrations\contracts\078_fix_delete_tax_rate_response_shape.sql
+   -> contractnest-edge\supabase\migrations\contracts\078_fix_delete_tax_rate_response_shape.sql
+
+WHAT THIS FIXES:
+Migration 077's delete_tax_rate_atomic returned {deletedRate: {...}}
+only. contractnest-api's taxSettingsService.deleteTaxRate
+(services/taxSettingsService.ts:210) requires BOTH
+response.data.success AND response.data.deletedRate to be truthy, or
+it throws 'Invalid delete response format' itself — even though the
+edge function call had already succeeded and the row was soft-deleted
+in the database. That false error is why a second click on the same
+row then hit the (correct) "already deleted" guard — the first click
+had actually worked. This migration adds the missing success/message
+fields so the response matches what the API layer has always expected
+(its own TypeScript return type already declared this shape).
+
+No edge function, API, or UI code changes needed — only the DB-side
+function's return shape changed.
+
+STILL OPEN (separate, not in this batch): the tax-rates UI
+(contractnest-ui/src/hooks/useTaxRates.ts) does not re-fetch the list
+from the server after a delete succeeds or fails — it just prunes
+local state optimistically on success and does nothing on error. That
+UI-side hardening is a distinct proposed fix, not yet approved/built —
+raise it separately if you want it done.
+
+APPLY ORDER: this migration must be applied AFTER 077
+(create_tax_rate_atomic / update_tax_rate_atomic / delete_tax_rate_atomic)
+from the previous MANUAL_COPY_FILES batch
+("tax-rate-crud-rpc-fix") — it replaces delete_tax_rate_atomic only.
