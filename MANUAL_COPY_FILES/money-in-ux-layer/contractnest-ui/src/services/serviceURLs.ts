@@ -518,14 +518,6 @@ export const API_ENDPOINTS = {
     // =================================================================
     // SMART FORMS — Admin Form Template Management
     // =================================================================
-    // Standalone (non-contract-scoped) invoice operations. Contract-linked
-  // invoice/payment endpoints stay under CONTRACTS above.
-  // ⚠ Deleted on 2026-08-10 by a stale whole-file copy (e3900b2's UI
-  // sibling) — every adhoc invoice save crashed with "Cannot read
-  // properties of undefined (reading 'ADHOC')". Restored 2026-08-13.
-  INVOICES: {
-    ADHOC: '/api/invoices/adhoc',
-  },
   SMART_FORMS: {
       LIST: '/api/admin/forms',
       GET: (id: string) => `/api/admin/forms/${id}`,
@@ -1025,9 +1017,6 @@ export const API_ENDPOINTS = {
 
     // Invoices & payments
     INVOICES: (id: string) => `/api/contracts/${id}/invoices`,
-    // ⚠ Also wiped by the 2026-08-10 stale copy — used by the PUBLIC
-    // contract review page (CNAK buyers). Restored 2026-08-13.
-    PUBLIC_VALIDATE: '/api/contracts/public/validate',
     RECORD_PAYMENT: (id: string) => `/api/contracts/${id}/invoices/record-payment`,
     CANCEL_INVOICE: (id: string) => `/api/contracts/${id}/invoices/cancel`,
     CANCEL_RECEIPT: (id: string) => `/api/contracts/${id}/invoices/receipts/cancel`,
@@ -1346,6 +1335,14 @@ export const API_ENDPOINTS = {
     OCC_MARK: (id: string) => `/api/group-sessions/occurrence/${id}/mark`,
     MEMBER_BLOCK: (memberId: string, blockId: string) => `/api/group-sessions/member/${memberId}/block/${blockId}`,
     DUE_PAID: (billingEventId: string) => `/api/group-sessions/due/${billingEventId}/paid`,
+  },
+  // Standalone (non-contract-scoped) invoice operations. Contract-linked
+  // invoice/payment endpoints stay under CONTRACTS above.
+  // ⚠ Deleted on 2026-08-10 by a stale whole-file copy; restored 2026-08-13.
+  // MUST stay at the TOP LEVEL of API_ENDPOINTS — this file's indentation is
+  // inconsistent, so match by brace depth, not by leading spaces.
+  INVOICES: {
+    ADHOC: '/api/invoices/adhoc',
   },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)
