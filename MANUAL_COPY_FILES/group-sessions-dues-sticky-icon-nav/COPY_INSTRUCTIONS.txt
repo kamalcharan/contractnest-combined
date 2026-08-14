@@ -25,6 +25,16 @@ WHAT CHANGED (Operations -> Group Sessions -> Dues tab only):
    only clicking that icon navigates to /contracts/:id. The monthly
    status-pill click-to-change-status behavior is unchanged.
 
+3. ALWAYS-REACHABLE HORIZONTAL SCROLL (follow-up fix)
+   The native horizontal scrollbar sits below all 49 rows — unreachable
+   without scrolling the whole page down first. Added a Left/Right
+   arrow-button pair docked into the top-right corner of the sticky
+   header row itself, so they're always visible once you've scrolled
+   past the summary cards, no matter how far down the page you are.
+   Each click scrolls the table 240px in that direction. Vertical
+   scrolling behavior is completely unchanged — this only affects
+   horizontal (month-column) scrolling.
+
 Nothing else on this page was touched — Groups tab, Payments to
 confirm tab, and everything else in this file is unaffected.
 

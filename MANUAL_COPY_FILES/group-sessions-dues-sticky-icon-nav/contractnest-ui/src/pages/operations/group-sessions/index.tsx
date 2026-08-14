@@ -22,7 +22,7 @@
 // Data via /api/group-sessions/*.
 // ============================================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, RefreshCw, AlertTriangle, Inbox, ChevronRight, ChevronLeft, ChevronDown,
@@ -189,6 +189,11 @@ const GroupSessionsPage: React.FC = () => {
   const [duesPlan, setDuesPlan] = useState<DuesPlan>('all');
   const [duesStanding, setDuesStanding] = useState<DuesStanding>('all');
   const [duesPage, setDuesPage] = useState(1);
+  // Horizontal scroll for the month columns — the native scrollbar sits below
+  // all the rows, unreachable without scrolling the whole page down first, so
+  // the sticky header carries its own always-visible Left/Right controls.
+  const duesScrollRef = useRef<HTMLDivElement>(null);
+  const scrollDuesBy = (dx: number) => duesScrollRef.current?.scrollBy({ left: dx, behavior: 'smooth' });
   const [occFilter, setOccFilter] = useState<OccFilter>('upcoming');
   const [occPage, setOccPage] = useState(1);
   const [rosterFilter, setRosterFilter] = useState<RosterFilter>('all');
@@ -990,7 +995,7 @@ const GroupSessionsPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            <div ref={duesScrollRef} className="overflow-x-auto">
               <div className="space-y-1.5" style={{ minWidth: gridMinWidth }}>
                 <div className="grid items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider" style={{ ...headStyle(duesCols), position: 'sticky', top: 0, zIndex: 20, backgroundColor: colors.utility.primaryBackground }}>
                   <span style={{ position: 'sticky', left: 0, zIndex: 30, backgroundColor: colors.utility.primaryBackground }}>Member</span>
@@ -1002,6 +1007,27 @@ const GroupSessionsPage: React.FC = () => {
                   {duesMonths.map((m) => (
                     <span key={m.key} className="text-center">{m.label}</span>
                   ))}
+                  {/* Always-visible horizontal scroll controls — pinned to the
+                      sticky header itself (not the scroll container), so they
+                      never require reaching the native scrollbar below the rows. */}
+                  <div className="absolute right-2 top-2 flex items-center gap-1" style={{ zIndex: 40 }}>
+                    <button
+                      onClick={() => scrollDuesBy(-240)}
+                      title="Scroll left"
+                      className="h-6 w-6 inline-flex items-center justify-center rounded-md border hover:brightness-95 transition-all"
+                      style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '20', color: colors.utility.secondaryText }}
+                    >
+                      <ChevronLeft size={13} />
+                    </button>
+                    <button
+                      onClick={() => scrollDuesBy(240)}
+                      title="Scroll right"
+                      className="h-6 w-6 inline-flex items-center justify-center rounded-md border hover:brightness-95 transition-all"
+                      style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '20', color: colors.utility.secondaryText }}
+                    >
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
                 </div>
 
                 {pageSlice(filteredDues, duesPage, DUES_PAGE_SIZE).map((r) => (
