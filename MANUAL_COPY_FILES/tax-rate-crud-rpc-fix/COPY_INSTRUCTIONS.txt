@@ -1,0 +1,38 @@
+COPY INSTRUCTIONS — tax-rate-crud-rpc-fix
+=================================================
+
+SUBMODULES AFFECTED: contractnest-edge (migration file only — SOURCE
+CONTROL TRACKING, the actual fix is ALREADY LIVE, see below)
+
+⚠️ IMPORTANT — THIS IS DIFFERENT FROM A NORMAL CODE CHANGE:
+The bug (editing/deleting a tax rate on /settings/tax throwing
+"Could not find the function...") is ALREADY FIXED IN PRODUCTION.
+I applied the migration directly to the live Supabase project and
+verified it end-to-end (create/update/duplicate-check/version-conflict/
+delete all tested against throwaway data, then cleaned up).
+
+Copying this file does NOT need to happen before you can use tax
+settings again — it already works right now. This copy is purely to
+get the fix into git source control, because the root cause of the
+bug in the first place was a DB function that was applied live once
+and never committed to a migration file, then lost. Skipping this step
+recreates that exact problem for the next person.
+
+FILES IN THIS FOLDER → DESTINATION (relative to contractnest-combined root):
+
+1. contractnest-edge\supabase\migrations\contracts\077_restore_tax_rate_crud_atomic_rpcs.sql
+   -> contractnest-edge\supabase\migrations\contracts\077_restore_tax_rate_crud_atomic_rpcs.sql
+
+WHAT THIS RESTORES:
+Three Postgres functions that supabase/functions/tax-settings/index.ts
+already calls but which did not exist in the database at all:
+  - create_tax_rate_atomic
+  - update_tax_rate_atomic
+  - delete_tax_rate_atomic
+No edge function or API code changes were needed — the caller side
+was always correct; only the DB-side functions were missing. Root
+cause and verification notes are in the file's own header comment.
+
+SCOPE: this affects ALL tenants' tax-rate create/edit/delete, not just
+BBB — every tenant's /settings/tax "Edit" action was broken the same
+way, they just hadn't tried it since 2026-01-14.
