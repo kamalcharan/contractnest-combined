@@ -110,13 +110,28 @@ export const defaultMenuItems: MenuItem[] = [
   },
   // Money In / To Pay — ONE money workspace per side (owner decision,
   // 2026-08-13). Money In merges receivables + invoices: buyer stories with
-  // instalments, documents and receipts inside; invoices are reached from
-  // rows, not from a separate nav item. To Pay is its expense-side mirror.
+  // instalments, documents and receipts inside. To Pay is its expense mirror.
   {
     id: 'money-in',
     label: 'Money In',
     icon: 'Wallet',
     path: '/money-in',
+    revenueOnly: true
+  },
+  // Invoices — the document register (owner request, 2026-08-14). Money In is
+  // still the money surface: it answers "who owes me and what do I do about
+  // it", grouped by buyer and scoped to the live picture. That deliberately
+  // cannot answer "where is INV-10059", because settled and cancelled
+  // documents have no place in a story about open money. This entry is the
+  // flat, searchable list of every invoice, and is reached from Money In too.
+  // Kept as its OWN top-level item rather than a submenu under Money In,
+  // because making Money In a submenu parent would turn it into a toggle and
+  // cost it its one-click route (see Sidebar: hasSubmenu items link to '#').
+  {
+    id: 'invoices',
+    label: 'Invoices',
+    icon: 'Receipt',
+    path: '/invoices',
     revenueOnly: true
   },
   {
