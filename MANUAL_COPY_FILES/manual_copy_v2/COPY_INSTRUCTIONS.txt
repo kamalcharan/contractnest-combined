@@ -58,7 +58,22 @@ templates deliberately untouched.
     MUST flip back to opt-in before any real cutover, together with
     the single-create flip in useContractQueries.ts.
 
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx [FULL file, updated]
+    Step 4a — cadence gate now also runs on the template FINAL SAVE
+    (before handleSaveTemplate). Closes the edit-from-review hole:
+    that shortcut jumps details → review without re-passing the
+    blocks step, so a template could previously be saved with a
+    cadence that can't fit its duration. Toast: "Schedule doesn't
+    fit the template duration". The save-on-close path is
+    deliberately NOT gated (blocking it would lose the user's
+    work; the DB backstop catches any bad template at assignment).
+    Step 4b (DB unique index on template names) stays PARKED: it
+    cannot be created while the existing vikuna duplicate names
+    (Free ×2, Quarterly ×2) exist, and those sit next to the
+    business-model rows — resolve together when that scope opens.
+
 COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
@@ -82,6 +97,11 @@ COPY COMMANDS for this batch:
         contracts created
   - [ ] ?useV1=1 on the page URL: bulk falls back to the V1 route
         (escape hatch works)
+  - [ ] Template edit-from-review: open a template, go to review,
+        jump back to details, shorten the duration below the blocks'
+        span, Continue to review, Save → blocked with "Schedule
+        doesn't fit the template duration" (previously saved fine)
+  - [ ] Normal template save with a coherent schedule: unaffected
 
 ─────────────────────────────────────────────────────────────────
 EARLIER — Drift cleanup: JTD notification removed from V2 create

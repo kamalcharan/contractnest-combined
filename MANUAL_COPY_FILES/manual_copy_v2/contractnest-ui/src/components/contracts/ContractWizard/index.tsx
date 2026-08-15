@@ -737,6 +737,28 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
     if (isLastStep) {
       // Template mode: final action saves the template — no contract is created
       if (isTemplateMode) {
+        // Cadence-fit gate on template SAVE too. The blocks-step gate covers
+        // normal authoring, but the edit-from-review shortcut jumps
+        // details → review without re-passing the blocks step — without this
+        // check that path could save a template whose cadence can't fit its
+        // duration, and a bad template poisons every future assignment
+        // (single and bulk) at scale.
+        const templateCadenceViolations = computeCadenceViolations({
+          durationValue: wizardState.durationValue,
+          durationUnit: wizardState.durationUnit,
+          selectedBlocks: wizardState.selectedBlocks,
+          paymentMode: wizardState.paymentMode,
+        });
+        if (templateCadenceViolations.length > 0) {
+          const extra = templateCadenceViolations.length > 1 ? ` (+${templateCadenceViolations.length - 1} more block${templateCadenceViolations.length > 2 ? 's' : ''} affected)` : '';
+          addToast({
+            type: 'error',
+            title: "Schedule doesn't fit the template duration",
+            duration: 10000,
+            message: `${templateCadenceViolations[0].message} Reduce the count, shorten the cycle, or extend the duration.${extra}`,
+          });
+          return;
+        }
         const saved = await handleSaveTemplate();
         if (saved) {
           resetWizard();
