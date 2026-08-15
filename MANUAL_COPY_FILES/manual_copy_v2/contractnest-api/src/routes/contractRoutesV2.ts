@@ -38,4 +38,15 @@ router.use(ensureTenant);
  */
 router.post('/', contractControllerV2.createContract);
 
+/**
+ * @route POST /api/v2/contracts/bulk-create
+ * @description V2 sibling of POST /api/contracts/bulk-create — bulk template
+ * assignment where each item is created via create_contract_transaction_v2
+ * (one engine for single and bulk) with fail-closed already-assigned dedup.
+ * @body {{ template_id?: string, activate?: boolean,
+ *          items: Array<{ buyer_id: string, request: CreateContractRequest }> }}
+ * @returns {{ results: [...], summary: { total, created, skipped, failed } }}
+ */
+router.post('/bulk-create', contractControllerV2.bulkCreateContracts);
+
 export default router;

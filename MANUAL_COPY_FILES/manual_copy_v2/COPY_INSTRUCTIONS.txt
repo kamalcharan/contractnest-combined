@@ -9,7 +9,82 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Drift cleanup: JTD notification removed from V2 create
+🆕 NEWEST — Template-flow hardening: cadence backstop in V2 RPC,
+   bulk assign moved onto V2, fail-closed dedup (2026-08-15)
+─────────────────────────────────────────────────────────────────
+From the template audit (creation / assign / bulk), owner-approved.
+Scope: the four contract-template flows only — business-model
+templates deliberately untouched.
+
+  - contractnest-edge/supabase/migrations/contracts-v2/006_cadence_backstop_v2.sql
+    Cadence-fit backstop INSIDE create_contract_transaction_v2 —
+    SQL port of the wizard gate computeCadenceViolations() (same
+    rule, same constants). Refuses a payload whose block cadence
+    can't fit the contract duration (error_code CADENCE_UNFIT)
+    BEFORE any side effect: no sequence burned, nothing inserted.
+    Covers every entry path the UI gate can't: VaNi single assign,
+    bulk assign, and any future caller. RFQs skipped; missing
+    custom-cycle data falls back permissively (never false-refuses).
+    Uses verified-anchor prosrc substitution (aborts loudly if the
+    live function drifted; post-apply check).
+    ALREADY APPLIED LIVE — do not re-run (re-running no-ops anyway).
+    Verified live: CN-1002's exact shape (14 × 30-day cycle,
+    1-month term) → refused with the wizard's own message, zero
+    rows created; a coherent 12 × monthly × 12-month payload →
+    passes and creates normally (tested under rollback, no residue).
+
+  - contractnest-api/src/routes/contractRoutesV2.ts        [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts [FULL file]
+  - contractnest-api/src/services/contractServiceV2.ts     [FULL file]
+    New POST /api/v2/contracts/bulk-create — V2 sibling of the V1
+    bulk route (V1 files untouched). Differences from V1:
+      · each item creates via create_contract_transaction_v2 →
+        single-assign and bulk now share ONE engine (explicit
+        seller/buyer, unconditional CNAK grant, cadence backstop);
+      · dedup is findAssignedBuyerIdsV2 — FAIL-CLOSED (a failed
+        lookup refuses the whole batch with a clear 503 instead of
+        silently proceeding and risking duplicates), plus is_live
+        and is_active filters V1 lacked (V1 let a test-mode or
+        soft-deleted contract falsely block a member's assignment).
+    Activation still rides the V1 updateContractStatus (status
+    transitions are out of V2 scope; same RPC the single flow uses).
+    Per-item independence preserved: one failure never rolls back
+    the batch; failed activation leaves that contract as a draft.
+
+  - contractnest-ui/src/hooks/useContractSubmission.ts     [FULL file]
+    submitBulk now posts to /api/v2/contracts/bulk-create by
+    default on this branch (same pattern as the single-create V2
+    flip); append ?useV1=1 to the page URL to fall back to V1.
+    MUST flip back to opt-in before any real cutover, together with
+    the single-create flip in useContractQueries.ts.
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\useContractSubmission.ts" -Destination "contractnest-ui\src\hooks\useContractSubmission.ts" -Force
+  (restart contractnest-api after copying — new route + controller code)
+
+🧪 TESTING CHECKLIST — template flows on V2
+  - [ ] Wizard direct contract: unchanged (gates already there; DB
+        backstop is a second net — a coherent contract creates fine)
+  - [ ] VaNi single assign of a GOOD template: creates + activates
+        exactly as before, CNAK grant row present
+  - [ ] Bulk assign a GOOD template to 2–3 test members: all rows
+        'active', each has its own CNAK, contracts identical in
+        shape to a single-assign contract
+  - [ ] Re-run the SAME bulk assign: every member 'skipped'
+        (already has a contract from this template) — no duplicates
+  - [ ] Assign/bulk a BAD template (e.g. 14 × 30-day cycle blocks,
+        1-month duration): every member 'failed' with the
+        "Schedule does not fit the contract duration" message; zero
+        contracts created
+  - [ ] ?useV1=1 on the page URL: bulk falls back to the V1 route
+        (escape hatch works)
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Drift cleanup: JTD notification removed from V2 create
 ─────────────────────────────────────────────────────────────────
 Owner-directed. V1 never notified at contract creation; the
 contract_created JTD insert added in Sprint 2 was scope drift:
