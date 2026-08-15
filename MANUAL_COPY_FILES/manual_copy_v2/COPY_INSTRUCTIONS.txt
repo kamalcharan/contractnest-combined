@@ -9,7 +9,44 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Billing-count semantics fix + toast readability
+🆕 NEWEST — Pay-before-activate settlement fix (CN-1003 bugs)
+─────────────────────────────────────────────────────────────────
+Found on CN-1003 after real payment. Two bugs, one real one perceived:
+  · "Auto-activation didn't happen" — it DID: history shows system
+    activated atomically with the receipt (same timestamp, note
+    "Auto-activated: all invoices paid"). The UI never refetched, so
+    the screen stayed on pending_acceptance. UI staleness, not backend.
+  · REAL bug: in payment-acceptance flows the billing events are BORN
+    AFTER the money landed (receipt → invoice paid → auto-activate →
+    trigger materializes events) — settled=0, no allocations, UI shows
+    RECORD PAYMENT on already-collected money. Two contradictory
+    payment truths.
+
+  - contractnest-edge/supabase/migrations/contracts-v2/004_settle_events_on_activation.sql
+    Owner-approved modification of LIVE V1 function
+    process_contract_events_from_computed (base = live prosrc, not
+    retyped): new STEP 2.5 — after materialization, settle newly-born
+    billing events against receipts already received on the contract,
+    FIFO, writing real t_invoice_receipt_allocations rows, updating
+    amount_settled, flipping fully-covered events to 'paid'. Covers
+    EVERY pay-first path (auto-activate, manual activate after payment,
+    public CNAK payment). No-op when no receipts exist. ALREADY APPLIED
+    LIVE — do not re-run; file is the source-of-record copy.
+    (CN-1003's own two events were also repaired one-time: both now
+    'paid', fully settled, allocations written.)
+
+  - contractnest-ui/src/hooks/queries/useInvoiceQueries.ts   [NEW file in this folder]
+    useRecordPayment.onSuccess now also invalidates the contract
+    detail/list and contract-events queries — after a payment that
+    auto-activates, the screen updates to active + settled dues instead
+    of staying stale. No circular imports (verified).
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\004_settle_events_on_activation.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\004_settle_events_on_activation.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Billing-count semantics fix + toast readability
 ─────────────────────────────────────────────────────────────────
 Raised on the 18-visits/every-18-days/Monthly/1-year config: the gate
 hard-stopped a config that is business-reasonable. Root cause: the
