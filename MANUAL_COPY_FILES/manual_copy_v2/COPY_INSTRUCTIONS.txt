@@ -30,28 +30,27 @@ NEW FILES (safe to copy directly — nothing to merge)
     completely untouched.
 
 ─────────────────────────────────────────────────────────────────
-MODIFIED FILES (delivered as .reference — read the diff before copying,
-do not blind-overwrite in case you've changed these files locally)
+MODIFIED FILES — delivered as FULL, ready-to-copy files, not diffs.
+No manual merging needed: these ARE index.ts and useContractQueries.ts
+in their entirety, with the two small additive changes already applied.
+Overwrite your local copies directly — but note that means anything
+else you've changed in either of these two files locally would be lost,
+since this is a full-file replacement, not a patch.
 ─────────────────────────────────────────────────────────────────
-  - contractnest-api/src/index.ts.reference
-    TWO small additive blocks only, both copy-pasted verbatim from the
-    existing contractCrudRoutes pattern:
-      1. A "Load Contract routes V2" try/catch block, right after the
-         existing "Load Contract routes" block (~line 369-381).
-      2. A "Register Contract CRUD routes V2" try/catch block, right
-         after the existing "Register Contract CRUD routes" block
-         (~line 942-955), mounting at app.use('/api/v2/contracts', ...).
-    Nothing existing in this file was edited — only two new blocks
-    inserted. Diff and apply manually, or copy the reference file
-    wholesale if you haven't touched index.ts yourself.
+  - contractnest-api/src/index.ts
+    Two small additive blocks (a "Load Contract routes V2" block and a
+    "Register Contract CRUD routes V2" block, both copy-pasted verbatim
+    from the existing contractCrudRoutes pattern) are the only changes
+    versus what was there before this batch — confirmed via grep before
+    delivery (5 occurrences of contractCrudRoutesV2 present).
 
-  - contractnest-ui/src/hooks/queries/useContractQueries.ts.reference
-    ONE change, inside useContractOperations()'s createContractMutation
-    (~line 245): reads `?useV2=1` from the URL. If absent (every real
-    user, always), behavior is byte-identical to before — same endpoint,
-    same everything. If present, that one submission posts to
-    /api/v2/contracts instead. This is how you test via the real Wizard:
-    open it with ?useV2=1 on the URL, submit as normal.
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts
+    One change, inside useContractOperations()'s createContractMutation:
+    reads `?useV2=1` from the URL. Absent (every real user, always),
+    behavior is byte-identical to before — same endpoint, same
+    everything. Present, that one submission posts to /api/v2/contracts
+    instead. Confirmed via grep before delivery (3 occurrences of useV2
+    present).
 
 ─────────────────────────────────────────────────────────────────
 ⚠️ WHAT I COULD AND COULDN'T VERIFY MYSELF
@@ -84,16 +83,18 @@ Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contra
 Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
 
-Write-Host "✅ New files copied! Now manually apply the two .reference diffs (index.ts, useContractQueries.ts) — see above." -ForegroundColor Yellow
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+
+Write-Host "✅ All files copied — no manual merging needed." -ForegroundColor Green
 
 ─────────────────────────────────────────────────────────────────
 STEP 2: Test via the real Wizard
 ─────────────────────────────────────────────────────────────────
-1. Apply the two .reference diffs above.
-2. Restart contractnest-api locally (picks up the new route).
-3. Open the Contract Wizard with ?useV2=1 appended to the URL.
-4. Create a contract on your new test tenant, normally, through the UI.
-5. Verify in Supabase: the contract's t_contract_access row exists
+1. Restart contractnest-api locally (picks up the new route).
+2. Open the Contract Wizard with ?useV2=1 appended to the URL.
+3. Create a contract on your new test tenant, normally, through the UI.
+4. Verify in Supabase: the contract's t_contract_access row exists
    unconditionally, and a matching n_jtd row exists with
    source_type_code='contract_created' and the correct is_live.
 
