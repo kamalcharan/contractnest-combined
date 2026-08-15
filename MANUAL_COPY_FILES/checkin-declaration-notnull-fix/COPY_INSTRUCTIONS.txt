@@ -9,25 +9,38 @@ Branch: claude/bbb-checkin-issues-ohrsuf
 ║ migration", project uwyqhzotluikawcboldr, migration name      ║
 ║ checkin_declaration_not_null_and_attendance_isolation)        ║
 ║                                                               ║
+║ 074 — member payment on a meeting day                         ║
 ║   ✅ gs_submit_checkin  session-day insert fixed              ║
 ║   ✅ gs_submit_checkin  no-session insert hardened            ║
 ║   ✅ gs_submit_checkin  attendance isolated from payment      ║
-║   ✅ post-check passed  (asserts the rewrite landed)          ║
 ║   ✅ end-to-end probe   member + meeting day + UPI ref → 1 row║
 ║   ✅ isolation probe    payment fails, attendance survives    ║
+║   ✅ CONFIRMED IN THE REAL UI by the owner, 15 Aug 14:52 and  ║
+║      14:54 IST — Yashwanth ₹4,500 and Manjunath ₹7,500 both   ║
+║      landed with attendance AND a declaration                 ║
 ║                                                               ║
-║ The SQL file in this batch is the source-of-record copy of    ║
-║ what was applied. Do NOT re-run it — the anchor assertions    ║
-║ will RAISE on a second run, because the old expression it     ║
-║ looks for is gone. That is intended, not a fault.             ║
+║ 075 — duplicate declarations                                  ║
+║   ✅ index widened to status IN ('pending','confirmed')       ║
+║   ✅ all 3 ON CONFLICT clauses repointed in lockstep          ║
+║   ✅ blocked duplicates now REPORTED, not silently discarded  ║
+║   ✅ narrow index uq_..._pending dropped                      ║
+║   ✅ probes: new → 1 row · dup-after-confirm → 0 + reported   ║
+║              · re-declare-after-reject → 1 row (must work)    ║
+║                                                               ║
+║ Both post-checks passed (they RAISE if the rewrite no-ops).   ║
+║ The SQL files here are source-of-record copies of what was    ║
+║ applied. Do NOT re-run them — the anchor assertions will      ║
+║ RAISE on a second run, because the old expressions they look  ║
+║ for are gone. That is intended, not a fault.                  ║
 ╚═══════════════════════════════════════════════════════════════╝
 
 FILES IN THIS BATCH
 ─────────────────────────────────
   contractnest-edge/supabase/migrations/bbb-foundation/
       074_checkin_declaration_notnull.sql
+      075_checkin_declaration_dedup_any_open_status.sql
 
-Submodules Affected: contractnest-edge (migration file only — DB already live)
+Submodules Affected: contractnest-edge (migration files only — DB already live)
 No API change. No UI change. The frontend already sent the payment correctly;
 the 2026-08-06 payment-intent guard in SessionCheckinPage.tsx is working and
 was not touched.

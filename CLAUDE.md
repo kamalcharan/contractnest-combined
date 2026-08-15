@@ -749,7 +749,23 @@ Zero declarations carrying a `billing_event_id` existed between 27 Jul and 15 Au
 
 Verified by forcing all three conditions together (1 row, correct `session_contract_id`, attendance intact) and by forcing the payment to fail (0 rows, **attendance survives**, `occurrence_status='held'`, error surfaced) — both probes ending in RAISE so nothing persisted.
 
-**Still open**: `session_contract_id` is NOT NULL yet now legitimately holds a contract id *or* a block id (the guest path already did this) — a modelling wart. And 052's `ON CONFLICT` is still `status='pending'`-scoped, so a duplicate still slips through silently once the first is confirmed/rejected (see 2026-08-06 above). **Not checked**: whether the chair holds UPI receipts from 8 Aug with no matching declaration — those members may have paid with nothing recorded.
+**Confirmed in the real UI** the same afternoon by the owner: Yashwanth ₹4,500 (14:52 IST) and Manjunath ₹7,500 (14:54) both checked in through the actual page and produced attendance **and** a declaration with a non-null `session_contract_id`. Both would have thrown 23502 an hour earlier.
+
+**Still open**: `session_contract_id` is NOT NULL yet now legitimately holds a contract id *or* a block id (the guest path already did this) — a modelling wart. **Not checked**: whether the chair holds UPI receipts from 8 Aug with no matching declaration — those members may have paid with nothing recorded.
+
+### FIXED 2026-08-15 — duplicate declarations (migration 075, closes the 2026-08-06 item)
+
+052's partial unique index was scoped to `status='pending'`, so the instant the chair confirmed the first declaration the row **left the index** and a second for the same instalment inserted cleanly. The guard only covered the window *before* the chair acted — the least likely time for a duplicate, since members re-declare precisely because they are unsure the first registered. `ON CONFLICT DO NOTHING` also discarded blocked rows **silently**, so the page showed success.
+
+Index widened to `status IN ('pending','confirmed')`. **`rejected` stays out deliberately** — the chair rejects so the member *can* re-submit a corrected reference. Blocked duplicates now return `payment_error='duplicate_declaration'` instead of vanishing.
+
+**⚠️ The trap in this change**: a partial-index arbiter is inferred by matching the `ON CONFLICT` WHERE clause against the index predicate. Changing the index without changing all three clauses in the *same* transaction fails with `42P10` and breaks check-in outright. New index created first → function repointed → old index dropped.
+
+What it was costing: money was safe (`gs_confirm_declaration`'s `v_remaining := GREATEST(amount - settled, 0)` clamp means a second confirm posts ₹0 — Medepalli's event reads `amount_settled=1500` on a ₹1,500 event, not 3,000), but the duplicate still reads CONFIRMED to the chair, makes declaration-derived totals disagree with the ledger, and since 053 would fire a **second "payment received" WhatsApp** (the message amount is the *declared* figure, not the ₹0 posted).
+
+Verified: new → 1 row · re-declare after CONFIRM → 0 rows + reported · re-declare after REJECT → 1 row.
+
+**Still open**: the **guest** index (`uq_payment_decl_guest_catblock_pending`) carries the identical `status='pending'` hole and was deliberately left alone — different index, different function, needs its own lockstep change. And the UI's duplicate-reference warning is still an **exact string match**, which would not have caught Bharat Mangipudi's real pair, `074747724582` vs `074747724582 - 4500`.
 
 ---
 
