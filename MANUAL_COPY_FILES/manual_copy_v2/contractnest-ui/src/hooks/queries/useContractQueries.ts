@@ -242,12 +242,13 @@ export const useContractOperations = () => {
         throw new Error('No tenant selected');
       }
 
-      // JTD Nucleus initiative, Milestone 1 — opt-in-only V2 test path.
-      // ?useV2=1 in the URL routes this one call to create_contract_transaction_v2
-      // instead of V1. Absent (the default, for every real user) this is
-      // byte-identical to before — same endpoint, same behavior.
-      const useV2 = new URLSearchParams(window.location.search).get('useV2') === '1';
-      const createEndpoint = useV2 ? '/api/v2/contracts' : API_ENDPOINTS.CONTRACTS.CREATE;
+      // JTD Nucleus initiative, Milestone 1 — V2 is the default on this
+      // branch (confirmed via edge logs that an opt-in ?useV2=1 param
+      // was easy to forget and silently fell through to V1). ?useV1=1
+      // opts back out if ever needed. Before any real cutover, this
+      // needs to flip back to opt-in — flagged, not done here.
+      const useV1 = new URLSearchParams(window.location.search).get('useV1') === '1';
+      const createEndpoint = useV1 ? API_ENDPOINTS.CONTRACTS.CREATE : '/api/v2/contracts';
 
       const response = await api.post(createEndpoint, contractData, {
         headers: {
