@@ -9,7 +9,29 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Pay-before-activate settlement fix (CN-1003 bugs)
+🆕 NEWEST — Drift cleanup: JTD notification removed from V2 create
+─────────────────────────────────────────────────────────────────
+Owner-directed. V1 never notified at contract creation; the
+contract_created JTD insert added in Sprint 2 was scope drift:
+hardcoded 'email' channel (enabled for 0 of 32 tenants), ZERO
+templates registered for the source type on any channel → a
+born-to-fail n_jtd row on every V2 contract (3/3 failed).
+
+  - contractnest-edge/supabase/migrations/contracts-v2/005_remove_jtd_notification_from_create_v2.sql
+    create_contract_transaction_v2 without the n_jtd insert — V2 is
+    now contract creation done right (explicit seller/buyer,
+    unconditional CNAK grant, idempotency) and NOTHING else.
+    ALREADY APPLIED LIVE — do not re-run; source-of-record copy.
+    Verified post-apply: 'n_jtd' appears nowhere in the live function.
+    The 3 failed rows (CN-1002/3/4, all signia) + their history were
+    deleted. The JTD creation touchpoint returns later as its own
+    properly-designed step (channel resolution + templates together).
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\005_remove_jtd_notification_from_create_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\005_remove_jtd_notification_from_create_v2.sql" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Pay-before-activate settlement fix (CN-1003 bugs)
 ─────────────────────────────────────────────────────────────────
 Found on CN-1003 after real payment. Two bugs, one real one perceived:
   · "Auto-activation didn't happen" — it DID: history shows system
