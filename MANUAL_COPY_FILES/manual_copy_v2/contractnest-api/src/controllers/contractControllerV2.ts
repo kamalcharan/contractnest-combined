@@ -41,7 +41,7 @@ class ContractControllerV2 {
       );
 
       if (!result.success) {
-        sendError(res, ERROR_CODES.VALIDATION_ERROR, result.error || 'Contract creation failed', 400, { code: result.code });
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, result.error || 'Contract creation failed', 400, { details: result.code });
         return;
       }
 
