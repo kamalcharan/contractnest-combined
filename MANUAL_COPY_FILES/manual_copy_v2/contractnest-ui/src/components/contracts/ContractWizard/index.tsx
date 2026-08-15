@@ -764,6 +764,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
           addToast({
             type: 'error',
             title: "Schedule doesn't fit the contract duration",
+            duration: 10000,
             message: `${cadenceViolations[0].message} Reduce the count, shorten the cycle, or extend the contract duration.${extra}`,
           });
           return;
@@ -933,6 +934,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
           addToast({
             type: 'error',
             title: "Schedule doesn't fit the contract duration",
+            duration: 10000,
             message: `${cadenceViolations[0].message} Reduce the count, shorten the cycle, or extend the contract duration.${extra}`,
           });
           return;

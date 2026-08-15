@@ -1,9 +1,122 @@
-// src/utils/service-contracts/contractEvents.ts
-// Computes Contract Events from wizard state — service delivery + billing schedule
-// Phase 1: Frontend computation for Events Preview step
+// ============================================================================
+// Contract Events Derivation Service
+// ============================================================================
+// Purpose: Server-side derivation of the contract forward calendar
+//          (service visits + billing schedule) from contract terms.
+//
+// This is a 1:1 port of the wizard's client-side computation:
+//   contractnest-ui/src/utils/service-contracts/contractEvents.ts
+//     → computeContractEvents()
+//   contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+//     → computeEventsForApi()  (formatting into t_contracts.computed_events)
+//
+// PARITY CONTRACT: the output of deriveComputedEvents() must be identical to
+// what the ContractWizard sends as `computed_events`. Any change to the UI
+// algorithm must be mirrored here (and vice versa). The parity test at
+// src/__tests__/contractEventsDerivationParity.ts enforces this.
+//
+// TIMEZONE NOTE: like the UI, date arithmetic uses local-time Date methods
+// (setDate/setMonth). Run the API with the same TZ as the tenant's users
+// (e.g. TZ=Asia/Kolkata) for day-identical output. IST has no DST, so
+// results are stable within a timezone.
+// ============================================================================
 
-import type { ConfigurableBlock } from '@/components/catalog-studio/BlockCardConfigurable';
-import { categoryHasPricing } from '@/utils/catalog-studio/categories';
+// ─── Types ───
+// Mirrors the fields of ConfigurableBlock (contractnest-ui) that the
+// computation actually reads. Anything else on the block is ignored.
+
+export type EventType = 'service' | 'billing';
+export type BillingSubType = 'upfront' | 'emi' | 'on_completion' | 'recurring';
+
+export interface DerivationBlock {
+  id: string;
+  name: string;
+  categoryId?: string;
+  quantity: number;
+  cycle: string;                 // 'prepaid' | 'postpaid' | 'monthly' | 'fortnightly' | 'quarterly' | 'halfyearly' | 'annual' | 'custom'
+  customCycleDays?: number;      // for cycle === 'custom'
+  serviceCycleDays?: number;     // days between recurring service visits
+  unlimited: boolean;
+  currency?: string;
+  totalPrice?: number;
+  price?: number;                // per-unit / per-period rate (cadence math)
+  taxRate?: number;
+  taxInclusion?: 'inclusive' | 'exclusive';
+  // Parity with ConfigurableBlock.config — billing-only skip + cadence pricing
+  config?: {
+    billingOnly?: boolean;
+    customPrice?: number;
+    cadenceFinalPayment?: number;
+    cadencePricing?: { baseAmount?: number; baseMonths?: number; rates?: unknown[]; defaultCadence?: string } | null;
+  } | null;
+}
+
+export interface DeriveEventsInput {
+  startDate: string | Date;      // ISO string accepted (API-friendly)
+  durationValue: number;
+  durationUnit: string;          // 'days' | 'months' | 'years'
+  selectedBlocks: DerivationBlock[];
+  paymentMode: 'prepaid' | 'emi' | 'defined';
+  emiMonths: number;
+  perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
+  billingCycleType: 'unified' | 'mixed' | null;
+  grandTotal: number;
+  currency: string;
+  /** Optional per-event date overrides keyed by deterministic event id */
+  eventOverrides?: Record<string, string | Date>;
+  // Sprint 1: contract-level discount — loaded pro-rata into per-block
+  // billing amounts (paymentMode === 'defined'). prepaid/emi already net it
+  // via grandTotal, which is computed post-discount.
+  baseSubtotal?: number;
+  discountTotal?: number;
+}
+
+/** Internal computed event (dates as Date, mirrors UI ContractEvent) */
+export interface DerivedEvent {
+  id: string;
+  block_id: string;
+  block_name: string;
+  category_id: string;
+  event_type: EventType;
+  billing_sub_type?: BillingSubType;
+  billing_cycle_label?: string;
+  sequence_number: number;
+  total_occurrences: number;
+  scheduled_date: Date;
+  original_date: Date;
+  amount?: number;
+  currency?: string;
+  status: 'scheduled';
+  assigned_to?: string;
+  assigned_to_name?: string;
+}
+
+/** Matches t_contracts.computed_events JSONB entries (ComputedEvent in the UI) */
+export interface ComputedEventPayload {
+  block_id: string;
+  block_name: string;
+  category_id?: string;
+  event_type: EventType;
+  billing_sub_type?: BillingSubType;
+  billing_cycle_label?: string;
+  sequence_number: number;
+  total_occurrences: number;
+  scheduled_date: string;        // ISO
+  amount?: number;
+  currency?: string;
+  assigned_to?: string;
+  assigned_to_name?: string;
+}
+
+// ─── Category pricing rules ───
+// Mirrors contractnest-ui/src/utils/catalog-studio/categories.ts:
+// categoryHasPricing() — true only for categories whose wizard steps include
+// 'pricing'. In CATEGORY_METADATA those are 'service' and 'spare'.
+const PRICED_CATEGORY_IDS = new Set(['service', 'spare']);
+
+export function categoryHasPricing(categoryId: string): boolean {
+  return PRICED_CATEGORY_IDS.has(categoryId);
+}
 
 // ─── Categories needing an occurrence/attendance schedule ───
 // Deliberately excludes 'session' (Group Sessions): those get exactly one
@@ -15,67 +128,13 @@ import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 // live for one tenant's single Group Session block). The actual fix for
 // "zero occurrences" belongs in the group-session schedule generator, not
 // here -- this function should never run for 'session' category blocks.
-// Mirrors contractnest-api/src/services/contractEventsDerivationService.ts.
 const SERVICE_TRACKED_CATEGORY_IDS = new Set(['service']);
-const categoryNeedsServiceEvents = (categoryId: string): boolean =>
-  SERVICE_TRACKED_CATEGORY_IDS.has(categoryId);
 
-// ─── Types ───
-
-export type EventType = 'service' | 'billing';
-export type BillingSubType = 'upfront' | 'emi' | 'on_completion' | 'recurring';
-
-export interface ContractEvent {
-  id: string;                    // Deterministic ID for React keys
-  contract_id?: string;
-
-  // Source
-  block_id: string;
-  block_name: string;
-  category_id: string;
-
-  // Type
-  event_type: EventType;
-  billing_sub_type?: BillingSubType;
-  billing_cycle_label?: string;  // 'Monthly', 'EMI 3/5', 'Prepaid', etc.
-
-  // Schedule
-  sequence_number: number;       // 1-based: 1 of 5, 2 of 5...
-  total_occurrences: number;
-  scheduled_date: Date;          // Computed; user can adjust in preview
-  original_date: Date;           // System-computed (never changes)
-
-  // Financials (billing events only)
-  amount?: number;
-  currency?: string;
-
-  // Status (default for preview)
-  status: 'scheduled';
-
-  // Allocation (empty in preview, populated later)
-  assigned_to?: string;
-  assigned_to_name?: string;
+function categoryNeedsServiceEvents(categoryId: string): boolean {
+  return SERVICE_TRACKED_CATEGORY_IDS.has(categoryId);
 }
 
-export interface ComputeEventsInput {
-  startDate: Date;
-  durationValue: number;
-  durationUnit: string;          // 'days' | 'months' | 'years'
-  selectedBlocks: ConfigurableBlock[];
-  paymentMode: 'prepaid' | 'emi' | 'defined';
-  emiMonths: number;
-  perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
-  billingCycleType: 'unified' | 'mixed' | null;
-  grandTotal: number;
-  currency: string;
-  // Sprint 1: contract-level discount — needed to load it pro-rata into
-  // per-block billing amounts (paymentMode === 'defined'). prepaid/emi
-  // already net it via grandTotal, which is computed post-discount.
-  baseSubtotal?: number;
-  discountTotal?: number;
-}
-
-// ─── Helpers ───
+// ─── Helpers (verbatim semantics from the UI implementation) ───
 
 /** Convert duration to total days */
 export function durationToDays(value: number, unit: string): number {
@@ -103,9 +162,7 @@ function addMonths(date: Date, months: number): Date {
 
 /** Deterministic event ID */
 function makeEventId(blockId: string, eventType: EventType, seq: number): string {
-  // Full blockId (not a slice) so distinct blocks can't collide on an id prefix,
-  // which would misapply date overrides and clash React keys.
-  return `evt_${eventType}_${blockId}_${seq}`;
+  return `evt_${eventType}_${blockId.slice(0, 8)}_${seq}`;
 }
 
 /** How many recurring periods fit in the contract duration */
@@ -128,90 +185,6 @@ function cycleToPeriodDays(cycle: string, customDays?: number): number {
   }
 }
 
-// ─── Cadence-fit validation (wizard gate) ───
-
-export interface CadenceViolation {
-  blockId: string;
-  blockName: string;
-  eventType: EventType;   // which leg overflows: 'service' visits or 'billing' cycles
-  count: number;          // occurrences configured (block quantity)
-  cycleDays: number;      // days between occurrences
-  spanDays: number;       // day the LAST occurrence lands on: (count − 1) × cycleDays
-  contractDays: number;   // contract duration in days
-  message: string;
-}
-
-/**
- * Detects blocks whose cadence cannot fit inside the contract duration —
- * the configs where the three engines otherwise disagree: pricing honors
- * quantity in full, the billing-events branch truncates at end_date
- * (`if (date > endDate) break` below), and the service-events branch has
- * no end clamp at all and overruns. The wizard must refuse these configs
- * instead of letting each engine resolve the contradiction differently.
- *
- * Branch conditions mirror computeContractEvents 1:1 — a change there
- * must be reflected here or the gate will block/allow the wrong configs.
- */
-export function computeCadenceViolations(input: {
-  durationValue: number;
-  durationUnit: string;
-  selectedBlocks: ConfigurableBlock[];
-  paymentMode: 'prepaid' | 'emi' | 'defined';
-}): CadenceViolation[] {
-  const { durationValue, durationUnit, selectedBlocks, paymentMode } = input;
-  const totalDays = durationToDays(durationValue, durationUnit);
-  const violations: CadenceViolation[] = [];
-
-  for (const block of selectedBlocks) {
-    const qty = block.quantity || 1;
-    if (qty <= 1 || block.unlimited) continue;
-
-    // A visit-generating block: quantity means VISITS, and its recurring
-    // bill count is derived from the term in the recurring branch below —
-    // so only its SERVICE leg can overflow, never its billing leg.
-    const blockGeneratesVisits =
-      categoryNeedsServiceEvents(block.categoryId || '') &&
-      !block.config?.billingOnly &&
-      !!(block.serviceCycleDays && block.serviceCycleDays > 0);
-
-    // Service leg — same conditions as the service-events branch
-    if (blockGeneratesVisits && block.serviceCycleDays) {
-      const spanDays = (qty - 1) * block.serviceCycleDays;
-      if (spanDays > totalDays) {
-        violations.push({
-          blockId: block.id, blockName: block.name, eventType: 'service',
-          count: qty, cycleDays: block.serviceCycleDays, spanDays, contractDays: totalDays,
-          message: `"${block.name}": ${qty} service visits every ${block.serviceCycleDays} days span ~${spanDays} days, but the contract runs ${totalDays} days.`,
-        });
-      }
-    }
-
-    // Billing leg — only per-block ('defined') billing uses block cycles;
-    // cadence-priced blocks derive their count FROM the duration and clamp,
-    // and visit-generating blocks derive their bill count from the term —
-    // both always fit by construction and are excluded. Only quantity-driven
-    // billing (fee/billing-only blocks) can overflow the duration.
-    if (paymentMode === 'defined' && !blockGeneratesVisits && categoryHasPricing(block.categoryId || '') && !(block.config as any)?.cadencePricing) {
-      const blockCycle = block.cycle || 'prepaid';
-      if (blockCycle !== 'prepaid' && blockCycle !== 'postpaid') {
-        const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
-        if (periodDays > 0) {
-          const spanDays = (qty - 1) * periodDays;
-          if (spanDays > totalDays) {
-            violations.push({
-              blockId: block.id, blockName: block.name, eventType: 'billing',
-              count: qty, cycleDays: periodDays, spanDays, contractDays: totalDays,
-              message: `"${block.name}": ${qty} billing cycles of ${periodDays} days span ~${spanDays} days, but the contract runs ${totalDays} days.`,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  return violations;
-}
-
 /** Human-readable cycle label */
 function cycleLabel(cycle: string): string {
   switch (cycle) {
@@ -227,27 +200,31 @@ function cycleLabel(cycle: string): string {
   }
 }
 
-// ─── Main Computation ───
+// ─── Main computation (1:1 port of computeContractEvents) ───
 
-export function computeContractEvents(input: ComputeEventsInput): ContractEvent[] {
+export function deriveContractEvents(input: DeriveEventsInput): DerivedEvent[] {
   const {
-    startDate,
     durationValue,
     durationUnit,
     selectedBlocks,
     paymentMode,
     emiMonths,
+    perBlockPaymentType,
     grandTotal,
     currency,
     baseSubtotal,
     discountTotal,
   } = input;
 
-  const events: ContractEvent[] = [];
+  const startDate = input.startDate instanceof Date
+    ? input.startDate
+    : new Date(input.startDate);
+
+  const events: DerivedEvent[] = [];
   const totalDays = durationToDays(durationValue, durationUnit);
   const endDate = addDays(startDate, totalDays);
-  // Contract-level discount loaded pro-rata into every block's billed total —
-  // same allocation the Billing View step uses for its own tax-breakup display.
+  // Contract-level discount loaded pro-rata into every block's billed total
+  // (1:1 port of the UI branch in contractEvents.ts)
   const discountFactor = baseSubtotal && baseSubtotal > 0 && discountTotal
     ? Math.max(0, (baseSubtotal - discountTotal) / baseSubtotal)
     : 1;
@@ -259,7 +236,7 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
     if (!needsServiceEvents || block.unlimited) continue;
 
     // Billing-only blocks (fees/dues like memberships) bill on their cycle
-    // but never generate service events/visits
+    // but never generate service events/visits (parity with UI)
     if (block.config?.billingOnly) continue;
 
     const qty = block.quantity || 1;
@@ -321,10 +298,8 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
       status: 'scheduled',
     });
   } else if (paymentMode === 'emi') {
-    // EMI: N monthly installments. The final installment absorbs rounding so the
-    // installments sum EXACTLY to grandTotal (no ±cents drift).
+    // EMI: N monthly installments
     const installment = Math.round((grandTotal / emiMonths) * 100) / 100;
-    const lastInstallment = Math.round((grandTotal - installment * (emiMonths - 1)) * 100) / 100;
     for (let i = 0; i < emiMonths; i++) {
       const date = i === 0 ? new Date(startDate) : addMonths(startDate, i);
       events.push({
@@ -339,7 +314,7 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
         total_occurrences: emiMonths,
         scheduled_date: date,
         original_date: new Date(date),
-        amount: i === emiMonths - 1 ? lastInstallment : installment,
+        amount: installment,
         currency,
         status: 'scheduled',
       });
@@ -351,14 +326,10 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
       if (!hasPricing || block.unlimited) continue;
 
       const blockCycle = block.cycle || 'prepaid';
+      const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
       const blockTotal = (block.totalPrice || 0) * discountFactor;
 
-      // The block's CYCLE (frequency) drives billing — NOT the prepaid/postpaid
-      // payment type. A Monthly block bills every month even when its payment
-      // type is 'prepaid' (that only means "invoice at the start of the period").
-      // Only a genuine one-shot 'prepaid'/'postpaid' cycle collapses to 1 event;
-      // monthly/fortnightly/quarterly/custom fall through to the recurring branch.
-      if (blockCycle === 'prepaid') {
+      if (blockCycle === 'prepaid' || blockPayType === 'prepaid') {
         // On acceptance — 1 event
         events.push({
           id: makeEventId(block.id, 'billing', 1),
@@ -394,20 +365,19 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
           currency: block.currency || currency,
           status: 'scheduled',
         });
-      } else if ((block.config as any)?.cadencePricing) {
+      } else if (block.config?.cadencePricing) {
         // Cadence-priced (cyclical pricing): the payment count derives from
         // (cadence, contract term) — NOT from quantity, which stays the
         // service-visit count. Full payments at the per-period rate, plus a
         // seller-set final payment when the term doesn't divide evenly.
+        // (1:1 port of the UI branch in contractEvents.ts)
         const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
         const durationMonths = Math.max(1, Math.round(totalDays / 30));
         const periodMonths = Math.max(1, Math.round(periodDays / 30));
         const fullPayments = Math.max(0, Math.floor(durationMonths / periodMonths));
         const remMonths = durationMonths - fullPayments * periodMonths;
-        // blockTotal already includes tax and the final payment — split it back:
-        // regular payments share (total − final's tax-inclusive share) equally.
-        const cfg = block.config as any;
-        const effRate = cfg?.customPrice ?? block.price;
+        const cfg = block.config;
+        const effRate = cfg?.customPrice ?? block.price ?? 0;
         const preTaxFinal = remMonths > 0
           ? (typeof cfg?.cadenceFinalPayment === 'number' ? cfg.cadenceFinalPayment : Math.round((effRate * remMonths) / periodMonths))
           : 0;
@@ -468,19 +438,14 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
       } else {
         // Recurring: monthly, fortnightly, quarterly, custom.
         // WHICH count drives recurring billing depends on what quantity MEANS
-        // for this block:
-        //  - A block that generates service visits (service category, has a
-        //    service cycle): quantity is the VISIT count, not the bill count.
-        //    The bill count derives from the contract term ÷ billing period
-        //    ("18 visits, billed monthly, 1-year term" = 12 bills of
-        //    total/12), which always fits the term by construction.
+        // for this block (1:1 with the UI branch in contractEvents.ts — this
+        // copy previously term-derived unconditionally, a missed back-port of
+        // the UI's "quantity = intended bill count" fix):
+        //  - A block that generates service visits: quantity is the VISIT
+        //    count; the bill count derives from term ÷ period ("18 visits,
+        //    billed monthly, 1-year term" = 12 bills) and always fits.
         //  - A fee/billing-only or non-visit block: quantity IS the intended
-        //    number of billing occurrences (BAU "×12 Monthly" = 12 invoices)
-        //    — honor it directly, else the count drifts to ceil(days/period):
-        //    a 1-year monthly block would bill ceil(365/30)=13× at ₹1,384.62
-        //    instead of 12× ₹1,500. Date-derived count only when quantity
-        //    isn't a meaningful multi-count (qty ≤ 1).
-        // Mirrors computeCadenceViolations' billing-leg skip — change together.
+        //    number of billing occurrences (BAU "×12 Monthly" = 12 invoices).
         const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
         const qty = block.quantity || 0;
         const blockGeneratesVisits = categoryNeedsServiceEvents(block.categoryId || '')
@@ -519,7 +484,8 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
           });
         }
         // When every period fit, the last installment absorbs rounding so the
-        // block's recurring billing sums EXACTLY to its total (no ±cents drift).
+        // block's recurring billing sums EXACTLY to its total (parity with the
+        // UI branch — this absorb was also missing from this copy).
         const emitted = events.length - startIdx;
         if (emitted === count && emitted > 0) {
           events[events.length - 1].amount =
@@ -542,87 +508,39 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
   return events;
 }
 
-// ─── Summary helpers (for preview UI) ───
+// ─── API payload formatting (1:1 port of computeEventsForApi) ───
 
-export interface EventSummary {
-  totalEvents: number;
-  serviceEvents: number;
-  billingEvents: number;
-  totalBillingAmount: number;
-  firstEventDate: Date | null;
-  lastEventDate: Date | null;
-  spanDays: number;
-}
+/**
+ * Derive events and format them for t_contracts.computed_events —
+ * identical to the payload the ContractWizard sends.
+ * Returns undefined when there is nothing to schedule (matches UI behaviour).
+ */
+export function deriveComputedEvents(input: DeriveEventsInput): ComputedEventPayload[] | undefined {
+  const rawEvents = deriveContractEvents(input);
+  if (!rawEvents || rawEvents.length === 0) return undefined;
 
-export function summarizeEvents(events: ContractEvent[]): EventSummary {
-  const serviceEvents = events.filter(e => e.event_type === 'service');
-  const billingEvents = events.filter(e => e.event_type === 'billing');
-  const totalBillingAmount = billingEvents.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const overrides = input.eventOverrides || {};
 
-  const sorted = [...events].sort(
-    (a, b) => a.scheduled_date.getTime() - b.scheduled_date.getTime()
-  );
-  const first = sorted[0]?.scheduled_date || null;
-  const last = sorted[sorted.length - 1]?.scheduled_date || null;
-  const spanDays = first && last
-    ? Math.round((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
+  return rawEvents.map((event) => {
+    const overriddenDate = overrides[event.id];
+    const scheduledDate = overriddenDate || event.scheduled_date;
 
-  return {
-    totalEvents: events.length,
-    serviceEvents: serviceEvents.length,
-    billingEvents: billingEvents.length,
-    totalBillingAmount: Math.round(totalBillingAmount * 100) / 100,
-    firstEventDate: first,
-    lastEventDate: last,
-    spanDays,
-  };
-}
-
-/** Group events by block for display */
-export function groupEventsByBlock(
-  events: ContractEvent[]
-): Record<string, { block_name: string; events: ContractEvent[] }> {
-  const groups: Record<string, { block_name: string; events: ContractEvent[] }> = {};
-
-  for (const event of events) {
-    const key = event.block_id;
-    if (!groups[key]) {
-      groups[key] = { block_name: event.block_name, events: [] };
-    }
-    groups[key].events.push(event);
-  }
-
-  return groups;
-}
-
-/** Group events by date for timeline display */
-export function groupEventsByDate(
-  events: ContractEvent[]
-): Array<{ date: Date; dateLabel: string; events: ContractEvent[] }> {
-  const map = new Map<string, { date: Date; events: ContractEvent[] }>();
-
-  for (const event of events) {
-    // Key on the LOCAL calendar day (matching the local display), not UTC —
-    // otherwise an event near local midnight groups under the wrong day.
-    const d = event.scheduled_date;
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (!map.has(key)) {
-      map.set(key, { date: event.scheduled_date, events: [] });
-    }
-    map.get(key)!.events.push(event);
-  }
-
-  return Array.from(map.values())
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map(({ date, events: evts }) => ({
-      date,
-      dateLabel: date.toLocaleDateString('en-IN', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
-      events: evts,
-    }));
+    return {
+      block_id: event.block_id,
+      block_name: event.block_name,
+      category_id: event.category_id || undefined,
+      event_type: event.event_type,
+      billing_sub_type: event.billing_sub_type || undefined,
+      billing_cycle_label: event.billing_cycle_label || undefined,
+      sequence_number: event.sequence_number,
+      total_occurrences: event.total_occurrences,
+      scheduled_date: scheduledDate instanceof Date
+        ? scheduledDate.toISOString()
+        : new Date(scheduledDate).toISOString(),
+      amount: event.amount || undefined,
+      currency: event.currency || input.currency,
+      assigned_to: event.assigned_to || undefined,
+      assigned_to_name: event.assigned_to_name || undefined,
+    };
+  });
 }

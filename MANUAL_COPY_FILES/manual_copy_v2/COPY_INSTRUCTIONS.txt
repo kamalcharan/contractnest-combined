@@ -9,7 +9,46 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Cadence-fit wizard gate (CN-1002 root-cause fix)
+🆕 NEWEST — Billing-count semantics fix + toast readability
+─────────────────────────────────────────────────────────────────
+Raised on the 18-visits/every-18-days/Monthly/1-year config: the gate
+hard-stopped a config that is business-reasonable. Root cause: the
+billing engine conflated two meanings of quantity — visit count vs.
+bill count. Owner-approved fix:
+
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts
+  - contractnest-api/src/services/contractEventsDerivationService.ts
+    (BOTH copies changed in lockstep — and this repaired a pre-existing
+    silent parity break: the API copy still term-derived every recurring
+    count and lacked the last-installment rounding absorb; both are the
+    missed back-ports of the UI's earlier "×12 Monthly" fix.)
+    New rule in the recurring-billing branch:
+      · visit-generating block (service category + service cycle):
+        quantity = VISITS; bill count = round(term ÷ billing period) —
+        "18 visits, monthly, 1 year" = 12 bills of total/12. ROUND not
+        ceil (ceil would make monthly-in-a-year 13 bills, quarterly 5).
+      · fee/billing-only or non-visit block: quantity = bill count,
+        exactly as before (BBB fee blocks byte-unchanged).
+    Gate updated to match: billing-leg check skipped for visit blocks
+    (their bill count now always fits by construction); service-leg
+    check unchanged. The 18×18d/Monthly/1-year config now passes.
+
+  - contractnest-ui/src/components/common/toast/VaNiToast.tsx
+    Toast message no longer truncates to one ellipsized line
+    (truncate → break-words); title untouched, all other toasts
+    unaffected (short messages still render on one line).
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+    The two cadence-gate toasts now show for 10s (default was 4s).
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\common\toast\VaNiToast.tsx" -Destination "contractnest-ui\src\components\common\toast\VaNiToast.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying — the derivation service is API-side)
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Cadence-fit wizard gate (CN-1002 root-cause fix)
 ─────────────────────────────────────────────────────────────────
 Root cause traced on CN-1002: the wizard accepted a self-contradictory
 config — 14 × 30-day cycles inside a 1-month contract — and three
