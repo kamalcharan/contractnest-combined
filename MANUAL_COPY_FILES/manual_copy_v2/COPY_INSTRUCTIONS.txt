@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════════════════════
+MANUAL_COPY_V2 — JTD Nucleus initiative tracking folder
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS FOLDER IS
+────────────────────
+A running mirror of every V2 file built for the JTD Nucleus initiative
+(Milestone 1: contract + template foundation; Milestone 2: stitch-in
+alongside product-led UX — see the published spec artifact for the
+full plan). Kept up to date across every sprint so you have one place
+to browse all V2 code without digging through git history.
+
+Every file in here is a COPY for your reference. It is NOT the
+delivery mechanism this time — unlike this session's default workflow,
+THIS session has direct git push access and has already committed and
+pushed the real file to the real submodule branch. Copying it from here
+into your local checkout would be redundant, not required.
+
+═══════════════════════════════════════════════════════════════════
+CURRENT STATE (updated each sprint)
+═══════════════════════════════════════════════════════════════════
+
+Branch (same name across parent + every touched submodule):
+  claude/tenant-bbb-data-issues-buwxqm
+
+contractnest-edge/supabase/migrations/contracts-v2/001_create_contract_transaction_v2.sql
+  Status: committed + pushed to contractnest-edge, branch
+          claude/tenant-bbb-data-issues-buwxqm (commit cf37c26).
+          ALSO already applied live to the Supabase project (function
+          exists in the DB right now).
+  Live traffic: none. Nothing currently running calls this function —
+          it was built and verified against a test tenant only.
+  Parent repo (contractnest-combined) submodule pointer: NOT updated
+          yet — deliberately. Per the "no merge to main unless
+          mandatory" rule for this initiative, the parent's pointer to
+          contractnest-edge only moves once this branch is proven and
+          you say go.
+
+═══════════════════════════════════════════════════════════════════
+IF YOU WANT TO PULL THIS BRANCH LOCALLY TO INSPECT/TEST
+═══════════════════════════════════════════════════════════════════
+This is optional — the code is already live and already pushed. If
+you still want it on your machine:
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-edge"
+git fetch origin claude/tenant-bbb-data-issues-buwxqm
+git checkout claude/tenant-bbb-data-issues-buwxqm
+git pull origin claude/tenant-bbb-data-issues-buwxqm
+
+That's it — no Copy-Item steps needed, the branch already has the real
+file at its real path.
+
+═══════════════════════════════════════════════════════════════════
+NAMING CONVENTION (holds for every file added to this folder going
+forward)
+═══════════════════════════════════════════════════════════════════
+Every V2 file keeps its V1 name plus the identifier — never a new
+scheme. Function: create_contract_transaction -> create_contract_transaction_v2.
+Folder: contracts/ -> contracts-v2/. Same pattern applies to every
+future sprint's files (API controllers/services, edge functions) as
+they're built.
