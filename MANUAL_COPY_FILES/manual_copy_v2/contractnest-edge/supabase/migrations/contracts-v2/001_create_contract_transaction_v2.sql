@@ -334,10 +334,12 @@ BEGIN
         ),
         p_is_live,
         -- chk_performer on n_jtd requires performed_by_id whenever
-        -- performed_by_type='user' — fall back to 'system' when no
-        -- created_by was supplied, instead of defaulting to 'user'
-        -- unconditionally the way V1's history-entry insert does.
-        COALESCE(p_payload->>'performed_by_type', CASE WHEN v_created_by IS NOT NULL THEN 'user' ELSE 'system' END),
+        -- performed_by_type='user'. Don't just trust the caller's claim —
+        -- subscribe_tenant_to_plan_v2 (and V1's own payload, unexercised
+        -- until this insert existed) hardcodes 'user' regardless of
+        -- whether created_by is actually present. Override to 'system'
+        -- whenever created_by is null, regardless of what was sent.
+        CASE WHEN v_created_by IS NOT NULL THEN COALESCE(p_payload->>'performed_by_type', 'user') ELSE 'system' END,
         v_created_by, p_payload->>'performed_by_name',
         v_created_by, v_created_by
     )

@@ -2,72 +2,120 @@
 📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════════════════════
 Branch: claude/tenant-bbb-data-issues-buwxqm
-Files Changed:
-  - contractnest-edge/supabase/migrations/contracts-v2/001_create_contract_transaction_v2.sql
-    New RPC create_contract_transaction_v2 — JTD Nucleus initiative,
-    Milestone 1 Sprint 2. Sits alongside create_contract_transaction;
-    nothing existing modified, nothing live calls it yet.
-
 Submodules Affected: contractnest-edge
 
-What it does:
-  - Requires explicit p_tenant_id, p_seller_id, p_buyer_id (not optional
-    JSONB keys) — fixes the traced cause of the 62/190-contracts-with-
-    no-CNAK-grant finding.
-  - t_contract_access (CNAK grant) insert is now unconditional on buyer
-    presence, since buyer_id is guaranteed by the parameter list.
-  - Inserts a contract_created JTD commitment row atomically in the
-    same transaction (source_type_code with 0 rows ever, confirmed live
-    this session) — trg_jtd_enqueue handles the queue write, no manual
-    pgmq.send() needed.
+Files Changed:
+  - contractnest-edge/supabase/migrations/contracts-v2/001_create_contract_transaction_v2.sql
+    Sprint 2. New RPC create_contract_transaction_v2, alongside
+    create_contract_transaction — nothing existing modified. Updated
+    since first delivered: fixed a chk_performer constraint bug on the
+    n_jtd insert (was defaulting performed_by_type to 'user' even when
+    no created_by was present; now falls back to 'system' whenever
+    created_by is null, regardless of what the caller's payload claims).
 
-Already applied live to the Supabase project (function exists in the
-DB now, verified against a test tenant — validation, CNAK grant, JTD
-insert + atomic enqueue, and idempotent retry all confirmed working).
-NOT committed or pushed to any git repo — that's yours to do.
+  - contractnest-edge/supabase/migrations/contracts-v2/002_subscribe_tenant_to_plan_v2.sql   [NEW — Sprint 3]
+    V2 sibling of subscribe_tenant_to_plan (business-model-v2/017).
+    That function is untouched. Only change: calls
+    create_contract_transaction_v2 instead of create_contract_transaction,
+    passing tenant/seller/buyer explicitly (platform = seller, subscriber's
+    contact = buyer — Revenue mode, correct as-is, no inversion risk here).
+
+  - contractnest-edge/supabase/migrations/contracts-v2/003_purchase_topup_template_v2.sql   [NEW — Sprint 3]
+    V2 sibling of purchase_topup_template (business-model-v2/023). Same
+    treatment as above. purchase_topup_template itself is untouched.
+
+What Sprint 3 found, worth knowing before you look at any of this:
+  - Traced the real call graph: there are 3 shapes, not 5 as originally
+    scoped. "Template Assign" isn't a separate pathway — it's the same
+    POST /api/contracts endpoint as the Wizard, just with template_id
+    pre-filled. Bulk Assign loops that identical endpoint per buyer.
+    Plan Subscription and Top-up are the only structurally different
+    ones — direct RPC-to-RPC calls into create_contract_transaction,
+    bypassing the API/edge layer entirely.
+  - Checked the Wizard's mapWizardToRequest and gating.ts: buyer_id is
+    reliably present by submission time (step-gated), same for Bulk
+    Assign (set directly per selected contact). Neither ever sends
+    seller_id — harmless, since V1 always hardcoded seller=tenant.
+  - BIG ONE — Revenue vs. Expense mode. The wizard already has this
+    concept via contract_type: 'client'/'partner' (Revenue — tenant is
+    seller) vs. 'vendor' (Expense — tenant is BUYER, the picked
+    counterparty is the seller). EquipmentStep.tsx:96 confirms this
+    (`addedByRole = contractType==='vendor' ? 'buyer' : 'seller'`), and
+    the finance layer already relies on it (scanner classifies every
+    billing event payable-vs-receivable by `contract_type='vendor'`,
+    get_tenant_payables is commented "the buyer mirror: my own
+    vendor-contract[s]"). But create_contract_transaction (V1) NEVER
+    reads contract_type for this — seller_id is unconditionally
+    tenant_id, buyer_id is unconditionally whatever contact was picked.
+    So every 'vendor'-type (Expense mode) contract today has
+    seller/buyer inverted: the vendor (actual seller) is stored as
+    buyer_id, and the tenant (actual buyer) is stored as seller_id.
+    This also means the CNAK grant goes to the wrong party (vendor
+    gets buyer-portal access on a contract where they're actually the
+    seller). Explicitly NOT fixed yet — this needs a decision on
+    whether create_contract_transaction_v2 resolves seller/buyer from
+    contract_type internally, or keeps explicit params and pushes that
+    resolution onto each caller. Parked per instruction: RFQ /
+    buyer-initiated contract creation is low priority until that space
+    is actually entered — this finding will matter once it is.
+  - purchase_topup_template_v2 could not be end-to-end tested against a
+    real topup pack: the only published "Wallet Top-up (₹1,000)"
+    template in the catalog has no `metering` config on its blocks at
+    all, so it fails NOT_A_TOPUP_PACK — identical to what V1 would do,
+    since the gate was copied verbatim. Pre-existing catalog data gap,
+    not a V2 bug. subscribe_tenant_to_plan_v2 WAS tested end-to-end
+    successfully (real "Free" plan, test tenant, full contract + CNAK
+    grant + JTD insert all landed correctly, cleaned up after).
+
+Already applied live to the Supabase project — all three functions
+exist in the DB now. NOT committed or pushed to any git repo — that's
+yours to do.
 
 ═══════════════════════════════════════════════════════════════════
-💻 STEP 1: Copy the file into your local checkout
+💻 STEP 1: Copy the files into your local checkout
 ═══════════════════════════════════════════════════════════════════
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\contracts-v2" | Out-Null
-Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\001_create_contract_transaction_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\001_create_contract_transaction_v2.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\*.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\" -Force
 
-Write-Host "✅ File copied!" -ForegroundColor Green
+Write-Host "✅ Files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════
 STEP 2: Commit + push (your call, whenever you're ready)
 ═══════════════════════════════════════════════════════════════════
 cd contractnest-edge
 git checkout -b claude/tenant-bbb-data-issues-buwxqm    # or your own branch name
-git add supabase/migrations/contracts-v2/001_create_contract_transaction_v2.sql
-git commit -m "feat: add create_contract_transaction_v2 (JTD nucleus, Milestone 1 Sprint 2)"
+git add supabase/migrations/contracts-v2/
+git commit -m "feat: add JTD nucleus V2 sibling RPCs (Milestone 1, Sprints 2-3)"
 git push origin claude/tenant-bbb-data-issues-buwxqm
 cd ..
 
-Note: an earlier attempt at this from within the session pushed a branch
-of the same name directly to kamalcharan/contractnest-edge (commit
-cf37c26) without asking first — that was a mistake, since reverted
-locally, but the remote branch itself couldn't be deleted from this
-session (proxy blocks branch deletion). It's an orphan branch, not
-touching main — worth deleting yourself before or after pushing your
-own version, whichever's convenient, so there's only one copy in play.
+Note: an earlier attempt at delivering 001 pushed a branch of the same
+name directly to kamalcharan/contractnest-edge (commit cf37c26) without
+asking first — reverted locally, but the remote branch itself couldn't
+be deleted from this session (proxy blocks branch deletion). Orphan
+branch, not touching main — worth deleting yourself whenever convenient.
 
 ═══════════════════════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════
-- [ ] Function exists and callable: select create_contract_transaction_v2(...)
-- [ ] Missing buyer_id/seller_id/tenant_id rejected with a clean error
-- [ ] Non-draft creation produces a t_contract_access grant row every time
-- [ ] n_jtd row created with correct is_live, source_type_code='contract_created'
-- [ ] Retry with same idempotency key does not create a duplicate contract
-- [ ] Nothing in create_contract_transaction (V1) or contracts/index.ts changed
+- [ ] create_contract_transaction_v2: missing buyer/seller/tenant rejected cleanly
+- [ ] create_contract_transaction_v2: non-draft creation always produces a CNAK grant
+- [ ] create_contract_transaction_v2: n_jtd row inserted, is_live explicit, contract_created
+- [ ] create_contract_transaction_v2: idempotent retry does not duplicate
+- [ ] subscribe_tenant_to_plan_v2: subscribing to a real plan produces contract+contact+context
+- [ ] purchase_topup_template_v2: needs a catalog template with real metering.mode='one_time'
+      grants to test meaningfully — none currently published qualifies
+- [ ] Nothing in create_contract_transaction, subscribe_tenant_to_plan, or
+      purchase_topup_template (the V1s) changed
 
 ═══════════════════════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
+⏸️ OPEN DECISION — read before Sprint 4
 ═══════════════════════════════════════════════════════════════════
-This folder will keep growing across sprints — every V2 file, same
-format, same naming convention (V1 name + identifier). Nothing here
-gets committed or pushed by me going forward.
+Revenue/Expense-mode seller-buyer inversion (see above) needs a call:
+resolve inside create_contract_transaction_v2 from contract_type, or
+keep explicit params and make every caller resolve it themselves.
+Parked, low priority until RFQ/buyer-initiated creation is picked up —
+flagging so it isn't forgotten by then.
 ═══════════════════════════════════════════════════════════════════
