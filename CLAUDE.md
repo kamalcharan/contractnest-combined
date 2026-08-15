@@ -723,6 +723,36 @@ Findings, condensed (ask for the full per-question detail if it wasn't carried i
 
 ---
 
+### FIXED 2026-08-15 — member payments at check-in had been failing since 27 Jul, silently, taking attendance with them
+
+A member paying a due at check-in **on a meeting day** hit `23502 null value in column "session_contract_id"`, and because a PL/pgSQL function is one transaction, the exception also discarded the attendance row and the `status='held'` flip written earlier in the same call.
+
+**Cause — a regression from migration 052**, the duplicate-declaration dedup. Adding `ON CONFLICT` rewrote the whole `gs_submit_checkin` body and, in the block-token session-day branch, changed what is written into `session_contract_id`:
+
+| Migration | Session-day branch writes | |
+|---|---|---|
+| 022, 039 | `v_mc` | ✅ |
+| **052 → 053** | **`v_tok.contract_id`** | ❌ NULL for every block token |
+
+`v_tok.contract_id` is NULL for block-scoped tokens (the block lives in `source_block_id`; all three BBB tokens have `contract_id = null`) and the column is NOT NULL.
+
+| Live meeting | Attendance | Member declarations |
+|---|---|---|
+| 25 Jul (pre-052) | 35 | **30** |
+| 8 Aug (post-052) | 13 | **0** — the one row was a guest fee |
+
+Zero declarations carrying a `billing_event_id` existed between 27 Jul and 15 Aug.
+
+**⚠️ THE REAL LESSON — a full debug session on 8 Aug pronounced check-in healthy while this was live.** Reaching the broken statement needs three things at once: a **member** (not a guest), on an **actual meeting day**, who **types a UPI reference**. Miss any one and control lands on a sibling statement that still works — no meeting that day → `v_mc` ✅; guest → `gs_checkin_guest`, a *different function* ✅; legacy contract token → `v_tok.contract_id`, non-null there ✅. On 8 Aug the tests were a member paying on 7 Aug (**not** a meeting day) and a guest fee — both genuinely green, neither touching the line. And the failure conceals itself: the member sees a generic "Check-in failed", retries without a reference, succeeds — so attendance fills in normally and the only symptom is money that never arrives, which reads as *"nobody paid this week"*. Only 2 of the 13 present on 8 Aug had anything outstanding, so it stayed below notice. **Testing an adjacent branch is not testing the branch.**
+
+**Fix (migration `074_checkin_declaration_notnull.sql`, applied live 15 Aug)** — `coalesce(v_tok.contract_id, v_mc, v_tok.source_block_id)`. Three fallbacks, not two: `v_mc` is itself NULL when the member has no *active* contract on the block (lapsed, mid-renewal, or arrived via device recognition, which does not enforce the membership check phone lookup does). The same latent NULL was hardened on the no-session branch. The declaration insert is now wrapped so **attendance can never again die with a payment** — captured into `v_pay_error` and returned to the caller, deliberately **not** a silent `WHEN others THEN NULL`, since silence is how this hid.
+
+Verified by forcing all three conditions together (1 row, correct `session_contract_id`, attendance intact) and by forcing the payment to fail (0 rows, **attendance survives**, `occurrence_status='held'`, error surfaced) — both probes ending in RAISE so nothing persisted.
+
+**Still open**: `session_contract_id` is NOT NULL yet now legitimately holds a contract id *or* a block id (the guest path already did this) — a modelling wart. And 052's `ON CONFLICT` is still `status='pending'`-scoped, so a duplicate still slips through silently once the first is confirmed/rejected (see 2026-08-06 above). **Not checked**: whether the chair holds UPI receipts from 8 Aug with no matching declaration — those members may have paid with nothing recorded.
+
+---
+
 ## ⚠️ Session Reminders
 
 1. **ALWAYS initialize all submodules at session start**
