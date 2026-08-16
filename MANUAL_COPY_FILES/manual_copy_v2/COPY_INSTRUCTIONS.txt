@@ -9,7 +9,46 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Template-flow hardening: cadence backstop in V2 RPC,
+🆕 NEWEST — Zero-price billing events stored NULL instead of 0
+   (found on test CN-1001, 2026-08-16)
+─────────────────────────────────────────────────────────────────
+Found auditing CN-1001 (created from "1st Test Template"): its two
+₹0 blocks (Blower & Fan Maintenance, Component Removal &
+Assessment) produced billing events with amount = NULL, not 0.
+
+ROOT CAUSE: `amount: event.amount || undefined` — `0 || undefined`
+evaluates to undefined, so a genuine zero amount was silently
+dropped on the way to the payload. Present in BOTH parity copies.
+A NULL-amount billing event reads as "unpriced" downstream rather
+than "free", which is a different thing.
+
+  - contractnest-ui/src/components/contracts/ContractWizard/logic/mapper.ts  [FULL file]
+  - contractnest-api/src/services/contractEventsDerivationService.ts         [FULL file]
+    `||` → `??` in both, in lockstep (parity contract preserved).
+    Zero-price blocks now persist an explicit 0.
+    NO BBB risk: the only rows this changes are ones that store
+    NULL today; every priced event is byte-identical.
+    NOT retro-fixed: existing NULL rows (incl. test CN-1001's two)
+    are left as they are — say the word if you want them backfilled.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying)
+
+  ⏳ STILL OPEN (awaiting owner decision, not built): the same
+  CN-1001 audit found a ₹600 30-day-cycle block billed as 13 ×
+  ₹46.15 instead of 13 × ₹600. Root cause: the billing COUNT came
+  from the calendar (13 periods fit) while the PRICE came from
+  quantity (unit × 1), so the money was divided rather than
+  multiplied. Proposed fix is to extend the existing group-session
+  `autoCount` mechanism to any recurring-cycle block (quantity
+  auto-derives, price multiplies, user sees it in the wizard) —
+  plus a decision on whether bills should equal visits when a
+  block's billing cycle equals its service cycle.
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Template-flow hardening: cadence backstop in V2 RPC,
    bulk assign moved onto V2, fail-closed dedup (2026-08-15)
 ─────────────────────────────────────────────────────────────────
 From the template audit (creation / assign / bulk), owner-approved.
