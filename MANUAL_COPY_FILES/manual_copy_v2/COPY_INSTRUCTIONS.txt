@@ -9,7 +9,79 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Zero-price billing events stored NULL instead of 0
+🆕 NEWEST — Billing count is QUANTITY, not the calendar
+   (owner-confirmed rule, 2026-08-16)
+─────────────────────────────────────────────────────────────────
+THE RULE: quantity is the COUNT, the cycle is the SPACING.
+  qty 1 + 15-day cycle  = 1 occurrence
+  qty 3 + 15-day cycle  = 3 occurrences, 15 days apart
+Price already followed this (totalPrice = unitPrice × quantity, set
+in ServiceBlocksStep) — the billing engine did not.
+
+THE BUG (found on test CN-1001): when qty <= 1 the engine took the
+COUNT from the calendar (ceil(term ÷ period) = 13) while the PRICE
+still came from quantity (unit × 1 = ₹600) — two different sources
+— so ₹600 was DIVIDED into 13 × ₹46.15 instead of billed once. Same
+class as CN-1002: pricing and scheduling disagreeing.
+
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts     [FULL file]
+  - contractnest-api/src/services/contractEventsDerivationService.ts  [FULL file]
+    BOTH copies changed in lockstep, verified byte-identical.
+    Recurring-billing branch now: count = quantity.
+    ONE exception kept, and only one: a visit-generating block whose
+    BILLING cycle DIFFERS from its SERVICE cycle holds two genuinely
+    different schedules that one quantity field cannot express —
+    there quantity = VISITS and the bill count derives from the term
+    ("18 visits every 18 days, billed monthly, 1 year" = 18 visits,
+    12 bills — the previously-approved behaviour, UNCHANGED). When
+    the two cycles MATCH they are one schedule: bills = visits = qty.
+    The dead ceil() fallback (countRecurringPeriods) is no longer
+    called from the billing branch.
+
+    Cadence gate + SQL backstop needed NO change and were not
+    touched: for matching cycles the service-leg check already tests
+    the identical product ((qty−1) × cycleDays), so the billing-leg
+    skip stays correct. Only the stale comment was refreshed.
+
+  EFFECT on the CN-1001 case:
+    qty 1,  cycle 30d → 1 bill  of ₹600   (was 13 × ₹46.15)
+    qty 13, cycle 30d → 13 bills of ₹600 = ₹7,800  ← what you wanted
+
+  ⚠️ BBB — READ BEFORE MERGING. BBB's 67 fee blocks store
+  quantity = 1 with total_price ≠ unit × quantity (₹18,000 vs
+  ₹1,500 monthly; ₹18,000 vs ₹4,500 quarterly) — legacy hand-set
+  data that already violates the wizard's own pricing rule.
+    · NOTHING breaks today: their events are long materialised and
+      are never re-derived.
+    · Their live "12 × ₹1,500" is RESTATED DATA (migrations 061-065),
+      not engine output. The engine would produce 13 × ₹1,384.62
+      today (the exact number the old code comment warned about) and
+      1 × ₹18,000 after this change — both wrong, because qty = 1 is
+      wrong data.
+    · A BBB RENEWAL through the wizard would therefore be wrong
+      either way. The durable fix is a data correction — monthly
+      blocks qty 1 → 12, quarterly qty 1 → 4 (both then satisfy
+      unit × qty = ₹18,000) — NOT DONE, awaiting your decision.
+      One quarterly block sits at ₹12,000 / unit ₹4,500 (mid-year
+      joiner) and does not divide evenly; it needs its own call.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying)
+
+  🧪 TEST
+  - [ ] HVAC template block, qty 1, 30-day cycle, 1 year → ONE
+        billing event of ₹600 (not 13 × ₹46.15)
+  - [ ] Same block, qty 13 → 13 events of ₹600, total ₹7,800,
+        contract grand_total agrees with the schedule
+  - [ ] Fee/billing-only block qty 12 monthly → 12 × unit (unchanged)
+  - [ ] Visit block, 18 visits every 18 days, billed MONTHLY, 1 year
+        → still 18 visits + 12 monthly bills (unchanged)
+  - [ ] Events Preview total == invoice total on every case above
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Zero-price billing events stored NULL instead of 0
    (found on test CN-1001, 2026-08-16)
 ─────────────────────────────────────────────────────────────────
 Found auditing CN-1001 (created from "1st Test Template"): its two

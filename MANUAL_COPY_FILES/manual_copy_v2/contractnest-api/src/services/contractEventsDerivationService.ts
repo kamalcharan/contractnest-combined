@@ -437,27 +437,42 @@ export function deriveContractEvents(input: DeriveEventsInput): DerivedEvent[] {
         }
       } else {
         // Recurring: monthly, fortnightly, quarterly, custom.
-        // WHICH count drives recurring billing depends on what quantity MEANS
-        // for this block (1:1 with the UI branch in contractEvents.ts — this
-        // copy previously term-derived unconditionally, a missed back-port of
-        // the UI's "quantity = intended bill count" fix):
-        //  - A block that generates service visits: quantity is the VISIT
-        //    count; the bill count derives from term ÷ period ("18 visits,
-        //    billed monthly, 1-year term" = 12 bills) and always fits.
-        //  - A fee/billing-only or non-visit block: quantity IS the intended
-        //    number of billing occurrences (BAU "×12 Monthly" = 12 invoices).
+        //
+        // THE RULE (owner-confirmed 2026-08-16): quantity is the COUNT and the
+        // cycle is the SPACING — "qty 1, cycle 15d" = 1 occurrence; "qty 3,
+        // cycle 15d" = 3 occurrences 15 days apart. Price follows the same
+        // rule (totalPrice = unitPrice × quantity), so count and money always
+        // come from the SAME source and can never disagree.
+        //
+        // Previously the count was date-derived whenever qty ≤ 1
+        // (ceil(term ÷ period)) while the PRICE still came from quantity —
+        // two different sources — so a ₹600 block with a 30-day cycle over a
+        // year was DIVIDED into 13 × ₹46.15 instead of billed once. That
+        // divide-instead-of-multiply mismatch is the same class of bug as
+        // CN-1002 (pricing and scheduling disagreeing).
+        //
+        // ONE exception, and only one: a visit-generating block whose BILLING
+        // cycle differs from its SERVICE cycle carries two genuinely different
+        // schedules that a single quantity field cannot express — there
+        // quantity means VISITS (it pairs with the service cycle) and the bill
+        // count derives from the term ("18 visits every 18 days, billed
+        // monthly, 1-year term" = 18 visits but 12 monthly bills). When the
+        // two cycles MATCH they are one schedule, so bills = visits = qty.
+        // 1:1 with the UI branch in contractEvents.ts — change together.
         const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
         const qty = block.quantity || 0;
+        const serviceCycleDays = block.serviceCycleDays || 0;
         const blockGeneratesVisits = categoryNeedsServiceEvents(block.categoryId || '')
           && !block.config?.billingOnly
-          && !!(block.serviceCycleDays && block.serviceCycleDays > 0)
+          && serviceCycleDays > 0
           && qty > 1;
-        // Visit blocks: ROUND, not ceil — "monthly over 1 year" must mean 12
-        // bills (365/30 ceils to 13; quarterly would ceil to 5). qty ≤ 1
-        // keeps the legacy ceil fallback unchanged.
-        const count = blockGeneratesVisits
+        // Two distinct schedules only when the cadences actually differ.
+        // ROUND, not ceil — "monthly over 1 year" must mean 12 bills
+        // (365/30 ceils to 13; quarterly would ceil to 5).
+        const billsAreSeparateFromVisits = blockGeneratesVisits && periodDays !== serviceCycleDays;
+        const count = billsAreSeparateFromVisits
           ? Math.max(1, Math.round(totalDays / periodDays))
-          : (qty > 1 ? qty : countRecurringPeriods(totalDays, periodDays));
+          : Math.max(1, qty);
         const perPeriodAmount = Math.round((blockTotal / count) * 100) / 100;
 
         const startIdx = events.length;
