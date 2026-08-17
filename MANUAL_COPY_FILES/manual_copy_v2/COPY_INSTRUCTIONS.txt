@@ -9,7 +9,78 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Billing count is QUANTITY, not the calendar
+🆕 NEWEST — Bulk assign: no contract limit, real idempotency,
+   duplicate-PERSON alert (owner decision, 2026-08-17)
+─────────────────────────────────────────────────────────────────
+WHAT WAS WRONG: bulk refused to create for any buyer already
+holding an active/pending contract from the same template. That is
+a permanent BUSINESS RULE wearing an idempotency label — and no
+such rule exists. A second site, a second unit, an early renewal
+are all legitimate reasons for one contact to hold two contracts
+from one template. Worse, it was silent (no pre-flight warning;
+members just vanished from the batch), and it did NOT actually
+protect against double-submission — the bulk loop never sent an
+idempotency key at all. This came from V1; the previous batch
+hardened it (fail-closed + is_live/is_active filters) without
+questioning the premise, which made a wrong rule stricter.
+
+  - contractnest-api/src/controllers/contractControllerV2.ts  [FULL file]
+  - contractnest-api/src/services/contractServiceV2.ts        [FULL file]
+    · The already-assigned lookup and the skip branch are GONE;
+      findAssignedBuyerIdsV2 removed entirely. Nothing limits how
+      many contracts a contact may hold.
+    · REAL idempotency instead: the client stamps one key per
+      submission attempt, each item derives `<batchKey>:<buyerId>`,
+      and that rides the existing x-idempotency-key path
+      (service → contracts-v2 edge fn → check_idempotency /
+      store_idempotency inside the RPC — already plumbed, verified
+      end to end). A replayed request returns the stored response;
+      a DELIBERATE later assignment carries a new key and correctly
+      creates another contract.
+    · summary.skipped kept in the response shape (always 0) so
+      existing callers don't break.
+    · body.template_id still accepted but no longer read (it only
+      fed the removed lookup); each item's request already carries
+      its own template_id.
+
+  - contractnest-ui/src/hooks/useContractSubmission.ts        [FULL file]
+    Generates the per-submission key (crypto.randomUUID with a
+    timestamp+random fallback) and sends it as idempotency_key.
+
+  - contractnest-ui/src/components/contracts/vani/BulkAssignDialog.tsx [FULL file]
+    Duplicate-PERSON advisory (not a limit): flags when the same
+    human appears twice in the batch under two contact records,
+    detected by a shared mobile / whatsapp / email. Phone numbers
+    normalise to their last 10 digits, so +91-98495 02193,
+    09849502193 and 9849502193 all collapse to one person; emails
+    compare case-insensitively. A contact listing the same number
+    twice is NOT counted as two people. Renders as an amber panel
+    above the action buttons — "X and Y share the mobile number
+    NNNN … each will still get its own contract, deselect one if
+    that isn't intended". Nothing is blocked or skipped.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\useContractSubmission.ts" -Destination "contractnest-ui\src\hooks\useContractSubmission.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Destination "contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Force
+  (restart contractnest-api — controller + service changed)
+
+  🧪 TEST
+  - [ ] Bulk-assign the SAME template to members who already have
+        one → contracts ARE created now (no silent skip). This is
+        the behaviour change; previously every one was skipped.
+  - [ ] Those members end up with 2 contracts each, both active,
+        each with its OWN CNAK
+  - [ ] Normal bulk to fresh members → unchanged
+  - [ ] Duplicate-person alert: signia has NO contacts sharing a
+        mobile/email today, so the panel will NOT appear on current
+        data. To see it, create a second contact reusing an existing
+        contact's mobile number, select both, and the amber panel
+        should name both people and the shared number.
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Billing count is QUANTITY, not the calendar
    (owner-confirmed rule, 2026-08-16)
 ─────────────────────────────────────────────────────────────────
 THE RULE: quantity is the COUNT, the cycle is the SPACING.

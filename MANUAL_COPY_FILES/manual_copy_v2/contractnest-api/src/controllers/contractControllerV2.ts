@@ -67,16 +67,31 @@ class ContractControllerV2 {
    *     (explicit seller/buyer, unconditional CNAK grant, cadence-fit
    *     backstop) instead of the V1 create — bulk and single assignment
    *     now produce contracts through ONE engine;
-   *   · dedup is FAIL-CLOSED: if the already-assigned lookup cannot be
-   *     answered, the whole batch is refused up front (V1 silently skipped
-   *     dedup and could double-create on a re-run).
+   *   · duplicate protection is REAL IDEMPOTENCY, not a business rule.
+   *
+   * On that second point (owner decision 2026-08-17): V1 refused to create
+   * for any buyer already holding an active/pending contract from the same
+   * template. That was a permanent business rule wearing an idempotency
+   * label — there is no rule that a contact may hold only one contract from
+   * a template (a second site, a second unit, an early renewal are all
+   * legitimate), and it silently dropped members from the batch. Removed.
+   * Accidental double-submission is now handled where it belongs: the
+   * client stamps ONE key per submission attempt and each item derives a
+   * stable key from it, so a replayed request returns the stored response
+   * (check_idempotency / store_idempotency inside the RPC) instead of
+   * creating a second contract — while a DELIBERATE later assignment
+   * carries a new key and correctly creates one.
+   *
    * Per-item independence unchanged: one failed member never rolls back
    * the others; a failed activation leaves that contract as a draft.
    */
   bulkCreateContracts = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const body = req.body || {};
-      const templateId: string | undefined = body.template_id;
+      // body.template_id is still accepted for request-shape compatibility but
+      // is no longer read: it existed only to drive the removed already-assigned
+      // lookup. Each item's own request already carries its template_id, which
+      // is what actually lands on the contract row.
       const activate: boolean = body.activate !== false; // default true
       const items: Array<{ buyer_id?: string; request?: any }> = Array.isArray(body.items) ? body.items : [];
 
@@ -95,47 +110,28 @@ class ContractControllerV2 {
 
       const tenantId = req.headers['x-tenant-id'] as string;
       const environment = (req.headers['x-environment'] as string) || 'live';
-      const isLive = environment !== 'test';
       const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
       const userId = req.user?.id || '';
 
-      // Idempotency: skip members who already hold a live contract from this
-      // template. Fail-closed — if this lookup fails we refuse the batch
-      // instead of risking duplicates (retry is cheap; unwinding double
-      // contracts is not).
-      let alreadyAssigned = new Set<string>();
-      if (templateId) {
-        try {
-          const buyerIds = items.map((i) => i.buyer_id || '').filter(Boolean);
-          alreadyAssigned = await this.contractServiceV2.findAssignedBuyerIdsV2(
-            tenantId, templateId, buyerIds, isLive
-          );
-        } catch (dedupErr: any) {
-          console.error('[ContractControllerV2] bulk dedup failed — refusing batch:', dedupErr?.message);
-          sendError(
-            res, ERROR_CODES.INTERNAL_ERROR,
-            'Could not verify which members are already assigned this template. No contracts were created — please retry.',
-            503
-          );
-          return;
-        }
-      }
+      // One key per submission attempt, sent by the client. Each item derives
+      // a stable key from it so a replayed request (network retry, duplicate
+      // delivery) returns the stored response instead of creating a second
+      // contract. Absent key = no replay protection, which is the caller's
+      // choice — never a reason to refuse the batch.
+      const batchKey: string | undefined = body.idempotency_key;
 
       const results: Array<Record<string, any>> = [];
-      let created = 0, skipped = 0, failed = 0;
+      // `skipped` is retained in the summary shape (always 0 now) so existing
+      // callers reading summary.skipped keep working.
+      let created = 0; const skipped = 0; let failed = 0;
 
       for (const item of items) {
         const buyerId = item.buyer_id || null;
 
-        if (buyerId && alreadyAssigned.has(buyerId)) {
-          skipped += 1;
-          results.push({ buyer_id: buyerId, status: 'skipped', reason: 'already has a contract from this template' });
-          continue;
-        }
-
         try {
+          const itemKey = batchKey && buyerId ? `${batchKey}:${buyerId}` : undefined;
           const createRes = await this.contractServiceV2.createContract(
-            item.request, userJWT, tenantId, userId, environment
+            item.request, userJWT, tenantId, userId, environment, itemKey
           );
           if (!createRes.success) {
             failed += 1;

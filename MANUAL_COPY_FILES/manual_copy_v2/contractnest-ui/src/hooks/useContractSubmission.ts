@@ -155,13 +155,24 @@ export function useContractSubmission() {
         // V2 default on this branch (mirrors the single-create flip in
         // useContractQueries): bulk rides POST /api/v2/contracts/bulk-create —
         // per-item create_contract_transaction_v2 (explicit seller/buyer,
-        // unconditional CNAK, cadence backstop) + fail-closed dedup. Append
-        // ?useV1=1 to the page URL to fall back to the V1 endpoint.
+        // unconditional CNAK, cadence backstop). Append ?useV1=1 to the page
+        // URL to fall back to the V1 endpoint.
         const useV1 = new URLSearchParams(window.location.search).get('useV1') === '1';
         const bulkEndpoint = useV1 ? API_ENDPOINTS.CONTRACTS.BULK_CREATE : '/api/v2/contracts/bulk-create';
+
+        // ONE key per submission attempt. A replay of THIS request (network
+        // retry, duplicate delivery) is absorbed server-side and returns the
+        // stored response; a deliberate later assignment generates a new key
+        // and correctly creates another contract. Nothing here limits how
+        // many contracts a contact may hold.
+        const idempotencyKey =
+          (globalThis.crypto?.randomUUID?.() as string | undefined) ||
+          `bulk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
         const resp = await api.post(bulkEndpoint, {
           template_id: opts.templateId,
           activate: opts.activate !== false,
+          idempotency_key: idempotencyKey,
           items: requestItems,
         });
         const data = (resp.data?.data || resp.data) as BulkSubmitResult;
