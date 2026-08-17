@@ -33,10 +33,44 @@ STEP 1 — DONE (applied live 2026-08-18, all checks green):
   Copy command (source-of-record into the submodule):
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Force
 
-STEP 2 — NEXT: create_contract_transaction_v2 writes job rows
-  (service_visit + payment, channel NULL) in the create transaction.
-  Steps 3-6: V2 readers/routes · V2 payment path · confidence gate ·
-  cutover package (paper only; execution is its own owner decision).
+STEP 2 — DONE (applied live 2026-08-18, harness-proven both ways):
+  - contractnest-edge/supabase/migrations/jtd-nucleus/002_step2_jobs_at_creation.sql
+    A) Job lifecycles seeded into n_jtd_statuses for service_visit /
+       payment — codes taken from the REAL statuses live events use
+       (scheduled/due/paid/completed/overdue/bad_debt/cancelled),
+       guarded NOT EXISTS (December's rows kept; note: Dec had seeded
+       payment as created→pending→sent→delivered→READ — a payment
+       modeled as a MESSAGE; the December drift, fossilized).
+    B) create_contract_transaction_v2 (V2 workbench — nothing deployed
+       calls it) now writes ONE JOB ROW PER COMMITMENT in the create
+       transaction: service leg → service_visit/service_scheduled,
+       billing leg → payment/payment_scheduled, channel_code NULL,
+       contract_id set, status 'scheduled', chk_performer-safe.
+       computed_events CONSUMED (NULLed) — V1 activation materializer
+       no-ops benignly; a V2 contract never grows t_contract_events
+       rows. Framework §1 satisfied literally; Sprint 2 exit criterion
+       met. Verified-anchor splice + post-check.
+    ALREADY APPLIED LIVE — do not re-run (idempotent: marker-guarded).
+    HARNESS PROOF (forced-rollback, zero residue):
+      A: success=true · jobs=4 (2 service_visit + 2 payment) ·
+         pay_sum=1000=block total · computed_events NULL ·
+         legacy t_contract_events rows for the contract = 0
+      B: cadence refusal intact (CADENCE_UNFIT), no job residue
+      Residue checks: 0 job rows · 0 harness contracts · 443 message
+      rows intact · BBB untouched (its CN-1050, created via V1 during
+      this work, flowed normally — golden rule proven in live fire)
+  Copy command (source-of-record into the submodule):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\002_step2_jobs_at_creation.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\002_step2_jobs_at_creation.sql" -Force
+
+  ⚠️ EXPECTED between Step 2 and Step 3: a contract created via V2
+  routes shows an EMPTY schedule in the UI (readers still read
+  t_contract_events). Jobs are verifiable by query only. Step 3's V2
+  reader closes this — which is why the owner checkpoint waits there.
+
+STEP 3 — NEXT: get_contract_events_list_v2 / date_summary_v2 reading
+  n_jtd + /api/v2 route + UI hook flip (same ?useV1 pattern).
+  Steps 4-6: V2 payment path · confidence gate · cutover package
+  (paper only; execution is its own owner decision).
 
 ═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
