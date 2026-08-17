@@ -8,8 +8,67 @@ All files here are FULL files — copy over your local checkout directly,
 no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
+═════════════════════════════════════════════════════════════════
+🔴 READ FIRST — MILESTONE 1 IS NOT COMPLETE. SPRINT 2 IS OPEN.
+═════════════════════════════════════════════════════════════════
+The JTD Nucleus spec (written this session, previously living ONLY
+in an ephemeral session scratchpad — now rescued into this folder
+as ClaudeDocumentation/jtd-nucleus-spec.html) defines Sprint 2's
+exit criterion verbatim:
+
+  "Wizard-created contracts produce contract + events + JTD
+   COMMITMENTS in one transaction, verified on staged data."
+
+THAT WAS NOT DELIVERED. create_contract_transaction_v2 today
+produces contract + events and ZERO JTD commitment rows
+(verified live: position('n_jtd' in prosrc) = 0).
+
+How it went wrong, recorded so it isn't repeated:
+  1. Sprint 2's JTD insert was built as a NOTIFICATION — hardcoded
+     'email' channel, no registered template, born to fail. The
+     spec calls for a COMMITMENT ("JTD owns what's owed and its
+     state"), not a dispatch attempt.
+  2. Owner correctly rejected the broken notification.
+  3. It was then DELETED OUTRIGHT (migration 005) and logged as
+     "drift cleanup" — but it was not drift, it was the sprint's
+     actual deliverable. The right move was to rebuild it as a
+     commitment, not remove it.
+  4. All later work (cadence backstop, quantity semantics, bulk
+     idempotency) sits on a Sprint 2 that never closed.
+
+⚠️ Every "JTD looks correct" report in this session validated the
+REMINDER pipeline (events → cron → n_jtd reminders), which is
+healthy and always was. The COMMITMENT spine the spec is built on
+has never been created — not for one contract, not in 22.
+
+Milestone 1 status against the spec:
+  Sprint 1 JTD maturity audit ............... done
+  Sprint 2 contract+events+JTD commitments .. OPEN (see above)
+  Sprint 3 five callers on V2 ............... partial (wizard,
+           template assign, bulk done; plan subscription + top-up
+           V2 siblings exist but are NOT wired to any caller)
+  Sprint 4 template parity .................. partial (audit only)
+  Sprint 5 confidence gate, 25+ contracts ... NOT RUN (22 exist)
+
+NEXT ACTION when this is picked up: build the JTD commitment
+insert inside create_contract_transaction_v2 per spec §04's
+conditional lifecycle (billing and group-session commitments never
+need an appointment; service ones sometimes do) — as a commitment
+row with real state, NOT a notification.
+
 ─────────────────────────────────────────────────────────────────
-🆕 NEWEST — Bulk assign: no contract limit, real idempotency,
+📄 ClaudeDocumentation/jtd-nucleus-spec.html   [RESCUED FILE]
+─────────────────────────────────────────────────────────────────
+The initiative spec. It existed only under the session scratchpad
+(/tmp/...), which is destroyed when the container is reclaimed —
+it would have been lost. Copy it into the ClaudeDocumentation
+submodule so it is version-controlled and readable without a
+Claude session.
+
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-nucleus-spec.html" -Destination "ClaudeDocumentation\jtd-nucleus-spec.html" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Bulk assign: no contract limit, real idempotency,
    duplicate-PERSON alert (owner decision, 2026-08-17)
 ─────────────────────────────────────────────────────────────────
 WHAT WAS WRONG: bulk refused to create for any buyer already
