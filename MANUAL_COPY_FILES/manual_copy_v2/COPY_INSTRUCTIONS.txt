@@ -130,6 +130,64 @@ STEP 3 — BUILT (DB+edge applied/deployed live; API+UI need your copy):
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
   (restart contractnest-api — new route; hard-refresh UI)
 
+  ─────────────────────────────────────────────────────────────
+  🔧 STEP 3 FIX — CN-1019 exposed the wizard's draft path
+  ─────────────────────────────────────────────────────────────
+  CN-1019 (first real wizard test): 0 jobs, 16 legacy events. The
+  screen looked right only because the aggregate's legacy fallback
+  rendered it. ROOT CAUSE (proven from t_contract_history): the
+  wizard creates an EMPTY DRAFT first (no computed_events → Step 2's
+  create-time block correctly skips), auto-saves via V1 updates,
+  then activates — where the V1 trigger materialized legacy events.
+  Bulk/VaNi single-shot creates were never affected.
+
+  THE SEAM (no V1 object touched): trg_queue_contract_events only
+  fires when computed_events IS NOT NULL. So the V2 status
+  transition materializes jobs + consumes the JSON FIRST, then
+  delegates to the untouched V1 engine — whose trigger skips by its
+  own guard.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/004_step3fix_status_v2_materializes_jobs.sql
+    NEW jtd_materialize_jobs_from_computed(contract, tenant)
+    (idempotent: skips if jobs exist / nothing to consume) +
+    NEW update_contract_status_v2(...) = materialize-if-activating,
+    then CALL the untouched V1 update_contract_status (composition:
+    CNAK minting, invoices, history all exactly V1).
+    ALREADY APPLIED LIVE. Harness-proven on the wizard's exact
+    lifecycle (draft create → draft save adds computed_events →
+    activate): ok=true, status=active, jobs=2, legacy=0, CNAK
+    minted, rolled back clean. (Also learned: V1 allows
+    draft→active only for auto-accept — harness confirmed.)
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v4 DEPLOYED LIVE: adds PATCH /:id/status.
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+    (+ bulk activation now rides the V2 status path; V1 service
+    import removed from the V2 controller entirely)
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts      [FULL file]
+    updateStatus → PATCH /api/v2/contracts/:id/status by default on
+    this branch (?useV1=1 falls back) + invalidates the details-v2
+    aggregate on any status change.
+
+  Copy commands (in addition to the Step 3 set above):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\004_step3fix_status_v2_materializes_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\004_step3fix_status_v2_materializes_jobs.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+  (restart contractnest-api; hard-refresh UI)
+
+  ⚠️ KNOWN REMAINING GAP (Step 4's exact territory, not hidden):
+  payment-acceptance contracts AUTO-ACTIVATE inside
+  record_invoice_payment (V1, DB-side) — that path bypasses the V2
+  status route, so a pay-before-activate V2 contract would still get
+  legacy events today. record_invoice_payment_v2 (Step 4) closes it.
+  CN-1019 itself stays as-is (16 legacy rows — renders fine via
+  fallback); say the word if you want it converted to jobs instead.
+
   🧪 STEP 3 CHECKPOINT (your ~10 min — the DONE test)
   - [ ] Create 1 wizard contract on signia → open its contract view
         → schedule + tasks + invoice all visible

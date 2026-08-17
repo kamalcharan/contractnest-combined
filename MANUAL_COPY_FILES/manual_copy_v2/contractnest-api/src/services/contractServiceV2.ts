@@ -62,6 +62,26 @@ class ContractServiceV2 {
   }
 
   /**
+   * JTD Nucleus Step 3 fix — V2 status transition. On activation the RPC
+   * materializes n_jtd job rows from computed_events BEFORE delegating to
+   * the untouched V1 status engine (whose events trigger then skips by its
+   * own computed_events-NOT-NULL guard). Covers the wizard's
+   * draft→update→activate path (CN-1019 gap).
+   */
+  async updateContractStatus(
+    contractId: string,
+    statusData: { status: string; note?: string; version?: number },
+    userJWT: string,
+    tenantId: string,
+    userId: string,
+    environment: string = 'live'
+  ): Promise<EdgeFunctionResponseV2> {
+    const url = `${this.edgeFunctionUrl}/${contractId}/status`;
+    const payload = { ...statusData, updated_by: userId };
+    return await this.makeRequest('PATCH', url, payload, userJWT, tenantId, environment);
+  }
+
+  /**
    * JTD Nucleus Step 3 — single-call contract view aggregate.
    * GET contracts-v2/:id/details → get_contract_details_v2:
    * contract + blocks + events (n_jtd jobs, legacy fallback) + CNAK

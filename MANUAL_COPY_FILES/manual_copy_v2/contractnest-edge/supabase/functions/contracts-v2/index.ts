@@ -3,12 +3,16 @@
 // alongside (not replacing) supabase/functions/contracts/index.ts.
 //
 // Scope:
-//   POST /                — create a contract via create_contract_transaction_v2
-//   GET  /:id/details     — single-call contract view aggregate via
+//   POST  /               — create a contract via create_contract_transaction_v2
+//   GET   /:id/details    — single-call contract view aggregate via
 //                           get_contract_details_v2 (JTD Nucleus Step 3):
 //                           contract + blocks + events (n_jtd JOBS, legacy
 //                           fallback) + CNAK + invoices, one round-trip.
-// Nothing else (list/update/status/etc.) is implemented here;
+//   PATCH /:id/status     — update_contract_status_v2: on activation,
+//                           materializes n_jtd JOB rows from computed_events
+//                           (wizard draft→activate path, the CN-1019 gap)
+//                           then delegates to the untouched V1 status engine.
+// Nothing else (list/update/etc.) is implemented here;
 // contracts/index.ts is completely untouched.
 //
 // seller_id/buyer_id resolution: mirrors V1's current behavior exactly
@@ -35,8 +39,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    if (req.method !== 'POST' && req.method !== 'GET') {
-      return jsonResponse({ success: false, error: 'Only POST and GET /:id/details are implemented on contracts-v2', code: 'NOT_IMPLEMENTED' }, 405);
+    if (req.method !== 'POST' && req.method !== 'GET' && req.method !== 'PATCH') {
+      return jsonResponse({ success: false, error: 'Only POST, GET /:id/details and PATCH /:id/status are implemented on contracts-v2', code: 'NOT_IMPLEMENTED' }, 405);
     }
 
     const tenantId = req.headers.get('x-tenant-id');
@@ -95,6 +99,43 @@ serve(async (req: Request) => {
     }
 
     const body = requestBody ? JSON.parse(requestBody) : {};
+
+    // ── PATCH /:id/status — V2 status transition (JTD Nucleus) ──
+    // On 'active': jobs materialize from computed_events FIRST (same
+    // transaction, inside the RPC), so the V1 events trigger skips by its
+    // own computed_events-NOT-NULL guard. Everything else (validation,
+    // CNAK minting, invoices, history) is the untouched V1 engine.
+    if (req.method === 'PATCH') {
+      const url = new URL(req.url);
+      const match = url.pathname.match(/\/contracts-v2\/([0-9a-f-]{36})\/status\/?$/i);
+      if (!match) {
+        return jsonResponse({ success: false, error: 'PATCH supports only /:id/status', code: 'NOT_FOUND' }, 404);
+      }
+      const contractId = match[1];
+
+      if (!body.status) {
+        return jsonResponse({ success: false, error: 'status is required', code: 'VALIDATION_ERROR' }, 400);
+      }
+
+      const statusActor = userId || body.updated_by || null;
+      const { data, error } = await supabase.rpc('update_contract_status_v2', {
+        p_contract_id: contractId,
+        p_tenant_id: tenantId,
+        p_new_status: body.status,
+        p_performed_by_id: statusActor,
+        p_performed_by_name: body.performed_by_name || null,
+        p_performed_by_type: statusActor ? 'user' : 'system',
+        p_note: body.note || null,
+        p_version: body.version ?? null
+      });
+
+      if (error) {
+        console.error('[contracts-v2] status RPC error:', JSON.stringify(error));
+        return jsonResponse({ success: false, error: error.message, code: 'RPC_ERROR' }, 500);
+      }
+
+      return jsonResponse(data, data?.success ? 200 : 400);
+    }
 
     // Same resolution V1 uses today: seller is always the creating tenant,
     // buyer is whatever the client sent. contract_type='vendor' (Expense

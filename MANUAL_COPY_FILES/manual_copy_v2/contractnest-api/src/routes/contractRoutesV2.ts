@@ -47,6 +47,13 @@ router.post('/', contractControllerV2.createContract);
 router.get('/:id/details', contractControllerV2.getContractDetails);
 
 /**
+ * @route PATCH /api/v2/contracts/:id/status
+ * @description V2 status transition — activation materializes n_jtd job
+ * rows from computed_events, then delegates to the untouched V1 engine.
+ */
+router.patch('/:id/status', contractControllerV2.updateContractStatus);
+
+/**
  * @route POST /api/v2/contracts/bulk-create
  * @description V2 sibling of POST /api/contracts/bulk-create — bulk template
  * assignment where each item is created via create_contract_transaction_v2

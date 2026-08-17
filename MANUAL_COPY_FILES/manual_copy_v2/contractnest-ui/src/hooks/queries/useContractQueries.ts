@@ -369,10 +369,15 @@ export const useContractOperations = () => {
         throw new Error('No tenant selected');
       }
 
-      const response = await api.patch(
-        API_ENDPOINTS.CONTRACTS.UPDATE_STATUS(contractId),
-        statusData
-      );
+      // V2 default on this branch (JTD Nucleus): activation materializes
+      // n_jtd JOB rows from computed_events inside the RPC before the
+      // untouched V1 status engine runs — covers the wizard's
+      // draft→update→activate path (the CN-1019 gap). ?useV1=1 falls back.
+      const useV1 = new URLSearchParams(window.location.search).get('useV1') === '1';
+      const statusEndpoint = useV1
+        ? API_ENDPOINTS.CONTRACTS.UPDATE_STATUS(contractId)
+        : `/api/v2/contracts/${contractId}/status`;
+      const response = await api.patch(statusEndpoint, statusData);
 
       return response.data?.data || response.data;
     },
@@ -382,6 +387,10 @@ export const useContractOperations = () => {
       if (updatedContract.id) {
         queryClient.invalidateQueries({ queryKey: contractKeys.detail(updatedContract.id) });
       }
+      // Refresh the one-call contract view aggregate (literal key to avoid a
+      // circular import with useContractDetailsV2, which imports contractKeys
+      // from this file).
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
 
       const displayStatus = (updatedContract.to_status || updatedContract.status || 'updated')
         .replace(/_/g, ' ');

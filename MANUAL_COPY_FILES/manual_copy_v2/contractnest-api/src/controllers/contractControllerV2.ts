@@ -5,10 +5,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import ContractServiceV2 from '../services/contractServiceV2';
-// V1 service imported ONLY for updateContractStatus — status transitions are
-// deliberately outside V2 scope (one live update_contract_status RPC serves
-// both paths, exactly as the single-assign flow uses it). V1 file untouched.
-import ContractService from '../services/contractService';
 import {
   sendSuccess,
   sendError,
@@ -18,11 +14,9 @@ import {
 
 class ContractControllerV2 {
   private contractServiceV2: ContractServiceV2;
-  private contractService: ContractService;
 
   constructor() {
     this.contractServiceV2 = new ContractServiceV2();
-    this.contractService = new ContractService();
   }
 
   /**
@@ -56,6 +50,40 @@ class ContractControllerV2 {
     } catch (error) {
       console.error('[ContractControllerV2] Error in createContract:', error);
       internalError(res, 'Failed to create contract');
+    }
+  };
+
+  /**
+   * PATCH /api/v2/contracts/:id/status
+   * V2 status transition — on activation, jobs materialize from
+   * computed_events inside the RPC before the untouched V1 engine runs.
+   */
+  updateContractStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = (req.headers['x-environment'] as string) || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      if (!req.body?.status) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'status is required', 400);
+        return;
+      }
+
+      const result = await this.contractServiceV2.updateContractStatus(
+        id, req.body, userJWT, tenantId, userId, environment
+      );
+
+      if (!result.success) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, result.error || 'Status update failed', 400, { details: result.code });
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractControllerV2] Error in updateContractStatus:', error);
+      internalError(res, 'Failed to update contract status');
     }
   };
 
@@ -173,7 +201,10 @@ class ContractControllerV2 {
           let globalAccessId: string | undefined = contract.global_access_id;
 
           if (activate && contract.id && contract.status === 'draft') {
-            const st = await this.contractService.updateContractStatus(
+            // V2 status path (single engine): single-shot creates already
+            // consumed computed_events at birth, so the materializer inside
+            // no-ops — but every V2-router transition now goes one way.
+            const st = await this.contractServiceV2.updateContractStatus(
               contract.id, { status: 'active' }, userJWT, tenantId, userId, environment
             );
             if (st.success) {
