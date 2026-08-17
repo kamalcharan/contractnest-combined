@@ -9,7 +9,38 @@ no manual merging. (Note: full-file replacement overwrites any local
 edits of your own in these exact files.)
 
 ═════════════════════════════════════════════════════════════════
-🔴 READ FIRST — MILESTONE 1 IS NOT COMPLETE. SPRINT 2 IS OPEN.
+🟢 JTD NUCLEUS — 6-STEP PLAN IN PROGRESS (owner-approved 2026-08-18)
+═════════════════════════════════════════════════════════════════
+Authority: ClaudeDocumentation/JTD/JTD-Framework.md (Dec 2025) — §1:
+"When a contract is created with 12 monthly services, JTD
+automatically creates 12 service_visit records." Golden rule: NO
+existing code changes; V2 siblings only; production/BBB untouched
+until an explicit, separate cutover decision (Step 6).
+
+STEP 1 — DONE (applied live 2026-08-18, all checks green):
+  - contractnest-edge/supabase/migrations/jtd-nucleus/001_step1_extend_njtd_jobs.sql
+    Additive only: 22 job columns on n_jtd (mirrors t_contract_events
+    column-for-column; job date uses existing scheduled_at), nullable
+    jtd_id + FK on t_invoice_receipt_allocations, ONE master row
+    (source type 'payment_scheduled' — service_scheduled's missing
+    payment twin; event types service_visit/payment already existed
+    since the Dec framework seed), 3 partial indexes.
+    ALREADY APPLIED LIVE — do not re-run (idempotent anyway).
+    Verified: 22/22 columns · alloc.jtd_id present · master row in ·
+    3/3 indexes · harness insert of a message row still works ·
+    0 job rows yet · all 443 existing reminder rows untouched ·
+    zero functions/triggers/views modified.
+  Copy command (source-of-record into the submodule):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Force
+
+STEP 2 — NEXT: create_contract_transaction_v2 writes job rows
+  (service_visit + payment, channel NULL) in the create transaction.
+  Steps 3-6: V2 readers/routes · V2 payment path · confidence gate ·
+  cutover package (paper only; execution is its own owner decision).
+
+═════════════════════════════════════════════════════════════════
+🔴 HISTORY — the note below records how Sprint 2 was missed; kept
+   for the record. The 6-step plan above supersedes its NEXT ACTION.
 ═════════════════════════════════════════════════════════════════
 The JTD Nucleus spec (written this session, previously living ONLY
 in an ephemeral session scratchpad — now rescued into this folder
