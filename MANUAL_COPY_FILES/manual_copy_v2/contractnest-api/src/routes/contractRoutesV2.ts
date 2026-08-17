@@ -39,6 +39,14 @@ router.use(ensureTenant);
 router.post('/', contractControllerV2.createContract);
 
 /**
+ * @route GET /api/v2/contracts/:id/details
+ * @description JTD Nucleus Step 3 — single-call contract view aggregate:
+ * contract + blocks + events (n_jtd jobs; legacy events fallback for
+ * pre-nucleus contracts) + CNAK + invoices. One round-trip instead of 4.
+ */
+router.get('/:id/details', contractControllerV2.getContractDetails);
+
+/**
  * @route POST /api/v2/contracts/bulk-create
  * @description V2 sibling of POST /api/contracts/bulk-create — bulk template
  * assignment where each item is created via create_contract_transaction_v2

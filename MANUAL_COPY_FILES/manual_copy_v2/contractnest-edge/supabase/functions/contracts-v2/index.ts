@@ -2,11 +2,14 @@
 // JTD Nucleus initiative — Milestone 1. New, versioned edge function,
 // alongside (not replacing) supabase/functions/contracts/index.ts.
 //
-// Scope: POST only — create a contract via create_contract_transaction_v2.
-// Nothing else (list/get/update/status/etc.) is implemented here yet;
-// this exists to make V2 reachable by a real HTTP request for the first
-// time, so it can be tested through the actual app instead of only via
-// direct SQL. contracts/index.ts is completely untouched.
+// Scope:
+//   POST /                — create a contract via create_contract_transaction_v2
+//   GET  /:id/details     — single-call contract view aggregate via
+//                           get_contract_details_v2 (JTD Nucleus Step 3):
+//                           contract + blocks + events (n_jtd JOBS, legacy
+//                           fallback) + CNAK + invoices, one round-trip.
+// Nothing else (list/update/status/etc.) is implemented here;
+// contracts/index.ts is completely untouched.
 //
 // seller_id/buyer_id resolution: mirrors V1's current behavior exactly
 // (seller = tenant, buyer = body.buyer_id) — the Revenue/Expense-mode
@@ -32,8 +35,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    if (req.method !== 'POST') {
-      return jsonResponse({ success: false, error: 'Only POST is implemented on contracts-v2', code: 'NOT_IMPLEMENTED' }, 405);
+    if (req.method !== 'POST' && req.method !== 'GET') {
+      return jsonResponse({ success: false, error: 'Only POST and GET /:id/details are implemented on contracts-v2', code: 'NOT_IMPLEMENTED' }, 405);
     }
 
     const tenantId = req.headers.get('x-tenant-id');
@@ -68,6 +71,29 @@ serve(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // ── GET /:id/details — JTD Nucleus Step 3 aggregate (read-only) ──
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const match = url.pathname.match(/\/contracts-v2\/([0-9a-f-]{36})\/details\/?$/i);
+      if (!match) {
+        return jsonResponse({ success: false, error: 'GET supports only /:id/details', code: 'NOT_FOUND' }, 404);
+      }
+      const contractId = match[1];
+
+      const { data, error } = await supabase.rpc('get_contract_details_v2', {
+        p_tenant_id: tenantId,
+        p_contract_id: contractId
+      });
+
+      if (error) {
+        console.error('[contracts-v2] details RPC error:', JSON.stringify(error));
+        return jsonResponse({ success: false, error: error.message, code: 'RPC_ERROR' }, 500);
+      }
+
+      return jsonResponse(data, data?.success ? 200 : 404);
+    }
+
     const body = requestBody ? JSON.parse(requestBody) : {};
 
     // Same resolution V1 uses today: seller is always the creating tenant,

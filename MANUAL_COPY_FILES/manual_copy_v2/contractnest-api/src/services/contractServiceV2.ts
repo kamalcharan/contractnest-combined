@@ -61,6 +61,22 @@ class ContractServiceV2 {
     );
   }
 
+  /**
+   * JTD Nucleus Step 3 — single-call contract view aggregate.
+   * GET contracts-v2/:id/details → get_contract_details_v2:
+   * contract + blocks + events (n_jtd jobs, legacy fallback) + CNAK
+   * + invoices, one round-trip.
+   */
+  async getContractDetails(
+    contractId: string,
+    userJWT: string,
+    tenantId: string,
+    environment: string = 'live'
+  ): Promise<EdgeFunctionResponseV2> {
+    const url = `${this.edgeFunctionUrl}/${contractId}/details`;
+    return await this.makeRequest('GET', url, null, userJWT, tenantId, environment);
+  }
+
   private async makeRequest(
     method: string,
     url: string,

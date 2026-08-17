@@ -60,6 +60,35 @@ class ContractControllerV2 {
   };
 
   /**
+   * GET /api/v2/contracts/:id/details
+   * JTD Nucleus Step 3 — single-call contract view aggregate: contract +
+   * blocks + events (n_jtd jobs, legacy fallback for pre-nucleus
+   * contracts) + CNAK + invoices. Replaces 4 separate round-trips.
+   */
+  getContractDetails = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = (req.headers['x-environment'] as string) || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      const result = await this.contractServiceV2.getContractDetails(
+        id, userJWT, tenantId, environment
+      );
+
+      if (!result.success) {
+        sendError(res, ERROR_CODES.NOT_FOUND, result.error || 'Contract not found', 404);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractControllerV2] Error in getContractDetails:', error);
+      internalError(res, 'Failed to load contract details');
+    }
+  };
+
+  /**
    * POST /api/v2/contracts/bulk-create
    * V2 sibling of POST /api/contracts/bulk-create (that route is untouched).
    * Same request/response shape; two deliberate differences:

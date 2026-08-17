@@ -67,8 +67,81 @@ STEP 2 — DONE (applied live 2026-08-18, harness-proven both ways):
   t_contract_events). Jobs are verifiable by query only. Step 3's V2
   reader closes this — which is why the owner checkpoint waits there.
 
-STEP 3 — NEXT: get_contract_events_list_v2 / date_summary_v2 reading
-  n_jtd + /api/v2 route + UI hook flip (same ?useV1 pattern).
+STEP 3 — BUILT (DB+edge applied/deployed live; API+UI need your copy):
+  Owner-redesigned mid-step: ONE aggregate call instead of many
+  objects ("why so many hits") + state-aware polling.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/003_step3_get_contract_details_v2.sql
+    NEW RPC get_contract_details_v2(tenant, contract) — single call:
+    contract+blocks (COMPOSES V1 get_contract_by_id read-only),
+    events (n_jtd JOB rows mapped to the UI's exact ContractEvent
+    shape when present → source='jtd'; V1 get_contract_events_list
+    fallback for pre-nucleus contracts → source='legacy'),
+    cnak (grant WITHOUT secret — presence flag only),
+    invoices (COMPOSES V1 get_contract_invoices), as_of watermark.
+    ALREADY APPLIED LIVE. Tested: legacy era (test CN-1004:
+    source=legacy, 12 events, CNAK, ₹3,100 invoice) and jobs era
+    (harness contract: source=jtd, correct types/status, rolled
+    back). NOTE: a DRAFT shows cnak=null — correct, the code is
+    minted at send/activation (V1 semantics preserved).
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v3 DEPLOYED LIVE: adds GET /:id/details (POST create unchanged).
+
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+    GET /api/v2/contracts/:id/details chain.
+
+  - contractnest-ui/src/hooks/queries/useContractDetailsV2.ts    [NEW file]
+    The one hook: fetch aggregate → SEED the existing hooks' cache
+    keys (useContract detail key, both event-list filter variants
+    per_page 50/100, invoices key) so existing components render
+    UNMODIFIED from one response. Freshness: refetch-on-focus +
+    state-aware polling (pending/sent 15s · active 60s · terminal
+    off · hidden tab paused). Structural sharing = unchanged polls
+    re-render nothing.
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts      [FULL file]
+    useContract gains an ADDITIVE options.enabled (default
+    unchanged) so the page can disable its direct fetch in V2 mode
+    (a disabled query still reads the seeded cache).
+  - contractnest-ui/src/pages/contracts/detail/index.tsx         [FULL file]
+    Page wiring: aggregate hook drives; useContract +
+    useContractInvoices disabled in V2 mode (seeded instead).
+    ?useV1=1 on the URL restores the previous per-query fetching.
+
+  HONEST NUANCE (not hidden): tab components (Timeline, Equipment,
+  DualTrackPreview, etc.) still call their own events hook. On the
+  very FIRST page paint they may fire 1-2 V1 event fetches racing
+  the aggregate; once seeded (and on every tab switch/revisit),
+  they resolve from cache — no fetch. Full 4→1 consolidation on
+  first paint = pass enabled flags through those 5 components;
+  deliberately NOT done now (component drift), queued as Step 5
+  cleanup if you want it.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\003_step3_get_contract_details_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\003_step3_get_contract_details_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractDetailsV2.ts" -Destination "contractnest-ui\src\hooks\queries\useContractDetailsV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
+  (restart contractnest-api — new route; hard-refresh UI)
+
+  🧪 STEP 3 CHECKPOINT (your ~10 min — the DONE test)
+  - [ ] Create 1 wizard contract on signia → open its contract view
+        → schedule + tasks + invoice all visible
+  - [ ] Network tab: ONE `details` request carrying the page
+        (stragglers per the nuance note may appear on first paint)
+  - [ ] Tell me the contract number → I prove the on-screen rows ARE
+        n_jtd job ids and t_contract_events gained ZERO rows for it
+  - [ ] Open an OLD contract (e.g. CN-1008) → renders exactly as
+        before (source='legacy' fallback)
+  - [ ] Leave the view open on a pending contract ~1 min → watch the
+        details request repeat (state-aware polling)
+
   Steps 4-6: V2 payment path · confidence gate · cutover package
   (paper only; execution is its own owner decision).
 

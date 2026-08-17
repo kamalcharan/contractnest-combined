@@ -150,7 +150,14 @@ export const useGroupedContracts = (
 /**
  * Hook to fetch a single contract by ID (with blocks, vendors, attachments, history)
  */
-export const useContract = (contractId: string | null) => {
+export const useContract = (
+  contractId: string | null,
+  // Additive option (default unchanged). The V2 details aggregate
+  // (useContractDetailsV2) seeds this hook's exact cache key and passes
+  // enabled:false so the data comes from ONE aggregate call instead of a
+  // second fetch — a disabled query still reads the seeded cache.
+  options?: { enabled?: boolean }
+) => {
   const { currentTenant } = useAuth();
 
   return useQuery({
@@ -169,7 +176,7 @@ export const useContract = (contractId: string | null) => {
 
       return data;
     },
-    enabled: !!contractId && !!currentTenant?.id,
+    enabled: !!contractId && !!currentTenant?.id && (options?.enabled !== false),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: 3,
