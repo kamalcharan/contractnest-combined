@@ -1,0 +1,42 @@
+-- Migration 076: credit-topup release respects the 10:00–21:00 IST dispatch window
+-- Applied live 2026-08-19 (Supabase MCP, project uwyqhzotluikawcboldr,
+-- name: release_jtds_dispatch_window). Source-of-record copy — DO NOT RE-RUN.
+--
+-- ── WHAT WAS WRONG ─────────────────────────────────────────────────────────
+-- The 5 Aug dispatch-hour fix (config.groupSession.notifications.dispatchHour,
+-- 10:00–21:00 IST) gates gs_run_session_notifications — the ENQUEUE side.
+-- But parked no_credits jobs are re-queued by a completely different path:
+--   t_tenant_context credits topped up
+--     -> trg_context_release_jtds
+--     -> release_waiting_jtds(tenant, channel, max)
+--     -> pgmq.send(..., delay 0)      <-- immediately visible, any hour
+-- On 17 Aug 2026 a 23:46 IST top-up (side effect of activating CN-1050)
+-- released the parked backlog instantly: 14 members received stale absentee
+-- reminders at 23:47 at night.
+--
+-- ── FIX ────────────────────────────────────────────────────────────────────
+-- release_waiting_jtds now computes a pgmq visibility delay:
+--   inside 10:00–21:00 IST  -> 0 (send now)
+--   before 10:00            -> visible at 10:00 today
+--   at/after 21:00          -> visible at 10:00 tomorrow
+-- Applied to EVERY released message, not only reminders — releases only happen
+-- after an admin top-up, and nothing about that event makes a night-time send
+-- appropriate. The n_jtd_status_history note records the deferral.
+--
+-- Method: substituted into pg_get_functiondef() with anchors asserted before
+-- each edit and a post-check after (the 058 silent-no-op lesson).
+--
+-- ── VERIFIED ───────────────────────────────────────────────────────────────
+-- Live probe (rolled back): parked row released at 11:24 IST -> delay 0,
+-- visible immediately. Boundary table evaluated against the exact deployed
+-- expressions:
+--   23:47 (the incident) -> visible 10:00 next day
+--   02:00                -> visible 10:00 same day
+--   09:59                -> visible 10:00 (60 s later)
+--   10:00–20:59          -> immediate
+--   21:00                -> visible 10:00 next day
+--
+-- (Full DO-block source as applied lives in the Supabase migration history
+-- under 20260819...release_jtds_dispatch_window; this file is the record of
+-- what/why. Re-running it would RAISE on anchor (c) since the zero-delay
+-- send it looks for no longer exists.)

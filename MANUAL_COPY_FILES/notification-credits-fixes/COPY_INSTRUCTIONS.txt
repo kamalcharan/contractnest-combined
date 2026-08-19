@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — notification-credits-fixes
+═══════════════════════════════════════════════════
+Branch: claude/bbb-checkin-issues-ohrsuf
+
+╔═══════════════════════════════════════════════════════════════╗
+║ STATUS — BOTH MIGRATIONS ALREADY APPLIED TO PRODUCTION        ║
+║ (applied 19 Aug 2026 on owner instruction, project            ║
+║ uwyqhzotluikawcboldr). DB-only; no UI or API change needed.   ║
+║                                                               ║
+║ Context: the 18 Aug session sent almost no WhatsApp because   ║
+║ BBB's only-ever credit grant (20, incidental to CN-1050) ran  ║
+║ out at 07:37 that morning. Same day: 126 stale rows expired,  ║
+║ 200 WhatsApp credits granted via add_credits().               ║
+║                                                               ║
+║ 076 — release_waiting_jtds dispatch window                    ║
+║   ✅ topup-released messages now honour 10:00–21:00 IST       ║
+║      (pgmq visibility delay; 23:47-style night sends dead)    ║
+║   ✅ probe: in-window release immediate; boundary table       ║
+║      verified for 23:47 / 02:00 / 09:59 / 21:00               ║
+║                                                               ║
+║ 077 — credits_low per channel                                 ║
+║   ✅ Settings → Plans "Running low" pill now fires when ANY   ║
+║      sendable channel is under 10 — the old cross-channel     ║
+║      sum let email 20 mask WhatsApp 3 on 18 Aug               ║
+║   ✅ post-check: (3,20)→low, (200,20)→not, unused-0→not       ║
+║   ✅ all tenants' stored flags recomputed                     ║
+║                                                               ║
+║ Do NOT re-run 076 (its anchors RAISE by design on a second    ║
+║ run). 077 is idempotent but pointless to re-run.              ║
+╚═══════════════════════════════════════════════════════════════╝
+
+FILES IN THIS BATCH
+─────────────────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/
+      076_release_jtds_dispatch_window.sql
+      077_credits_low_per_channel.sql
+
+STEP 1: Copy migration files into the submodule
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\notification-credits-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STEP 2: Nothing to test locally (DB already live). To see 077 in the app:
+─────────────────────────────────
+Settings → Plans → "Notification credits" card. The "Running low" pill will
+appear whenever any active channel drops under 10. With WhatsApp at 200 today
+it is correctly absent. First real trigger: ~2 meetings from now.
+
+NOTES / STILL OPEN (deliberately not done)
+─────────────────────────────────
+- 200 credits ≈ 2 meeting weeks (~90–110 per meeting). Top up again around
+  mid-September, or size a recurring grant.
+- Credit grants riding member-contract activation (how the original 20
+  arrived) — owner said ignore for now.
+- ⚠️ jtd-worker: the REPO copy is AHEAD of live v35 (undeployed 14 Aug work:
+  template variable ordering from n_jtd_templates.variables + media_url UPI-QR
+  header for invoice sends). Nothing in this batch touches the worker, but
+  whoever deploys it next ships that work — deploy deliberately, not as a
+  side effect.
+═══════════════════════════════════════════════════

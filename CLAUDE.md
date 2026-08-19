@@ -769,6 +769,25 @@ Verified: new → 1 row · re-declare after CONFIRM → 0 rows + reported · re-
 
 ---
 
+### FIXED 2026-08-19 — 18 Aug session sent almost no WhatsApp: credits ran out, and both safety nets were broken (migrations 076–077)
+
+**Not** a weekday bug — the notification framework enqueued everything correctly for the Tuesday session (81 looking-forwards, 25 acks, 24 no-show regrets). The failure was downstream: **credit enforcement is live in jtd-worker (v35), and BBB's entire WhatsApp allowance was 20 credits**, granted incidentally at 17 Aug 23:46 as a side effect of activating CN-1050 (Tejaswinni's membership). 17 were burned within 2 minutes draining the parked backlog; the last 3 went to the first 3 check-ins at 07:26–07:37; everything after — 22 acks, 24 regrets, ~35 reminders — parked as `status_code='no_credits'`. 3 members got acks; nobody else got anything.
+
+**Same-day remediation (owner instruction):** all 126 stale `no_credits` rows expired FIRST (mirroring `expire_no_credits_jtds` semantics — status + history row), THEN 200 WhatsApp credits granted via `add_credits(...)`. **Order matters: top up before expiring and `trg_context_release_jtds` blasts the stale backlog instantly.** 200 ≈ 2 meeting weeks (~90–110/meeting) — top up again ~mid-September.
+
+**Two structural defects found and fixed live:**
+
+1. **Migration 076** — the 5 Aug dispatch-hour gate (10:00–21:00 IST) only covers *enqueue*. Topup-release is a different path (`trg_context_release_jtds` → `release_waiting_jtds` → `pgmq.send` delay 0), which is how the 23:46 top-up sent 14 stale absentee reminders at **23:47 at night**. `release_waiting_jtds` now re-queues with a pgmq visibility delay to the next 10:00 IST when outside the window. Verified at every boundary (23:47→10:00+1d, 02:00→10:00, 10:00–20:59→immediate).
+
+2. **Migration 077** — Settings → Plans **already had** the full low-balance UI (pill + waiting banner, `tenants/Subscription/index.tsx`); it never fired because `fn_recalc_credit_flags` computed `credits_low` on the **cross-channel sum** (`whatsapp+sms+email+inapp+pooled < 10`): WhatsApp 3 + email 20 = 23 → "not low" on session-day morning. Now per-channel: low when any *sendable* channel (active + balance>0) is under 10; zero-balance channels excluded so unused SMS doesn't read low forever (exhausted channels surface via `can_send=false` + the waiting banner). All tenants' stored flags recomputed.
+
+**Key architecture notes learned:** balances live in `t_tenant_context.credits_*` (NOT `t_bm_credit_balance` — legacy, ignore it); `add_credits()`/`deduct_credits()` are the API; `trg_jtd_credit_gate` parks at INSERT, `trg_context_release_jtds` releases on top-up; `expire-no-credits-jtds` cron expires 7-day-old parked rows nightly.
+
+**⚠️ Separate discovery, not touched:** the repo's `jtd-worker/` is **AHEAD of deployed v35** — undeployed 14 Aug work (template variable ordering from `n_jtd_templates.variables`, `media_url` UPI-QR header for invoice sends). The next worker deploy ships it; do that deliberately, and check whether the invoice-send feature (migration 070/072) is currently half-shipped without it.
+**Still open (owner: "ignore for now"):** credit grants riding member-contract activation — a 46-member org's messaging allowance shouldn't depend on when the next member joins.
+
+---
+
 ## ⚠️ Session Reminders
 
 1. **ALWAYS initialize all submodules at session start**
