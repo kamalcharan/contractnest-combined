@@ -54,6 +54,15 @@ router.get('/:id/details', contractControllerV2.getContractDetails);
 router.patch('/:id/status', contractControllerV2.updateContractStatus);
 
 /**
+ * @route POST /api/v2/contracts/:id/record-payment
+ * @description JTD Nucleus Step 4 — V2 payment. Receipt / invoice header /
+ * auto-activation via the untouched V1 core; settlement lands on n_jtd JOB
+ * rows (allocations carry jtd_id; job → paid / partial_payment). Same body
+ * as V1's POST /api/contracts/:id/invoices/record-payment.
+ */
+router.post('/:id/record-payment', contractControllerV2.recordPayment);
+
+/**
  * @route POST /api/v2/contracts/bulk-create
  * @description V2 sibling of POST /api/contracts/bulk-create — bulk template
  * assignment where each item is created via create_contract_transaction_v2

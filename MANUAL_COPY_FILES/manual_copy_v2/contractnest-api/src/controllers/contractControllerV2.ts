@@ -117,6 +117,41 @@ class ContractControllerV2 {
   };
 
   /**
+   * POST /api/v2/contracts/:id/record-payment
+   * JTD Nucleus Step 4 — V2 payment path. Same request/response shape as
+   * V1's POST /api/contracts/:id/invoices/record-payment; settlement lands
+   * on n_jtd JOB rows instead of t_contract_events.
+   */
+  recordPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = (req.headers['x-environment'] as string) || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      if (!req.body?.invoice_id || req.body?.amount === undefined) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'invoice_id and amount are required', 400);
+        return;
+      }
+
+      const result = await this.contractServiceV2.recordPayment(
+        id, req.body, userJWT, tenantId, userId, environment
+      );
+
+      if (!result.success) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, result.error || 'Payment recording failed', 400, { details: result.code });
+        return;
+      }
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('[ContractControllerV2] Error in recordPayment:', error);
+      internalError(res, 'Failed to record payment');
+    }
+  };
+
+  /**
    * POST /api/v2/contracts/bulk-create
    * V2 sibling of POST /api/contracts/bulk-create (that route is untouched).
    * Same request/response shape; two deliberate differences:

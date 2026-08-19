@@ -12,6 +12,14 @@
 //                           materializes n_jtd JOB rows from computed_events
 //                           (wizard draft→activate path, the CN-1019 gap)
 //                           then delegates to the untouched V1 status engine.
+//   POST  /:id/record-payment — record_invoice_payment_v2 (JTD Nucleus
+//                           Step 4): consumes computed_events into jobs
+//                           first (pay-before-activate safe), delegates
+//                           receipt/invoice/auto-activation to the untouched
+//                           V1 record_invoice_payment, then settles JOB rows
+//                           (allocations carry jtd_id; job → paid /
+//                           partial_payment). Payload mirrors V1's
+//                           handleRecordPayment exactly.
 // Nothing else (list/update/etc.) is implemented here;
 // contracts/index.ts is completely untouched.
 //
@@ -99,6 +107,36 @@ serve(async (req: Request) => {
     }
 
     const body = requestBody ? JSON.parse(requestBody) : {};
+
+    // ── POST /:id/record-payment — V2 payment (JTD Nucleus Step 4) ──
+    // Same payload construction as V1's handleRecordPayment; the RPC
+    // settles JOB rows instead of t_contract_events rows.
+    if (req.method === 'POST') {
+      const url = new URL(req.url);
+      const payMatch = url.pathname.match(/\/contracts-v2\/([0-9a-f-]{36})\/record-payment\/?$/i);
+      if (payMatch) {
+        const contractId = payMatch[1];
+
+        const payload = {
+          ...body,
+          contract_id: contractId,
+          tenant_id: tenantId,
+          is_live: isLive,
+          recorded_by: userId || body.recorded_by
+        };
+
+        const { data, error } = await supabase.rpc('record_invoice_payment_v2', {
+          p_payload: payload
+        });
+
+        if (error) {
+          console.error('[contracts-v2] record-payment RPC error:', JSON.stringify(error));
+          return jsonResponse({ success: false, error: error.message, code: 'RPC_ERROR' }, 500);
+        }
+
+        return jsonResponse(data, data?.success ? 201 : 400);
+      }
+    }
 
     // ── PATCH /:id/status — V2 status transition (JTD Nucleus) ──
     // On 'active': jobs materialize from computed_events FIRST (same

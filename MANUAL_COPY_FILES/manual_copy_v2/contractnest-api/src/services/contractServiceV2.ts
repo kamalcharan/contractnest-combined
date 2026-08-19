@@ -97,6 +97,30 @@ class ContractServiceV2 {
     return await this.makeRequest('GET', url, null, userJWT, tenantId, environment);
   }
 
+  /**
+   * JTD Nucleus Step 4 — V2 payment. POST contracts-v2/:id/record-payment
+   * → record_invoice_payment_v2: receipt / invoice header / auto-activation
+   * via the untouched V1 core, then settlement against n_jtd JOB rows
+   * (allocations carry jtd_id; job status → paid / partial_payment).
+   * Payload mirrors V1 contractService.recordPayment exactly.
+   */
+  async recordPayment(
+    contractId: string,
+    paymentData: any,
+    userJWT: string,
+    tenantId: string,
+    userId: string,
+    environment: string = 'live'
+  ): Promise<EdgeFunctionResponseV2> {
+    const requestPayload = {
+      ...paymentData,
+      recorded_by: userId
+    };
+
+    const url = `${this.edgeFunctionUrl}/${contractId}/record-payment`;
+    return await this.makeRequest('POST', url, requestPayload, userJWT, tenantId, environment);
+  }
+
   private async makeRequest(
     method: string,
     url: string,

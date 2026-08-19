@@ -200,8 +200,103 @@ STEP 3 — BUILT (DB+edge applied/deployed live; API+UI need your copy):
   - [ ] Leave the view open on a pending contract ~1 min → watch the
         details request repeat (state-aware polling)
 
-  Steps 4-6: V2 payment path · confidence gate · cutover package
-  (paper only; execution is its own owner decision).
+STEP 4 — BUILT (DB applied live + edge v5 deployed live; API+UI need
+your copy). Money now settles AGAINST JOB ROWS.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/006_step4_record_invoice_payment_v2.sql
+    A) t_invoice_receipt_allocations.contract_event_id drops NOT
+       NULL, replaced by CHECK (event OR jtd reference present) —
+       zero impact on V1 writers, they always supply the event id.
+    B) 'partial_payment' seeded for the payment JOB lifecycle
+       (guarded NOT EXISTS).
+    C) NEW record_invoice_payment_v2(p_payload) — composition,
+       zero V1 objects touched:
+         1.  PRE: jtd_materialize_jobs_from_computed — consumes
+             computed_events into jobs BEFORE the V1 core can
+             auto-activate, so pay-before-activate contracts get
+             JOBS, never legacy rows (closes the CN-1003-class gap
+             flagged at the end of Step 3).
+         1b. LEGACY DELEGATION: a contract with NO job rows
+             (pre-nucleus) delegates WHOLESALE to the untouched V1
+             record_invoice_payment_with_allocations — byte-
+             identical legacy behavior including event settlement.
+             Same decision rule as the aggregate's events.source;
+             the response carries settlement_path='jtd'|'legacy' so
+             which spine took the money is never ambiguous. (This
+             matters because the UI now sends ALL record-payments
+             through the V2 route.)
+         2.  The untouched V1 record_invoice_payment core: receipt
+             (self-healing number), invoice header, STEP 4.5
+             auto-activation — exactly V1.
+         3.  SETTLE JOBS: client event_allocations (ids are JOB ids
+             on a V2 contract; must sum to the amount, same rule as
+             V1) or FIFO across open payment jobs by scheduled_at.
+             Allocation rows carry jtd_id (contract_event_id NULL);
+             job amount_settled bumps; status → 'paid' /
+             'partial_payment' (V1's exact strings, so the screen
+             renders identically through the aggregate).
+    ALREADY APPLIED LIVE — do not re-run (idempotent anyway).
+    HARNESS PROOFS (forced rollback, zero residue, re-run after the
+    legacy-delegation addition):
+      A  (jobs, split pays): pay 700 FIFO → 2 jobs (1 paid + 1
+         partial) → pay 300 → both paid; 3 allocations all jtd_id,
+         0 event; invoice paid, balance 0; legacy rows 0
+      A' (CN-1005 live signia, ₹11,600 invoice): ok=true path=jtd
+         settled=700/2 allocs_jtd=2 allocs_evt=0 → rolled back
+      B  (pay-before-activate): draft with parked computed_events →
+         pending_acceptance invoice → pay in full → pay_ok=true
+         activated=true final_status=active jobs=2 paid_jobs=1
+         allocs_jtd=1 legacy=0
+      C  (LEGACY contract CN-1019, 16 events 0 jobs): ok=true
+         path=legacy allocs_evt=1 allocs_jtd=0 event 'paid' settled
+         9000, invoice paid, jobs fabricated=0 → rolled back
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v5 DEPLOYED LIVE: adds POST /:id/record-payment (payload built
+    exactly like V1's handleRecordPayment: contract_id from path,
+    tenant/is_live from headers, recorded_by = header user or body).
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+    recordPayment() — mirrors V1 contractService.recordPayment
+    payload ({...paymentData, recorded_by: userId}).
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+    recordPayment handler (validates invoice_id + amount).
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+    POST /api/v2/contracts/:id/record-payment.
+  - contractnest-ui/src/hooks/queries/useInvoiceQueries.ts       [FULL file]
+    useRecordPayment → V2 endpoint by default on this branch
+    (?useV1=1 falls back), same body; onSuccess additionally
+    invalidates the details-v2 aggregate so the paid job flips on
+    screen without a manual refresh.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+  (restart contractnest-api — new route; hard-refresh UI)
+
+  🧪 STEP 4 CHECKPOINT (your ~5 min — the DONE test)
+  - [ ] Open CN-1005 (live signia) → Record Payment on its ₹11,600
+        invoice — pay a PARTIAL amount (e.g. ₹700)
+  - [ ] Screen updates without manual refresh: first payment due
+        flips paid, next one shows partial (or per your allocation)
+  - [ ] Tell me when done → I prove the allocations carry jtd_id
+        (not contract_event_id), job rows read paid/partial_payment,
+        invoice header matches, and t_contract_events still has
+        ZERO rows for CN-1005
+  - [ ] Record a payment on an OLD contract (e.g. CN-1008/CN-1019
+        with ?useV1=0 left off — just use the normal screen) →
+        behaves exactly as before (settlement_path='legacy'
+        delegation to the untouched V1 wrapper)
+
+  ⚠️ KNOWN, DOCUMENTED, NOT HIDDEN: reminder crons still read
+  t_contract_events, so V2 (jobs-era) contracts get no payment/
+  service reminders until cutover — Step 6 territory.
+
+  Steps 5-6 remain: confidence gate · cutover package (paper only;
+  execution is its own owner decision).
 
 ═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
@@ -701,15 +796,20 @@ Also in this folder (earlier batches, already covered previously)
     MUST flip back to opt-in before any real cutover.
 
 ─────────────────────────────────────────────────────────────────
-💻 COPY COMMANDS (newest batch only — earlier files already copied)
+💻 COPY COMMANDS (newest batch = STEP 4 — earlier files already copied)
 ─────────────────────────────────────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 git pull origin claude/tenant-bbb-data-issues-buwxqm
 
-Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
-Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\jtd-nucleus" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
 
-Write-Host "Copied. Refresh the UI (Vite hot-reloads) and retest." -ForegroundColor Green
+Write-Host "Copied. Restart contractnest-api, hard-refresh the UI, and run the Step 4 checkpoint." -ForegroundColor Green
 
 ─────────────────────────────────────────────────────────────────
 🧪 TESTING CHECKLIST — cadence gate
