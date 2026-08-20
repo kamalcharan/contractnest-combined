@@ -295,8 +295,60 @@ your copy). Money now settles AGAINST JOB ROWS.
   t_contract_events, so V2 (jobs-era) contracts get no payment/
   service reminders until cutover — Step 6 territory.
 
-  Steps 5-6 remain: confidence gate · cutover package (paper only;
-  execution is its own owner decision).
+STEP 5 — IN PROGRESS (audit script written; first live run pending —
+the session's DB connection dropped right as Step 5 started; the
+script runs unchanged whenever either side has a connection).
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/audit_step5_confidence_gate.sql
+    THE CONFIDENCE GATE. Read-only — creates nothing, writes nothing,
+    re-runnable forever. Audits every contract that has JOB rows
+    (structural definition of "V2-era"; BBB has none so it is
+    naturally out of scope). Three result sets:
+      1. One row per contract × 10 checks + verdict:
+         no-legacy-events · computed_events consumed · sequences
+         contiguous & match total_occurrences · dates inside term ·
+         Σ payment jobs = grand_total = Σ invoices · Σ settled =
+         Σ jtd allocations = Σ invoice paid · status honesty
+         (paid/partial/scheduled vs settled, 0.005 tolerance) ·
+         CNAK present on active · no messenger-machine damage on any
+         job row · no V1-only path touched (cancelled receipt /
+         cancelled invoice / legacy-targeted allocation).
+      2. Whole-database structural residue (must all be 0): orphan
+         jobs, allocations aimed at message rows, allocations with
+         no target, duplicate job identities, job rows carrying a
+         channel.
+      3. WHO has jobs, per tenant/env — informational, so an
+         unexpected tenant with jobs is seen, not assumed.
+    Gate is GREEN only when set 1 is all-PASS and set 2 is all-zero.
+    On any FAIL the diag_* columns say which numbers disagreed; fix,
+    re-run the same file.
+
+  ⚠️ Finding while writing it (chk10's reason to exist): the
+  cancel-receipt / cancel-invoice / write-off paths are still
+  V1-ONLY — they reverse t_contract_events, not jobs. Cancelling a
+  receipt on a jobs contract today would un-pay the invoice header
+  while the job stayed 'paid'. Until those paths get V2 siblings,
+  chk10 failing on a contract means its settlement numbers are
+  suspect. No such row exists as of writing; the check keeps it that
+  way visibly.
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\audit_step5_confidence_gate.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\audit_step5_confidence_gate.sql" -Force
+
+  🧪 STEP 5 CHECKPOINT (owner's side, through the normal UI)
+  ~4 more contracts so the audit has corner cases to bite on:
+  - [ ] Bad-template BULK assign (cadence that can't fit) → every
+        item refused, zero contracts, zero residue (set 2 stays 0)
+  - [ ] EMI / multi-invoice contract → instalment invoices reconcile
+        against payment jobs (chk5/chk6)
+  - [ ] Pay-before-activate through the real UI (payment-acceptance
+        contract, pay first) → activates with jobs, zero legacy rows
+  - [ ] One ordinary wizard contract as a control
+  Then the audit runs again; DONE = all PASS + all zeros, and that
+  table is what Step 6's cutover package gets written against.
+
+  Step 6 remains: cutover package (paper only; execution is its own
+  owner decision).
 
 ═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
