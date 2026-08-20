@@ -347,6 +347,38 @@ script runs unchanged whenever either side has a connection).
   Then the audit runs again; DONE = all PASS + all zeros, and that
   table is what Step 6's cutover package gets written against.
 
+  ─────────────────────────────────────────────────────────────
+  🔧 STEP 5 FIX — paid jobs now carry their completion stamp
+     (owner-approved "fix it", 2026-08-20)
+  ─────────────────────────────────────────────────────────────
+  Found walking CN-1005's raw n_jtd rows with the owner: a job that
+  reached 'paid' kept completed_at NULL, and its transition_note
+  still showed the stale sweeper-repair text from migration 005.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/007_step5fix_job_completion_stamp.sql
+    record_invoice_payment_v2 re-issued (same body + exactly this):
+    on 'paid' → completed_at = now() and transition_note = 'settled
+    by receipt <number>'; on 'partial_payment' → note only, no
+    stamp. Receipt number comes from the V1 core's own response.
+    One-time repair stamped CN-1005's two paid rows (completed_at =
+    their real settlement moment 2026-08-20 08:18 UTC, note
+    'settled by receipt RCP-10003'), idempotent WHERE.
+    ALREADY APPLIED LIVE — do not re-run (safe if you do).
+    HARNESS D (forced rollback, zero residue): pay 900 FIFO →
+    covered job paid + stamped + noted RCP-10004; next job
+    partial_payment, unstamped, 'partially settled by receipt
+    RCP-10004'. Verified live post-repair: both CN-1005 paid rows
+    stamped and honestly noted.
+    Deliberately NOT touched (decisions, not oversights):
+    jtd_number / status_id — dormant on ALL 522 n_jtd rows since the
+    Dec seed (zero rows populated, no generator exists anywhere);
+    adopt-or-drop belongs to the Step 6 cutover decision. And
+    executed_at on payment jobs stays NULL by design — nothing
+    dispatches a payment job; money arriving completes it.
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Force
+
   Step 6 remains: cutover package (paper only; execution is its own
   owner decision).
 
