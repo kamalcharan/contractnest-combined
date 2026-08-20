@@ -379,8 +379,22 @@ script runs unchanged whenever either side has a connection).
   Copy command:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Force
 
-  Step 6 remains: cutover package (paper only; execution is its own
-  owner decision).
+STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
+  - ClaudeDocumentation/jtd-cutover-package.md
+    The full cutover plan: id-preserving copy t_contract_events →
+    n_jtd (n_jtd.id = event id, so allocation/invoice FKs swap by
+    value), 6 phases (copy → FK swap → writers → readers → route
+    flip → retirement), 5-minute rollback holds through Phase 5,
+    signia-first / BBB-last tenant gating, entry criteria (incl.
+    the three corner cases not exercised when Step 5 closed on
+    owner's call, and the ONE build item: cancel/write-off V2
+    siblings — those paths are V1-only today), live-inventory
+    queries to run at execution, and the decisions deliberately
+    left open (jtd_number/status_id adopt-or-drop, invoices FK
+    shape, visit-execution stamping, Dec fossil statuses).
+    EXECUTION IS A SEPARATE, EXPLICIT OWNER DECISION.
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
 
 ═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
