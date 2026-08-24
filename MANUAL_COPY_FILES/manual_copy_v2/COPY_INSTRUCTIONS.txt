@@ -459,15 +459,104 @@ FIXES (all applied/deployed live):
   (hard-refresh UI; no API restart needed — API untouched)
 
   🧪 TEST (the DONE test, on signia)
-  - [ ] Subscription page (CN-1047 pending): "Pay ₹5,999" → Razorpay
-        → payment completes → VERIFY SUCCEEDS (the toast says the
-        plan is active, no "record update failed")
-  - [ ] Plan flips to active; allowances unlock; invoice shows
-        ₹5,999 paid / ₹17,997 balance
-  - [ ] OR fresh buy from Pricing Plans: checkout now asks ₹5,999,
-        not ₹23,996
-  - [ ] Tell me when done → I verify receipt, request row 'paid',
-        history note, and entitlements from the DB
+  - [x] DONE 2026-08-24 — verified live: RCP-10001 ₹5,999 razorpay,
+        request row 'paid' (pay_TTd1udKTD8IZ56), INV-10046
+        partially_paid 5999/23996, CN-1047 ACTIVE.
+  ⚠️ RECONCILIATION OPEN: pay_TQxEmvuuIQPCiX ₹23,996 CAPTURED on
+  Razorpay (18 Aug) with no receipt — refund recommended (booking it
+  would overpay the invoice by ₹5,999). Owner's dashboard action.
+
+═════════════════════════════════════════════════════════════════
+🧾 GST — plan invoices honor Tax Settings + tax records un-hidden
+   (owner-approved "build complete things", 2026-08-24)
+═════════════════════════════════════════════════════════════════
+Owner's framing (correct): there is no subscription infrastructure —
+plans ARE contracts. If the CONTRACT carries tax, the invoice gets it
+(generate_contract_invoices copies verbatim) and the tax-records
+surface lights up. The one gap: the plan payload builder hardcoded
+tax_total: 0. Also the "GST captured" view (TaxSummarySection,
+Sprint 4) was only rendered inside Operations → Group Sessions.
+
+  - contractnest-edge/supabase/migrations/subscriptions/002_plan_tax_from_settings_and_tax_summary_v2.sql
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    A) subscribe_tenant_to_plan: tax from the SELLER's Tax Settings
+       (display_mode + active t_tax_rates) at subscribe time —
+       no_tax → today's zeros · including_tax → sticker keeps,
+       tax carved out, instalments UNCHANGED · excluding_tax → tax
+       on top, every billing event grossed up so instalments still
+       sum to the invoice and due_now stays "the first instalment".
+       Contract gains selected_tax_rate_ids + tax_total +
+       tax_breakdown (wizard's exact shape; last component absorbs
+       rounding). Anchored splice on 5 verified anchors.
+    B) NEW get_tenant_tax_summary_v2(tenant, is_live, invoice_type
+       default null) — optional receivable/payable split; NULL is
+       byte-identical to V1 (verified live: IDENTICAL). V1 untouched.
+    HARNESS PROOFS (forced rollback, zero residue, vikuna's real
+    CGST 9 + SGST 9 rates):
+      T-A excluding: taxable 23996 + tax 4319.28 (2159.64+2159.64)
+          = grand 28315.28 · invoice auto-split 23996/4319.28/28315.28
+          · events grossed to 7078.82 · due_now 7078.82
+      T-B including: due_now 5999 unchanged · taxable 20335.59 +
+          tax 3660.41 = 23996 · events untouched · breakdown sums exact
+  - contractnest-edge/supabase/functions/finance/index.ts [FULL file]
+    v3 DEPLOYED LIVE: view=tax-summary → get_tenant_tax_summary_v2,
+    optional &invoice_type=receivable|payable (deployed v2 byte-
+    matched local before editing).
+  - contractnest-api/src/services/financeService.ts        [FULL file]
+  - contractnest-api/src/controllers/financeController.ts  [FULL file]
+    ?invoice_type= passthrough on GET /api/finance/tax-summary.
+  - contractnest-ui/src/hooks/queries/useFinanceQueries.ts [FULL file]
+    useTaxSummary({invoiceType}) + key includes the side.
+  - contractnest-ui/src/components/operations/finance/TaxSummarySection.tsx [FULL file]
+    Additive props invoiceType/title — Group Sessions usage unchanged.
+  - contractnest-ui/src/components/finance/GstMonthCard.tsx [NEW file]
+    The month's GST at a glance: collected (approx) + invoiced,
+    per side; hidden for no_tax tenants; click → /taxes.
+  - contractnest-ui/src/pages/taxes/index.tsx               [NEW file]
+    /taxes — the GST page, un-hidden: Money In / To Pay / Everything
+    lenses over the same month-wise table + CSV, link to Tax Settings.
+  - contractnest-ui/src/pages/money-in/index.tsx            [FULL file]
+    GST card (receivable side) under the signals.
+  - contractnest-ui/src/pages/to-pay/index.tsx              [FULL file]
+    GST card (payable side) under the headline.
+  - contractnest-ui/src/App.tsx                             [FULL file]
+    /taxes route registered.
+
+  ⚠️ PRICING NOTE: vikuna's Tax Settings currently say
+  excluding_tax → a NEW plan purchase will ask first-instalment
+  + 18% (₹7,078.82/quarter). To keep sticker prices (₹5,999 incl.
+  GST carved out), flip Settings → Tax Settings display mode to
+  "Including tax" BEFORE the next sale. The engine honors whichever
+  is set — that is the point of "based on tax settings".
+  Existing CN-1047 is untouched (no retro-tax on issued invoices).
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\002_plan_tax_from_settings_and_tax_summary_v2.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\002_plan_tax_from_settings_and_tax_summary_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\finance\index.ts" -Destination "contractnest-edge\supabase\functions\finance\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\financeService.ts" -Destination "contractnest-api\src\services\financeService.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\financeController.ts" -Destination "contractnest-api\src\controllers\financeController.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFinanceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useFinanceQueries.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\operations\finance\TaxSummarySection.tsx" -Destination "contractnest-ui\src\components\operations\finance\TaxSummarySection.tsx" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\finance" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\finance\GstMonthCard.tsx" -Destination "contractnest-ui\src\components\finance\GstMonthCard.tsx" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\taxes" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\taxes\index.tsx" -Destination "contractnest-ui\src\pages\taxes\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\money-in\index.tsx" -Destination "contractnest-ui\src\pages\money-in\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\to-pay\index.tsx" -Destination "contractnest-ui\src\pages\to-pay\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+  (restart contractnest-api — controller/service changed; hard-refresh UI)
+
+  🧪 TEST
+  - [ ] Settings → Tax Settings: set display mode as you want plan
+        pricing to behave (Including tax keeps ₹5,999 stickers)
+  - [ ] Buy/switch a plan on signia → invoice now shows taxable +
+        CGST + SGST + total (contract detail Financials shows the
+        tax chain)
+  - [ ] /money-in shows the "GST · <month>" card → click → /taxes
+        opens with Money In lens, real numbers, CSV works
+  - [ ] /to-pay shows the payable-side card (zero until vendor
+        bills carry tax) → same navigation
+  - [ ] Group Sessions page's existing tax section renders unchanged
 
 ═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
