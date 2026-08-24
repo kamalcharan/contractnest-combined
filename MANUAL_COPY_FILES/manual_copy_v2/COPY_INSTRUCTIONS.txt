@@ -546,6 +546,22 @@ Sprint 4) was only rendered inside Operations → Group Sessions.
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
   (restart contractnest-api — controller/service changed; hard-refresh UI)
 
+  ─────────────────────────────────────────────────────────────
+  🔧 FOLLOW-UP — credit packs / top-ups get the same tax treatment
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/subscriptions/003_topup_tax_from_settings.sql
+    purchase_topup_template (the OTHER payload builder over the
+    contract engine) had the identical tax_total: 0 gap. Same
+    anchored splice as 002; packs are one-shot so the checkout's
+    invoice_amount is automatically the tax-correct total.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS P-A (rolled back, vikuna's live excluding_tax):
+      ₹1,000 wallet top-up → contract 1000 + 180 GST = 1180 ·
+      invoice 1000/180/1180 · breakdown CGST 90 + SGST 90 ·
+      response invoice_amount 1180 (what checkout charges)
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Force
+
   🧪 TEST
   - [ ] Settings → Tax Settings: set display mode as you want plan
         pricing to behave (Including tax keeps ₹5,999 stickers)
