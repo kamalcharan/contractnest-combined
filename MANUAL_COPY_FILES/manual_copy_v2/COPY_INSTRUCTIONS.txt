@@ -397,6 +397,79 @@ STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
 
 ═════════════════════════════════════════════════════════════════
+💳 SUBSCRIPTIONS — quarterly checkout + gateway verify fixed
+   (owner-approved "go ahead fix", 2026-08-20)
+═════════════════════════════════════════════════════════════════
+Two live defects found on the plan-purchase flow (CN-1047, quarterly
+₹23,996 plan, signia subscriber):
+
+DEFECT 1 — EVERY gateway payment verification died. Deployed
+payment-gateway (v9) referenced `isLive` inside handleVerifyPayment
+without it being a parameter or module-scoped → ReferenceError on
+every verify-payment call → 500 → "record update failed" AFTER
+Razorpay collected. Proven: all 3 payment-request rows ever created
+stuck at 'created', zero ever 'paid'. (Razorpay dashboard confirmed
+nothing was actually captured — no money to reconcile.)
+
+DEFECT 2 — quarterly demanded the full term at checkout, and even
+₹5,999 could never have activated the plan: the buy flow charged the
+response's invoice_amount (the single full-term invoice — the
+platform's standing single-invoice pattern, same as BBB), and
+record_invoice_payment's STEP 4.5 required the invoice FULLY paid
+before activating. Owner rule (verbatim): "in any of the contract …
+contract is still valid on partial payments."
+
+FIXES (all applied/deployed live):
+  - contractnest-edge/supabase/functions/payment-gateway/index.ts [FULL file]
+    v10 DEPLOYED LIVE: isLive threaded into handleVerifyPayment
+    (param + router call). Nothing else changed — byte-diffed local
+    against deployed v9 before editing (identical modulo CRLF).
+  - contractnest-edge/supabase/migrations/subscriptions/001_first_instalment_checkout_and_partial_activation.sql
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    B) subscribe_tenant_to_plan returns due_now = first billing
+       event's amount from the schedule (₹5,999); invoice stays the
+       full term. Anchored splice, 3 anchors verified.
+    C) record_invoice_payment STEP 4.5: activates on FIRST successful
+       payment, partial included ('paid' → IN ('paid','partially_paid'),
+       full-payment gate removed, note now 'Auto-activated: payment
+       received'). PLATFORM-WIDE for payment-acceptance contracts —
+       deliberate, per the owner rule. BBB unaffected (no live
+       pending_acceptance+payment rows besides the plan contracts).
+    HARNESS PROOFS (forced rollback, zero residue):
+      S-B: re-subscribe quarterly → ok=true due_now=5999.00
+           invoice_amount=23996.00 requires_payment=true
+      S-C: ₹5,999 on CN-1047's real ₹23,996 invoice → contract
+           ACTIVE, invoice partially_paid (5999), history note
+           'Auto-activated: payment received'
+  - contractnest-ui/src/hooks/mutations/useSubscribeToPlan.ts  [FULL file]
+    PlanSubscriptionResult gains due_now.
+  - contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx [FULL file]
+    Buy flow charges due_now ?? invoice_amount (packs unchanged —
+    one-shot purchases are correctly full-amount).
+
+  NO DATA FIX NEEDED for CN-1047: it stays pending_acceptance with
+  its ₹23,996 invoice; the next ₹5,999 payment activates it.
+
+  Copy commands:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\subscriptions" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\001_first_instalment_checkout_and_partial_activation.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\001_first_instalment_checkout_and_partial_activation.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\payment-gateway\index.ts" -Destination "contractnest-edge\supabase\functions\payment-gateway\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\mutations\useSubscribeToPlan.ts" -Destination "contractnest-ui\src\hooks\mutations\useSubscribeToPlan.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Destination "contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Force
+  (hard-refresh UI; no API restart needed — API untouched)
+
+  🧪 TEST (the DONE test, on signia)
+  - [ ] Subscription page (CN-1047 pending): "Pay ₹5,999" → Razorpay
+        → payment completes → VERIFY SUCCEEDS (the toast says the
+        plan is active, no "record update failed")
+  - [ ] Plan flips to active; allowances unlock; invoice shows
+        ₹5,999 paid / ₹17,997 balance
+  - [ ] OR fresh buy from Pricing Plans: checkout now asks ₹5,999,
+        not ₹23,996
+  - [ ] Tell me when done → I verify receipt, request row 'paid',
+        history note, and entitlements from the DB
+
+═════════════════════════════════════════════════════════════════
 🔴 HISTORY — the note below records how Sprint 2 was missed; kept
    for the record. The 6-step plan above supersedes its NEXT ACTION.
 ═════════════════════════════════════════════════════════════════
