@@ -1,0 +1,36 @@
+COPY INSTRUCTIONS — bbb-schedule-label-date-fix
+=================================================
+
+SUBMODULES AFFECTED: contractnest-ui (only)
+
+FILES IN THIS FOLDER → DESTINATION (relative to contractnest-combined root):
+
+1. contractnest-ui\src\components\contracts\RecordPaymentDialog.tsx
+   -> contractnest-ui\src\components\contracts\RecordPaymentDialog.tsx
+
+2. contractnest-ui\src\components\contracts\EventCard.tsx
+   -> contractnest-ui\src\components\contracts\EventCard.tsx
+
+WHAT CHANGED (both files):
+- The billing-cycle label (e.g. "Monthly 2/9", "Quarterly 3/4") no longer shows the
+  trailing "N/M" fraction — display now reads just "Monthly", "Quarterly", etc.
+  This was a display-only fix: the stored label text could go stale after a contract
+  is restated/pro-rated (e.g. a paid installment still reading "1/12" after the
+  contract's total occurrences were corrected to 9), which was confusing members.
+  No data was changed — only how the label string is rendered.
+- The due-date text next to/under the label is now a visibly larger font:
+    RecordPaymentDialog.tsx : date row  9px  -> 11px (+ medium weight)
+    EventCard.tsx (full)    : date row  text-xs (12px) -> text-sm (14px) + semibold
+- Amounts, dates, sequence numbers, and the separate live "N/M" badge on the Tasks
+  timeline card (EventCard full variant) are UNCHANGED — that badge is already
+  computed live from sequence_number/total_occurrences, not from the stale text.
+
+WHERE THIS SHOWS UP IN THE APP:
+- Record Payment modal (dues checklist) — opened from a contract's invoice / event.
+- Contract "Tasks" tab timeline (seller) and "My Services" tab (buyer) — the
+  center-line vertical timeline cards.
+- Contract Timeline tab (grouped grid view) — reuses the same EventCard component.
+
+NOT INCLUDED / NOT CHANGED:
+- No API, edge function, or database changes.
+- No changes to contract amounts (confirmed intentional per BBB restatement).

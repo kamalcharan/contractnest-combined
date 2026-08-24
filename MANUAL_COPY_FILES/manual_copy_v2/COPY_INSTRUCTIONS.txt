@@ -1,0 +1,1102 @@
+═══════════════════════════════════════════════════════════════════
+📦 manual_copy_v2 — cumulative V2 batch (JTD Nucleus initiative)
+═══════════════════════════════════════════════════════════════════
+Branch: claude/tenant-bbb-data-issues-buwxqm
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+All files here are FULL files — copy over your local checkout directly,
+no manual merging. (Note: full-file replacement overwrites any local
+edits of your own in these exact files.)
+
+═════════════════════════════════════════════════════════════════
+🟢 JTD NUCLEUS — 6-STEP PLAN IN PROGRESS (owner-approved 2026-08-18)
+═════════════════════════════════════════════════════════════════
+Authority: ClaudeDocumentation/JTD/JTD-Framework.md (Dec 2025) — §1:
+"When a contract is created with 12 monthly services, JTD
+automatically creates 12 service_visit records." Golden rule: NO
+existing code changes; V2 siblings only; production/BBB untouched
+until an explicit, separate cutover decision (Step 6).
+
+STEP 1 — DONE (applied live 2026-08-18, all checks green):
+  - contractnest-edge/supabase/migrations/jtd-nucleus/001_step1_extend_njtd_jobs.sql
+    Additive only: 22 job columns on n_jtd (mirrors t_contract_events
+    column-for-column; job date uses existing scheduled_at), nullable
+    jtd_id + FK on t_invoice_receipt_allocations, ONE master row
+    (source type 'payment_scheduled' — service_scheduled's missing
+    payment twin; event types service_visit/payment already existed
+    since the Dec framework seed), 3 partial indexes.
+    ALREADY APPLIED LIVE — do not re-run (idempotent anyway).
+    Verified: 22/22 columns · alloc.jtd_id present · master row in ·
+    3/3 indexes · harness insert of a message row still works ·
+    0 job rows yet · all 443 existing reminder rows untouched ·
+    zero functions/triggers/views modified.
+  Copy command (source-of-record into the submodule):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\001_step1_extend_njtd_jobs.sql" -Force
+
+STEP 2 — DONE (applied live 2026-08-18, harness-proven both ways):
+  - contractnest-edge/supabase/migrations/jtd-nucleus/002_step2_jobs_at_creation.sql
+    A) Job lifecycles seeded into n_jtd_statuses for service_visit /
+       payment — codes taken from the REAL statuses live events use
+       (scheduled/due/paid/completed/overdue/bad_debt/cancelled),
+       guarded NOT EXISTS (December's rows kept; note: Dec had seeded
+       payment as created→pending→sent→delivered→READ — a payment
+       modeled as a MESSAGE; the December drift, fossilized).
+    B) create_contract_transaction_v2 (V2 workbench — nothing deployed
+       calls it) now writes ONE JOB ROW PER COMMITMENT in the create
+       transaction: service leg → service_visit/service_scheduled,
+       billing leg → payment/payment_scheduled, channel_code NULL,
+       contract_id set, status 'scheduled', chk_performer-safe.
+       computed_events CONSUMED (NULLed) — V1 activation materializer
+       no-ops benignly; a V2 contract never grows t_contract_events
+       rows. Framework §1 satisfied literally; Sprint 2 exit criterion
+       met. Verified-anchor splice + post-check.
+    ALREADY APPLIED LIVE — do not re-run (idempotent: marker-guarded).
+    HARNESS PROOF (forced-rollback, zero residue):
+      A: success=true · jobs=4 (2 service_visit + 2 payment) ·
+         pay_sum=1000=block total · computed_events NULL ·
+         legacy t_contract_events rows for the contract = 0
+      B: cadence refusal intact (CADENCE_UNFIT), no job residue
+      Residue checks: 0 job rows · 0 harness contracts · 443 message
+      rows intact · BBB untouched (its CN-1050, created via V1 during
+      this work, flowed normally — golden rule proven in live fire)
+  Copy command (source-of-record into the submodule):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\002_step2_jobs_at_creation.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\002_step2_jobs_at_creation.sql" -Force
+
+  ⚠️ EXPECTED between Step 2 and Step 3: a contract created via V2
+  routes shows an EMPTY schedule in the UI (readers still read
+  t_contract_events). Jobs are verifiable by query only. Step 3's V2
+  reader closes this — which is why the owner checkpoint waits there.
+
+STEP 3 — BUILT (DB+edge applied/deployed live; API+UI need your copy):
+  Owner-redesigned mid-step: ONE aggregate call instead of many
+  objects ("why so many hits") + state-aware polling.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/003_step3_get_contract_details_v2.sql
+    NEW RPC get_contract_details_v2(tenant, contract) — single call:
+    contract+blocks (COMPOSES V1 get_contract_by_id read-only),
+    events (n_jtd JOB rows mapped to the UI's exact ContractEvent
+    shape when present → source='jtd'; V1 get_contract_events_list
+    fallback for pre-nucleus contracts → source='legacy'),
+    cnak (grant WITHOUT secret — presence flag only),
+    invoices (COMPOSES V1 get_contract_invoices), as_of watermark.
+    ALREADY APPLIED LIVE. Tested: legacy era (test CN-1004:
+    source=legacy, 12 events, CNAK, ₹3,100 invoice) and jobs era
+    (harness contract: source=jtd, correct types/status, rolled
+    back). NOTE: a DRAFT shows cnak=null — correct, the code is
+    minted at send/activation (V1 semantics preserved).
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v3 DEPLOYED LIVE: adds GET /:id/details (POST create unchanged).
+
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+    GET /api/v2/contracts/:id/details chain.
+
+  - contractnest-ui/src/hooks/queries/useContractDetailsV2.ts    [NEW file]
+    The one hook: fetch aggregate → SEED the existing hooks' cache
+    keys (useContract detail key, both event-list filter variants
+    per_page 50/100, invoices key) so existing components render
+    UNMODIFIED from one response. Freshness: refetch-on-focus +
+    state-aware polling (pending/sent 15s · active 60s · terminal
+    off · hidden tab paused). Structural sharing = unchanged polls
+    re-render nothing.
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts      [FULL file]
+    useContract gains an ADDITIVE options.enabled (default
+    unchanged) so the page can disable its direct fetch in V2 mode
+    (a disabled query still reads the seeded cache).
+  - contractnest-ui/src/pages/contracts/detail/index.tsx         [FULL file]
+    Page wiring: aggregate hook drives; useContract +
+    useContractInvoices disabled in V2 mode (seeded instead).
+    ?useV1=1 on the URL restores the previous per-query fetching.
+
+  HONEST NUANCE (not hidden): tab components (Timeline, Equipment,
+  DualTrackPreview, etc.) still call their own events hook. On the
+  very FIRST page paint they may fire 1-2 V1 event fetches racing
+  the aggregate; once seeded (and on every tab switch/revisit),
+  they resolve from cache — no fetch. Full 4→1 consolidation on
+  first paint = pass enabled flags through those 5 components;
+  deliberately NOT done now (component drift), queued as Step 5
+  cleanup if you want it.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\003_step3_get_contract_details_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\003_step3_get_contract_details_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractDetailsV2.ts" -Destination "contractnest-ui\src\hooks\queries\useContractDetailsV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
+  (restart contractnest-api — new route; hard-refresh UI)
+
+  ─────────────────────────────────────────────────────────────
+  🔧 STEP 3 FIX — CN-1019 exposed the wizard's draft path
+  ─────────────────────────────────────────────────────────────
+  CN-1019 (first real wizard test): 0 jobs, 16 legacy events. The
+  screen looked right only because the aggregate's legacy fallback
+  rendered it. ROOT CAUSE (proven from t_contract_history): the
+  wizard creates an EMPTY DRAFT first (no computed_events → Step 2's
+  create-time block correctly skips), auto-saves via V1 updates,
+  then activates — where the V1 trigger materialized legacy events.
+  Bulk/VaNi single-shot creates were never affected.
+
+  THE SEAM (no V1 object touched): trg_queue_contract_events only
+  fires when computed_events IS NOT NULL. So the V2 status
+  transition materializes jobs + consumes the JSON FIRST, then
+  delegates to the untouched V1 engine — whose trigger skips by its
+  own guard.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/004_step3fix_status_v2_materializes_jobs.sql
+    NEW jtd_materialize_jobs_from_computed(contract, tenant)
+    (idempotent: skips if jobs exist / nothing to consume) +
+    NEW update_contract_status_v2(...) = materialize-if-activating,
+    then CALL the untouched V1 update_contract_status (composition:
+    CNAK minting, invoices, history all exactly V1).
+    ALREADY APPLIED LIVE. Harness-proven on the wizard's exact
+    lifecycle (draft create → draft save adds computed_events →
+    activate): ok=true, status=active, jobs=2, legacy=0, CNAK
+    minted, rolled back clean. (Also learned: V1 allows
+    draft→active only for auto-accept — harness confirmed.)
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v4 DEPLOYED LIVE: adds PATCH /:id/status.
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+    (+ bulk activation now rides the V2 status path; V1 service
+    import removed from the V2 controller entirely)
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts      [FULL file]
+    updateStatus → PATCH /api/v2/contracts/:id/status by default on
+    this branch (?useV1=1 falls back) + invalidates the details-v2
+    aggregate on any status change.
+
+  Copy commands (in addition to the Step 3 set above):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\004_step3fix_status_v2_materializes_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\004_step3fix_status_v2_materializes_jobs.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+  (restart contractnest-api; hard-refresh UI)
+
+  ⚠️ KNOWN REMAINING GAP (Step 4's exact territory, not hidden):
+  payment-acceptance contracts AUTO-ACTIVATE inside
+  record_invoice_payment (V1, DB-side) — that path bypasses the V2
+  status route, so a pay-before-activate V2 contract would still get
+  legacy events today. record_invoice_payment_v2 (Step 4) closes it.
+  CN-1019 itself stays as-is (16 legacy rows — renders fine via
+  fallback); say the word if you want it converted to jobs instead.
+
+  🧪 STEP 3 CHECKPOINT (your ~10 min — the DONE test)
+  - [ ] Create 1 wizard contract on signia → open its contract view
+        → schedule + tasks + invoice all visible
+  - [ ] Network tab: ONE `details` request carrying the page
+        (stragglers per the nuance note may appear on first paint)
+  - [ ] Tell me the contract number → I prove the on-screen rows ARE
+        n_jtd job ids and t_contract_events gained ZERO rows for it
+  - [ ] Open an OLD contract (e.g. CN-1008) → renders exactly as
+        before (source='legacy' fallback)
+  - [ ] Leave the view open on a pending contract ~1 min → watch the
+        details request repeat (state-aware polling)
+
+STEP 4 — BUILT (DB applied live + edge v5 deployed live; API+UI need
+your copy). Money now settles AGAINST JOB ROWS.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/006_step4_record_invoice_payment_v2.sql
+    A) t_invoice_receipt_allocations.contract_event_id drops NOT
+       NULL, replaced by CHECK (event OR jtd reference present) —
+       zero impact on V1 writers, they always supply the event id.
+    B) 'partial_payment' seeded for the payment JOB lifecycle
+       (guarded NOT EXISTS).
+    C) NEW record_invoice_payment_v2(p_payload) — composition,
+       zero V1 objects touched:
+         1.  PRE: jtd_materialize_jobs_from_computed — consumes
+             computed_events into jobs BEFORE the V1 core can
+             auto-activate, so pay-before-activate contracts get
+             JOBS, never legacy rows (closes the CN-1003-class gap
+             flagged at the end of Step 3).
+         1b. LEGACY DELEGATION: a contract with NO job rows
+             (pre-nucleus) delegates WHOLESALE to the untouched V1
+             record_invoice_payment_with_allocations — byte-
+             identical legacy behavior including event settlement.
+             Same decision rule as the aggregate's events.source;
+             the response carries settlement_path='jtd'|'legacy' so
+             which spine took the money is never ambiguous. (This
+             matters because the UI now sends ALL record-payments
+             through the V2 route.)
+         2.  The untouched V1 record_invoice_payment core: receipt
+             (self-healing number), invoice header, STEP 4.5
+             auto-activation — exactly V1.
+         3.  SETTLE JOBS: client event_allocations (ids are JOB ids
+             on a V2 contract; must sum to the amount, same rule as
+             V1) or FIFO across open payment jobs by scheduled_at.
+             Allocation rows carry jtd_id (contract_event_id NULL);
+             job amount_settled bumps; status → 'paid' /
+             'partial_payment' (V1's exact strings, so the screen
+             renders identically through the aggregate).
+    ALREADY APPLIED LIVE — do not re-run (idempotent anyway).
+    HARNESS PROOFS (forced rollback, zero residue, re-run after the
+    legacy-delegation addition):
+      A  (jobs, split pays): pay 700 FIFO → 2 jobs (1 paid + 1
+         partial) → pay 300 → both paid; 3 allocations all jtd_id,
+         0 event; invoice paid, balance 0; legacy rows 0
+      A' (CN-1005 live signia, ₹11,600 invoice): ok=true path=jtd
+         settled=700/2 allocs_jtd=2 allocs_evt=0 → rolled back
+      B  (pay-before-activate): draft with parked computed_events →
+         pending_acceptance invoice → pay in full → pay_ok=true
+         activated=true final_status=active jobs=2 paid_jobs=1
+         allocs_jtd=1 legacy=0
+      C  (LEGACY contract CN-1019, 16 events 0 jobs): ok=true
+         path=legacy allocs_evt=1 allocs_jtd=0 event 'paid' settled
+         9000, invoice paid, jobs fabricated=0 → rolled back
+
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts   [FULL file]
+    v5 DEPLOYED LIVE: adds POST /:id/record-payment (payload built
+    exactly like V1's handleRecordPayment: contract_id from path,
+    tenant/is_live from headers, recorded_by = header user or body).
+  - contractnest-api/src/services/contractServiceV2.ts           [FULL file]
+    recordPayment() — mirrors V1 contractService.recordPayment
+    payload ({...paymentData, recorded_by: userId}).
+  - contractnest-api/src/controllers/contractControllerV2.ts     [FULL file]
+    recordPayment handler (validates invoice_id + amount).
+  - contractnest-api/src/routes/contractRoutesV2.ts              [FULL file]
+    POST /api/v2/contracts/:id/record-payment.
+  - contractnest-ui/src/hooks/queries/useInvoiceQueries.ts       [FULL file]
+    useRecordPayment → V2 endpoint by default on this branch
+    (?useV1=1 falls back), same body; onSuccess additionally
+    invalidates the details-v2 aggregate so the paid job flips on
+    screen without a manual refresh.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+  (restart contractnest-api — new route; hard-refresh UI)
+
+  🧪 STEP 4 CHECKPOINT (your ~5 min — the DONE test)
+  - [ ] Open CN-1005 (live signia) → Record Payment on its ₹11,600
+        invoice — pay a PARTIAL amount (e.g. ₹700)
+  - [ ] Screen updates without manual refresh: first payment due
+        flips paid, next one shows partial (or per your allocation)
+  - [ ] Tell me when done → I prove the allocations carry jtd_id
+        (not contract_event_id), job rows read paid/partial_payment,
+        invoice header matches, and t_contract_events still has
+        ZERO rows for CN-1005
+  - [ ] Record a payment on an OLD contract (e.g. CN-1008/CN-1019
+        with ?useV1=0 left off — just use the normal screen) →
+        behaves exactly as before (settlement_path='legacy'
+        delegation to the untouched V1 wrapper)
+
+  ⚠️ KNOWN, DOCUMENTED, NOT HIDDEN: reminder crons still read
+  t_contract_events, so V2 (jobs-era) contracts get no payment/
+  service reminders until cutover — Step 6 territory.
+
+STEP 5 — IN PROGRESS (audit script written; first live run pending —
+the session's DB connection dropped right as Step 5 started; the
+script runs unchanged whenever either side has a connection).
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/audit_step5_confidence_gate.sql
+    THE CONFIDENCE GATE. Read-only — creates nothing, writes nothing,
+    re-runnable forever. Audits every contract that has JOB rows
+    (structural definition of "V2-era"; BBB has none so it is
+    naturally out of scope). Three result sets:
+      1. One row per contract × 10 checks + verdict:
+         no-legacy-events · computed_events consumed · sequences
+         contiguous & match total_occurrences · dates inside term ·
+         Σ payment jobs = grand_total = Σ invoices · Σ settled =
+         Σ jtd allocations = Σ invoice paid · status honesty
+         (paid/partial/scheduled vs settled, 0.005 tolerance) ·
+         CNAK present on active · no messenger-machine damage on any
+         job row · no V1-only path touched (cancelled receipt /
+         cancelled invoice / legacy-targeted allocation).
+      2. Whole-database structural residue (must all be 0): orphan
+         jobs, allocations aimed at message rows, allocations with
+         no target, duplicate job identities, job rows carrying a
+         channel.
+      3. WHO has jobs, per tenant/env — informational, so an
+         unexpected tenant with jobs is seen, not assumed.
+    Gate is GREEN only when set 1 is all-PASS and set 2 is all-zero.
+    On any FAIL the diag_* columns say which numbers disagreed; fix,
+    re-run the same file.
+
+  ⚠️ Finding while writing it (chk10's reason to exist): the
+  cancel-receipt / cancel-invoice / write-off paths are still
+  V1-ONLY — they reverse t_contract_events, not jobs. Cancelling a
+  receipt on a jobs contract today would un-pay the invoice header
+  while the job stayed 'paid'. Until those paths get V2 siblings,
+  chk10 failing on a contract means its settlement numbers are
+  suspect. No such row exists as of writing; the check keeps it that
+  way visibly.
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\audit_step5_confidence_gate.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\audit_step5_confidence_gate.sql" -Force
+
+  🧪 STEP 5 CHECKPOINT (owner's side, through the normal UI)
+  ~4 more contracts so the audit has corner cases to bite on:
+  - [ ] Bad-template BULK assign (cadence that can't fit) → every
+        item refused, zero contracts, zero residue (set 2 stays 0)
+  - [ ] EMI / multi-invoice contract → instalment invoices reconcile
+        against payment jobs (chk5/chk6)
+  - [ ] Pay-before-activate through the real UI (payment-acceptance
+        contract, pay first) → activates with jobs, zero legacy rows
+  - [ ] One ordinary wizard contract as a control
+  Then the audit runs again; DONE = all PASS + all zeros, and that
+  table is what Step 6's cutover package gets written against.
+
+  ─────────────────────────────────────────────────────────────
+  🔧 STEP 5 FIX — paid jobs now carry their completion stamp
+     (owner-approved "fix it", 2026-08-20)
+  ─────────────────────────────────────────────────────────────
+  Found walking CN-1005's raw n_jtd rows with the owner: a job that
+  reached 'paid' kept completed_at NULL, and its transition_note
+  still showed the stale sweeper-repair text from migration 005.
+
+  - contractnest-edge/supabase/migrations/jtd-nucleus/007_step5fix_job_completion_stamp.sql
+    record_invoice_payment_v2 re-issued (same body + exactly this):
+    on 'paid' → completed_at = now() and transition_note = 'settled
+    by receipt <number>'; on 'partial_payment' → note only, no
+    stamp. Receipt number comes from the V1 core's own response.
+    One-time repair stamped CN-1005's two paid rows (completed_at =
+    their real settlement moment 2026-08-20 08:18 UTC, note
+    'settled by receipt RCP-10003'), idempotent WHERE.
+    ALREADY APPLIED LIVE — do not re-run (safe if you do).
+    HARNESS D (forced rollback, zero residue): pay 900 FIFO →
+    covered job paid + stamped + noted RCP-10004; next job
+    partial_payment, unstamped, 'partially settled by receipt
+    RCP-10004'. Verified live post-repair: both CN-1005 paid rows
+    stamped and honestly noted.
+    Deliberately NOT touched (decisions, not oversights):
+    jtd_number / status_id — dormant on ALL 522 n_jtd rows since the
+    Dec seed (zero rows populated, no generator exists anywhere);
+    adopt-or-drop belongs to the Step 6 cutover decision. And
+    executed_at on payment jobs stays NULL by design — nothing
+    dispatches a payment job; money arriving completes it.
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\007_step5fix_job_completion_stamp.sql" -Force
+
+STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
+  - ClaudeDocumentation/jtd-cutover-package.md
+    The full cutover plan: id-preserving copy t_contract_events →
+    n_jtd (n_jtd.id = event id, so allocation/invoice FKs swap by
+    value), 6 phases (copy → FK swap → writers → readers → route
+    flip → retirement), 5-minute rollback holds through Phase 5,
+    signia-first / BBB-last tenant gating, entry criteria (incl.
+    the three corner cases not exercised when Step 5 closed on
+    owner's call, and the ONE build item: cancel/write-off V2
+    siblings — those paths are V1-only today), live-inventory
+    queries to run at execution, and the decisions deliberately
+    left open (jtd_number/status_id adopt-or-drop, invoices FK
+    shape, visit-execution stamping, Dec fossil statuses).
+    EXECUTION IS A SEPARATE, EXPLICIT OWNER DECISION.
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
+
+═════════════════════════════════════════════════════════════════
+💳 SUBSCRIPTIONS — quarterly checkout + gateway verify fixed
+   (owner-approved "go ahead fix", 2026-08-20)
+═════════════════════════════════════════════════════════════════
+Two live defects found on the plan-purchase flow (CN-1047, quarterly
+₹23,996 plan, signia subscriber):
+
+DEFECT 1 — EVERY gateway payment verification died. Deployed
+payment-gateway (v9) referenced `isLive` inside handleVerifyPayment
+without it being a parameter or module-scoped → ReferenceError on
+every verify-payment call → 500 → "record update failed" AFTER
+Razorpay collected. Proven: all 3 payment-request rows ever created
+stuck at 'created', zero ever 'paid'. (Razorpay dashboard confirmed
+nothing was actually captured — no money to reconcile.)
+
+DEFECT 2 — quarterly demanded the full term at checkout, and even
+₹5,999 could never have activated the plan: the buy flow charged the
+response's invoice_amount (the single full-term invoice — the
+platform's standing single-invoice pattern, same as BBB), and
+record_invoice_payment's STEP 4.5 required the invoice FULLY paid
+before activating. Owner rule (verbatim): "in any of the contract …
+contract is still valid on partial payments."
+
+FIXES (all applied/deployed live):
+  - contractnest-edge/supabase/functions/payment-gateway/index.ts [FULL file]
+    v10 DEPLOYED LIVE: isLive threaded into handleVerifyPayment
+    (param + router call). Nothing else changed — byte-diffed local
+    against deployed v9 before editing (identical modulo CRLF).
+  - contractnest-edge/supabase/migrations/subscriptions/001_first_instalment_checkout_and_partial_activation.sql
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    B) subscribe_tenant_to_plan returns due_now = first billing
+       event's amount from the schedule (₹5,999); invoice stays the
+       full term. Anchored splice, 3 anchors verified.
+    C) record_invoice_payment STEP 4.5: activates on FIRST successful
+       payment, partial included ('paid' → IN ('paid','partially_paid'),
+       full-payment gate removed, note now 'Auto-activated: payment
+       received'). PLATFORM-WIDE for payment-acceptance contracts —
+       deliberate, per the owner rule. BBB unaffected (no live
+       pending_acceptance+payment rows besides the plan contracts).
+    HARNESS PROOFS (forced rollback, zero residue):
+      S-B: re-subscribe quarterly → ok=true due_now=5999.00
+           invoice_amount=23996.00 requires_payment=true
+      S-C: ₹5,999 on CN-1047's real ₹23,996 invoice → contract
+           ACTIVE, invoice partially_paid (5999), history note
+           'Auto-activated: payment received'
+  - contractnest-ui/src/hooks/mutations/useSubscribeToPlan.ts  [FULL file]
+    PlanSubscriptionResult gains due_now.
+  - contractnest-ui/src/pages/settings/businessmodel/tenants/pricing-plans/index.tsx [FULL file]
+    Buy flow charges due_now ?? invoice_amount (packs unchanged —
+    one-shot purchases are correctly full-amount).
+
+  NO DATA FIX NEEDED for CN-1047: it stays pending_acceptance with
+  its ₹23,996 invoice; the next ₹5,999 payment activates it.
+
+  Copy commands:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\subscriptions" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\001_first_instalment_checkout_and_partial_activation.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\001_first_instalment_checkout_and_partial_activation.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\payment-gateway\index.ts" -Destination "contractnest-edge\supabase\functions\payment-gateway\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\mutations\useSubscribeToPlan.ts" -Destination "contractnest-ui\src\hooks\mutations\useSubscribeToPlan.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Destination "contractnest-ui\src\pages\settings\businessmodel\tenants\pricing-plans\index.tsx" -Force
+  (hard-refresh UI; no API restart needed — API untouched)
+
+  🧪 TEST (the DONE test, on signia)
+  - [x] DONE 2026-08-24 — verified live: RCP-10001 ₹5,999 razorpay,
+        request row 'paid' (pay_TTd1udKTD8IZ56), INV-10046
+        partially_paid 5999/23996, CN-1047 ACTIVE.
+  ⚠️ RECONCILIATION OPEN: pay_TQxEmvuuIQPCiX ₹23,996 CAPTURED on
+  Razorpay (18 Aug) with no receipt — refund recommended (booking it
+  would overpay the invoice by ₹5,999). Owner's dashboard action.
+
+═════════════════════════════════════════════════════════════════
+🧾 GST — plan invoices honor Tax Settings + tax records un-hidden
+   (owner-approved "build complete things", 2026-08-24)
+═════════════════════════════════════════════════════════════════
+Owner's framing (correct): there is no subscription infrastructure —
+plans ARE contracts. If the CONTRACT carries tax, the invoice gets it
+(generate_contract_invoices copies verbatim) and the tax-records
+surface lights up. The one gap: the plan payload builder hardcoded
+tax_total: 0. Also the "GST captured" view (TaxSummarySection,
+Sprint 4) was only rendered inside Operations → Group Sessions.
+
+  - contractnest-edge/supabase/migrations/subscriptions/002_plan_tax_from_settings_and_tax_summary_v2.sql
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    A) subscribe_tenant_to_plan: tax from the SELLER's Tax Settings
+       (display_mode + active t_tax_rates) at subscribe time —
+       no_tax → today's zeros · including_tax → sticker keeps,
+       tax carved out, instalments UNCHANGED · excluding_tax → tax
+       on top, every billing event grossed up so instalments still
+       sum to the invoice and due_now stays "the first instalment".
+       Contract gains selected_tax_rate_ids + tax_total +
+       tax_breakdown (wizard's exact shape; last component absorbs
+       rounding). Anchored splice on 5 verified anchors.
+    B) NEW get_tenant_tax_summary_v2(tenant, is_live, invoice_type
+       default null) — optional receivable/payable split; NULL is
+       byte-identical to V1 (verified live: IDENTICAL). V1 untouched.
+    HARNESS PROOFS (forced rollback, zero residue, vikuna's real
+    CGST 9 + SGST 9 rates):
+      T-A excluding: taxable 23996 + tax 4319.28 (2159.64+2159.64)
+          = grand 28315.28 · invoice auto-split 23996/4319.28/28315.28
+          · events grossed to 7078.82 · due_now 7078.82
+      T-B including: due_now 5999 unchanged · taxable 20335.59 +
+          tax 3660.41 = 23996 · events untouched · breakdown sums exact
+  - contractnest-edge/supabase/functions/finance/index.ts [FULL file]
+    v3 DEPLOYED LIVE: view=tax-summary → get_tenant_tax_summary_v2,
+    optional &invoice_type=receivable|payable (deployed v2 byte-
+    matched local before editing).
+  - contractnest-api/src/services/financeService.ts        [FULL file]
+  - contractnest-api/src/controllers/financeController.ts  [FULL file]
+    ?invoice_type= passthrough on GET /api/finance/tax-summary.
+  - contractnest-ui/src/hooks/queries/useFinanceQueries.ts [FULL file]
+    useTaxSummary({invoiceType}) + key includes the side.
+  - contractnest-ui/src/components/operations/finance/TaxSummarySection.tsx [FULL file]
+    Additive props invoiceType/title — Group Sessions usage unchanged.
+  - contractnest-ui/src/components/finance/GstMonthCard.tsx [NEW file]
+    The month's GST at a glance: collected (approx) + invoiced,
+    per side; hidden for no_tax tenants; click → /taxes.
+  - contractnest-ui/src/pages/taxes/index.tsx               [NEW file]
+    /taxes — the GST page, un-hidden: Money In / To Pay / Everything
+    lenses over the same month-wise table + CSV, link to Tax Settings.
+  - contractnest-ui/src/pages/money-in/index.tsx            [FULL file]
+    GST card (receivable side) under the signals.
+  - contractnest-ui/src/pages/to-pay/index.tsx              [FULL file]
+    GST card (payable side) under the headline.
+  - contractnest-ui/src/App.tsx                             [FULL file]
+    /taxes route registered.
+
+  ⚠️ PRICING NOTE: vikuna's Tax Settings currently say
+  excluding_tax → a NEW plan purchase will ask first-instalment
+  + 18% (₹7,078.82/quarter). To keep sticker prices (₹5,999 incl.
+  GST carved out), flip Settings → Tax Settings display mode to
+  "Including tax" BEFORE the next sale. The engine honors whichever
+  is set — that is the point of "based on tax settings".
+  Existing CN-1047 is untouched (no retro-tax on issued invoices).
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\002_plan_tax_from_settings_and_tax_summary_v2.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\002_plan_tax_from_settings_and_tax_summary_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\finance\index.ts" -Destination "contractnest-edge\supabase\functions\finance\index.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\financeService.ts" -Destination "contractnest-api\src\services\financeService.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\financeController.ts" -Destination "contractnest-api\src\controllers\financeController.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFinanceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useFinanceQueries.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\operations\finance\TaxSummarySection.tsx" -Destination "contractnest-ui\src\components\operations\finance\TaxSummarySection.tsx" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\finance" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\finance\GstMonthCard.tsx" -Destination "contractnest-ui\src\components\finance\GstMonthCard.tsx" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\taxes" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\taxes\index.tsx" -Destination "contractnest-ui\src\pages\taxes\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\money-in\index.tsx" -Destination "contractnest-ui\src\pages\money-in\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\to-pay\index.tsx" -Destination "contractnest-ui\src\pages\to-pay\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+  (restart contractnest-api — controller/service changed; hard-refresh UI)
+
+  ─────────────────────────────────────────────────────────────
+  🔧 FOLLOW-UP — credit packs / top-ups get the same tax treatment
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/subscriptions/003_topup_tax_from_settings.sql
+    purchase_topup_template (the OTHER payload builder over the
+    contract engine) had the identical tax_total: 0 gap. Same
+    anchored splice as 002; packs are one-shot so the checkout's
+    invoice_amount is automatically the tax-correct total.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS P-A (rolled back, vikuna's live excluding_tax):
+      ₹1,000 wallet top-up → contract 1000 + 180 GST = 1180 ·
+      invoice 1000/180/1180 · breakdown CGST 90 + SGST 90 ·
+      response invoice_amount 1180 (what checkout charges)
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Force
+
+  🧪 TEST
+  - [ ] Settings → Tax Settings: set display mode as you want plan
+        pricing to behave (Including tax keeps ₹5,999 stickers)
+  - [ ] Buy/switch a plan on signia → invoice now shows taxable +
+        CGST + SGST + total (contract detail Financials shows the
+        tax chain)
+  - [ ] /money-in shows the "GST · <month>" card → click → /taxes
+        opens with Money In lens, real numbers, CSV works
+  - [ ] /to-pay shows the payable-side card (zero until vendor
+        bills carry tax) → same navigation
+  - [ ] Group Sessions page's existing tax section renders unchanged
+
+═════════════════════════════════════════════════════════════════
+🔴 HISTORY — the note below records how Sprint 2 was missed; kept
+   for the record. The 6-step plan above supersedes its NEXT ACTION.
+═════════════════════════════════════════════════════════════════
+The JTD Nucleus spec (written this session, previously living ONLY
+in an ephemeral session scratchpad — now rescued into this folder
+as ClaudeDocumentation/jtd-nucleus-spec.html) defines Sprint 2's
+exit criterion verbatim:
+
+  "Wizard-created contracts produce contract + events + JTD
+   COMMITMENTS in one transaction, verified on staged data."
+
+THAT WAS NOT DELIVERED. create_contract_transaction_v2 today
+produces contract + events and ZERO JTD commitment rows
+(verified live: position('n_jtd' in prosrc) = 0).
+
+How it went wrong, recorded so it isn't repeated:
+  1. Sprint 2's JTD insert was built as a NOTIFICATION — hardcoded
+     'email' channel, no registered template, born to fail. The
+     spec calls for a COMMITMENT ("JTD owns what's owed and its
+     state"), not a dispatch attempt.
+  2. Owner correctly rejected the broken notification.
+  3. It was then DELETED OUTRIGHT (migration 005) and logged as
+     "drift cleanup" — but it was not drift, it was the sprint's
+     actual deliverable. The right move was to rebuild it as a
+     commitment, not remove it.
+  4. All later work (cadence backstop, quantity semantics, bulk
+     idempotency) sits on a Sprint 2 that never closed.
+
+⚠️ Every "JTD looks correct" report in this session validated the
+REMINDER pipeline (events → cron → n_jtd reminders), which is
+healthy and always was. The COMMITMENT spine the spec is built on
+has never been created — not for one contract, not in 22.
+
+Milestone 1 status against the spec:
+  Sprint 1 JTD maturity audit ............... done
+  Sprint 2 contract+events+JTD commitments .. OPEN (see above)
+  Sprint 3 five callers on V2 ............... partial (wizard,
+           template assign, bulk done; plan subscription + top-up
+           V2 siblings exist but are NOT wired to any caller)
+  Sprint 4 template parity .................. partial (audit only)
+  Sprint 5 confidence gate, 25+ contracts ... NOT RUN (22 exist)
+
+NEXT ACTION when this is picked up: build the JTD commitment
+insert inside create_contract_transaction_v2 per spec §04's
+conditional lifecycle (billing and group-session commitments never
+need an appointment; service ones sometimes do) — as a commitment
+row with real state, NOT a notification.
+
+─────────────────────────────────────────────────────────────────
+📄 ClaudeDocumentation/jtd-nucleus-spec.html   [RESCUED FILE]
+─────────────────────────────────────────────────────────────────
+The initiative spec. It existed only under the session scratchpad
+(/tmp/...), which is destroyed when the container is reclaimed —
+it would have been lost. Copy it into the ClaudeDocumentation
+submodule so it is version-controlled and readable without a
+Claude session.
+
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-nucleus-spec.html" -Destination "ClaudeDocumentation\jtd-nucleus-spec.html" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Bulk assign: no contract limit, real idempotency,
+   duplicate-PERSON alert (owner decision, 2026-08-17)
+─────────────────────────────────────────────────────────────────
+WHAT WAS WRONG: bulk refused to create for any buyer already
+holding an active/pending contract from the same template. That is
+a permanent BUSINESS RULE wearing an idempotency label — and no
+such rule exists. A second site, a second unit, an early renewal
+are all legitimate reasons for one contact to hold two contracts
+from one template. Worse, it was silent (no pre-flight warning;
+members just vanished from the batch), and it did NOT actually
+protect against double-submission — the bulk loop never sent an
+idempotency key at all. This came from V1; the previous batch
+hardened it (fail-closed + is_live/is_active filters) without
+questioning the premise, which made a wrong rule stricter.
+
+  - contractnest-api/src/controllers/contractControllerV2.ts  [FULL file]
+  - contractnest-api/src/services/contractServiceV2.ts        [FULL file]
+    · The already-assigned lookup and the skip branch are GONE;
+      findAssignedBuyerIdsV2 removed entirely. Nothing limits how
+      many contracts a contact may hold.
+    · REAL idempotency instead: the client stamps one key per
+      submission attempt, each item derives `<batchKey>:<buyerId>`,
+      and that rides the existing x-idempotency-key path
+      (service → contracts-v2 edge fn → check_idempotency /
+      store_idempotency inside the RPC — already plumbed, verified
+      end to end). A replayed request returns the stored response;
+      a DELIBERATE later assignment carries a new key and correctly
+      creates another contract.
+    · summary.skipped kept in the response shape (always 0) so
+      existing callers don't break.
+    · body.template_id still accepted but no longer read (it only
+      fed the removed lookup); each item's request already carries
+      its own template_id.
+
+  - contractnest-ui/src/hooks/useContractSubmission.ts        [FULL file]
+    Generates the per-submission key (crypto.randomUUID with a
+    timestamp+random fallback) and sends it as idempotency_key.
+
+  - contractnest-ui/src/components/contracts/vani/BulkAssignDialog.tsx [FULL file]
+    Duplicate-PERSON advisory (not a limit): flags when the same
+    human appears twice in the batch under two contact records,
+    detected by a shared mobile / whatsapp / email. Phone numbers
+    normalise to their last 10 digits, so +91-98495 02193,
+    09849502193 and 9849502193 all collapse to one person; emails
+    compare case-insensitively. A contact listing the same number
+    twice is NOT counted as two people. Renders as an amber panel
+    above the action buttons — "X and Y share the mobile number
+    NNNN … each will still get its own contract, deselect one if
+    that isn't intended". Nothing is blocked or skipped.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\useContractSubmission.ts" -Destination "contractnest-ui\src\hooks\useContractSubmission.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Destination "contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Force
+  (restart contractnest-api — controller + service changed)
+
+  🧪 TEST
+  - [ ] Bulk-assign the SAME template to members who already have
+        one → contracts ARE created now (no silent skip). This is
+        the behaviour change; previously every one was skipped.
+  - [ ] Those members end up with 2 contracts each, both active,
+        each with its OWN CNAK
+  - [ ] Normal bulk to fresh members → unchanged
+  - [ ] Duplicate-person alert: signia has NO contacts sharing a
+        mobile/email today, so the panel will NOT appear on current
+        data. To see it, create a second contact reusing an existing
+        contact's mobile number, select both, and the amber panel
+        should name both people and the shared number.
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Billing count is QUANTITY, not the calendar
+   (owner-confirmed rule, 2026-08-16)
+─────────────────────────────────────────────────────────────────
+THE RULE: quantity is the COUNT, the cycle is the SPACING.
+  qty 1 + 15-day cycle  = 1 occurrence
+  qty 3 + 15-day cycle  = 3 occurrences, 15 days apart
+Price already followed this (totalPrice = unitPrice × quantity, set
+in ServiceBlocksStep) — the billing engine did not.
+
+THE BUG (found on test CN-1001): when qty <= 1 the engine took the
+COUNT from the calendar (ceil(term ÷ period) = 13) while the PRICE
+still came from quantity (unit × 1 = ₹600) — two different sources
+— so ₹600 was DIVIDED into 13 × ₹46.15 instead of billed once. Same
+class as CN-1002: pricing and scheduling disagreeing.
+
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts     [FULL file]
+  - contractnest-api/src/services/contractEventsDerivationService.ts  [FULL file]
+    BOTH copies changed in lockstep, verified byte-identical.
+    Recurring-billing branch now: count = quantity.
+    ONE exception kept, and only one: a visit-generating block whose
+    BILLING cycle DIFFERS from its SERVICE cycle holds two genuinely
+    different schedules that one quantity field cannot express —
+    there quantity = VISITS and the bill count derives from the term
+    ("18 visits every 18 days, billed monthly, 1 year" = 18 visits,
+    12 bills — the previously-approved behaviour, UNCHANGED). When
+    the two cycles MATCH they are one schedule: bills = visits = qty.
+    The dead ceil() fallback (countRecurringPeriods) is no longer
+    called from the billing branch.
+
+    Cadence gate + SQL backstop needed NO change and were not
+    touched: for matching cycles the service-leg check already tests
+    the identical product ((qty−1) × cycleDays), so the billing-leg
+    skip stays correct. Only the stale comment was refreshed.
+
+  EFFECT on the CN-1001 case:
+    qty 1,  cycle 30d → 1 bill  of ₹600   (was 13 × ₹46.15)
+    qty 13, cycle 30d → 13 bills of ₹600 = ₹7,800  ← what you wanted
+
+  ⚠️ BBB — READ BEFORE MERGING. BBB's 67 fee blocks store
+  quantity = 1 with total_price ≠ unit × quantity (₹18,000 vs
+  ₹1,500 monthly; ₹18,000 vs ₹4,500 quarterly) — legacy hand-set
+  data that already violates the wizard's own pricing rule.
+    · NOTHING breaks today: their events are long materialised and
+      are never re-derived.
+    · Their live "12 × ₹1,500" is RESTATED DATA (migrations 061-065),
+      not engine output. The engine would produce 13 × ₹1,384.62
+      today (the exact number the old code comment warned about) and
+      1 × ₹18,000 after this change — both wrong, because qty = 1 is
+      wrong data.
+    · A BBB RENEWAL through the wizard would therefore be wrong
+      either way. The durable fix is a data correction — monthly
+      blocks qty 1 → 12, quarterly qty 1 → 4 (both then satisfy
+      unit × qty = ₹18,000) — NOT DONE, awaiting your decision.
+      One quarterly block sits at ₹12,000 / unit ₹4,500 (mid-year
+      joiner) and does not divide evenly; it needs its own call.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying)
+
+  🧪 TEST
+  - [ ] HVAC template block, qty 1, 30-day cycle, 1 year → ONE
+        billing event of ₹600 (not 13 × ₹46.15)
+  - [ ] Same block, qty 13 → 13 events of ₹600, total ₹7,800,
+        contract grand_total agrees with the schedule
+  - [ ] Fee/billing-only block qty 12 monthly → 12 × unit (unchanged)
+  - [ ] Visit block, 18 visits every 18 days, billed MONTHLY, 1 year
+        → still 18 visits + 12 monthly bills (unchanged)
+  - [ ] Events Preview total == invoice total on every case above
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Zero-price billing events stored NULL instead of 0
+   (found on test CN-1001, 2026-08-16)
+─────────────────────────────────────────────────────────────────
+Found auditing CN-1001 (created from "1st Test Template"): its two
+₹0 blocks (Blower & Fan Maintenance, Component Removal &
+Assessment) produced billing events with amount = NULL, not 0.
+
+ROOT CAUSE: `amount: event.amount || undefined` — `0 || undefined`
+evaluates to undefined, so a genuine zero amount was silently
+dropped on the way to the payload. Present in BOTH parity copies.
+A NULL-amount billing event reads as "unpriced" downstream rather
+than "free", which is a different thing.
+
+  - contractnest-ui/src/components/contracts/ContractWizard/logic/mapper.ts  [FULL file]
+  - contractnest-api/src/services/contractEventsDerivationService.ts         [FULL file]
+    `||` → `??` in both, in lockstep (parity contract preserved).
+    Zero-price blocks now persist an explicit 0.
+    NO BBB risk: the only rows this changes are ones that store
+    NULL today; every priced event is byte-identical.
+    NOT retro-fixed: existing NULL rows (incl. test CN-1001's two)
+    are left as they are — say the word if you want them backfilled.
+
+  Copy commands:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying)
+
+  ⏳ STILL OPEN (awaiting owner decision, not built): the same
+  CN-1001 audit found a ₹600 30-day-cycle block billed as 13 ×
+  ₹46.15 instead of 13 × ₹600. Root cause: the billing COUNT came
+  from the calendar (13 periods fit) while the PRICE came from
+  quantity (unit × 1), so the money was divided rather than
+  multiplied. Proposed fix is to extend the existing group-session
+  `autoCount` mechanism to any recurring-cycle block (quantity
+  auto-derives, price multiplies, user sees it in the wizard) —
+  plus a decision on whether bills should equal visits when a
+  block's billing cycle equals its service cycle.
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Template-flow hardening: cadence backstop in V2 RPC,
+   bulk assign moved onto V2, fail-closed dedup (2026-08-15)
+─────────────────────────────────────────────────────────────────
+From the template audit (creation / assign / bulk), owner-approved.
+Scope: the four contract-template flows only — business-model
+templates deliberately untouched.
+
+  - contractnest-edge/supabase/migrations/contracts-v2/006_cadence_backstop_v2.sql
+    Cadence-fit backstop INSIDE create_contract_transaction_v2 —
+    SQL port of the wizard gate computeCadenceViolations() (same
+    rule, same constants). Refuses a payload whose block cadence
+    can't fit the contract duration (error_code CADENCE_UNFIT)
+    BEFORE any side effect: no sequence burned, nothing inserted.
+    Covers every entry path the UI gate can't: VaNi single assign,
+    bulk assign, and any future caller. RFQs skipped; missing
+    custom-cycle data falls back permissively (never false-refuses).
+    Uses verified-anchor prosrc substitution (aborts loudly if the
+    live function drifted; post-apply check).
+    ALREADY APPLIED LIVE — do not re-run (re-running no-ops anyway).
+    Verified live: CN-1002's exact shape (14 × 30-day cycle,
+    1-month term) → refused with the wizard's own message, zero
+    rows created; a coherent 12 × monthly × 12-month payload →
+    passes and creates normally (tested under rollback, no residue).
+
+  - contractnest-api/src/routes/contractRoutesV2.ts        [FULL file]
+  - contractnest-api/src/controllers/contractControllerV2.ts [FULL file]
+  - contractnest-api/src/services/contractServiceV2.ts     [FULL file]
+    New POST /api/v2/contracts/bulk-create — V2 sibling of the V1
+    bulk route (V1 files untouched). Differences from V1:
+      · each item creates via create_contract_transaction_v2 →
+        single-assign and bulk now share ONE engine (explicit
+        seller/buyer, unconditional CNAK grant, cadence backstop);
+      · dedup is findAssignedBuyerIdsV2 — FAIL-CLOSED (a failed
+        lookup refuses the whole batch with a clear 503 instead of
+        silently proceeding and risking duplicates), plus is_live
+        and is_active filters V1 lacked (V1 let a test-mode or
+        soft-deleted contract falsely block a member's assignment).
+    Activation still rides the V1 updateContractStatus (status
+    transitions are out of V2 scope; same RPC the single flow uses).
+    Per-item independence preserved: one failure never rolls back
+    the batch; failed activation leaves that contract as a draft.
+
+  - contractnest-ui/src/hooks/useContractSubmission.ts     [FULL file]
+    submitBulk now posts to /api/v2/contracts/bulk-create by
+    default on this branch (same pattern as the single-create V2
+    flip); append ?useV1=1 to the page URL to fall back to V1.
+    MUST flip back to opt-in before any real cutover, together with
+    the single-create flip in useContractQueries.ts.
+
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx [FULL file, updated]
+    Step 4a — cadence gate now also runs on the template FINAL SAVE
+    (before handleSaveTemplate). Closes the edit-from-review hole:
+    that shortcut jumps details → review without re-passing the
+    blocks step, so a template could previously be saved with a
+    cadence that can't fit its duration. Toast: "Schedule doesn't
+    fit the template duration". The save-on-close path is
+    deliberately NOT gated (blocking it would lose the user's
+    work; the DB backstop catches any bad template at assignment).
+    Step 4b (DB unique index on template names) stays PARKED: it
+    cannot be created while the existing vikuna duplicate names
+    (Free ×2, Quarterly ×2) exist, and those sit next to the
+    business-model rows — resolve together when that scope opens.
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\006_cadence_backstop_v2.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\useContractSubmission.ts" -Destination "contractnest-ui\src\hooks\useContractSubmission.ts" -Force
+  (restart contractnest-api after copying — new route + controller code)
+
+🧪 TESTING CHECKLIST — template flows on V2
+  - [ ] Wizard direct contract: unchanged (gates already there; DB
+        backstop is a second net — a coherent contract creates fine)
+  - [ ] VaNi single assign of a GOOD template: creates + activates
+        exactly as before, CNAK grant row present
+  - [ ] Bulk assign a GOOD template to 2–3 test members: all rows
+        'active', each has its own CNAK, contracts identical in
+        shape to a single-assign contract
+  - [ ] Re-run the SAME bulk assign: every member 'skipped'
+        (already has a contract from this template) — no duplicates
+  - [ ] Assign/bulk a BAD template (e.g. 14 × 30-day cycle blocks,
+        1-month duration): every member 'failed' with the
+        "Schedule does not fit the contract duration" message; zero
+        contracts created
+  - [ ] ?useV1=1 on the page URL: bulk falls back to the V1 route
+        (escape hatch works)
+  - [ ] Template edit-from-review: open a template, go to review,
+        jump back to details, shorten the duration below the blocks'
+        span, Continue to review, Save → blocked with "Schedule
+        doesn't fit the template duration" (previously saved fine)
+  - [ ] Normal template save with a coherent schedule: unaffected
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Drift cleanup: JTD notification removed from V2 create
+─────────────────────────────────────────────────────────────────
+Owner-directed. V1 never notified at contract creation; the
+contract_created JTD insert added in Sprint 2 was scope drift:
+hardcoded 'email' channel (enabled for 0 of 32 tenants), ZERO
+templates registered for the source type on any channel → a
+born-to-fail n_jtd row on every V2 contract (3/3 failed).
+
+  - contractnest-edge/supabase/migrations/contracts-v2/005_remove_jtd_notification_from_create_v2.sql
+    create_contract_transaction_v2 without the n_jtd insert — V2 is
+    now contract creation done right (explicit seller/buyer,
+    unconditional CNAK grant, idempotency) and NOTHING else.
+    ALREADY APPLIED LIVE — do not re-run; source-of-record copy.
+    Verified post-apply: 'n_jtd' appears nowhere in the live function.
+    The 3 failed rows (CN-1002/3/4, all signia) + their history were
+    deleted. The JTD creation touchpoint returns later as its own
+    properly-designed step (channel resolution + templates together).
+
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\005_remove_jtd_notification_from_create_v2.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\005_remove_jtd_notification_from_create_v2.sql" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Pay-before-activate settlement fix (CN-1003 bugs)
+─────────────────────────────────────────────────────────────────
+Found on CN-1003 after real payment. Two bugs, one real one perceived:
+  · "Auto-activation didn't happen" — it DID: history shows system
+    activated atomically with the receipt (same timestamp, note
+    "Auto-activated: all invoices paid"). The UI never refetched, so
+    the screen stayed on pending_acceptance. UI staleness, not backend.
+  · REAL bug: in payment-acceptance flows the billing events are BORN
+    AFTER the money landed (receipt → invoice paid → auto-activate →
+    trigger materializes events) — settled=0, no allocations, UI shows
+    RECORD PAYMENT on already-collected money. Two contradictory
+    payment truths.
+
+  - contractnest-edge/supabase/migrations/contracts-v2/004_settle_events_on_activation.sql
+    Owner-approved modification of LIVE V1 function
+    process_contract_events_from_computed (base = live prosrc, not
+    retyped): new STEP 2.5 — after materialization, settle newly-born
+    billing events against receipts already received on the contract,
+    FIFO, writing real t_invoice_receipt_allocations rows, updating
+    amount_settled, flipping fully-covered events to 'paid'. Covers
+    EVERY pay-first path (auto-activate, manual activate after payment,
+    public CNAK payment). No-op when no receipts exist. ALREADY APPLIED
+    LIVE — do not re-run; file is the source-of-record copy.
+    (CN-1003's own two events were also repaired one-time: both now
+    'paid', fully settled, allocations written.)
+
+  - contractnest-ui/src/hooks/queries/useInvoiceQueries.ts   [NEW file in this folder]
+    useRecordPayment.onSuccess now also invalidates the contract
+    detail/list and contract-events queries — after a payment that
+    auto-activates, the screen updates to active + settled dues instead
+    of staying stale. No circular imports (verified).
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\contracts-v2\004_settle_events_on_activation.sql" -Destination "contractnest-edge\supabase\migrations\contracts-v2\004_settle_events_on_activation.sql" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Billing-count semantics fix + toast readability
+─────────────────────────────────────────────────────────────────
+Raised on the 18-visits/every-18-days/Monthly/1-year config: the gate
+hard-stopped a config that is business-reasonable. Root cause: the
+billing engine conflated two meanings of quantity — visit count vs.
+bill count. Owner-approved fix:
+
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts
+  - contractnest-api/src/services/contractEventsDerivationService.ts
+    (BOTH copies changed in lockstep — and this repaired a pre-existing
+    silent parity break: the API copy still term-derived every recurring
+    count and lacked the last-installment rounding absorb; both are the
+    missed back-ports of the UI's earlier "×12 Monthly" fix.)
+    New rule in the recurring-billing branch:
+      · visit-generating block (service category + service cycle):
+        quantity = VISITS; bill count = round(term ÷ billing period) —
+        "18 visits, monthly, 1 year" = 12 bills of total/12. ROUND not
+        ceil (ceil would make monthly-in-a-year 13 bills, quarterly 5).
+      · fee/billing-only or non-visit block: quantity = bill count,
+        exactly as before (BBB fee blocks byte-unchanged).
+    Gate updated to match: billing-leg check skipped for visit blocks
+    (their bill count now always fits by construction); service-leg
+    check unchanged. The 18×18d/Monthly/1-year config now passes.
+
+  - contractnest-ui/src/components/common/toast/VaNiToast.tsx
+    Toast message no longer truncates to one ellipsized line
+    (truncate → break-words); title untouched, all other toasts
+    unaffected (short messages still render on one line).
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+    The two cadence-gate toasts now show for 10s (default was 4s).
+
+COPY COMMANDS for this batch:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\common\toast\VaNiToast.tsx" -Destination "contractnest-ui\src\components\common\toast\VaNiToast.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+  (restart contractnest-api after copying — the derivation service is API-side)
+
+─────────────────────────────────────────────────────────────────
+EARLIER — Cadence-fit wizard gate (CN-1002 root-cause fix)
+─────────────────────────────────────────────────────────────────
+Root cause traced on CN-1002: the wizard accepted a self-contradictory
+config — 14 × 30-day cycles inside a 1-month contract — and three
+engines each resolved it differently: pricing billed the full quantity
+(invoice ₹9,150), billing events truncated at contract end (only 2 of
+14 cycles = ₹1,200 scheduled), service events have no end-clamp at all
+and would overrun. Fix: the wizard now REFUSES the config.
+
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts
+    New exported computeCadenceViolations() — lives in the same file as
+    the event math so the gate can never drift from what the engines
+    actually do. computeContractEvents itself is UNTOUCHED (the parity
+    contract with contractEventsDerivationService.ts is unaffected).
+    Fit rule per block (quantity > 1, not unlimited):
+      service leg: (qty−1) × serviceCycleDays must fit the duration
+      billing leg ('defined' mode, recurring cycles only, cadence-priced
+        blocks excluded — they derive count from duration and clamp):
+        (qty−1) × cycle periodDays must fit the duration
+
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+    Two gates in handleNext, both following the existing unified-cycle-
+    mismatch pattern (error toast + return, user cannot proceed):
+      1. On the blocks step — early feedback where quantity is editable.
+      2. Backstop before ANY submission (covers the edit-from-review
+         shortcut that jumps details → review without re-passing blocks,
+         and runs before the auto-accept pre-payment dialog too).
+    Toast: '"<block>": N billing cycles of X days span ~Y days, but the
+    contract runs Z days. Reduce the count, shorten the cycle, or extend
+    the contract duration.'
+
+  Field names verified against ConfigurableBlock (serviceCycleDays,
+  customCycleDays, unlimited, config.billingOnly all exist). Could not
+  run tsc in the session sandbox (no node_modules) — a TS error would
+  surface in Vite's dev overlay immediately on start, not silently.
+
+  NOT fixed (out of scope, noted): CN-1002 itself is unfixable by code —
+  its stored config IS the contradiction. The silent `date > endDate`
+  truncation inside the billing engine and the missing end-clamp in the
+  service engine remain as-is; the gate makes them unreachable via the
+  wizard, but other payload sources (bulk-assign items, RFQ-to-contract
+  later) would still bypass a UI-only gate. A DB-side backstop belongs
+  in create_contract_transaction_v2 eventually — flagged, not built.
+
+─────────────────────────────────────────────────────────────────
+Also in this folder (earlier batches, already covered previously)
+─────────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/contracts-v2/001..003_*.sql
+    create_contract_transaction_v2 + subscribe/topup V2 siblings.
+    Already applied LIVE to the Supabase project — do not re-run;
+    the files are the source-of-record copies for git.
+  - contractnest-edge/supabase/functions/contracts-v2/index.ts
+    New edge function, already DEPLOYED live (v2).
+  - contractnest-api/src/{services,controllers,routes}/contract*V2.ts
+    POST /api/v2/contracts chain (TS2353 fix included).
+  - contractnest-api/src/index.ts
+    Full file with the two additive V2 route-registration blocks.
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts
+    V2 as default create endpoint on this branch; ?useV1=1 opts out.
+    MUST flip back to opt-in before any real cutover.
+
+─────────────────────────────────────────────────────────────────
+💻 COPY COMMANDS (newest batch = STEP 4 — earlier files already copied)
+─────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/tenant-bbb-data-issues-buwxqm
+
+New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\jtd-nucleus" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\006_step4_record_invoice_payment_v2.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\contractServiceV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\contractControllerV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\contractRoutesV2.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useInvoiceQueries.ts" -Force
+
+Write-Host "Copied. Restart contractnest-api, hard-refresh the UI, and run the Step 4 checkpoint." -ForegroundColor Green
+
+─────────────────────────────────────────────────────────────────
+🧪 TESTING CHECKLIST — cadence gate
+─────────────────────────────────────────────────────────────────
+- [ ] Recreate CN-1002's shape (14 × ₹600, custom 30-day cycle, 1-month
+      duration): blocks step must BLOCK with the toast, not proceed
+- [ ] Fix by reducing quantity to 2 (or duration to 14 months): proceeds
+- [ ] Coherent contract (12 × monthly × 12-month duration): no toast,
+      proceeds normally end to end
+- [ ] Edit-from-review: from review, jump back to details, shorten the
+      duration below the blocks' span, Continue → blocked at submission
+- [ ] RFQ mode: unaffected (gate skipped)
+- [ ] Template save: unaffected (returns before the backstop)
+═══════════════════════════════════════════════════════════════════

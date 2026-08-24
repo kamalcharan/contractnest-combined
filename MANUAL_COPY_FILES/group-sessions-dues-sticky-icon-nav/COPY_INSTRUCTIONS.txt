@@ -1,0 +1,46 @@
+COPY INSTRUCTIONS — group-sessions-dues-sticky-icon-nav
+=================================================
+
+SUBMODULES AFFECTED: contractnest-ui (only)
+
+FILES IN THIS FOLDER -> DESTINATION (relative to contractnest-combined root):
+
+1. contractnest-ui\src\pages\operations\group-sessions\index.tsx
+   -> contractnest-ui\src\pages\operations\group-sessions\index.tsx
+
+WHAT CHANGED (Operations -> Group Sessions -> Dues tab only):
+
+1. STICKY HEADER + STICKY MEMBER COLUMN
+   The header row (Member/Value/Discount/Net/Paid/Arrears/month columns)
+   now stays pinned to the top while scrolling down through many rows.
+   The "Member" column (avatar + name + plan pill + contract number) now
+   stays pinned to the left while scrolling right through the month
+   columns (Apr...Mar). No more losing track of who a row belongs to
+   while scrolling in either direction.
+
+2. ROW NO LONGER NAVIGATES ON CLICK — ONLY A DEDICATED ICON DOES
+   Previously clicking anywhere on a row opened that member's contract.
+   Now the row itself does nothing on click; a small document icon
+   (FileText, from lucide-react) sits next to the contract number —
+   only clicking that icon navigates to /contracts/:id. The monthly
+   status-pill click-to-change-status behavior is unchanged.
+
+3. ALWAYS-REACHABLE HORIZONTAL SCROLL (follow-up fix)
+   The native horizontal scrollbar sits below all 49 rows — unreachable
+   without scrolling the whole page down first. Added a Left/Right
+   arrow-button pair docked into the top-right corner of the sticky
+   header row itself, so they're always visible once you've scrolled
+   past the summary cards, no matter how far down the page you are.
+   Each click scrolls the table 240px in that direction. Vertical
+   scrolling behavior is completely unchanged — this only affects
+   horizontal (month-column) scrolling.
+
+Nothing else on this page was touched — Groups tab, Payments to
+confirm tab, and everything else in this file is unaffected.
+
+PRODUCTION CHECKLIST:
+  Transaction Management: N/A — display/interaction only, no writes
+  Race Condition Handling: N/A
+  Error Handling: N/A — no new logic paths
+  Toasts: N/A — no user actions changed besides navigation trigger
+  Loaders: N/A

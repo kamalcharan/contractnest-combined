@@ -1,0 +1,960 @@
+<title>The JTD Nucleus</title>
+<style>
+  :root {
+    --ink: #1B211F;
+    --paper: #EEEFEA;
+    --surface: #FAFAF7;
+    --surface-2: #F2F2ED;
+    --accent: #C17A2E;
+    --accent-ink: #FAFAF7;
+    --line: rgba(27,33,31,.14);
+    --line-strong: rgba(27,33,31,.28);
+    --muted: #6B7570;
+    --scheduled: #3B6E91;
+    --due: #C17A2E;
+    --risk: #B0432F;
+    --proven: #4C7A57;
+    --risk-bg: rgba(176,67,47,.10);
+    --due-bg: rgba(193,122,46,.12);
+    --proven-bg: rgba(76,122,87,.12);
+    --scheduled-bg: rgba(59,110,145,.12);
+    --font-display: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #EDEAE2;
+      --paper: #15171A;
+      --surface: #1B1E21;
+      --surface-2: #202327;
+      --accent: #D68B3E;
+      --accent-ink: #15171A;
+      --line: rgba(237,234,226,.14);
+      --line-strong: rgba(237,234,226,.28);
+      --muted: #9AA39D;
+      --scheduled: #6FA8CE;
+      --due: #D68B3E;
+      --risk: #E07059;
+      --proven: #7CB88C;
+      --risk-bg: rgba(224,112,89,.14);
+      --due-bg: rgba(214,139,62,.16);
+      --proven-bg: rgba(124,184,140,.14);
+      --scheduled-bg: rgba(111,168,206,.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #EDEAE2;
+    --paper: #15171A;
+    --surface: #1B1E21;
+    --surface-2: #202327;
+    --accent: #D68B3E;
+    --accent-ink: #15171A;
+    --line: rgba(237,234,226,.14);
+    --line-strong: rgba(237,234,226,.28);
+    --muted: #9AA39D;
+    --scheduled: #6FA8CE;
+    --due: #D68B3E;
+    --risk: #E07059;
+    --proven: #7CB88C;
+    --risk-bg: rgba(224,112,89,.14);
+    --due-bg: rgba(214,139,62,.16);
+    --proven-bg: rgba(124,184,140,.14);
+    --scheduled-bg: rgba(111,168,206,.14);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 800; text-wrap: balance; margin: 0; }
+  code, .mono { font-family: var(--font-mono); }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ---------- Shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 260px minmax(0,1fr);
+    gap: 0;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .toc { position: static !important; height: auto !important; border-right: none !important; border-bottom: 1px solid var(--line); }
+  }
+
+  .toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 18px 40px 28px;
+    border-right: 1px solid var(--line);
+  }
+  .toc-brand {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -.01em;
+    margin-bottom: 4px;
+  }
+  .toc-brand .mono { color: var(--muted); font-size: 11px; font-weight: 500; display: block; margin-top: 2px; }
+  .toc-list { list-style: none; margin: 22px 0 0; padding: 0; }
+  .toc-list li { margin: 0; }
+  .toc-list a {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+    transition: background .12s ease, color .12s ease;
+  }
+  .toc-list a:hover { background: var(--surface-2); color: var(--ink); }
+  .toc-list .n { font-family: var(--font-mono); font-size: 11px; color: var(--accent); flex: none; width: 18px; }
+
+  main { min-width: 0; padding: 28px 32px 100px; }
+  .col { max-width: 700px; }
+  .wide { max-width: 100%; }
+
+  section { padding-top: 56px; }
+  section:first-of-type { padding-top: 0; }
+  section > .eyebrow { display: block; margin-bottom: 8px; }
+  h2 { font-size: 26px; letter-spacing: -.01em; margin-bottom: 14px; }
+  h3 { font-size: 17px; margin: 28px 0 10px; }
+  p { margin: 0 0 14px; color: var(--ink); }
+  .col p, .col li { max-width: 66ch; }
+  .lede { font-size: 16px; color: var(--muted); }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 700; }
+
+  hr.rule { border: none; border-top: 1px solid var(--line); margin: 48px 0; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 40px 0 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .hero h1 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -.02em; margin-bottom: 10px; }
+  .hero .sub { font-size: 15px; color: var(--muted); max-width: 62ch; margin-bottom: 22px; }
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 22px;
+  }
+  .stat {
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .stat .v { font-family: var(--font-mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .v.risk { color: var(--risk); }
+  .stat .v.accent { color: var(--accent); }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  .phase-tracker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .phase-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--line-strong);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .phase-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); flex: none; }
+  .phase-pill.here { border-color: var(--accent); color: var(--ink); background: var(--due-bg); }
+  .phase-pill.here .dot { background: var(--accent); }
+  .phase-pill .arrow { color: var(--line-strong); margin-left: 2px; }
+
+  /* ---------- Pills / badges ---------- */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .pill.risk { background: var(--risk-bg); color: var(--risk); }
+  .pill.due { background: var(--due-bg); color: var(--due); }
+  .pill.proven { background: var(--proven-bg); color: var(--proven); }
+  .pill.scheduled { background: var(--scheduled-bg); color: var(--scheduled); }
+  .pill.neutral { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+
+  /* ---------- Cards / callouts ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--due-bg);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin: 18px 0;
+    font-size: 14px;
+  }
+  .callout.risk { border-left-color: var(--risk); background: var(--risk-bg); }
+  .callout p:last-child { margin-bottom: 0; }
+  .quote {
+    border-left: 3px solid var(--line-strong);
+    padding: 4px 0 4px 18px;
+    margin: 18px 0;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+  .quote cite { display: block; margin-top: 6px; font-style: normal; font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+  /* ---------- Tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--surface); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    background: var(--surface-2);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+  td .mono, th .mono { font-size: 12px; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ---------- Diagrams ---------- */
+  figure.diagram {
+    margin: 22px 0 8px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  figure.diagram svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+  figcaption {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    padding: 0 4px;
+  }
+  svg text { font-family: var(--font-body); fill: currentColor; }
+  svg .mono-t { font-family: var(--font-mono); }
+  svg .lbl { font-size: 11px; fill: var(--muted); }
+  svg .lbl-strong { font-size: 11.5px; font-weight: 700; }
+
+  /* ---------- Use case cards ---------- */
+  .usecases { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 14px; margin: 20px 0; }
+  .usecase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .usecase .tag { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent); text-transform: uppercase; letter-spacing: .06em; }
+  .usecase h4 { font-size: 15.5px; }
+  .usecase .flow { font-family: var(--font-mono); font-size: 11px; color: var(--muted); line-height: 1.7; word-break: break-word; }
+  .usecase p { font-size: 13.5px; margin-bottom: 0; color: var(--muted); }
+
+  /* ---------- Phase list ---------- */
+  .phases { list-style: none; margin: 20px 0; padding: 0; counter-reset: phase; }
+  .phase-item {
+    counter-increment: phase;
+    position: relative;
+    padding: 0 0 26px 40px;
+    border-left: 1px solid var(--line);
+    margin-left: 14px;
+  }
+  .phase-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .phase-item::before {
+    content: counter(phase, decimal-leading-zero);
+    position: absolute;
+    left: -14px;
+    top: 0;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .phase-item.gate::before { border-color: var(--accent); color: var(--accent); background: var(--due-bg); }
+  .phase-item h4 { font-size: 15.5px; margin-bottom: 6px; }
+  .phase-item .who { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .phase-item p { font-size: 14px; margin-bottom: 0; }
+
+  /* ---------- Guarantee list ---------- */
+  .guarantee-list { list-style: none; padding: 0; margin: 18px 0; }
+  .guarantee-list li {
+    display: flex;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14px;
+  }
+  .guarantee-list li:last-child { border-bottom: none; }
+  .guarantee-list .mark { color: var(--proven); font-weight: 800; flex: none; width: 18px; }
+
+  footer.doc-footer {
+    margin-top: 70px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+</style>
+
+<div class="shell">
+  <nav class="toc">
+    <div class="toc-brand">The JTD Nucleus<span class="mono">contractnest · servicing loop</span></div>
+    <ul class="toc-list">
+      <li><a href="#summary"><span class="n">00</span>Executive summary</a></li>
+      <li><a href="#found"><span class="n">01</span>What we found</a></li>
+      <li><a href="#history"><span class="n">02</span>Designed vs. shipped</a></li>
+      <li><a href="#architecture"><span class="n">03</span>Target architecture</a></li>
+      <li><a href="#lifecycle"><span class="n">04</span>Commitment lifecycle</a></li>
+      <li><a href="#creation"><span class="n">05</span>Contract creation</a></li>
+      <li><a href="#v2"><span class="n">06</span>V2 build strategy</a></li>
+      <li><a href="#usecases"><span class="n">07</span>Use cases</a></li>
+      <li><a href="#rollout"><span class="n">08</span>Phased rollout</a></li>
+      <li><a href="#bbb"><span class="n">09</span>BBB safety</a></li>
+      <li><a href="#inventory"><span class="n">10</span>Code inventory</a></li>
+      <li><a href="#poa"><span class="n">11</span>Sprint-wise POA</a></li>
+      <li><a href="#open"><span class="n">12</span>Open questions</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="hero col" style="max-width:100%;">
+      <span class="eyebrow">Architecture spec · v0.2 draft</span>
+      <h1>The JTD Nucleus</h1>
+      <p class="sub">Jobs To Do was designed in December 2025 to be the single spine every commitment in ContractNest flows through — billing, service visits, appointments, group sessions. It shipped as a notification log instead. This is the plan to finish building what was already designed, without touching anything currently running.</p>
+
+      <div class="stat-row">
+        <div class="stat"><div class="v">238</div><div class="l">contracts audited</div></div>
+        <div class="stat"><div class="v risk">0</div><div class="l">completed full lifecycle</div></div>
+        <div class="stat"><div class="v">2 / 7</div><div class="l">JTD event types ever used</div></div>
+        <div class="stat"><div class="v accent">1</div><div class="l">real tenant (BBB)</div></div>
+      </div>
+
+      <div class="phase-tracker">
+        <span class="phase-pill here"><span class="dot"></span>Design<span class="arrow">→</span></span>
+        <span class="phase-pill">Maturity eval</span>
+        <span class="phase-pill">Contract + template foundation</span>
+        <span class="phase-pill">Confidence gate</span>
+        <span class="phase-pill">BBB migration</span>
+        <span class="phase-pill">Stitch-in + productLed</span>
+        <span class="phase-pill">Full cutover</span>
+      </div>
+    </div>
+
+    <!-- 00 SUMMARY -->
+    <section id="summary" class="col">
+      <span class="eyebrow">00 · Executive summary</span>
+      <h2>Nothing here is broken. It's unfinished.</h2>
+      <p>An audit across contract creation, appointments, service tickets, evidence, invoicing, CNAK access, and group sessions found the same failure shape repeating: individually well-built pieces, wired to nothing that enforces they connect. 238 contracts exist in this database. Not one has gone from creation → claimed → serviced → evidenced → invoiced → paid through a real, enforced mechanism.</p>
+      <p>Tracing JTD's own history explains why: it was designed on <strong>17 Dec 2025</strong> as exactly the spine this needs — <em>"every significant action in ContractNest flows through JTD"</em> — shipped its first use case five days later, and every commit since has widened that one slice (notifications) instead of returning to the other six event types the design named. <code class="mono">n_jtd_event_types</code> still holds <code class="mono">appointment</code>, <code class="mono">service_visit</code>, and <code class="mono">task</code> as valid rows, live in production, completely unused.</p>
+      <p>This document is the plan to finish it: build new, versioned (<code class="mono">v2</code>) API/Edge functions alongside the existing ones — nothing currently running gets modified — prove it end-to-end on real contracts, then migrate BBB deliberately and last.</p>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 01 WHAT WE FOUND -->
+    <section id="found" class="wide">
+      <span class="eyebrow">01 · What we found</span>
+      <h2>Eight findings, one root cause</h2>
+      <p class="col lede">Every row below was verified against live data or source, not assumed. Different surfaces, same shape: a write path exists, but nothing enforces it fires, or fires completely.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Area</th><th>Finding</th><th>Scale</th><th>Severity</th></tr></thead>
+          <tbody>
+            <tr><td>CNAK access</td><td>Contracts show a valid-looking access code with no grant row behind it — claim would fail silently</td><td class="mono num">62 / 190</td><td><span class="pill risk">structural</span></td></tr>
+            <tr><td>CNAK access</td><td>Grant row exists and is well-formed, but was never claimed by a buyer</td><td class="mono num">114 / 190</td><td><span class="pill due">unused</span></td></tr>
+            <tr><td>Billing → Invoice</td><td>Billing events marked <code class="mono">paid</code> with zero <code class="mono">t_invoices</code> row ever created</td><td class="mono num">40 contracts</td><td><span class="pill risk">structural</span></td></tr>
+            <tr><td>Billing → Invoice</td><td>Contracts with billing events and no invoice at all</td><td class="mono num">52 / 238</td><td><span class="pill risk">structural</span></td></tr>
+            <tr><td>Appointment → Ticket</td><td>No FK or stored fact links a service ticket to the appointment that spawned it — connection is transitive only, via a shared event id</td><td class="mono num">systemic</td><td><span class="pill due">design gap</span></td></tr>
+            <tr><td>Appointment accept</td><td>Accept flow captures a date but has no technician-assignment control at all — backend field ready, client never sends it</td><td class="mono num">0 / 31 assigned</td><td><span class="pill risk">missing UI</span></td></tr>
+            <tr><td>Evidence gate</td><td>A ticket can be created and marked <code class="mono">completed</code> with zero forms and zero evidence, regardless of contract policy</td><td class="mono num">unenforced</td><td><span class="pill risk">structural</span></td></tr>
+            <tr><td>Billing vs. proof</td><td>Invoice drafting is purely date-driven — explicit code comment confirms billing events linked to a ticket are <em>"NEVER touched"</em> by ticket completion</td><td class="mono num">by design</td><td><span class="pill due">design gap</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 02 HISTORY -->
+    <section id="history" class="col">
+      <span class="eyebrow">02 · Designed vs. shipped</span>
+      <h2>The nucleus was never missing. It stalled.</h2>
+      <p>The founding document is unambiguous, eight months before this audit:</p>
+      <blockquote class="quote">
+        "JTD is NOT just a notification system - it's a unified framework that handles: Notifications, Appointments, Tasks, Service Visits, Reminders, Payments, Documents. <strong>Every significant action in ContractNest flows through JTD.</strong> When a contract is created with 12 monthly services, JTD automatically creates 12 service_visit records."
+        <cite>JTD-Framework.md · v1.0 · 17 Dec 2025 · Status: Architecture Finalized</cite>
+      </blockquote>
+      <p>Section 3 of that same document, titled <em>VaNi Integration</em>, states the framework is API-first specifically so an AI agent can execute jobs directly against it — this was never conceived as a human-facing log.</p>
+    </section>
+
+    <figure class="diagram wide">
+      <svg viewBox="0 0 900 210" role="img" aria-label="Timeline showing JTD designed with 7 event types on 17 December 2025, first implementation with only the notification slice on 21 December, then seven months of migrations that only ever widened that same slice, arriving at today's audit with the appointment, service visit and task event types still unused.">
+        <line x1="60" y1="110" x2="840" y2="110" stroke="currentColor" stroke-opacity="0.25" stroke-width="1.5"/>
+        <!-- Dec 17: design -->
+        <circle cx="90" cy="110" r="5" fill="currentColor"/>
+        <text x="90" y="86" class="lbl-strong" text-anchor="middle">17 Dec 2025</text>
+        <text x="90" y="102" class="lbl" text-anchor="middle">Design finalized</text>
+        <text x="90" y="132" class="lbl mono-t" text-anchor="middle">7 event types</text>
+        <text x="90" y="146" class="lbl mono-t" text-anchor="middle">defined</text>
+
+        <!-- Dec 21: first impl -->
+        <circle cx="220" cy="110" r="5" fill="var(--accent)"/>
+        <text x="220" y="86" class="lbl-strong" text-anchor="middle">21 Dec 2025</text>
+        <text x="220" y="102" class="lbl" text-anchor="middle">First shipped</text>
+        <text x="220" y="132" class="lbl mono-t" text-anchor="middle">user_invite only</text>
+        <text x="220" y="146" class="lbl mono-t" text-anchor="middle">(1 of 7 types)</text>
+
+        <!-- stall band -->
+        <rect x="245" y="100" width="470" height="20" fill="var(--risk)" fill-opacity="0.14" rx="4"/>
+        <text x="480" y="113" class="lbl" text-anchor="middle" fill="var(--risk)">7+ months — every migration widens the same notification slice</text>
+
+        <!-- Feb: credit, signoff -->
+        <circle cx="330" cy="110" r="4" fill="currentColor" fill-opacity="0.5"/>
+        <text x="330" y="150" class="lbl mono-t" text-anchor="middle" font-size="10">Feb — signoff +</text>
+        <text x="330" y="162" class="lbl mono-t" text-anchor="middle" font-size="10">payment templates</text>
+
+        <!-- Aug 1: group session -->
+        <circle cx="600" cy="110" r="4" fill="currentColor" fill-opacity="0.5"/>
+        <text x="600" y="150" class="lbl mono-t" text-anchor="middle" font-size="10">Aug — group-session</text>
+        <text x="600" y="162" class="lbl mono-t" text-anchor="middle" font-size="10">templates (BBB)</text>
+
+        <!-- Today -->
+        <circle cx="800" cy="110" r="6" fill="var(--risk)"/>
+        <text x="800" y="86" class="lbl-strong" text-anchor="middle" fill="var(--risk)">Today</text>
+        <text x="800" y="102" class="lbl" text-anchor="middle">Audit</text>
+        <text x="800" y="132" class="lbl mono-t" text-anchor="middle">appointment / service_visit</text>
+        <text x="800" y="146" class="lbl mono-t" text-anchor="middle">/ task — still 0 rows ever</text>
+      </svg>
+      <figcaption>Fig. 1 — <code class="mono">n_jtd_event_types</code> confirmed live right now: <code class="mono">appointment</code>, <code class="mono">service_visit</code>, and <code class="mono">task</code> still sit as valid, defined rows. The infrastructure was never removed — it was simply never called.</figcaption>
+    </figure>
+
+    <hr class="rule" />
+
+    <!-- 03 ARCHITECTURE -->
+    <section id="architecture" class="wide">
+      <span class="eyebrow">03 · Target architecture</span>
+      <h2 class="col">JTD becomes the spine. Everything else becomes detail.</h2>
+      <p class="col lede">Not everything maps into JTD — CNAK is a permission grant, not a commitment, and stays fully separate. The rest reorganizes around one rule: JTD owns <em>what's owed and its state</em>; every other table owns <em>how it was actually carried out</em>, linked back by a real foreign key.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Table</th><th>Holds today</th><th>Role under JTD</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">t_contract_events</td><td>The schedule itself — one row per installment / visit</td><td><strong>Absorbed.</strong> This is what JTD generates directly at contract creation — the "36 rows." Likely kept as a read-optimized projection so existing UI keeps working unmodified.</td></tr>
+            <tr><td class="mono">t_appointments</td><td>Scheduling negotiation — slots, assignee, accept state</td><td><strong>Execution detail.</strong> Only entered when a commitment's flow actually needs one — billing and group sessions never do.</td></tr>
+            <tr><td class="mono">t_service_tickets<br/>+ _events + _evidence</td><td>The real execution / proof chain — already the best-built layer found</td><td><strong>Execution detail.</strong> Closest to correct already; mainly needs the evidence gate enforced and the appointment link added.</td></tr>
+            <tr><td class="mono">t_contract_access</td><td>Buyer access grant for the whole contract (CNAK)</td><td><strong>Not mapped.</strong> Orthogonal category — a permission, not a commitment.</td></tr>
+            <tr><td class="mono">t_invoices<br/>+ receipts + allocations</td><td>The financial record — confirmed via real FKs to be correctly built</td><td><strong>Stays authoritative for money.</strong> JTD transitions to <code class="mono">invoiced</code> as a handoff; per-commitment "is this paid" is answered by summing <code class="mono">t_invoice_receipt_allocations</code>, not by JTD.</td></tr>
+            <tr><td class="mono">t_group_session_schedule<br/>+ session_attendance</td><td>BBB's full, working, single-tenant stack</td><td><strong>Untouched underneath.</strong> One JTD row per occurrence sits on top; roster/attendance/declarations stay exactly where they are.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <figure class="diagram wide">
+      <svg viewBox="0 0 940 380" role="img" aria-label="Comparison: today, five tables are each independently written with no enforced connection between them, producing orphaned records. Under the target architecture, JTD sits as the spine, and every other table hangs off it through a real foreign key, all created in one transaction.">
+        <text x="20" y="26" class="lbl-strong">Today — independent writes, no enforcement</text>
+        <g font-size="11">
+          <rect x="20" y="46" width="150" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+          <text x="95" y="67" text-anchor="middle" class="mono-t">t_contract_events</text>
+          <rect x="200" y="46" width="130" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+          <text x="265" y="67" text-anchor="middle" class="mono-t">t_appointments</text>
+          <rect x="360" y="46" width="130" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+          <text x="425" y="67" text-anchor="middle" class="mono-t">t_service_tickets</text>
+          <rect x="520" y="46" width="110" height="34" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.5"/>
+          <text x="575" y="67" text-anchor="middle" class="mono-t">t_invoices</text>
+          <rect x="660" y="46" width="120" height="34" rx="6" fill="none" stroke="var(--risk)" stroke-opacity="0.6"/>
+          <text x="720" y="67" text-anchor="middle" class="mono-t" fill="var(--risk)">n_jtd (reminders)</text>
+        </g>
+        <text x="470" y="105" text-anchor="middle" class="lbl" fill="var(--risk)">no shared write path → 40 contracts marked paid with nothing behind them</text>
+
+        <line x1="20" y1="130" x2="920" y2="130" stroke="currentColor" stroke-opacity="0.15"/>
+
+        <text x="20" y="160" class="lbl-strong">Target — one transaction, JTD as spine</text>
+
+        <rect x="380" y="185" width="180" height="42" rx="8" fill="var(--due-bg)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="470" y="211" text-anchor="middle" class="mono-t" font-weight="700" fill="var(--accent)">n_jtd commitment</text>
+
+        <g stroke="currentColor" stroke-opacity="0.45" fill="none" marker-end="url(#arr)">
+          <path d="M420,227 L250,280"/>
+          <path d="M460,227 L460,280"/>
+          <path d="M500,227 L680,280"/>
+        </g>
+        <path d="M470,227 C470,255 470,255 720,280" stroke="var(--muted)" fill="none" marker-end="url(#arr)"/>
+
+        <rect x="150" y="285" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.3"/>
+        <text x="225" y="306" text-anchor="middle" class="mono-t" font-size="10.5">t_contract_events</text>
+
+        <rect x="385" y="285" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.3"/>
+        <text x="460" y="306" text-anchor="middle" class="mono-t" font-size="10.5">t_appointments (opt.)</text>
+
+        <rect x="600" y="285" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.3"/>
+        <text x="675" y="306" text-anchor="middle" class="mono-t" font-size="10.5">t_service_tickets</text>
+
+        <rect x="785" y="285" width="130" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.3"/>
+        <text x="850" y="306" text-anchor="middle" class="mono-t" font-size="10.5">t_invoices</text>
+        <path d="M700,285 C760,260 800,260 830,285" stroke="currentColor" stroke-opacity="0.45" fill="none" marker-end="url(#arr)"/>
+
+        <text x="470" y="350" text-anchor="middle" class="lbl" fill="var(--proven)">all-or-nothing — a failed step rolls back the whole chain, not just its own row</text>
+
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity="0.6"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>Fig. 2 — the difference isn't which tables exist, it's whether one commitment's writes are guaranteed to land together.</figcaption>
+    </figure>
+
+    <hr class="rule" />
+
+    <!-- 04 LIFECYCLE -->
+    <section id="lifecycle" class="wide">
+      <span class="eyebrow">04 · The commitment lifecycle</span>
+      <h2 class="col">Appointments are conditional, not universal</h2>
+      <p class="col lede">Billing commitments never need an appointment. Group-session commitments never need one. Service commitments sometimes do — the rule is per-industry, deliberately left open for now. The state flow has to branch here, not assume every commitment passes through the same stages.</p>
+    </section>
+
+    <figure class="diagram wide">
+      <svg viewBox="0 0 980 340" role="img" aria-label="State flow: a commitment is created, becomes due, then branches. Billing and group-session commitments skip appointments entirely and go to invoiced. Service commitments may branch into appointment requested then accepted before in progress; or skip straight to in progress if the industry doesn't require scheduling. From in progress the flow proceeds to evidence submitted, proven, then invoiced, at which point JTD hands off to t_invoices for ongoing payment status, tracked separately via receipt allocations per commitment.">
+        <g font-size="11">
+          <rect x="10" y="150" width="90" height="36" rx="18" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.4"/>
+          <text x="55" y="172" text-anchor="middle" class="mono-t">created</text>
+
+          <path d="M100,168 L150,168" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <rect x="150" y="150" width="80" height="36" rx="18" fill="var(--scheduled-bg)" stroke="var(--scheduled)"/>
+          <text x="190" y="172" text-anchor="middle" class="mono-t" fill="var(--scheduled)">due</text>
+
+          <!-- branch billing/group -->
+          <path d="M230,158 C300,100 550,90 660,90" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <text x="420" y="82" text-anchor="middle" class="lbl">billing / group-session — appointment never applies</text>
+
+          <!-- branch service: appt needed -->
+          <path d="M230,175 C280,215 300,215 340,215" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <text x="280" y="204" class="lbl">service, appt required</text>
+          <rect x="340" y="197" width="120" height="36" rx="18" fill="var(--due-bg)" stroke="var(--due)"/>
+          <text x="400" y="219" text-anchor="middle" class="mono-t" font-size="10" fill="var(--due)">appt_requested</text>
+
+          <path d="M460,215 L500,215" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <rect x="500" y="197" width="110" height="36" rx="18" fill="var(--due-bg)" stroke="var(--due)"/>
+          <text x="555" y="219" text-anchor="middle" class="mono-t" font-size="10" fill="var(--due)">appt_accepted</text>
+
+          <!-- branch service: no appt -->
+          <path d="M230,182 C260,260 330,270 340,270" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <text x="270" y="290" class="lbl">service, no appt needed</text>
+
+          <path d="M610,215 C640,240 640,255 660,262" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <path d="M340,270 L640,262" stroke="currentColor" stroke-opacity="0.5" fill="none"/>
+
+          <rect x="660" y="245" width="100" height="36" rx="18" fill="var(--proven-bg)" stroke="var(--proven)"/>
+          <text x="710" y="267" text-anchor="middle" class="mono-t" font-size="10" fill="var(--proven)">in_progress</text>
+
+          <path d="M760,263 L800,220" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <rect x="660" y="108" width="140" height="36" rx="18" fill="var(--proven-bg)" stroke="var(--proven)"/>
+          <text x="730" y="130" text-anchor="middle" class="mono-t" font-size="10" fill="var(--proven)">evidence_submitted</text>
+
+          <path d="M660,126 C400,126 380,126 230,166" stroke-opacity="0"/>
+          <path d="M660,120 L100,90" stroke="currentColor" stroke-opacity="0" />
+
+          <path d="M800,126 L850,126" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <rect x="850" y="108" width="90" height="36" rx="18" fill="var(--proven-bg)" stroke="var(--proven)"/>
+          <text x="895" y="130" text-anchor="middle" class="mono-t" font-size="10" fill="var(--proven)">proven</text>
+
+          <path d="M895,144 L895,175" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr2)"/>
+          <path d="M660,90 L895,90 L895,108" stroke="currentColor" stroke-opacity="0.5" fill="none"/>
+
+          <rect x="820" y="175" width="130" height="36" rx="18" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)"/>
+          <text x="885" y="197" text-anchor="middle" class="mono-t" font-size="10.5" font-weight="700" fill="var(--accent)">invoiced</text>
+
+          <path d="M885,211 L885,250" stroke="var(--accent)" stroke-width="1.5" fill="none" marker-end="url(#arr2)"/>
+          <text x="885" y="270" text-anchor="middle" class="lbl" font-weight="700">hands off →</text>
+          <rect x="800" y="278" width="170" height="40" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="3 3"/>
+          <text x="885" y="294" text-anchor="middle" class="mono-t" font-size="10">t_invoices + receipt</text>
+          <text x="885" y="308" text-anchor="middle" class="mono-t" font-size="10">allocations own "paid"</text>
+        </g>
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity="0.6"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>Fig. 3 — JTD's own status stops at <code class="mono">invoiced</code>. Per-commitment "is it paid" is answered by summing <code class="mono">t_invoice_receipt_allocations.amount</code> against that commitment's id — the invoice header's status is a coarser, document-level fact, not the per-installment one.</figcaption>
+    </figure>
+
+    <div class="col">
+      <div class="callout">
+        <p><strong>Enforcement, not duplication.</strong> <code class="mono">n_jtd_status_flows</code> already exists as real infrastructure for governing valid transitions. It's used to make <code class="mono">invoiced</code> a hard prerequisite before anything downstream can claim <code class="mono">paid</code> — closing the exact gap that produced 40 contracts with fabricated payment history — without JTD growing its own shadow copy of payment status.</p>
+      </div>
+    </div>
+
+    <hr class="rule" />
+
+    <!-- 05 CREATION -->
+    <section id="creation" class="wide">
+      <span class="eyebrow">05 · Contract creation</span>
+      <h2 class="col">One real INSERT. Five callers. One missed hook.</h2>
+      <p class="col lede">Every pathway that can create a contract was traced in source, not assumed. There is exactly one SQL statement that inserts into <code class="mono">t_contracts</code> — <code class="mono">create_contract_transaction</code>. Everything else is a different caller of that same function.</p>
+    </section>
+
+    <figure class="diagram wide">
+      <svg viewBox="0 0 940 260" role="img" aria-label="Five callers — Contract Wizard, Template Assign, Bulk Assign, Plan Subscription, and Top-up Purchase — all fan into the single create_contract_transaction RPC. Only status-transition calls push to the JTD queue; direct-to-active inserts from Plan Subscription, Top-up, and the wizard's auto-accept path skip that hook entirely.">
+        <g font-size="10.5">
+          <rect x="10" y="15" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="36" text-anchor="middle">Contract Wizard</text>
+
+          <rect x="10" y="60" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="81" text-anchor="middle">Template Assign</text>
+
+          <rect x="10" y="105" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="126" text-anchor="middle">Bulk Assign (BBB)</text>
+
+          <rect x="10" y="150" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="171" text-anchor="middle">Plan Subscription</text>
+
+          <rect x="10" y="195" width="150" height="34" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="216" text-anchor="middle">Top-up Purchase</text>
+
+          <g stroke="currentColor" stroke-opacity="0.4" fill="none">
+            <path d="M160,32 C280,32 300,120 400,120" marker-end="url(#arr3)"/>
+            <path d="M160,77 C280,77 300,120 400,120" marker-end="url(#arr3)"/>
+            <path d="M160,122 L400,122" marker-end="url(#arr3)"/>
+            <path d="M160,167 C280,167 300,120 400,120" marker-end="url(#arr3)"/>
+            <path d="M160,212 C280,212 300,120 400,120" marker-end="url(#arr3)"/>
+          </g>
+
+          <rect x="400" y="98" width="220" height="46" rx="8" fill="var(--due-bg)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="510" y="120" text-anchor="middle" font-weight="700" fill="var(--accent)">create_contract_transaction</text>
+          <text x="510" y="134" text-anchor="middle" class="mono-t" font-size="9" fill="var(--muted)">single INSERT into t_contracts</text>
+
+          <path d="M620,120 L680,120" stroke="currentColor" stroke-opacity="0.4" fill="none" marker-end="url(#arr3)"/>
+          <rect x="680" y="98" width="140" height="46" rx="8" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="750" y="118" text-anchor="middle" font-size="10">draft →</text>
+          <text x="750" y="132" text-anchor="middle" class="mono-t" font-size="9">update_contract_status</text>
+
+          <path d="M750,144 L750,175" stroke="var(--proven)" fill="none" marker-end="url(#arr3)"/>
+          <rect x="670" y="175" width="160" height="40" rx="6" fill="var(--proven-bg)" stroke="var(--proven)"/>
+          <text x="750" y="192" text-anchor="middle" font-size="9.5" fill="var(--proven)">pgmq.send('jtd_queue')</text>
+          <text x="750" y="205" text-anchor="middle" font-size="9" fill="var(--proven)">✓ only hook that exists</text>
+
+          <path d="M510,144 C510,190 590,205 670,205" stroke="var(--risk)" stroke-dasharray="3 3" fill="none" marker-end="url(#arr3risk)"/>
+          <text x="590" y="230" text-anchor="middle" font-size="9.5" fill="var(--risk)">insert-as-active (wizard auto-accept,</text>
+          <text x="590" y="242" text-anchor="middle" font-size="9.5" fill="var(--risk)">Plan Sub, Top-up) never reaches this hook</text>
+        </g>
+        <defs>
+          <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity="0.55"/>
+          </marker>
+          <marker id="arr3risk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--risk)"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>Fig. 4 — a pre-existing bug, independent of the JTD-commitments work, and the exact failure shape V2 has to design around: insert directly into an active-ish state, and the one hook that exists gets skipped.</figcaption>
+    </figure>
+
+    <div class="col">
+      <div class="callout risk">
+        <p><strong>Bulk Assign is almost certainly how BBB's 49 contracts were created</strong> — relevant to the eventual BBB-sync step, since it confirms the pathway BBB actually runs through.</p>
+      </div>
+      <p>Two things that turned out <strong>not</strong> to be real pathways, worth removing from scope: contract renewal/clone is 100% mock UI with a literal <code class="mono">// Mock renewal data</code> comment and no API call anywhere; and RFQ Award creates nothing — the state <code class="mono">converted_to_contract</code> exists in the schema but nothing in the codebase ever sets it.</p>
+    </div>
+
+    <hr class="rule" />
+
+    <!-- 06 V2 -->
+    <section id="v2" class="col">
+      <span class="eyebrow">06 · V2 build strategy</span>
+      <h2>New, versioned, parallel. Nothing existing touched.</h2>
+      <p>New API routes and edge functions, tagged <code class="mono">v2</code>, sitting fully alongside what's running today. Old pathways keep serving all current traffic unmodified — which is also what keeps BBB structurally safe without anyone having to be careful about it.</p>
+      <h3>Reused patterns — already proven in this codebase</h3>
+      <ul>
+        <li><strong>Idempotency</strong> — the scanner's own appointment step already does <code class="mono">NOT EXISTS</code> checks plus catches <code class="mono">unique_violation</code> as a no-op. Same shape applies to JTD commitment creation.</li>
+        <li><strong>Race conditions</strong> — <code class="mono">version</code>-based optimistic locking already exists on the tables that matter; the scanner already uses <code class="mono">pg_try_advisory_xact_lock</code> + <code class="mono">FOR UPDATE SKIP LOCKED</code> to stop overlapping runs colliding.</li>
+        <li><strong>Self-healing uniqueness</strong> — the invoice-number generator's retry-to-1000-attempts pattern is the template for anything V2 needs a guaranteed-unique code for.</li>
+      </ul>
+      <h3>What's genuinely new</h3>
+      <p>Idempotency at the whole-chain level: one new <code>SECURITY DEFINER</code> function per creation pathway, wrapping contract + events + JTD commitments in a single Postgres transaction — a retried call either produces the full chain exactly once, or nothing at all.</p>
+
+      <h3>Working discipline — non-negotiable</h3>
+      <ul>
+        <li><strong>Every branch of work anchors to a tag.</strong> <code class="mono">v1.0.0</code> is the baseline; a tag is cut again at minimum at the confidence gate and before BBB migration. Code changes are always made and reviewed relative to a known tag, never floating against an untagged branch tip.</li>
+        <li><strong>V2 files keep their V1 name, plus the identifier.</strong> No new naming scheme — <code class="mono">contractController.ts</code> → <code class="mono">contractControllerV2.ts</code>, <code class="mono">create_contract_transaction</code> → <code class="mono">create_contract_transaction_v2</code>. The nomenclature stays recognizable so the two implementations are obviously paired, not two unrelated pieces of code.</li>
+        <li><strong>Confirmation triggers removal, not deprecation.</strong> Once you've tested a V2 pathway and confirmed it working, its V1 predecessor is deleted in that same change — not left dormant "just in case." This is a direct lesson from §02: JTD's own dormant scaffolding sat unremoved and unfinished for eight months. Nothing in this initiative repeats that shape.</li>
+        <li><strong>Cutover happens inside the API, not the UI.</strong> Route paths the UI already calls stay identical; internally, the handler switches from the V1 implementation to the V2 implementation once that pathway is proven. See Fig. 5.</li>
+      </ul>
+    </section>
+
+    <figure class="diagram wide">
+      <svg viewBox="0 0 780 230" role="img" aria-label="Cutover mechanism: the UI keeps calling the same API route it always has. Internally, that route's handler switches from the V1 implementation to the confirmed V2 implementation; the V1 handler is deleted once the switch is made, so old and new implementations never run side by side indefinitely.">
+        <g font-size="11">
+          <rect x="20" y="90" width="130" height="40" rx="6" fill="var(--surface-2)" stroke="currentColor" stroke-opacity="0.35"/>
+          <text x="85" y="114" text-anchor="middle">UI — unchanged</text>
+
+          <path d="M150,110 L210,110" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr4)"/>
+
+          <rect x="210" y="90" width="180" height="40" rx="6" fill="var(--due-bg)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="300" y="108" text-anchor="middle" fill="var(--accent)" font-weight="700">same route</text>
+          <text x="300" y="122" text-anchor="middle" class="mono-t" font-size="9.5" fill="var(--accent)">/api/contracts/:id</text>
+
+          <path d="M390,100 C440,70 460,55 500,45" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr4)"/>
+          <path d="M390,120 C440,150 460,165 500,175" stroke="currentColor" stroke-opacity="0.5" fill="none" marker-end="url(#arr4)"/>
+          <text x="430" y="80" class="lbl">before confirmation</text>
+          <text x="430" y="150" class="lbl">after confirmation</text>
+
+          <rect x="500" y="25" width="230" height="40" rx="6" fill="var(--risk-bg)" stroke="var(--risk)" stroke-dasharray="3 3"/>
+          <text x="615" y="43" text-anchor="middle" fill="var(--risk)">V1 handler</text>
+          <text x="615" y="57" text-anchor="middle" class="mono-t" font-size="9.5" fill="var(--risk)">deleted, not deprecated, on cutover</text>
+
+          <rect x="500" y="155" width="230" height="40" rx="6" fill="var(--proven-bg)" stroke="var(--proven)" stroke-width="1.5"/>
+          <text x="615" y="173" text-anchor="middle" fill="var(--proven)" font-weight="700">V2 handler</text>
+          <text x="615" y="187" text-anchor="middle" class="mono-t" font-size="9.5" fill="var(--proven)">proven at the confidence gate</text>
+        </g>
+        <defs>
+          <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity="0.6"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption>Fig. 5 — the switch lives entirely inside the API layer. The UI's call site never changes; what changes is which handler answers it, and the old handler is removed the moment the new one is trusted, never left running "just in case."</figcaption>
+    </figure>
+
+    <hr class="rule" />
+
+    <!-- 07 USE CASES -->
+    <section id="usecases" class="wide">
+      <span class="eyebrow">07 · Use cases</span>
+      <h2 class="col">Four shapes the lifecycle has to hold at once</h2>
+      <div class="usecases">
+        <div class="usecase">
+          <span class="tag">Equipment · conditional appointment</span>
+          <h4>Trinity — Cold Room AMC</h4>
+          <p>HVAC preventive maintenance. 4 quarterly billing commitments, 6 service commitments. Industry decides whether visits need scheduling negotiation.</p>
+          <div class="flow">created → due → [appt?] → in_progress →<br/>evidence → proven → invoiced</div>
+        </div>
+        <div class="usecase">
+          <span class="tag">Group · occurrence-level, no assets</span>
+          <h4>BBB — Saturday Network Meeting</h4>
+          <p>One JTD row per occurrence, shared by 49 members at once — never one row per member. Roster/attendance/declarations stay in their existing tables untouched.</p>
+          <div class="flow">occurrence created → JTD row →<br/>[gs_* roster, unchanged] → billing rides<br/>the normal billing-commitment flow</div>
+        </div>
+        <div class="usecase">
+          <span class="tag">Billing only · no service leg</span>
+          <h4>Plan subscription fee</h4>
+          <p>Never touches appointments, tickets, or evidence at all — the shortest legal path through the state flow.</p>
+          <div class="flow">created → due → invoiced →<br/>[t_invoices owns "paid"]</div>
+        </div>
+        <div class="usecase">
+          <span class="tag">Greenfield · doesn't exist yet</span>
+          <h4>RFQ → vendor-authored contract</h4>
+          <p>Awarding an RFQ creates nothing today. The vendor's own contract-creation step is unbuilt — this is new construction, not a migration.</p>
+          <div class="flow">rfq_award → [nothing] →<br/>vendor creates contract (to build)</div>
+        </div>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 08 ROLLOUT -->
+    <section id="rollout" class="col">
+      <span class="eyebrow">08 · Phased rollout</span>
+      <h2>No merge to main unless mandatory</h2>
+      <p>Everything through the confidence gate lives on a branch. <code class="mono">v1.0.0</code> is already tagged on <code class="mono">master</code> as the pre-initiative baseline — if anything in production needs fixing while this work is in flight, it's resolved against that tag, independent of whatever state this branch is in. Every phase below starts from a known tag and cuts its own before handing off to the next — a rollback point always exists behind whatever is currently in flight.</p>
+
+      <ol class="phases">
+        <li class="phase-item">
+          <div class="who">Phase 0 · Milestone 1</div>
+          <h4>Evaluate JTD maturity</h4>
+          <p>Confirm exactly what's live vs. dormant in the master tables — event types, source types, status flows — before writing anything new on top of them.</p>
+        </li>
+        <li class="phase-item">
+          <div class="who">Phase 1 · Milestone 1</div>
+          <h4>Contract + template foundation, V2</h4>
+          <p>The basic fundamental correction everything else depends on. One new atomic RPC (<code class="mono">create_contract_transaction_v2</code>) with every real pathway — wizard, template, bulk, plan sub, top-up — repointed to it one at a time. Templates are proven here as a variant of this same pathway, not a separate one: the wizard-seed path must produce identical JTD output to a from-scratch contract. Business-model templates (the pre-built starting points a tenant's own catalog is seeded from) ship as part of this milestone, not after it.</p>
+        </li>
+        <li class="phase-item gate">
+          <div class="who">Gate</div>
+          <h4>Confidence checkpoint</h4>
+          <p>Once the contract + template foundation is solid, everything else — RFQ, appointments, tickets, evidence, invoicing, product-led UX — stitches onto the same spine with comparatively little friction. Test against at least <strong>25 real contracts</strong> before trusting it.</p>
+        </li>
+        <li class="phase-item">
+          <div class="who">Phase 2</div>
+          <h4>BBB migration</h4>
+          <p>One-time backfill + one additive line in the schedule-generation RPC. See §09.</p>
+        </li>
+        <li class="phase-item">
+          <div class="who">Phase 3 · Milestone 2</div>
+          <h4>Stitch-in, alongside product-led UX</h4>
+          <p>RFQ's vendor-authored contract flow (greenfield), appointments, tickets, evidence, and invoicing all wire against the now-proven spine — starting in step with the product-led UX evolution, not after it. Each V1 pathway is retired the moment its V2 replacement is confirmed working, one at a time, never as a single cutover, and never left running dormant alongside its replacement.</p>
+        </li>
+      </ol>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 09 BBB -->
+    <section id="bbb" class="col">
+      <span class="eyebrow">09 · BBB safety guarantees</span>
+      <h2>BBB is touched exactly once, at the end, on purpose</h2>
+      <ul class="guarantee-list">
+        <li><span class="mark">✓</span> No table BBB depends on — <code class="mono">t_group_session_schedule</code>, <code class="mono">t_session_attendance</code>, <code class="mono">t_session_payment_declarations</code>, any <code class="mono">gs_*</code> RPC — is written to by any phase before the gate.</li>
+        <li><span class="mark">✓</span> BBB's billing and notification triggers keep running through the existing pathway the entire time.</li>
+        <li><span class="mark">✓</span> Migration is a pure insert: one JTD row per existing occurrence, pointing at it — nothing about roster or attendance is read-write.</li>
+        <li><span class="mark">✓</span> Going forward, exactly one additive line in the schedule-generation RPC — new occurrences get a JTD row the moment they're created.</li>
+        <li><span class="mark">✓</span> A standing acceptance check — count of <code class="mono">t_group_session_schedule</code> rows vs. matching JTD rows for BBB's tenant — run continuously, alerting the moment they diverge. The same mechanism that would have caught the tax-RPC drift and the Taxes NAV disappearing, this time applied to the one thing that must never silently drift again.</li>
+      </ul>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 10 INVENTORY -->
+    <section id="inventory" class="wide">
+      <span class="eyebrow">10 · Code inventory</span>
+      <h2 class="col">Bookmarked — verified this session, not guessed</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Location</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Contract creation</td><td class="mono">contractnest-edge/.../053_fix_cnak_draft_workflow.sql:29-193</td><td><span class="pill neutral">v1 — untouched</span></td></tr>
+            <tr><td>Bulk assign</td><td class="mono">contractnest-api/src/controllers/contractController.ts:320-413</td><td><span class="pill neutral">v1 — untouched</span></td></tr>
+            <tr><td>Scanner (status/reminders/invoices/appointments)</td><td class="mono">operations-loop/017_vani_rules_v1.sql (run_contract_event_scanner)</td><td><span class="pill due">reference for V2</span></td></tr>
+            <tr><td>Appointments kanban</td><td class="mono">contractnest-ui/src/pages/operations/appointments/index.tsx</td><td><span class="pill due">needs technician field</span></td></tr>
+            <tr><td>Appointment accept mutation</td><td class="mono">contractnest-ui/src/hooks/queries/useAppointmentQueries.ts:82-96</td><td><span class="pill risk">missing assigned_to</span></td></tr>
+            <tr><td>Service execution</td><td class="mono">ServiceExecutionDrawer.tsx, TicketEvidencePanel.tsx</td><td><span class="pill due">evidence gate missing</span></td></tr>
+            <tr><td>Ticket→event link</td><td class="mono">t_service_ticket_events junction (023_service_ticket_events_junction.sql)</td><td><span class="pill proven">already correct</span></td></tr>
+            <tr><td>Beyond-scope billing</td><td class="mono">ServiceExecutionDrawer.tsx — beyondScopeItems state</td><td><span class="pill risk">captured, discarded</span></td></tr>
+            <tr><td>CNAK claim</td><td class="mono">claim_contract_by_cnak() RPC</td><td><span class="pill due">grant-row creation to audit</span></td></tr>
+            <tr><td>JTD founding spec</td><td class="mono">ClaudeDocumentation/JTD/JTD-Framework.md</td><td><span class="pill proven">source of truth</span></td></tr>
+            <tr><td>JTD master data</td><td class="mono">n_jtd_event_types, n_jtd_source_types, n_jtd_status_flows</td><td><span class="pill due">dormant, ready to use</span></td></tr>
+            <tr><td>Dead scaffold</td><td class="mono">contractnest-ui/src/pages/appointments/index.tsx</td><td><span class="pill neutral">remove — mock data, dangling routes</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 11 POA -->
+    <section id="poa" class="wide">
+      <span class="eyebrow">11 · Sprint-wise POA</span>
+      <h2 class="col">Two milestones. The first unblocks the second.</h2>
+      <p class="col lede">First-pass shape, not committed dates — sprint sizing gets real once Phase 0's maturity evaluation is actually done. What's fixed is the sequencing: Milestone 1 is the foundation correction in contracts and templates; Milestone 2 doesn't start until that foundation is proven at the confidence gate, and then runs in step with the product-led UX evolution rather than after it.</p>
+
+      <h3 class="col">Milestone 1 — Contract + template foundation</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sprint</th><th>Scope</th><th>Exit criteria</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">1</td><td>JTD maturity evaluation — audit <code class="mono">n_jtd_event_types</code>, <code class="mono">_source_types</code>, <code class="mono">_status_flows</code> against what's actually called in production.</td><td>Written maturity map. No code changes.</td></tr>
+            <tr><td class="mono">2</td><td><code class="mono">create_contract_transaction_v2</code> built; Contract Wizard (highest-traffic caller) repointed first.</td><td>Wizard-created contracts produce contract + events + JTD commitments in one transaction, verified on staged data.</td></tr>
+            <tr><td class="mono">3</td><td>Remaining four callers repointed — Template Assign, Bulk Assign, Plan Subscription, Top-up — closing the Fig. 4 gap where insert-as-active pathways skip the JTD hook entirely.</td><td>All five pathways on V2. Each V1 caller deleted once its V2 replacement is confirmed.</td></tr>
+            <tr><td class="mono">4</td><td>Template parity + business-model templates — verify wizard-seed output matches from-scratch output; ship pre-built template sets per business model.</td><td>Template path verified equivalent in JTD output, not just visually equivalent in the UI.</td></tr>
+            <tr><td class="mono">5</td><td>Confidence gate — test against 25+ real contracts across pathways; tag the branch; go/no-go review.</td><td>Gate passed. Tag cut. Milestone 2 authorized to start.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="col">Milestone 2 — Stitch-in, alongside product-led UX</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sprint</th><th>Scope</th><th>Exit criteria</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">6</td><td>BBB migration — one-time backfill + additive schedule-generation hook; standing acceptance check goes live. See §09.</td><td>JTD row count matches <code class="mono">t_group_session_schedule</code> row count for BBB, continuously.</td></tr>
+            <tr><td class="mono">7</td><td>RFQ vendor-authored contract flow — genuinely new construction, not migration. Runs in parallel with the first product-led UX surface.</td><td>An awarded RFQ produces a real <code class="mono">t_contracts</code> row through the V2 pathway.</td></tr>
+            <tr><td class="mono">8</td><td>Appointments stitched onto the spine — including the missing technician-assignment control (Fig. §01 finding, 0/31 assigned).</td><td>Appointment commitments branch correctly per §04's conditional flow.</td></tr>
+            <tr><td class="mono">9</td><td>Tickets, evidence-gate enforcement, invoicing handoff wired to the spine per §04's <code class="mono">invoiced</code> hand-off rule.</td><td>A ticket can no longer be marked <code class="mono">completed</code> against contract policy that requires evidence.</td></tr>
+            <tr><td class="mono">10</td><td>Full V1 retirement sweep — anything still dormant or dual-running is deleted; final tag cut for the whole initiative.</td><td><code class="mono">git grep</code> for V1 pathway names returns nothing outside history.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- 12 OPEN -->
+    <section id="open" class="col">
+      <span class="eyebrow">12 · Open questions</span>
+      <h2>Not yet decided</h2>
+      <div class="callout">
+        <p><strong>Decided, deferred.</strong> <code class="mono">t_contract_events</code> will eventually be retired once every consuming surface reads JTD directly — that's a confirmed direction, not an open question anymore. It's explicitly lower priority than the contract + template foundation and isn't scheduled work in either milestone above.</p>
+      </div>
+      <ul>
+        <li>Exact <code class="mono">n_jtd_status_flows</code> enumeration per commitment type — the diagram in §04 is the shape, not the final state list.</li>
+        <li>What the vendor-side RFQ→contract UX actually looks like — reuse the wizard, or a lighter parallel flow producing the same shape.</li>
+      </ul>
+    </section>
+
+    <footer class="doc-footer">
+      contractnest-combined · draft spec · sourced from live-data audit + git history, not assumption · v1.0.0 tagged as pre-initiative baseline
+    </footer>
+  </main>
+</div>
