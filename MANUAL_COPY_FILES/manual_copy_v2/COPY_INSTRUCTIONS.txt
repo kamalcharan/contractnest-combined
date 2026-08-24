@@ -396,6 +396,32 @@ STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
   Copy command:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
 
+  ─────────────────────────────────────────────────────────────
+  🔧 CUTOVER BUILD ITEM DONE — receipt-cancel is now job-aware
+     (owner-queued "next task", 2026-08-24)
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/jtd-nucleus/008_cancel_receipt_reverses_jobs.sql
+    cancel_invoice_receipt reversed ONLY t_contract_events, then
+    deleted the allocations — on a jobs contract the invoice would
+    un-pay while the JOB stayed 'paid' (the audit's chk10 risk).
+    Additive splice before the allocation DELETE: mirror-reverse
+    n_jtd via a.jtd_id = j.id — amount_settled decreases, status
+    walks back paid → partial_payment → scheduled, completed_at
+    clears unless still fully covered by other receipts, note says
+    which receipt was cancelled. PROVABLY a no-op for every legacy
+    receipt (their allocations have jtd_id NULL — all of BBB).
+    cancel_or_writeoff_invoice needs nothing: V1 never touched
+    events/allocations there, so jobs contracts already have parity.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS R-A (rolled back, CN-1005's real RCP-10003 ₹5,600):
+      both jobs → scheduled, settled 0, completed_at cleared, note
+      'receipt RCP-10003 cancelled — harness'; allocations deleted;
+      invoice → unpaid. Post-rollback verified untouched
+      (partially_paid 5600/11600, 2 paid jobs stamped).
+    The cutover entry-criteria build item is CLOSED with this.
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Force
+
 ═════════════════════════════════════════════════════════════════
 💳 SUBSCRIPTIONS — quarterly checkout + gateway verify fixed
    (owner-approved "go ahead fix", 2026-08-20)
