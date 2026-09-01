@@ -1126,3 +1126,18 @@ Write-Host "Copied. Restart contractnest-api, hard-refresh the UI, and run the S
 - [ ] RFQ mode: unaffected (gate skipped)
 - [ ] Template save: unaffected (returns before the backstop)
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+SECTION: SERVICE EXECUTION V3 — SPEC FREEZE (B0) — added 2026-09-01
+═══════════════════════════════════════════════════════════════════
+Submodule affected: ClaudeDocumentation (branch master)
+Files (documentation only — no code, no DB changes):
+  ClaudeDocumentation/productled/Service-Execution-V3-Handoff.html
+      Interactive 7-screen UX handoff (visit drawer, mobile flow,
+      report, on-the-fly invoice, Extend touchpoints, WhatsApp).
+  ClaudeDocumentation/productled/Service-Execution-V3-Decisions.md
+      Decisions log D1-D11 + verified structural facts + build
+      batches B1-B4 for Sprints 2 & 7.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\*" -Destination "ClaudeDocumentation\productled\" -Force
