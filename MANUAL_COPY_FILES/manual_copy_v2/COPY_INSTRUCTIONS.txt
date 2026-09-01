@@ -1141,3 +1141,34 @@ Files (documentation only — no code, no DB changes):
 
 Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\*" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — SIGNIA PHASES 1+2 (added 2026-09-01)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (files are SOURCE-OF-RECORD ONLY —
+both migrations ALREADY APPLIED LIVE 2026-09-01, do NOT re-run)
+
+Files:
+  contractnest-edge/supabase/migrations/jtd-cutover/001_signia_copy.sql
+      Phase 1: id-preserving copy, 23 signia contracts / 356 event rows
+      → n_jtd job rows (same ids). Verified: all counts/sums match,
+      0 events without twin, settled ₹21,300 carried.
+  contractnest-edge/supabase/migrations/jtd-cutover/002_signia_fk_swap.sql
+      Phase 2: 3 receipt allocations → jtd_id (₹21,300);
+      t_invoices.jtd_id column added (0 backfill — correct, see file).
+  contractnest-edge/supabase/migrations/jtd-cutover/audit_dual_read_check.sql
+      READ-ONLY daily watchdog. Baseline: 23/23 ok.
+
+Copy:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\jtd-cutover" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\*" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+Post-copy verification already done live:
+  get_contract_details_v2 for CN-1003/CN-1004 (signia live) now returns
+  events.source='jtd' with 25/51 items and settled 15,800/5,500 — the
+  contract page serves migrated contracts from jobs automatically.
+
+NOT yet done (Phases 3-4, next): writers (scanner, reminder cron,
+event-status fns) and readers (finance RPCs) still on t_contract_events.
+Until then: status changes made by V1 writers (e.g. overdue cron) will
+show as DRIFT in the audit — expected, run audit daily.
