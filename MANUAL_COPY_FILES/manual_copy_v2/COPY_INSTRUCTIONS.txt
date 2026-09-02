@@ -1172,3 +1172,21 @@ NOT yet done (Phases 3-4, next): writers (scanner, reminder cron,
 event-status fns) and readers (finance RPCs) still on t_contract_events.
 Until then: status changes made by V1 writers (e.g. overdue cron) will
 show as DRIFT in the audit — expected, run audit daily.
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — PHASE 3 SYNC BRIDGE (added 2026-09-02)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — applied
+live 2026-09-02, idempotent but do not re-run without reason)
+
+File:
+  contractnest-edge/supabase/migrations/jtd-cutover/003_bidirectional_sync.sql
+      Bidirectional sync bridge (two AFTER UPDATE triggers) keeping
+      migrated contracts' event rows and job rows in lockstep — covers
+      all 10 V1 writers with ZERO V1 function edits. One-time reconcile
+      healed both live drifts (CN-1003-test payment ₹600, CN-1019
+      scanner status flips). Verified: harness proved both directions,
+      drift = 0 across all 23 migrated contracts.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\003_bidirectional_sync.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
