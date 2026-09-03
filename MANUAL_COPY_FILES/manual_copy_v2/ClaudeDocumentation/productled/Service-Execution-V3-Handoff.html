@@ -1,0 +1,898 @@
+<title>Service Execution V3</title>
+<style>
+  :root{
+    --ground:#FAF7F2; --card:#FFFFFF; --card2:#FDF9F3;
+    --ink:#231F1A; --sub:#8A8177; --hair:#231F1A14; --hair2:#231F1A0A;
+    --brand:#E8762C; --brand-soft:#E8762C18; --brand-line:#E8762C55;
+    --good:#189A6C; --good-soft:#189A6C16;
+    --warn:#D97706; --warn-soft:#D9770614;
+    --bad:#DC4B3E; --bad-soft:#DC4B3E14;
+    --lock:#9A9187; --lock-soft:#9A918714;
+    --wa:#1FAF5F; --mail:#3B76D2;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#191612; --card:#211D18; --card2:#26211B;
+      --ink:#F2EBE2; --sub:#9C938A; --hair:#F2EBE21A; --hair2:#F2EBE20D;
+      --brand:#F08A42; --brand-soft:#F08A4222; --brand-line:#F08A4266;
+      --good:#2FBE8B; --good-soft:#2FBE8B1E;
+      --warn:#E9A23B; --warn-soft:#E9A23B1C;
+      --bad:#E86A5E; --bad-soft:#E86A5E1C;
+      --lock:#7A736B; --lock-soft:#7A736B22;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#191612; --card:#211D18; --card2:#26211B;
+    --ink:#F2EBE2; --sub:#9C938A; --hair:#F2EBE21A; --hair2:#F2EBE20D;
+    --brand:#F08A42; --brand-soft:#F08A4222; --brand-line:#F08A4266;
+    --good:#2FBE8B; --good-soft:#2FBE8B1E;
+    --warn:#E9A23B; --warn-soft:#E9A23B1C;
+    --bad:#E86A5E; --bad-soft:#E86A5E1C;
+    --lock:#7A736B; --lock-soft:#7A736B22;
+  }
+  *{box-sizing:border-box; margin:0}
+  body{
+    background:var(--ground); color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding-bottom:80px;
+  }
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .eyebrow{font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--sub)}
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ── Top bar ── */
+  header{
+    position:sticky; top:0; z-index:40; background:var(--ground);
+    border-bottom:1px solid var(--hair); padding:14px 22px 0;
+  }
+  .bar{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .brandmark{width:30px;height:30px;border-radius:9px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none}
+  .bar h1{font-size:15px; font-weight:800}
+  .bar .sub{font-size:11px; color:var(--sub)}
+  .spacer{flex:1}
+  .lexi{display:flex; gap:4px; background:var(--card); border:1px solid var(--hair); border-radius:999px; padding:3px}
+  .lexi button{font-size:11px; font-weight:700; padding:5px 12px; border-radius:999px; color:var(--sub)}
+  .lexi button.on{background:var(--brand); color:#fff}
+  nav.tabs{max-width:1180px; margin:10px auto 0; display:flex; gap:2px; overflow-x:auto}
+  nav.tabs button{
+    padding:9px 14px 11px; font-size:12.5px; font-weight:700; color:var(--sub);
+    border-bottom:2.5px solid transparent; white-space:nowrap;
+  }
+  nav.tabs button.on{color:var(--brand); border-color:var(--brand)}
+  nav.tabs .n{display:inline-flex;width:17px;height:17px;border-radius:6px;background:var(--brand-soft);color:var(--brand);font-size:10px;align-items:center;justify-content:center;margin-right:6px;font-weight:800}
+
+  main{max-width:1180px; margin:0 auto; padding:22px}
+  section.screen{display:none}
+  section.screen.on{display:block}
+
+  .decision{
+    display:flex; gap:10px; align-items:flex-start; border:1px dashed var(--brand-line);
+    background:var(--brand-soft); border-radius:14px; padding:11px 14px; margin-bottom:18px; font-size:12.5px;
+  }
+  .decision b{color:var(--brand)}
+  .stage{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:18px; align-items:start}
+  @media (max-width:920px){.stage{grid-template-columns:1fr}}
+
+  .mock{background:var(--card); border:1px solid var(--hair); border-radius:20px; overflow:hidden;
+        box-shadow:0 1px 2px #0000000a, 0 8px 28px #00000008}
+  .mock-head{padding:14px 18px; border-bottom:1px solid var(--hair); display:flex; align-items:center; gap:12px}
+  .mock-body{padding:18px}
+
+  aside .note{background:var(--card2); border:1px solid var(--hair); border-radius:14px; padding:13px 15px; margin-bottom:12px; font-size:12.5px}
+  aside .note h4{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--brand); margin-bottom:7px; font-weight:800}
+  aside .note ul{padding-left:16px; display:grid; gap:5px}
+  aside .note li::marker{color:var(--brand)}
+  .db{font-family:ui-monospace,Menlo,monospace; font-size:11px; background:var(--hair2); border-radius:5px; padding:1px 5px; white-space:nowrap}
+
+  .chip{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:3.5px 9px; border-radius:999px}
+  .chip.good{background:var(--good-soft); color:var(--good)}
+  .chip.warn{background:var(--warn-soft); color:var(--warn)}
+  .chip.bad{background:var(--bad-soft); color:var(--bad)}
+  .chip.lock{background:var(--lock-soft); color:var(--lock)}
+  .chip.brand{background:var(--brand-soft); color:var(--brand)}
+
+  .btn{border-radius:999px; font-weight:800; font-size:12.5px; padding:9px 18px; transition:opacity .15s}
+  .btn.primary{background:var(--brand); color:#fff}
+  .btn.primary:disabled{opacity:.35; cursor:not-allowed}
+  .btn.ghost{border:1.5px solid var(--brand-line); color:var(--brand)}
+  .btn.quiet{border:1px solid var(--hair); color:var(--sub)}
+  .btn.sm{padding:6px 13px; font-size:11.5px}
+
+  /* Screen 1 — entry points */
+  .entry-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media (max-width:720px){.entry-grid{grid-template-columns:1fr}}
+  .taskrow{display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--hair); border-radius:14px; margin-bottom:9px; background:var(--card)}
+  .taskrow .ic{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;flex:none;font-size:15px}
+  .taskrow b{font-size:13px}
+  .taskrow .meta{font-size:11.5px; color:var(--sub)}
+
+  /* Screen 2 — visit drawer */
+  .drawer{display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+  @media (max-width:820px){.drawer{grid-template-columns:1fr}}
+  .drawer-left{padding:16px 18px; border-right:1px solid var(--hair)}
+  @media (max-width:820px){.drawer-left{border-right:none; border-bottom:1px solid var(--hair)}}
+  .drawer-right{padding:16px 18px; background:var(--card2)}
+  .evblock{margin-bottom:16px}
+  .evblock > .eyebrow{margin-bottom:8px; display:flex; align-items:center; gap:8px}
+  .acard{border:1px solid var(--hair); border-radius:14px; background:var(--card); padding:12px 14px; margin-bottom:8px}
+  .acard .top{display:flex; align-items:center; gap:10px}
+  .acard .nm{font-weight:800; font-size:13px; flex:1; min-width:0}
+  .acard .req{font-size:11px; color:var(--sub); margin-top:3px}
+  .acard.proven{border-color:var(--good); background:var(--good-soft)}
+  .acard.locked{border-style:dashed; opacity:.85}
+  .acard .stamp{font-size:11px; color:var(--good); font-weight:700; margin-top:6px}
+  .ring{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-weight:800;font-size:12px; background:
+        conic-gradient(var(--good) calc(var(--p)*1%), var(--hair) 0); flex:none}
+  .ring > span{width:40px;height:40px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center}
+  .bs-item{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--hair2)}
+  .formbox{border:1.5px solid var(--brand-line); border-radius:14px; padding:13px 14px; margin-top:10px; background:var(--card)}
+  .frow{display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--hair2); font-size:12.5px}
+  .frow:last-of-type{border-bottom:none}
+  .pf{display:flex; gap:4px}
+  .pf button{font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:999px; border:1px solid var(--hair); color:var(--sub)}
+  .pf button.pass{background:var(--good); border-color:var(--good); color:#fff}
+  .pf button.fail{background:var(--bad); border-color:var(--bad); color:#fff}
+  .numin{width:76px; border:1px solid var(--hair); border-radius:8px; padding:4px 8px; font:inherit; background:var(--card2); color:var(--ink); text-align:right}
+  .photochip{display:inline-flex; align-items:center; gap:6px; border:1.5px dashed var(--brand-line); color:var(--brand); font-size:11.5px; font-weight:700; border-radius:999px; padding:5px 12px}
+  .photochip.done{border-style:solid; background:var(--brand-soft)}
+
+  /* Screen 3 — report */
+  .report{max-width:640px; margin:0 auto; background:var(--card); border:1px solid var(--hair); border-radius:18px; overflow:hidden}
+  .report .accent{height:5px; background:var(--brand)}
+  .report .rp{padding:20px 24px}
+  .rline{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--hair2)}
+  .rline b{text-align:right}
+  .rasset{border:1px solid var(--hair); border-radius:12px; padding:11px 13px; margin-top:9px}
+  .rasset .h{display:flex; align-items:center; gap:9px; font-weight:800; font-size:12.5px}
+  .rasset .d{font-size:11.5px; color:var(--sub); margin-top:4px}
+  .photos{display:flex; gap:6px; margin-top:7px}
+  .ph{width:44px;height:44px;border-radius:8px;background:var(--hair2);display:flex;align-items:center;justify-content:center;font-size:16px}
+
+  /* Screen 4 — invoice */
+  .inv{max-width:620px; margin:0 auto; background:var(--card); border:1px solid var(--hair); border-radius:18px; overflow:hidden}
+  .inv table{width:100%; border-collapse:collapse; font-size:12.5px}
+  .inv th{text-align:left; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--sub); padding:8px 0; border-bottom:1px solid var(--hair)}
+  .inv td{padding:9px 0; border-bottom:1px solid var(--hair2)}
+  .inv td:last-child, .inv th:last-child{text-align:right}
+  .totrow{display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0}
+  .totrow.grand{font-size:15px; font-weight:800; border-top:1.5px solid var(--hair); margin-top:6px; padding-top:10px}
+
+  /* Screen 5 — extend */
+  .tl{position:relative; padding-left:26px}
+  .tl::before{content:""; position:absolute; left:8px; top:6px; bottom:6px; width:2px; background:var(--hair)}
+  .tp{position:relative; margin-bottom:14px; background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:12px 14px}
+  .tp::before{content:""; position:absolute; left:-23px; top:16px; width:12px; height:12px; border-radius:50%; background:var(--brand); border:3px solid var(--ground)}
+  .tp .h{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+  .tp .h b{font-size:13px}
+  .tp .msg{margin-top:8px; background:var(--good-soft); border-radius:0 12px 12px 12px; padding:9px 12px; font-size:12px; max-width:430px}
+  .chans{display:flex; gap:5px; margin-left:auto}
+  .chan{font-size:10.5px; font-weight:800; padding:3.5px 10px; border-radius:999px; border:1px solid var(--hair); color:var(--sub)}
+  .chan.on.wa{background:var(--wa); border-color:var(--wa); color:#fff}
+  .chan.on.em{background:var(--mail); border-color:var(--mail); color:#fff}
+  /* Screen 6 — WhatsApp (phone interiors deliberately keep WhatsApp's own light look in both themes) */
+  .phones{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media (max-width:760px){.phones{grid-template-columns:1fr}}
+  .phone{border:1px solid var(--hair); border-radius:26px; overflow:hidden; background:#EFE7DD; position:relative;
+         box-shadow:0 10px 30px #00000014; min-height:520px; display:flex; flex-direction:column}
+  .wa-head{background:#075E54; color:#fff; padding:11px 14px; display:flex; align-items:center; gap:10px}
+  .wa-head .av{width:30px;height:30px;border-radius:50%;background:#ffffff2e;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+  .wa-head b{font-size:13px; display:block}
+  .wa-head .st{font-size:10px; opacity:.75}
+  .wa-body{flex:1; padding:14px 12px; display:flex; flex-direction:column; gap:8px; overflow-y:auto}
+  .wb{max-width:86%; background:#fff; color:#1B1B1B; border-radius:2px 10px 10px 10px; padding:8px 10px 6px; font-size:12px; line-height:1.45;
+      box-shadow:0 1px 1px #00000014; align-self:flex-start}
+  .wb.out{background:#DCF8C6; border-radius:10px 2px 10px 10px; align-self:flex-end}
+  .wb .t{display:block; text-align:right; font-size:9.5px; color:#00000059; margin-top:3px}
+  .wb .hdrimg{background:#075E54; border-radius:6px; margin:-2px -4px 6px; padding:10px; color:#fff}
+  .wa-btnrow{border-top:1px solid #00000012; margin:7px -10px -6px; }
+  .wa-btn{display:block; width:100%; text-align:center; color:#0277B5; font-weight:700; font-size:12.5px; padding:9px 6px; border-top:1px solid #00000009}
+  .flow-sheet{position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:18px 18px 0 0; padding:16px;
+              box-shadow:0 -8px 30px #00000030; z-index:5; color:#1b1b1b}
+  .flow-sheet h5{font-size:13px; margin-bottom:2px}
+  .flow-sheet .fsub{font-size:10.5px; color:#777; margin-bottom:10px}
+  .stars{display:flex; gap:6px; font-size:22px; margin:6px 0 10px}
+  .stars button{filter:grayscale(1); opacity:.45}
+  .stars button.on{filter:none; opacity:1}
+  .fchip{font-size:11px; font-weight:700; border:1px solid #ccc; border-radius:999px; padding:4px 12px; margin-right:6px; color:#555}
+  .fchip.on{background:#075E54; border-color:#075E54; color:#fff}
+  .flow-sheet textarea{width:100%; border:1px solid #ddd; border-radius:8px; padding:8px; font:inherit; font-size:12px; margin:10px 0; background:#fafafa; color:#1b1b1b}
+  .flow-btn{width:100%; background:#00A884; color:#fff; font-weight:800; font-size:13px; border-radius:999px; padding:10px}
+  .flow-tag{position:absolute; top:-10px; left:14px; background:var(--brand); color:#fff; font-size:9.5px; font-weight:800;
+            letter-spacing:.08em; text-transform:uppercase; border-radius:999px; padding:3px 10px}
+  .mini-drawer{position:absolute; inset:44px 8px 8px; background:var(--ground); border-radius:14px; z-index:6; padding:12px; overflow-y:auto;
+               border:1px solid var(--hair); box-shadow:0 10px 30px #00000038}
+  /* Screen 7 — Mobile technician flow */
+  .mphone{max-width:360px; margin:0 auto; border:1px solid var(--hair); border-radius:30px; overflow:hidden; background:var(--ground);
+          box-shadow:0 12px 34px #00000016; position:relative; min-height:600px; display:flex; flex-direction:column}
+  .m-top{position:sticky; top:0; background:var(--card); border-bottom:1px solid var(--hair); padding:12px 14px; z-index:3}
+  .m-top .row{display:flex; align-items:center; gap:9px}
+  .m-prog{height:5px; border-radius:99px; background:var(--hair); margin-top:9px; overflow:hidden}
+  .m-prog > div{height:100%; background:var(--good); border-radius:99px; transition:width .3s}
+  .m-body{flex:1; padding:14px; overflow-y:auto}
+  .m-card{display:flex; align-items:center; gap:12px; background:var(--card); border:1px solid var(--hair); border-radius:16px;
+          padding:15px 14px; margin-bottom:10px; width:100%; text-align:left}
+  .m-card .ic{width:40px;height:40px;border-radius:12px;background:var(--brand-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+  .m-card b{font-size:14px; display:block}
+  .m-card .s{font-size:11.5px; color:var(--sub)}
+  .m-card.proven{border-color:var(--good); background:var(--good-soft)}
+  .m-card.locked{border-style:dashed; opacity:.8}
+  .m-card:active{transform:scale(.985)}
+  .m-bigbtn{width:100%; border-radius:16px; background:var(--brand); color:#fff; font-weight:800; font-size:15px; padding:15px; margin-top:4px}
+  .m-bigbtn:disabled{opacity:.35}
+  .m-bigbtn.good{background:var(--good)}
+  .m-frow{background:var(--card); border:1px solid var(--hair); border-radius:14px; padding:13px 14px; margin-bottom:9px}
+  .m-frow .q{font-size:13px; font-weight:700; margin-bottom:9px}
+  .m-pf{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+  .m-pf button{border:1.5px solid var(--hair); border-radius:12px; padding:11px; font-weight:800; font-size:13px; color:var(--sub)}
+  .m-pf button.pass{background:var(--good); border-color:var(--good); color:#fff}
+  .m-pf button.fail{background:var(--bad); border-color:var(--bad); color:#fff}
+  .m-num{width:100%; border:1.5px solid var(--hair); border-radius:12px; padding:12px; font:inherit; font-size:16px; background:var(--card2); color:var(--ink)}
+  .m-photo{width:100%; border:2px dashed var(--brand-line); border-radius:14px; padding:16px; color:var(--brand); font-weight:800; font-size:13px}
+  .m-photo.done{border-style:solid; background:var(--brand-soft)}
+  .m-advance{background:var(--good-soft); border:1px solid var(--good); color:var(--good); border-radius:12px; padding:10px 12px;
+             font-size:12.5px; font-weight:700; margin-bottom:10px; text-align:center}
+  footer{max-width:1180px; margin:30px auto 0; padding:0 22px; text-align:center}
+</style>
+
+<header>
+  <div class="bar">
+    <div class="brandmark">CN</div>
+    <div>
+      <h1>Service Execution V3</h1>
+      <div class="sub">Sprint 2 + 7 · the close-the-loop UX · interactive decision draft</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="eyebrow" style="margin-right:2px">Business domain</span>
+    <div class="lexi" id="lexi"></div>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+
+<main>
+
+<!-- ═══════════ SCREEN 1 · START ═══════════ -->
+<section class="screen" data-s="0">
+  <div class="decision">✅ <div><b>Decision locked:</b> the <span class="lex-ticket">ticket</span> is born at <b>Start service</b> — never at appointment-accept. Both entry points below converge on the same drawer; the appointment and the <span class="lex-ticket-l">ticket</span> meet at the shared job (jtd) — no new linkage table.</div></div>
+  <div class="stage">
+    <div>
+      <div class="entry-grid">
+        <div class="mock">
+          <div class="mock-head"><span class="eyebrow">Contract · Tasks tab</span><span class="chip brand mono" id="s1-cn">CN-1005</span></div>
+          <div class="mock-body">
+            <div class="taskrow"><div class="ic">🔧</div>
+              <div style="flex:1;min-width:0"><b>AC Comprehensive Service</b><div class="meta">Service #3/12 · due 15 Sep · 3 assets</div></div>
+              <span class="chip warn">Due</span>
+            </div>
+            <div class="taskrow"><div class="ic">🌀</div>
+              <div style="flex:1;min-width:0"><b>Air Filter Replacement</b><div class="meta">Service #5/14 · due 15 Sep</div></div>
+              <span class="chip bad">Overdue</span>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:12px">
+              <button class="btn primary" onclick="startVisit()">▶&nbsp; Start <span class="lex-unit">service</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="mock">
+          <div class="mock-head"><span class="eyebrow">Appointments · accepted</span></div>
+          <div class="mock-body">
+            <div class="taskrow" style="border-color:var(--brand-line)"><div class="ic">📅</div>
+              <div style="flex:1;min-width:0"><b>15 Sep · 10:30 AM</b>
+                <div class="meta"><span class="lex-worker">Technician</span>: Ravi Kumar · Orchid Towers, Basement 2</div></div>
+              <span class="chip good">Accepted</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--sub);margin:8px 2px 12px">Covers the same two events. Accepting only scheduled it — nothing was created yet.</p>
+            <div style="display:flex; justify-content:flex-end">
+              <button class="btn ghost" onclick="startVisit()">▶&nbsp; Start <span class="lex-unit">service</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mock" style="margin-top:14px; display:none" id="s1-born">
+        <div class="mock-body" style="display:flex; align-items:center; gap:14px">
+          <span style="font-size:22px">🎫</span>
+          <div style="flex:1"><b class="mono" id="s1-tkt">TKT-10001</b> <span class="chip warn" style="margin-left:8px">In progress</span>
+            <div style="font-size:11.5px; color:var(--sub); margin-top:2px"><span class="lex-visit">Visit</span> opened · started_at stamped · assignee Ravi Kumar · 2 events attached</div>
+          </div>
+          <button class="btn primary sm" onclick="go(1)">Open the <span class="lex-visit-l">visit</span> →</button>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <div class="note"><h4>Mechanism</h4><ul>
+        <li>Start service → <span class="db">t_service_tickets</span> row, number from the platform sequence (<span class="db">TKT-</span>), status <span class="db">in_progress</span>, <span class="db">started_at</span> = now.</li>
+        <li>Events attach via <span class="db">t_service_ticket_events</span> — post-cutover its <span class="db">event_id</span> IS the <span class="db">n_jtd.id</span> (id-preserving copy; FK repoints in Phase 2).</li>
+        <li>Appointment ↔ <span class="lex-ticket-l">ticket</span> resolve through the shared job: <span class="db">t_appointments.event_id</span>. No-show ⇒ no zombie ticket.</li>
+      </ul></div>
+      <div class="note"><h4>Try it</h4><ul>
+        <li>Hit <b>Start service</b> on either card.</li>
+        <li>Flip the <b>Business domain</b> switch (top right) — every label on every screen re-speaks the tenant's language. That's the nomenclature engine finally being read.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 2 · VISIT ═══════════ -->
+<section class="screen" data-s="1">
+  <div class="decision">✅ <div><b>Decisions locked:</b> proof grain is <b>event × asset</b>, not block — forms only where the resolver mapped one; everything else is one tap. Form <b>and</b> photo can both be required (<span class="db">require_upload</span>). Placeholder assets stay locked until attached. Complete gate opens only when every card is proven.</div></div>
+  <div class="stage">
+    <div class="mock">
+      <div class="mock-head">
+        <span style="font-size:17px">🎫</span>
+        <div style="flex:1"><b class="mono">TKT-10001</b> · <span class="lex-visit">Visit</span> — 15 Sep
+          <div style="font-size:11px;color:var(--sub)">Orchid Towers AMC · <span class="lex-worker">Technician</span> Ravi Kumar</div></div>
+        <span class="chip warn" id="v-chip">In progress</span>
+      </div>
+      <div class="drawer">
+        <div class="drawer-left" id="v-left"><!-- cards injected --></div>
+        <div class="drawer-right">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px">
+            <div class="ring" id="v-ring" style="--p:0"><span id="v-ringtxt">0/4</span></div>
+            <div><b style="font-size:13px">Proof progress</b>
+              <div style="font-size:11px;color:var(--sub)">every card proven ⇒ <span class="lex-visit-l">visit</span> can close</div></div>
+          </div>
+          <div class="eyebrow" style="margin-bottom:7px">Evidence policy</div>
+          <p style="font-size:12px; margin-bottom:14px">Smart form <b>+ photo</b> on AC Comprehensive (from the block's bound form) · <b>none</b> on Filter Replacement — one-tap done.</p>
+          <div class="eyebrow" style="margin-bottom:7px">Beyond scope · billed separately</div>
+          <div id="v-bs"></div>
+          <button class="btn ghost sm" style="margin-top:8px" onclick="addBeyond()">＋ Add beyond-scope item</button>
+          <div style="margin-top:18px; border-top:1px solid var(--hair); padding-top:14px">
+            <button class="btn primary" id="v-complete" style="width:100%" disabled onclick="completeVisit()">Complete <span class="lex-visit-l">visit</span></button>
+            <p style="font-size:11px; color:var(--sub); margin-top:7px; text-align:center" id="v-gatemsg">3 cards still unproven</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <aside>
+      <div class="note"><h4>Mechanism</h4><ul>
+        <li>Each card = one <span class="db">t_contract_event_assets</span> row (event_id = jtd id).</li>
+        <li>Form submit → <span class="db">m_form_submissions</span>; photo → <span class="db">t_service_evidence</span>; both stamp the card and set <span class="db">proven_at</span>.</li>
+        <li>Which form? Read from <span class="db">m_form_template_mappings</span> — written once at activation by the resolver: block form → KT form → contract fallback → platform default "General Service Completion" (policy smart_form never dead-ends).</li>
+        <li>All proven → job walks to <span class="db">completed</span> via legal transitions → ticket <span class="db">completed</span>.</li>
+        <li>Beyond-scope items persist on the ticket — screen 4 turns them into money.</li>
+      </ul></div>
+      <div class="note"><h4>Try it</h4><ul>
+        <li><b>AC-101 / AC-102</b>: open the form, mark checks, enter pressure, attach photo, submit.</li>
+        <li><b>AC-103</b> is a placeholder — attach the real serial to unlock it.</li>
+        <li><b>Filter card</b>: just tap done — no form was mapped.</li>
+        <li>Add a beyond-scope item, then complete the <span class="lex-visit-l">visit</span>.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 3 · REPORT ═══════════ -->
+<section class="screen" data-s="2">
+  <div class="decision">✅ <div><b>Decision locked:</b> the <span class="lex-report">Service Report</span> is an <b>output renderer</b> over the completed <span class="lex-visit-l">visit</span> — nobody fills a "report"; it is what the proof already says. Shared to the <span class="lex-buyer-l">client</span> by public link, same token pattern as check-in and quotes.</div></div>
+  <div class="stage">
+    <div>
+      <div class="report">
+        <div class="accent"></div>
+        <div class="rp">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:4px">
+            <div class="brandmark">TF</div>
+            <div style="flex:1"><b style="font-size:15px">Trinity Facilities Pvt Ltd</b>
+              <div style="font-size:11px;color:var(--sub)">GSTIN 36AAACT1234F1Z5 · Hyderabad</div></div>
+            <div style="text-align:right"><div class="eyebrow lex-report">Service Report</div>
+              <b class="mono" style="font-size:13px">TKT-10001</b></div>
+          </div>
+          <div style="border-top:1px solid var(--hair); margin:12px 0 6px"></div>
+          <div class="rline"><span><span class="lex-buyer">Client</span></span><b>Orchid Towers Owners Assn.</b></div>
+          <div class="rline"><span>Contract</span><b class="mono">CN-1005 · Annual AC Maintenance</b></div>
+          <div class="rline"><span><span class="lex-visit">Visit</span> date</span><b>15 Sep 2026 · 10:36 – 12:48</b></div>
+          <div class="rline"><span><span class="lex-worker">Technician</span></span><b>Ravi Kumar</b></div>
+          <div class="eyebrow" style="margin:16px 0 4px">Work proven — <span id="r-count">4</span> of 4 assets</div>
+          <div id="r-assets"></div>
+          <div class="eyebrow" style="margin:16px 0 4px">Beyond scope (billed separately)</div>
+          <div id="r-bs" style="font-size:12.5px"></div>
+          <div class="eyebrow" style="margin:16px 0 4px">Notes</div>
+          <p style="font-size:12.5px">Basement AHU access was restricted till 11:00. All units serviced within the <span class="lex-visit-l">visit</span> window.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap">
+        <button class="btn primary sm" onclick="ping('Queued as an n_jtd WhatsApp message — jtd-worker → MSG91 sends the public report link.')">Share on WhatsApp</button>
+        <button class="btn ghost sm" onclick="ping('Queued as an n_jtd email message with the PDF attached.')">Email to <span class="lex-buyer-l">client</span></button>
+        <button class="btn quiet sm" onclick="ping('Rendered server-side from the ticket — same renderer as this page.')">Download PDF</button>
+      </div>
+      <p style="text-align:center; font-size:11px; color:var(--sub); margin-top:8px" id="r-ping"></p>
+    </div>
+    <aside>
+      <div class="note"><h4>Mechanism</h4><ul>
+        <li>Rendered entirely from <span class="db">t_service_tickets</span> + <span class="db">t_service_ticket_events</span> + <span class="db">t_contract_event_assets</span> + <span class="db">m_form_submissions</span> + <span class="db">t_service_evidence</span>. No new capture step.</li>
+        <li>Public link = CNAK-style token grant, read-only, no-cache headers (check-in lesson).</li>
+        <li>The old "Service Report" evidence <i>type</i> in the block wizard retires — the report is a product of the visit, not an input.</li>
+      </ul></div>
+      <div class="note"><h4>Why it matters</h4><ul>
+        <li>This page is the platform's proof-of-delivery — what AR ageing, renewal talks and disputes point at.</li>
+        <li>Domain switch renames it live: Facilities "Service Report" → Healthcare "Treatment Summary" → Fitness "Session Summary".</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 4 · BEYOND-SCOPE INVOICE ═══════════ -->
+<section class="screen" data-s="3">
+  <div class="decision">✅ <div><b>Decision locked (owner, 1 Sep):</b> beyond-scope is <b>never</b> a contract billing event — it is additional money, invoiced <b>on the fly</b> at <span class="lex-visit-l">visit</span> close. Contract totals and the payment schedule stay untouched; the invoice still records <i>which</i> contract and <span class="lex-ticket-l">ticket</span> it came from.</div></div>
+  <div class="stage">
+    <div>
+      <div class="inv">
+        <div class="accent" style="height:5px;background:var(--brand)"></div>
+        <div style="padding:20px 24px">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px">
+            <div><div class="eyebrow">Tax invoice · on-the-fly</div>
+              <b class="mono" style="font-size:15px">INV-10042</b></div>
+            <div style="text-align:right; font-size:11.5px; color:var(--sub)">
+              Source: <b class="mono" style="color:var(--ink)">TKT-10001</b><br>Contract: <b class="mono" style="color:var(--ink)">CN-1005</b> <span class="chip brand" style="margin-left:4px">beyond scope</span></div>
+          </div>
+          <table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead>
+            <tbody id="i-lines"></tbody></table>
+          <div style="margin-top:12px" id="i-tots"></div>
+          <p style="font-size:11px; color:var(--sub); margin-top:12px">GST computed from the seller's Tax Settings at generation time — same rule as every platform sale. Mode: <b>excluding tax</b> (CGST 9% + SGST 9%).</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:14px">
+        <button class="btn primary sm" onclick="ping4('Sent with the report link — one WhatsApp message, two artifacts.')">Send with <span class="lex-report-l">report</span></button>
+        <button class="btn ghost sm" onclick="ping4('Draft parked in Money In → open items.')">Save as draft</button>
+      </div>
+      <p style="text-align:center; font-size:11px; color:var(--sub); margin-top:8px" id="i-ping"></p>
+    </div>
+    <aside>
+      <div class="note"><h4>Mechanism</h4><ul>
+        <li>Line items = the ticket's persisted beyond-scope picks (master-data blocks at their own price) — the current drawer <b>drops these on the floor</b>; V3 persists them.</li>
+        <li>Invoice row: <span class="db">contract_id</span> + ticket ref set for provenance, <b>no billing event</b>, contract <span class="db">grand_total</span> untouched.</li>
+        <li>Tax: read <span class="db">t_tax_settings</span> + <span class="db">t_tax_rates</span> at generation (subscriptions/002 pattern) → flows to the GST page automatically.</li>
+        <li>Payment lands through the normal receipt path; shows in Money In and the month's GST card.</li>
+      </ul></div>
+      <div class="note"><h4>Note</h4><ul>
+        <li>This is the first real driver for on-the-fly invoicing — guest session fees are queued behind the same capability.</li>
+        <li>Items added on screen 2 appear here live — add one there and come back.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 5 · EXTEND ═══════════ -->
+<section class="screen" data-s="4">
+  <div class="decision">✅ <div><b>Decision to bake in now:</b> every touchpoint below is just an <span class="db">n_jtd</span> message row enqueued beside the job it describes — jtd-worker, MSG91 and the delivery webhook already exist. Copy speaks the tenant's domain language. Paid touchpoint add-on, per the Extend menu.</div></div>
+  <div class="stage">
+    <div>
+      <div class="mock"><div class="mock-head"><span class="eyebrow">Extend · <span class="lex-visit-l">visit</span> lifecycle touchpoints</span>
+        <div class="spacer"></div><span class="chip brand">Touchpoint add-on</span></div>
+        <div class="mock-body"><div class="tl" id="x-tl"></div></div>
+      </div>
+    </div>
+    <aside>
+      <div class="note"><h4>Mechanism</h4><ul>
+        <li>New <span class="db">event_type_code</span>s: visit_scheduled · visit_started · visit_completed · report_ready · beyond_scope_invoice.</li>
+        <li>Each fires as a message row (<span class="db">channel_code</span> = whatsapp/email) linked to the job — one nucleus holds work, proof and conversation.</li>
+        <li>Dispatch window honours <span class="db">config.…notifications.dispatchHour</span> (the BBB 00:00-IST lesson, generalized).</li>
+        <li>New MSG91 templates = <b>positional</b> params (post-Aug-2026 registration — the documented trap).</li>
+      </ul></div>
+      <div class="note"><h4>Try it</h4><ul>
+        <li>Toggle WhatsApp / Email per touchpoint.</li>
+        <li>Switch domain — the message copy re-writes itself per tenant vocabulary.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 6 · ON WHATSAPP ═══════════ -->
+<section class="screen" data-s="5">
+  <div class="decision">✅ <div><b>Two-tier rule:</b> rich proof work (photos, multi-asset, gating) rides a <b>CTA-button link</b> into our own mobile page — works on every phone, template-approved once, no 24-hour window issue. Native in-chat interactivity (buttons, and a <b>WhatsApp Flow</b> form) is reserved for the light <span class="lex-buyer-l">client</span>-side moments: confirm, pay, rate. Sprint 7 never blocks on Flows.</div></div>
+  <div class="stage" style="grid-template-columns:1fr">
+    <div class="phones">
+      <!-- Technician phone -->
+      <div class="phone" id="ph-tech">
+        <div class="wa-head"><div class="av">🔧</div><div><b>ContractNest · Trinity Facilities</b><div class="st">business account</div></div></div>
+        <div class="wa-body">
+          <div class="wb">📅 <b>Tomorrow, 10:30 AM</b> — AC maintenance <span class="lex-visit-l">visit</span> at Orchid Towers, Basement 2. 2 events · 3 assets.<span class="t">6:12 PM ✓✓</span>
+            <div class="wa-btnrow"><button class="wa-btn" onclick="ping6('Reminder only — visit_scheduled template, positional params.')">📍 View location</button></div>
+          </div>
+          <div class="wb">☀️ Today's <span class="lex-visit-l">visit</span> is ready to start — Orchid Towers AMC, <b class="mono">CN-1005</b>.<span class="t">8:00 AM ✓✓</span>
+            <div class="wa-btnrow"><button class="wa-btn" onclick="techOpen()">▶ Start <span class="lex-visit-l">visit</span></button></div>
+          </div>
+          <div class="wb out" id="tech-done" style="display:none">✅ <span class="lex-visit">Visit</span> completed — 4/4 proven, TKT-10001 closed.<span class="t">12:48 PM</span></div>
+        </div>
+        <div class="mini-drawer" id="mini-drawer" style="display:none">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px">
+            <b class="mono" style="font-size:12px">cn.link/v/8kq2</b><span class="chip brand">mobile web</span>
+            <div class="spacer" style="flex:1"></div><button style="font-weight:800" onclick="techClose(false)">✕</button></div>
+          <p style="font-size:11px; color:var(--sub); margin-bottom:10px">The CTA button opened <b>the same drawer from screen 2</b>, token-authenticated, phone-sized. One proof engine — not a second WhatsApp implementation.</p>
+          <div class="acard"><div class="top"><span>📋</span><div class="nm" style="font-size:12px">AC-101 · Lobby</div><span class="chip brand">Form + photo</span></div></div>
+          <div class="acard"><div class="top"><span>📋</span><div class="nm" style="font-size:12px">AC-102 · Gym</div><span class="chip brand">Form + photo</span></div></div>
+          <div class="acard locked"><div class="top"><span>🔒</span><div class="nm" style="font-size:12px">AC-103 · placeholder</div><span class="chip lock">Locked</span></div></div>
+          <button class="btn primary sm" style="width:100%; margin-top:8px" onclick="techClose(true)">…finish the <span class="lex-visit-l">visit</span> here → back to chat</button>
+        </div>
+      </div>
+      <!-- Buyer phone -->
+      <div class="phone" id="ph-buyer">
+        <div class="wa-head"><div class="av">🏢</div><div><b>Trinity Facilities</b><div class="st">to: Orchid Towers Assn.</div></div></div>
+        <div class="wa-body" id="buyer-body">
+          <div class="wb">✅ Today's <span class="lex-visit-l">visit</span> is complete — 4 assets serviced by Ravi Kumar. Your <span class="lex-report-l">report</span> is ready.<span class="t">12:52 PM ✓✓</span>
+            <div class="wa-btnrow"><button class="wa-btn" onclick="ping6('CTA URL button → public report page (CNAK token, read-only, no-cache).')">📄 View <span class="lex-report-l">report</span></button></div>
+          </div>
+          <div class="wb">🧾 2 additional items were used during the <span class="lex-visit-l">visit</span>. Invoice <b class="mono">INV-10042</b> · <b>₹5,015</b>.<span class="t">12:53 PM ✓✓</span>
+            <div class="wa-btnrow"><button class="wa-btn" onclick="ping6('CTA URL button → invoice page with UPI intent — the GPay deep-link lesson applies; page also shows scannable QR.')">💳 Pay ₹5,015</button></div>
+          </div>
+          <div class="wb">⭐ How was today's <span class="lex-visit-l">visit</span>? It takes 20 seconds — right here in WhatsApp.<span class="t">12:55 PM ✓✓</span>
+            <div class="wa-btnrow"><button class="wa-btn" onclick="flowOpen()">📝 Rate this <span class="lex-visit-l">visit</span></button></div>
+          </div>
+        </div>
+        <div class="flow-sheet" id="flow-sheet" style="display:none">
+          <div class="flow-tag">WhatsApp Flow · native form</div>
+          <h5>Rate today's <span class="lex-visit-l">visit</span></h5>
+          <div class="fsub">TKT-10001 · Orchid Towers · 15 Sep</div>
+          <div class="eyebrow" style="color:#777">Overall</div>
+          <div class="stars" id="fl-stars"></div>
+          <div class="eyebrow" style="color:#777; margin-bottom:6px">Was the <span class="lex-worker-l">technician</span> on time?</div>
+          <div><button class="fchip on" onclick="chip(this)">Yes</button><button class="fchip" onclick="chip(this)">No</button></div>
+          <textarea rows="2" placeholder="Anything we should know?"></textarea>
+          <button class="flow-btn" onclick="flowSubmit()">Submit</button>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:11.5px; color:var(--sub); margin-top:10px; text-align:center" id="p6-ping"></p>
+  </div>
+  <div class="stage" style="margin-top:16px">
+    <aside style="grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px">
+      <div class="note"><h4>Tier 1 — CTA link (build with Sprint 7)</h4><ul>
+        <li>Template messages with a URL button; the "form" is <b>our own mobile page</b> behind a CNAK-style token — the exact drawer from screen 2, responsive.</li>
+        <li>No 24-hour window constraint (approved templates), works on every device, photos & multi-asset gating fully supported.</li>
+        <li>Outbound = <span class="db">n_jtd</span> message rows; delivery via existing jtd-worker → MSG91 → webhook chain.</li>
+      </ul></div>
+      <div class="note"><h4>Tier 2 — in-chat buttons (fast follow)</h4><ul>
+        <li>Quick-reply buttons for light choices (confirm slot / reschedule). Replies are <b>inbound</b> messages — needs the inbound webhook wired (today MSG91 posts to n8n only; forward to <span class="db">msg91-webhook</span>, already recommended in CLAUDE.md).</li>
+      </ul></div>
+      <div class="note"><h4>Tier 3 — WhatsApp Flows (the smartform itself CAN live here)</h4><ul>
+        <li>Meta's native multi-screen forms inside the chat — and Flow JSON includes <b>PhotoPicker</b> (camera/gallery, min–max count) and DocumentPicker, so the technician's checklist <i>with photo proof</i> fits: checkpoints → pass/fail radios, readings → number inputs, photo screen last (pickers can't share a screen).</li>
+        <li><b>Compile, don't hand-build</b>: a "Publish to WhatsApp" action compiles each approved <span class="db">m_form_templates</span> version into Flow JSON and stores its <span class="db">flow_id</span> — form versioning maps to Flow versioning.</li>
+        <li><b>One Flow = one proof card</b> (event × asset). The visit gate, placeholder locks and next-card sequencing stay server-side — a locked card simply never gets a Flow sent. WhatsApp is a second client of the same engine, not a second engine.</li>
+        <li>Photo responses arrive <b>encrypted</b> — a one-time download-and-decrypt pipeline lands them in <span class="db">t_service_evidence</span>; the answers land in <span class="db">m_form_submissions</span> (source: whatsapp_flow).</li>
+        <li>Key MSG91 verifications: Flows with <b>media-upload components</b> pass through intact (payload + decryption keys), Flow JSON version supported, Flows creatable via API. New templates are <b>positional</b> params (the documented trap). Tier 1 CTA-link ships first regardless.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════ SCREEN 7 · MOBILE ═══════════ -->
+<section class="screen" data-s="6">
+  <div class="decision">✅ <div><b>Mobile is the primary surface for execution</b> — field <span class="lex-worker-l">technician</span>s work one-thumbed on phones in basements. The desktop drawer (screen 2) is the office view; on mobile the same engine renders as a <b>sequential card flow</b>: tap card → full-screen form → submit → auto-advance to the next pending asset. Repeat units (3 ACs) become a rhythm, not three chores.</div></div>
+  <div class="stage">
+    <div class="mphone">
+      <div class="m-top">
+        <div class="row">
+          <button style="font-weight:800; font-size:16px" onclick="mBack()" id="m-backbtn">‹</button>
+          <div style="flex:1"><b style="font-size:13.5px" id="m-title">TKT-10001 · Orchid Towers</b>
+            <div style="font-size:10.5px; color:var(--sub)" id="m-sub">15 Sep · Ravi Kumar</div></div>
+          <span class="chip warn" id="m-chip">2 left</span>
+        </div>
+        <div class="m-prog"><div id="m-progbar" style="width:0%"></div></div>
+      </div>
+      <div class="m-body" id="m-body"></div>
+    </div>
+    <aside>
+      <div class="note"><h4>Mobile rules</h4><ul>
+        <li><b>One screen, one decision.</b> List view or one form — never panes. Thumb-reach targets ≥44px, submit pinned at the bottom.</li>
+        <li><b>Auto-advance:</b> submitting AC-101 lands you straight in AC-102's form with a "proven ✓" toast — the 3-AC visit is one continuous run (~30s per unit).</li>
+        <li><b>Camera-first:</b> photo button invokes the native camera (capture attribute); no file-browser detours.</li>
+        <li><b>Poor-signal tolerance:</b> submissions queue locally and sync when back online — basements and terraces are the normal case, not the edge case.</li>
+        <li><b>Prefill statics, never proof:</b> the next unit's form pre-carries context (visit, block) but readings and photos always start empty — copy-forward would forge evidence.</li>
+        <li>Same routes, same writes as screen 2 — this is a responsive rendering, not a second app.</li>
+      </ul></div>
+      <div class="note"><h4>Default template — when no smart form is bound</h4><ul>
+        <li>Resolution ladder, final rung added: block form → KT form → contract fallback → <b>platform default: "General Service Completion"</b> (seeded once, versioned like any form).</li>
+        <li>3 fields, ~5 seconds: work status (completed / partial), asset condition (OK / needs attention), optional note — photo appended if <span class="db">require_upload</span>.</li>
+        <li>So policy <b>smart_form</b> always yields a form (never a dead end); policy <b>none</b> stays a one-tap done. The filter card here demonstrates the default form.</li>
+      </ul></div>
+    </aside>
+  </div>
+</section>
+
+</main>
+<footer><span class="eyebrow">contractnest · productled V3 · service execution — draft for agreement, not production UI</span></footer>
+
+<script>
+// ── Domain lexicon ─────────────────────────────────────────
+const LEX = {
+  facilities:{name:'Facilities', unit:'service', visit:'Visit', ticket:'Ticket', report:'Service Report', worker:'Technician', buyer:'Client',
+    msg:{sch:'Your AC maintenance visit is scheduled for 15 Sep, 10:30 AM. Technician: Ravi Kumar.',
+         sta:'Ravi Kumar has started today’s maintenance visit at Orchid Towers.',
+         com:'Today’s visit is complete — 4 assets serviced. Report follows.',
+         rep:'Your Service Report for TKT-10001 is ready: cn.link/r/8kq2', inv:'2 additional items were used during the visit. Invoice INV-10042 (₹5,015): cn.link/i/8kq2'}},
+  healthcare:{name:'Healthcare', unit:'session', visit:'Appointment', ticket:'Appointment', report:'Treatment Summary', worker:'Practitioner', buyer:'Patient',
+    msg:{sch:'Your physiotherapy appointment is confirmed for 15 Sep, 10:30 AM with Dr. Ravi Kumar.',
+         sta:'Your appointment with Dr. Ravi Kumar has begun.',
+         com:'Today’s appointment is complete. Your treatment summary follows.',
+         rep:'Your Treatment Summary is ready: cn.link/r/8kq2', inv:'Additional consumables were used today. Invoice INV-10042 (₹5,015): cn.link/i/8kq2'}},
+  fitness:{name:'Fitness', unit:'session', visit:'Session', ticket:'Session', report:'Session Summary', worker:'Trainer', buyer:'Member',
+    msg:{sch:'Your training session is booked for 15 Sep, 10:30 AM with coach Ravi.',
+         sta:'Your session with coach Ravi has started.',
+         com:'Great work today! Session complete — summary on its way.',
+         rep:'Your Session Summary is ready: cn.link/r/8kq2', inv:'Add-ons from today’s session — invoice INV-10042 (₹5,015): cn.link/i/8kq2'}}
+};
+let domain='facilities';
+function lc(s){return s.charAt(0).toLowerCase()+s.slice(1)}
+function applyLex(){
+  const L=LEX[domain];
+  const map={'lex-unit':L.unit,'lex-visit':L.visit,'lex-visit-l':lc(L.visit),'lex-ticket':L.ticket,'lex-ticket-l':lc(L.ticket),
+             'lex-report':L.report,'lex-report-l':lc(L.report),'lex-worker':L.worker,'lex-worker-l':lc(L.worker),
+             'lex-buyer':L.buyer,'lex-buyer-l':lc(L.buyer)};
+  for(const k in map) document.querySelectorAll('.'+k).forEach(el=>el.textContent=map[k]);
+  document.querySelectorAll('#lexi button').forEach(b=>b.classList.toggle('on',b.dataset.d===domain));
+  renderExtend();
+}
+document.getElementById('lexi').innerHTML=Object.keys(LEX).map(d=>
+  `<button data-d="${d}" onclick="domain='${d}';applyLex()">${LEX[d].name}</button>`).join('');
+
+// ── Tabs ───────────────────────────────────────────────────
+const TABS=['Start','The visit','Report','Beyond-scope invoice','Extend','On WhatsApp','Mobile'];
+const tabsEl=document.getElementById('tabs');
+tabsEl.innerHTML=TABS.map((t,i)=>`<button data-t="${i}" onclick="go(${i})"><span class="n">${i+1}</span>${t}</button>`).join('');
+function go(i){
+  document.querySelectorAll('section.screen').forEach(s=>s.classList.toggle('on',+s.dataset.s===i));
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',+b.dataset.t===i));
+  if(i===2)renderReport(); if(i===3)renderInvoice(); if(i===6)renderMobile();
+  window.scrollTo({top:0});
+}
+
+// ── Visit state ────────────────────────────────────────────
+const state={started:false, cards:{a101:'open', a102:'open', a103:'locked', filter:'open'}, form:null,
+  fchecks:{}, fnum:'', fphoto:false,
+  beyond:[], completed:false};
+const BS_CATALOG=[{n:'Capacitor 45µF (replaced)',p:1450},{n:'Gas top-up R32 · 600g',p:2800},{n:'Condenser fin comb service',p:900}];
+
+function startVisit(){
+  state.started=true;
+  document.getElementById('s1-born').style.display='block';
+}
+function provenCount(){return Object.values(state.cards).filter(s=>s==='proven').length}
+function totalCards(){return 4}
+
+function renderVisit(){
+  const L=LEX[domain], left=document.getElementById('v-left');
+  const card=(id,name,req,st)=>{
+    if(st==='locked')return `<div class="acard locked"><div class="top"><span style="font-size:15px">🔒</span>
+      <div class="nm">${name}</div><span class="chip lock">Placeholder</span></div>
+      <div class="req">Client hadn’t listed this unit at signing — proof is blocked until the real asset is attached.</div>
+      <div style="margin-top:8px"><button class="btn ghost sm" onclick="attach('${id}')">Attach real asset</button></div></div>`;
+    if(st==='proven')return `<div class="acard proven"><div class="top"><span style="font-size:15px">✅</span>
+      <div class="nm">${name}</div><span class="chip good">Proven</span></div>
+      <div class="stamp">${req?'Form + photo captured · 11:0'+(id==='a101'?'2':'8'):'Marked done · 12:31'} · proven_at stamped</div></div>`;
+    const open=state.form===id;
+    return `<div class="acard"><div class="top"><span style="font-size:15px">${req?'📋':'🌀'}</span>
+      <div class="nm">${name}</div>${req?'<span class="chip brand">Form + photo</span>':'<span class="chip warn">One tap</span>'}</div>
+      <div class="req">${req?'Split AC Service Checklist — mapped from the block’s bound form':'No form mapped — completion only'}</div>
+      <div style="margin-top:8px">${req
+        ? `<button class="btn ${open?'quiet':'primary'} sm" onclick="toggleForm('${id}')">${open?'Close form':'Open form'}</button>`
+        : `<button class="btn primary sm" onclick="prove('${id}')">Mark done ✓</button>`}</div>
+      ${open?formHTML(id):''}</div>`;
+  };
+  left.innerHTML=`
+    <div class="evblock"><div class="eyebrow">🔧 AC Comprehensive Service · #3/12 <span class="chip warn">Due</span></div>
+      ${card('a101','AC-101 · Daikin 2T · Lobby',true,state.cards.a101)}
+      ${card('a102','AC-102 · Daikin 2T · Gym',true,state.cards.a102)}
+      ${card('a103','AC-103 · (serial pending)',true,state.cards.a103)}
+    </div>
+    <div class="evblock"><div class="eyebrow">🌀 Air Filter Replacement · #5/14 <span class="chip bad">Overdue</span></div>
+      ${card('filter','All AHU filters · Basement 1 & 2',false,state.cards.filter)}
+    </div>`;
+  // right rail
+  const p=provenCount(), t=totalCards();
+  const ring=document.getElementById('v-ring'); ring.style.setProperty('--p',(p/t*100));
+  document.getElementById('v-ringtxt').textContent=p+'/'+t;
+  document.getElementById('v-bs').innerHTML=state.beyond.length
+    ? state.beyond.map((b,i)=>`<div class="bs-item"><span style="flex:1">${b.n}</span><b class="num">₹${b.p.toLocaleString('en-IN')}</b>
+        <button style="color:var(--bad)" onclick="state.beyond.splice(${i},1);renderVisit()">✕</button></div>`).join('')
+    : '<p style="font-size:11.5px;color:var(--sub)">Nothing yet. Sparepart or extra work used during this '+lc(L.visit)+'? Add it — it will be invoiced on the fly.</p>';
+  const done=p===t;
+  const btn=document.getElementById('v-complete'); btn.disabled=!done||state.completed;
+  document.getElementById('v-gatemsg').textContent=state.completed
+    ? 'Completed · job → completed → ticket closed → report ready'
+    : done ? 'All proven — gate open' : (t-p)+' card'+(t-p>1?'s':'')+' still unproven';
+  document.getElementById('v-chip').textContent=state.completed?'Completed':'In progress';
+  document.getElementById('v-chip').className='chip '+(state.completed?'good':'warn');
+  applyLexIn(left);
+}
+function applyLexIn(root){ // re-apply lexicon inside re-rendered fragments
+  applyLex();
+}
+function formHTML(id){
+  const c=state.fchecks;
+  const pf=(k)=>`<span class="pf">
+    <button class="${c[k]==='p'?'pass':''}" onclick="fset('${k}','p')">Pass</button>
+    <button class="${c[k]==='f'?'fail':''}" onclick="fset('${k}','f')">Fail</button></span>`;
+  const filled=['coil','drain','elec'].every(k=>c[k])&&state.fnum&&state.fphoto;
+  return `<div class="formbox">
+    <div class="eyebrow" style="margin-bottom:4px">Split AC Service Checklist · v3</div>
+    <div class="frow"><span style="flex:1">Evaporator & condenser coils cleaned</span>${pf('coil')}</div>
+    <div class="frow"><span style="flex:1">Drain line flushed, no leakage</span>${pf('drain')}</div>
+    <div class="frow"><span style="flex:1">Electrical terminals torqued & insulated</span>${pf('elec')}</div>
+    <div class="frow"><span style="flex:1">Suction pressure (psi)</span>
+      <input class="numin num" value="${state.fnum}" oninput="state.fnum=this.value;" onblur="renderVisit()">
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+      <button class="photochip ${state.fphoto?'done':''}" onclick="state.fphoto=!state.fphoto;renderVisit()">📷 ${state.fphoto?'photo attached ✓':'attach photo (required)'}</button>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn primary sm" ${filled?'':'disabled'} onclick="submitForm('${id}')">Submit & prove</button>
+    </div>
+  </div>`;
+}
+function fset(k,v){state.fchecks[k]=v; renderVisit()}
+function toggleForm(id){state.form=state.form===id?null:id; state.fchecks={}; state.fnum=''; state.fphoto=false; renderVisit()}
+function submitForm(id){state.cards[id]='proven'; state.form=null; renderVisit()}
+function prove(id){state.cards[id]='proven'; renderVisit()}
+function attach(id){
+  state.cards[id]='open';
+  renderVisit();
+  setTimeout(()=>alert('Asset attached: AC-103 · serial DKN-88412.\n\nWrites: equipment_details entry updated → event-asset rows flip out of blocked_placeholder — the card unlocks and now needs its form like any other.'),50);
+}
+function addBeyond(){
+  const next=BS_CATALOG[state.beyond.length%BS_CATALOG.length];
+  state.beyond.push(next); renderVisit();
+}
+function completeVisit(){state.completed=true; renderVisit();
+  setTimeout(()=>alert('Visit completed.\n\n→ all event-asset rows proven\n→ jobs walk to completed (legal transitions)\n→ TKT-10001 → completed, completed_at stamped\n→ report renderable (screen 3)\n→ beyond-scope → on-the-fly invoice (screen 4)\n→ visit_completed + report_ready messages enqueued (screen 5)'),60);}
+
+// ── Report ─────────────────────────────────────────────────
+function renderReport(){
+  const A=[['AC-101 · Daikin 2T · Lobby','Checklist 4/4 pass · suction 118 psi',true],
+           ['AC-102 · Daikin 2T · Gym','Checklist 4/4 pass · suction 121 psi',true],
+           ['AC-103 · DKN-88412 (attached during visit)','Checklist 4/4 pass · suction 116 psi',true],
+           ['AHU filters · Basement 1 & 2','Replaced — no form mapped',false]];
+  document.getElementById('r-assets').innerHTML=A.map(a=>`<div class="rasset">
+    <div class="h"><span>✅</span>${a[0]}</div><div class="d">${a[1]}</div>
+    ${a[2]?'<div class="photos"><div class="ph">🖼️</div><div class="ph">🖼️</div></div>':''}</div>`).join('');
+  document.getElementById('r-bs').innerHTML=state.beyond.length
+    ? state.beyond.map(b=>`<div class="rline"><span>${b.n}</span><b class="num">₹${b.p.toLocaleString('en-IN')}</b></div>`).join('')
+      +'<p style="font-size:11px;color:var(--sub);margin-top:4px">Invoiced separately as INV-10042 — not part of contract dues.</p>'
+    : '<p style="font-size:12px;color:var(--sub)">None this '+lc(LEX[domain].visit)+'.</p>';
+  applyLex();
+}
+function ping(t){document.getElementById('r-ping').textContent=t}
+function ping4(t){document.getElementById('i-ping').textContent=t}
+
+// ── Invoice ────────────────────────────────────────────────
+function renderInvoice(){
+  const items=state.beyond.length?state.beyond:BS_CATALOG.slice(0,2);
+  const sub=items.reduce((s,b)=>s+b.p,0);
+  const cg=Math.round(sub*0.09*100)/100, sg=Math.round(sub*0.09*100)/100, tot=sub+cg+sg;
+  const f=(n)=>'₹'+n.toLocaleString('en-IN',{minimumFractionDigits:2});
+  document.getElementById('i-lines').innerHTML=items.map(b=>
+    `<tr><td>${b.n}<div style="font-size:10.5px;color:var(--sub)">beyond scope · TKT-10001</div></td><td>1</td><td class="num"><b>${f(b.p)}</b></td></tr>`).join('');
+  document.getElementById('i-tots').innerHTML=
+    `<div class="totrow"><span>Taxable value</span><b class="num">${f(sub)}</b></div>
+     <div class="totrow"><span style="color:var(--sub)">CGST 9%</span><span class="num">${f(cg)}</span></div>
+     <div class="totrow"><span style="color:var(--sub)">SGST 9%</span><span class="num">${f(sg)}</span></div>
+     <div class="totrow grand"><span>Total due</span><b class="num">${f(tot)}</b></div>`;
+  applyLex();
+}
+
+// ── Extend ─────────────────────────────────────────────────
+const TP=[
+  {k:'sch', t:'visit_scheduled', when:'D-1 · within dispatch window (10:00–21:00 IST)', wa:true, em:false},
+  {k:'sta', t:'visit_started',   when:'at Start service', wa:true, em:false},
+  {k:'com', t:'visit_completed', when:'at Complete visit', wa:true, em:true},
+  {k:'rep', t:'report_ready',    when:'when the report renders · public link', wa:true, em:true},
+  {k:'inv', t:'beyond_scope_invoice', when:'only if beyond-scope items exist', wa:true, em:true},
+];
+function renderExtend(){
+  const L=LEX[domain];
+  const el=document.getElementById('x-tl'); if(!el)return;
+  el.innerHTML=TP.map((p,i)=>`<div class="tp">
+    <div class="h"><b class="mono" style="font-size:12px">${p.t}</b>
+      <span style="font-size:11px;color:var(--sub)">${p.when}</span>
+      <div class="chans">
+        <button class="chan wa ${p.wa?'on':''}" onclick="TP[${i}].wa=!TP[${i}].wa;renderExtend()">WhatsApp</button>
+        <button class="chan em ${p.em?'on':''}" onclick="TP[${i}].em=!TP[${i}].em;renderExtend()">Email</button>
+      </div></div>
+    ${p.wa||p.em?`<div class="msg">💬 ${L.msg[p.k]}</div>`:'<div style="font-size:11px;color:var(--sub);margin-top:6px">Muted — no message enqueued.</div>'}
+  </div>`).join('');
+}
+
+// ── WhatsApp screen ────────────────────────────────────────
+function ping6(t){document.getElementById('p6-ping').textContent=t}
+function techOpen(){document.getElementById('mini-drawer').style.display='block';
+  ping6('CTA URL button → cn.link/v/8kq2 opens the token-authenticated mobile drawer. One proof engine for web and WhatsApp.')}
+function techClose(done){document.getElementById('mini-drawer').style.display='none';
+  if(done){document.getElementById('tech-done').style.display='block';
+    ping6('On completion the visit_completed message lands in this same thread — an n_jtd message row beside the job rows.')}}
+let flRating=0;
+function flowOpen(){
+  const s=document.getElementById('fl-stars');
+  s.innerHTML=[1,2,3,4,5].map(i=>`<button class="${i<=flRating?'on':''}" onclick="flRate(${i})">⭐</button>`).join('');
+  document.getElementById('flow-sheet').style.display='block';
+  ping6('WhatsApp Flow: a native multi-screen form INSIDE the chat — no browser. Submissions post to our encrypted Flow endpoint.')}
+function flRate(i){flRating=i;flowOpen()}
+function chip(el){[...el.parentElement.children].forEach(c=>c.classList.remove('on'));el.classList.add('on')}
+function flowSubmit(){
+  document.getElementById('flow-sheet').style.display='none';
+  const b=document.getElementById('buyer-body');
+  const d=document.createElement('div'); d.className='wb out';
+  d.innerHTML='📝 Feedback submitted — '+'⭐'.repeat(Math.max(flRating,4))+'<span class="t">12:56 PM</span>';
+  b.appendChild(d);
+  ping6('Flow response → msg91-webhook → m_form_submissions row (source: whatsapp_flow) linked to TKT-10001 — same table as every other form.')}
+
+// ── Mobile technician flow ─────────────────────────────────
+const M={view:'list', cur:null, advance:false,
+  cards:[
+    {id:'m101', name:'AC-101 · Daikin 2T', loc:'Lobby',   kind:'smart',   st:'open'},
+    {id:'m102', name:'AC-102 · Daikin 2T', loc:'Gym',     kind:'smart',   st:'open'},
+    {id:'m103', name:'AC-103 · Daikin 2T', loc:'Terrace', kind:'smart',   st:'open'},
+    {id:'mflt', name:'AHU filters',        loc:'Basement 1 & 2', kind:'default', st:'open'},
+  ],
+  f:{}};
+function mProven(){return M.cards.filter(c=>c.st==='proven').length}
+function mNext(fromId){const i=M.cards.findIndex(c=>c.id===fromId);
+  return M.cards.slice(i+1).concat(M.cards.slice(0,i)).find(c=>c.st==='open')||null}
+function renderMobile(){
+  const b=document.getElementById('m-body'); if(!b)return;
+  const p=mProven(), t=M.cards.length, left=t-p;
+  document.getElementById('m-progbar').style.width=(p/t*100)+'%';
+  document.getElementById('m-chip').textContent=p===t?'Done ✓':left+' left';
+  document.getElementById('m-chip').className='chip '+(p===t?'good':'warn');
+  document.getElementById('m-backbtn').style.visibility=M.view==='form'?'visible':'hidden';
+  if(M.view==='list'){
+    b.innerHTML=(M.advance?`<div class="m-advance">✓ Proven — pick the next unit</div>`:'')+
+      M.cards.map(c=>{
+        if(c.st==='proven')return `<div class="m-card proven"><div class="ic">✅</div>
+          <div style="flex:1"><b>${c.name}</b><div class="s">${c.loc} · proven</div></div></div>`;
+        return `<button class="m-card" onclick="mOpen('${c.id}')"><div class="ic">${c.kind==='smart'?'📋':'⚡'}</div>
+          <div style="flex:1"><b>${c.name}</b><div class="s">${c.loc} · ${c.kind==='smart'?'Split AC Checklist + photo':'General Service Completion (default)'}</div></div>
+          <span style="color:var(--sub)">›</span></button>`;
+      }).join('')+
+      `<button class="m-bigbtn ${p===t?'good':''}" ${p===t?'':'disabled'} onclick="mComplete()">
+        ${p===t?'Complete visit ✓':'Complete visit ('+p+'/'+t+' proven)'}</button>`;
+    M.advance=false;
+  } else if(M.view==='form'){
+    const c=M.cards.find(x=>x.id===M.cur), f=M.f;
+    if(c.kind==='smart'){
+      const ok=f.coil&&f.drain&&f.gas&&f.photo;
+      const pf=(k,l)=>`<div class="m-frow"><div class="q">${l}</div><div class="m-pf">
+        <button class="${f[k]==='p'?'pass':''}" onclick="M.f.${k}='p';renderMobile()">Pass</button>
+        <button class="${f[k]==='f'?'fail':''}" onclick="M.f.${k}='f';renderMobile()">Fail</button></div></div>`;
+      b.innerHTML=`<div style="margin-bottom:10px"><b style="font-size:15px">${c.name}</b>
+          <div style="font-size:11.5px;color:var(--sub)">${c.loc} · Split AC Service Checklist v3</div></div>`+
+        pf('coil','Coils cleaned')+pf('drain','Drain line clear')+pf('gas','Electricals checked')+
+        `<div class="m-frow"><div class="q">Suction pressure (psi)</div>
+          <input class="m-num num" inputmode="numeric" placeholder="118" onfocus="M.f.num=1"></div>
+        <button class="m-photo ${f.photo?'done':''}" onclick="M.f.photo=!M.f.photo;renderMobile()">📷 ${f.photo?'Photo captured ✓':'Take photo (camera opens)'}</button>
+        <button class="m-bigbtn" ${ok?'':'disabled'} onclick="mSubmit()">Submit & prove ✓</button>`;
+    } else {
+      const ok=f.ws&&f.cond;
+      const ch=(k,v,l)=>`<button class="${f[k]===v?'pass':''}" onclick="M.f.${k}='${v}';renderMobile()">${l}</button>`;
+      b.innerHTML=`<div style="margin-bottom:10px"><b style="font-size:15px">${c.name}</b>
+          <div style="font-size:11.5px;color:var(--sub)">${c.loc} · General Service Completion — platform default (no smart form bound)</div></div>
+        <div class="m-frow"><div class="q">Work status</div><div class="m-pf">${ch('ws','done','Completed')}${ch('ws','part','Partial')}</div></div>
+        <div class="m-frow"><div class="q">Asset condition</div><div class="m-pf">${ch('cond','ok','OK')}${ch('cond','att','Needs attention')}</div></div>
+        <div class="m-frow"><div class="q">Note (optional)</div><input class="m-num" placeholder="e.g. B2 filter heavily clogged"></div>
+        <button class="m-bigbtn" ${ok?'':'disabled'} onclick="mSubmit()">Submit & prove ✓</button>`;
+    }
+  } else { // done
+    b.innerHTML=`<div style="text-align:center; padding:40px 10px">
+      <div style="font-size:44px">🎉</div>
+      <b style="font-size:16px">Visit complete</b>
+      <p style="font-size:12px; color:var(--sub); margin:8px 0 18px">TKT-10001 closed · 4/4 proven · report ready<br>jobs → completed · report_ready message enqueued</p>
+      <button class="m-bigbtn good" onclick="go(2)">View the report →</button></div>`;
+    document.getElementById('m-chip').textContent='Done ✓';
+  }
+}
+function mOpen(id){M.view='form'; M.cur=id; M.f={}; renderMobile()}
+function mBack(){M.view='list'; renderMobile()}
+function mSubmit(){
+  const c=M.cards.find(x=>x.id===M.cur); c.st='proven';
+  const nxt=mNext(M.cur);
+  if(nxt){M.cur=nxt.id; M.f={}; M.view='form'; M.advance=true;
+    renderMobile();
+    const b=document.getElementById('m-body');
+    b.insertAdjacentHTML('afterbegin',`<div class="m-advance">✓ ${c.name} proven — next: ${nxt.name}</div>`);
+  } else {M.view='list'; M.advance=true; renderMobile();}
+}
+function mComplete(){M.view='done'; renderMobile()}
+
+// ── boot ───────────────────────────────────────────────────
+go(0); renderVisit(); renderExtend(); applyLex();
+// re-render visit whenever lexicon changes so injected fragments update
+document.getElementById('lexi').addEventListener('click',()=>{renderVisit();});
+</script>

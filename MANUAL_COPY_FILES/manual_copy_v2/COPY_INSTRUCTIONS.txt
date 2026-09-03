@@ -396,6 +396,32 @@ STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
   Copy command:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
 
+  ─────────────────────────────────────────────────────────────
+  🔧 CUTOVER BUILD ITEM DONE — receipt-cancel is now job-aware
+     (owner-queued "next task", 2026-08-24)
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/jtd-nucleus/008_cancel_receipt_reverses_jobs.sql
+    cancel_invoice_receipt reversed ONLY t_contract_events, then
+    deleted the allocations — on a jobs contract the invoice would
+    un-pay while the JOB stayed 'paid' (the audit's chk10 risk).
+    Additive splice before the allocation DELETE: mirror-reverse
+    n_jtd via a.jtd_id = j.id — amount_settled decreases, status
+    walks back paid → partial_payment → scheduled, completed_at
+    clears unless still fully covered by other receipts, note says
+    which receipt was cancelled. PROVABLY a no-op for every legacy
+    receipt (their allocations have jtd_id NULL — all of BBB).
+    cancel_or_writeoff_invoice needs nothing: V1 never touched
+    events/allocations there, so jobs contracts already have parity.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS R-A (rolled back, CN-1005's real RCP-10003 ₹5,600):
+      both jobs → scheduled, settled 0, completed_at cleared, note
+      'receipt RCP-10003 cancelled — harness'; allocations deleted;
+      invoice → unpaid. Post-rollback verified untouched
+      (partially_paid 5600/11600, 2 paid jobs stamped).
+    The cutover entry-criteria build item is CLOSED with this.
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Force
+
 ═════════════════════════════════════════════════════════════════
 💳 SUBSCRIPTIONS — quarterly checkout + gateway verify fixed
    (owner-approved "go ahead fix", 2026-08-20)
@@ -545,6 +571,22 @@ Sprint 4) was only rendered inside Operations → Group Sessions.
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\to-pay\index.tsx" -Destination "contractnest-ui\src\pages\to-pay\index.tsx" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
   (restart contractnest-api — controller/service changed; hard-refresh UI)
+
+  ─────────────────────────────────────────────────────────────
+  🔧 FOLLOW-UP — credit packs / top-ups get the same tax treatment
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/subscriptions/003_topup_tax_from_settings.sql
+    purchase_topup_template (the OTHER payload builder over the
+    contract engine) had the identical tax_total: 0 gap. Same
+    anchored splice as 002; packs are one-shot so the checkout's
+    invoice_amount is automatically the tax-correct total.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS P-A (rolled back, vikuna's live excluding_tax):
+      ₹1,000 wallet top-up → contract 1000 + 180 GST = 1180 ·
+      invoice 1000/180/1180 · breakdown CGST 90 + SGST 90 ·
+      response invoice_amount 1180 (what checkout charges)
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Destination "contractnest-edge\supabase\migrations\subscriptions\003_topup_tax_from_settings.sql" -Force
 
   🧪 TEST
   - [ ] Settings → Tax Settings: set display mode as you want plan
@@ -1084,3 +1126,86 @@ Write-Host "Copied. Restart contractnest-api, hard-refresh the UI, and run the S
 - [ ] RFQ mode: unaffected (gate skipped)
 - [ ] Template save: unaffected (returns before the backstop)
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+SECTION: SERVICE EXECUTION V3 — SPEC FREEZE (B0) — added 2026-09-01
+═══════════════════════════════════════════════════════════════════
+Submodule affected: ClaudeDocumentation (branch master)
+Files (documentation only — no code, no DB changes):
+  ClaudeDocumentation/productled/Service-Execution-V3-Handoff.html
+      Interactive 7-screen UX handoff (visit drawer, mobile flow,
+      report, on-the-fly invoice, Extend touchpoints, WhatsApp).
+  ClaudeDocumentation/productled/Service-Execution-V3-Decisions.md
+      Decisions log D1-D11 + verified structural facts + build
+      batches B1-B4 for Sprints 2 & 7.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\*" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — SIGNIA PHASES 1+2 (added 2026-09-01)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (files are SOURCE-OF-RECORD ONLY —
+both migrations ALREADY APPLIED LIVE 2026-09-01, do NOT re-run)
+
+Files:
+  contractnest-edge/supabase/migrations/jtd-cutover/001_signia_copy.sql
+      Phase 1: id-preserving copy, 23 signia contracts / 356 event rows
+      → n_jtd job rows (same ids). Verified: all counts/sums match,
+      0 events without twin, settled ₹21,300 carried.
+  contractnest-edge/supabase/migrations/jtd-cutover/002_signia_fk_swap.sql
+      Phase 2: 3 receipt allocations → jtd_id (₹21,300);
+      t_invoices.jtd_id column added (0 backfill — correct, see file).
+  contractnest-edge/supabase/migrations/jtd-cutover/audit_dual_read_check.sql
+      READ-ONLY daily watchdog. Baseline: 23/23 ok.
+
+Copy:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\jtd-cutover" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\*" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+Post-copy verification already done live:
+  get_contract_details_v2 for CN-1003/CN-1004 (signia live) now returns
+  events.source='jtd' with 25/51 items and settled 15,800/5,500 — the
+  contract page serves migrated contracts from jobs automatically.
+
+NOT yet done (Phases 3-4, next): writers (scanner, reminder cron,
+event-status fns) and readers (finance RPCs) still on t_contract_events.
+Until then: status changes made by V1 writers (e.g. overdue cron) will
+show as DRIFT in the audit — expected, run audit daily.
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — PHASE 3 SYNC BRIDGE (added 2026-09-02)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — applied
+live 2026-09-02, idempotent but do not re-run without reason)
+
+File:
+  contractnest-edge/supabase/migrations/jtd-cutover/003_bidirectional_sync.sql
+      Bidirectional sync bridge (two AFTER UPDATE triggers) keeping
+      migrated contracts' event rows and job rows in lockstep — covers
+      all 10 V1 writers with ZERO V1 function edits. One-time reconcile
+      healed both live drifts (CN-1003-test payment ₹600, CN-1019
+      scanner status flips). Verified: harness proved both directions,
+      drift = 0 across all 23 migrated contracts.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\003_bidirectional_sync.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: MSG91 WEBHOOK v2 — RAW INBOUND CAPTURE (added 2026-09-03)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — migration
+applied live + function DEPLOYED as msg91-webhook v2 on 2026-09-03)
+
+Files:
+  contractnest-edge/supabase/migrations/msg91_inbound_raw_capture.sql
+      n_webhook_inbound_raw table (RLS on, no policies — service-role only).
+  contractnest-edge/supabase/functions/msg91-webhook/index.ts
+      v2: every payload posted to the webhook is stored verbatim in
+      n_webhook_inbound_raw BEFORE processing (delivery reports, inbound
+      messages, WhatsApp Flow nfm_reply). Rest of the function unchanged.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\msg91_inbound_raw_capture.sql" -Destination "contractnest-edge\supabase\migrations\" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\functions\msg91-webhook" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\msg91-webhook\index.ts" -Destination "contractnest-edge\supabase\functions\msg91-webhook\" -Force
