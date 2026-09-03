@@ -1190,3 +1190,22 @@ File:
 
 Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\003_bidirectional_sync.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: MSG91 WEBHOOK v2 — RAW INBOUND CAPTURE (added 2026-09-03)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — migration
+applied live + function DEPLOYED as msg91-webhook v2 on 2026-09-03)
+
+Files:
+  contractnest-edge/supabase/migrations/msg91_inbound_raw_capture.sql
+      n_webhook_inbound_raw table (RLS on, no policies — service-role only).
+  contractnest-edge/supabase/functions/msg91-webhook/index.ts
+      v2: every payload posted to the webhook is stored verbatim in
+      n_webhook_inbound_raw BEFORE processing (delivery reports, inbound
+      messages, WhatsApp Flow nfm_reply). Rest of the function unchanged.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\msg91_inbound_raw_capture.sql" -Destination "contractnest-edge\supabase\migrations\" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\functions\msg91-webhook" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\msg91-webhook\index.ts" -Destination "contractnest-edge\supabase\functions\msg91-webhook\" -Force
