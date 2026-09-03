@@ -69,7 +69,28 @@ about the visit is an `n_jtd` message row beside the job rows it describes.
 
 ## Open items / gates
 
-- MSG91 17-question ticket (owner sending); B.7 = Flows media pass-through decides T3.
-- Inbound webhook: MSG91 → n8n only today; forward to `msg91-webhook` needed for T2/T3.
-- Track A (cutover) unstarted as of this writing: 23 signia legacy contracts uncopied, 0
-  id-copied rows platform-wide. BBB meetings: 5 Sep, 19 Sep — flip window 6–18 Sep.
+- ~~MSG91 17-question ticket~~ **ANSWERED 2026-09-02.** Outcome:
+  - **T3 GREEN (conditional)**: navigate + data_exchange both supported; PhotoPicker/
+    DocumentPicker media works through MSG91. Gate before building the compiler: a
+    hand-built POC Flow (2 fields + 1 PhotoPicker) → send via MSG91 → capture the real
+    `nfm_reply` payload + prove the media decrypt path. Their answers were thin on
+    key-exchange detail and confused about Flow JSON versions — POC is non-negotiable.
+  - **T2 unblocked by configuration**: MSG91 supports MULTIPLE webhook destinations —
+    register the `msg91-webhook` edge function directly as a second destination
+    (no n8n forwarding needed; n8n keeps its own copy).
+  - **T1 fully confirmed**: dynamic URL suffix on CTA buttons works — per-visit token links.
+  - **Flow authoring**: Meta Business Manager/Flow Builder ONLY (MSG91 API sends, never
+    creates) → D11's compiler v1 = generate Flow JSON for manual publish + store flow_id
+    after sync.
+  - **Named params**: MSG91 support claims named parameters ARE supported for new
+    templates — contradicts the Aug-2026 editor refusal and two silent handset failures.
+    NOT trusted until one named-param template passes a real handset test; positional
+    remains the default.
+  - Owner actions: (a) check Meta WhatsApp Manager for the Flows section on our WABA
+    (enablement is Meta-level per MSG91); (b) add the second webhook destination in the
+    MSG91 panel; (c) note webhook auto-pause behavior — repeated endpoint failures pause
+    delivery, so the webhook needs monitoring once inbound goes live.
+- Track A (cutover): signia Phases 1–3 DONE 2026-09-01/02 (id-preserving copy 356 rows /
+  23 contracts, money FK swap, bidirectional sync bridge; drift 0, both directions
+  harness-proven). Old table stays authoritative-mirror until Phase 5. BBB copy window
+  6–8 Sep (after the 5 Sep meeting); flip + retirement after a clean 19 Sep meeting.
