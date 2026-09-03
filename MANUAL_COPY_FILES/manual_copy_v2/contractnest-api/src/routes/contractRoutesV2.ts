@@ -47,6 +47,14 @@ router.post('/', contractControllerV2.createContract);
 router.get('/:id/details', contractControllerV2.getContractDetails);
 
 /**
+ * @route GET /api/v2/contracts/:id/event-assets
+ * @description B1 (Sprint 2+7 foundation) — per-asset proof rows grouped by
+ * event id (n_jtd job ids on V2 contracts). Powers the "n/m assets proven"
+ * chip (useContractEventAssets / EventAssetProgress).
+ */
+router.get('/:id/event-assets', contractControllerV2.getEventAssets);
+
+/**
  * @route PATCH /api/v2/contracts/:id/status
  * @description V2 status transition — activation materializes n_jtd job
  * rows from computed_events, then delegates to the untouched V1 engine.

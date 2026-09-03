@@ -1209,3 +1209,44 @@ Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\msg91_inbound_raw_capture.sql" -Destination "contractnest-edge\supabase\migrations\" -Force
   New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\functions\msg91-webhook" | Out-Null
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\msg91-webhook\index.ts" -Destination "contractnest-edge\supabase\functions\msg91-webhook\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: B1 — PER-ASSET FOUNDATION (Sprint 2+7) — added 2026-09-03
+═══════════════════════════════════════════════════════════════════
+Submodules affected: contractnest-edge (migration = source-of-record,
+APPLIED LIVE; contracts-v2 edge fn DEPLOYED as v6), contractnest-api,
+contractnest-ui.
+
+Files:
+  contractnest-edge/supabase/migrations/service-execution/001_event_assets_v2_foundation.sql
+      V2 per-asset fan-out (n_jtd service jobs × equipment_details),
+      additive activation trigger, FK transition (events-only FK →
+      either-table validation trigger), backfill (CN-1005: 48 rows,
+      CN-1027: 11 rows). ALREADY APPLIED LIVE — do not re-run.
+  contractnest-edge/supabase/functions/contracts-v2/index.ts
+      v6 (DEPLOYED): adds GET /:id/event-assets — rows grouped by
+      event id, shaped for useContractEventAssets.
+  contractnest-api/src/services/contractServiceV2.ts      — getEventAssets()
+  contractnest-api/src/controllers/contractControllerV2.ts — getEventAssets handler
+  contractnest-api/src/routes/contractRoutesV2.ts          — GET /:id/event-assets
+  contractnest-ui/src/services/serviceURLs.ts
+      EVENT_ASSETS now points at /api/v2/contracts/:id/event-assets
+      (was /api/contracts/... — a route that never existed).
+
+Copy:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\service-execution" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\*" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+
+Test checklist (after copy, npm run dev on api + ui):
+  [ ] Open signia contract CN-1005 (V2) → Tasks/Operations tab → service
+      event cards show the "n/m assets proven" chip (48 placeholder rows)
+  [ ] Expand the chip → per-asset list renders (blocked_placeholder)
+  [ ] Open a V1-era contract (CN-1003 live) → page unchanged, no errors
+      (its event-assets come back grouped by the same ids)
+  [ ] Create + activate a NEW V2 contract with equipment → fan-out rows
+      appear automatically (trigger)
