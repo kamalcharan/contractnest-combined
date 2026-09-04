@@ -543,21 +543,48 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     }
   }, [contractId, removeMutation]);
 
-  // "+ Add Equipment" — create in registry via form dialog and auto-add to contract
+  // "+ Add Equipment" — create in registry via form dialog and auto-add to contract.
+  // When the dialog was opened from an attach flow, the new asset REPLACES the
+  // placeholder being attached (same rule as picking an existing asset) —
+  // otherwise it is a genuinely new extra unit.
   const handleCreateSubmit = useCallback(
     async (data: AssetFormData) => {
       if (!contractId) return;
       try {
         const created = await createMutation.mutateAsync(data);
-        // Auto-add the newly created asset to the contract
         const item = assetToDetail(created, tenantId, role, resourceIdToSubCategory);
-        await addMutation.mutateAsync({ contractId, equipmentItem: item });
+        await addMutation.mutateAsync({
+          contractId,
+          equipmentItem: item,
+          replacesItemId: attachingPlaceholder?.id,
+        });
         setIsAddFormOpen(false);
+        if (attachingPlaceholder) {
+          // Mirror the pick-existing flow: advance to the next open placeholder
+          // (same category first), or close the picker when none remain.
+          const remaining = equipmentDetails.filter(
+            (d) => d.id !== attachingPlaceholder.id && isPlaceholderDetail(d as any),
+          );
+          if (remaining.length > 0) {
+            const next =
+              (attachingPlaceholder.category_id &&
+                remaining.find((d) => d.category_id === attachingPlaceholder.category_id)) ||
+              remaining[0];
+            setAttachedNote(`Attached "${created.name}" — now attaching: ${next.category_name}`);
+            setAttachingPlaceholder(next);
+            setPickerResourceType(next.resource_type === 'entity' ? 'entity' : 'equipment');
+            setSearchQuery('');
+          } else {
+            setAttachedNote(null);
+            setAttachingPlaceholder(null);
+            setShowPicker(false);
+          }
+        }
       } catch {
         /* toast handled by hooks */
       }
     },
-    [createMutation, tenantId, role, resourceIdToSubCategory, contractId, addMutation]
+    [createMutation, tenantId, role, resourceIdToSubCategory, contractId, addMutation, attachingPlaceholder, equipmentDetails]
   );
 
   /** Card click → open the machine logbook drawer (buttons keep their own actions) */
