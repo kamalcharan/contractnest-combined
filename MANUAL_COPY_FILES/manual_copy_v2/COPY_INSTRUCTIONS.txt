@@ -1301,3 +1301,41 @@ card shows the buyer's REAL NAME instead of "Selected Client".
 EquipmentTab.tsx: creating a NEW asset from an attach flow now REPLACES
 the placeholder (replacesItemId + advance-to-next, mirroring the
 pick-existing path) instead of adding a 4th unit. Same copy command.
+
+═══════════════════════════════════════════════════════════════════
+SECTION: ATTACH-ASSET BUG FIX — FOUR LAYERS (added 2026-09-04)
+═══════════════════════════════════════════════════════════════════
+Bug: attaching an asset APPENDED a new unit instead of replacing the
+placeholder (CN-1005 went 3→4→6). Root cause: UI sent replaces_item_id
+but API + edge dropped it before the RPC (whose replacement branch was
+complete all along). Fix layers:
+  L1 DB (APPLIED LIVE — do not re-run): coverage cap (plain adds refused
+     while same-category slots open, code SLOTS_OPEN) + unlock refreshes
+     asset name. Harness-proven on CN-1005 (6→6 swap, 16 rows unlocked,
+     append refused), rolled back.
+  L2 edge contracts fn v55 DEPLOYED (source-of-record in this batch,
+     byte-verified).
+  L3 API pass-through (copy below, restart api).
+  L4 UI — already correct, nothing to copy.
+
+Files:
+  contractnest-edge/supabase/migrations/service-execution/002_attach_guard.sql   (record only)
+  contractnest-edge/supabase/functions/contracts/index.ts                        (record only — deployed)
+  contractnest-api/src/controllers/contractController.ts
+  contractnest-api/src/services/contractService.ts
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\002_attach_guard.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\" -Force
+  # RESTART the api dev server after copying
+
+Test checklist (CN-1005):
+  [ ] First: trash the 3 stray attached units (Equip 1 + 2 test units)
+      so the contract is back to 3 placeholders
+  [ ] Attach asset on a placeholder → pick/create a unit → count stays 3,
+      placeholder card becomes the real unit
+  [ ] The unit's card: "Visits locked until attached" GONE; proof rows open
+  [ ] Try "+ Add Equipment" WITHOUT going through a placeholder while
+      slots remain → clear refusal message (SLOTS_OPEN)
