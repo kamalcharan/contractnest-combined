@@ -1259,3 +1259,35 @@ SECTION: SPRINT 2-5-7 POA (added 2026-09-03) — documentation only
       queued with per-step owner gates; Track A parked.
 Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: ADD-EQUIPMENT CATEGORY PREFILL (added 2026-09-03)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-ui (2 files, UI only — no DB/edge change)
+
+Fix: the Add Equipment slide opened from a contract now pre-selects the
+CATEGORY and exact EQUIPMENT TYPE the context already knows — from the
+placeholder being attached, or from the contract's single coverage
+category (CN-1005's case). Client/owner was already locked (unchanged).
+Multi-category contracts with no placeholder context still show the
+dropdown unselected (genuinely ambiguous).
+
+Files:
+  contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx
+      New optional prop defaultAssetTypeId — pre-selects the exact type
+      and derives the category; existing callers unaffected.
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx
+      Derives the defaults from attachingPlaceholder / single-coverage
+      contract and passes both props to the dialog.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+
+Test checklist:
+  [ ] CN-1005 → Equipment tab → "+ Add Equipment": Category = HVAC System
+      and Equipment Type pre-selected; Client still locked to buyer
+  [ ] Same via a placeholder card's "Attach asset" → "+ Add Equipment"
+  [ ] Save → new asset lands in registry AND attaches; placeholder unlocks
+  [ ] Equipment-registry page's own Add dialog (no contract context):
+      behaves exactly as before (no category pre-selected)
