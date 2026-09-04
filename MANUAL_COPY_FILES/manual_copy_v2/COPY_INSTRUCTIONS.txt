@@ -1296,3 +1296,8 @@ Test checklist:
 EquipmentTab.tsx also now passes lockedContactName, so the Client/Owner
 card shows the buyer's REAL NAME instead of "Selected Client".
 (Same copy command as the section above — file updated in place.)
+
+── Addendum 2 to ADD-EQUIPMENT CATEGORY PREFILL (2026-09-03) ──
+EquipmentTab.tsx: creating a NEW asset from an attach flow now REPLACES
+the placeholder (replacesItemId + advance-to-next, mirroring the
+pick-existing path) instead of adding a 4th unit. Same copy command.
