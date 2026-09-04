@@ -1291,3 +1291,8 @@ Test checklist:
   [ ] Save → new asset lands in registry AND attaches; placeholder unlocks
   [ ] Equipment-registry page's own Add dialog (no contract context):
       behaves exactly as before (no category pre-selected)
+
+── Addendum to ADD-EQUIPMENT CATEGORY PREFILL (2026-09-03) ──
+EquipmentTab.tsx also now passes lockedContactName, so the Client/Owner
+card shows the buyer's REAL NAME instead of "Selected Client".
+(Same copy command as the section above — file updated in place.)

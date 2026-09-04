@@ -1004,6 +1004,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         isSubmitting={createMutation.isPending}
         defaultOwnershipType={isBuyer ? 'self' : 'client'}
         lockedContactId={isBuyer ? undefined : buyerId}
+        lockedContactName={isBuyer ? undefined : (buyerId ? contactNameMap.get(buyerId) : undefined)}
         registryMode={addFormMode}
         defaultSubCategory={addFormDefaults.subCategory}
         defaultAssetTypeId={addFormDefaults.assetTypeId}
