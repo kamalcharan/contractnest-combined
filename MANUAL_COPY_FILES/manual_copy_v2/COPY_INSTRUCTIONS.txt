@@ -1345,3 +1345,35 @@ EquipmentTab.tsx: "Attach asset" now opens the Add Equipment slider
 DIRECTLY when the picker would be empty (no matching registry unit) —
 no more dead-end "No equipment in registry yet" div. Picker still
 appears when there ARE units to choose from. Same copy command.
+
+── Addendum 4 to ADD-EQUIPMENT / ATTACH FLOW (2026-09-07) ──
+Two polish fixes from the latest attach test on CN-1005:
+
+1) STALE CARDS UNTIL F5: the contract detail page reads equipment via
+   useContractDetailsV2 (query key 'contract-details-v2'), but the four
+   equipment mutations only invalidated the V1 key — so after save the
+   cards refreshed only on manual page reload. All four mutations
+   (useBuyerAddEquipment / useBuyerRemoveEquipment / useSellerAddEquipment
+   / useSellerRemoveEquipment) now also invalidate 'contract-details-v2'
+   (same fix pattern as the earlier record-payment stale-UI bug).
+
+2) STALE EMPTY PICKER DIV BEHIND THE SLIDER: when "Attach asset" jumps
+   straight into the Add Equipment slider (empty registry), the picker
+   body behind it showed the old "No equipment in registry yet" empty
+   state. It now shows a single quiet line — 'Registering a new unit for
+   the "<category>" slot…' — while the slider is open.
+
+Files:
+  contractnest-ui/src/hooks/queries/useContractQueries.ts
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  # Vite hot-reloads; hard refresh (Ctrl+F5) once after copying
+
+Retest (CN-1005):
+  [ ] Attach asset → slider opens with prefill → Save
+  [ ] Cards update IMMEDIATELY (placeholder becomes real unit, no F5)
+  [ ] While the slider is open, no stale "No equipment..." div behind it
+  [ ] Remove a unit → count/cards update immediately too
