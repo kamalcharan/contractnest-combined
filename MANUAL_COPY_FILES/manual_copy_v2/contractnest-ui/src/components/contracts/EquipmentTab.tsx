@@ -11,7 +11,7 @@
 // - Stay-open placeholder attach flow
 // - "Show only awaiting" filter
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Wrench, Plus, X, Search, Package, Building2, LayoutGrid, TableIcon, CheckCircle2 } from 'lucide-react';
 import type { ContractEquipmentDetail } from '@/types/contracts';
 import { isPlaceholderDetail } from '@/components/contracts/ContractWizard/steps/AssetSelectionStep';
@@ -601,6 +601,23 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   const handleCloseLogbook = useCallback(() => setLogbookMachineId(null), []);
 
   const isLoading = assetsLoading || resourcesLoading;
+
+  // Attach-flow shortcut: when "Attach asset" opened the picker for a
+  // placeholder and there is NOTHING to pick (no matching registry unit),
+  // skip the dead-end list and open the Add Equipment slider directly —
+  // category/type/client already prefilled by addFormDefaults. Guarded to
+  // fire once per placeholder so Cancel returns to the picker instead of
+  // looping the dialog open again.
+  const autoOpenedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!showPicker || !attachingPlaceholder || isLoading || isAddFormOpen) return;
+    if (searchQuery) return;
+    if (displayAssets.length > 0) return;
+    if (autoOpenedForRef.current === attachingPlaceholder.id) return;
+    autoOpenedForRef.current = attachingPlaceholder.id;
+    setAddFormMode(attachingPlaceholder.resource_type === 'entity' ? 'entity' : 'equipment');
+    setIsAddFormOpen(true);
+  }, [showPicker, attachingPlaceholder, isLoading, isAddFormOpen, searchQuery, displayAssets]);
 
   // ── Render helpers ────────────────────────────────────────────
 

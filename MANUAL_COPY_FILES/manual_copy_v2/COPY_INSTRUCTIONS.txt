@@ -1339,3 +1339,9 @@ Test checklist (CN-1005):
   [ ] The unit's card: "Visits locked until attached" GONE; proof rows open
   [ ] Try "+ Add Equipment" WITHOUT going through a placeholder while
       slots remain → clear refusal message (SLOTS_OPEN)
+
+── Addendum 3 to ADD-EQUIPMENT / ATTACH FLOW (2026-09-04) ──
+EquipmentTab.tsx: "Attach asset" now opens the Add Equipment slider
+DIRECTLY when the picker would be empty (no matching registry unit) —
+no more dead-end "No equipment in registry yet" div. Picker still
+appears when there ARE units to choose from. Same copy command.
