@@ -443,7 +443,26 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     // the slot it already fills.
     if (attachingPlaceholder) {
       if (attachingPlaceholder.category_id) {
-        filtered = filtered.filter((a) => a.asset_type_id === attachingPlaceholder.category_id);
+        // R6: registry assets link to their type via asset_type_id holding a
+        // RESOURCE id (manual adds) OR a TEMPLATE id (buyer adds), or via
+        // template_id only (seeded instances). Exact-id matching alone hid
+        // valid existing units → empty picker → duplicate creation. Match by
+        // id on either field, then by shared sub-category; if nothing matches
+        // at all, fall back to the unnarrowed list rather than hiding units.
+        const cid = attachingPlaceholder.category_id;
+        const phSubCat = resourceIdToSubCategory.get(cid) || null;
+        const narrowed = filtered.filter((a) => {
+          if (a.asset_type_id === cid || a.template_id === cid) return true;
+          if (phSubCat) {
+            const aSubCat =
+              resourceIdToSubCategory.get(a.asset_type_id || '') ||
+              resourceIdToSubCategory.get(a.template_id || '') ||
+              null;
+            if (aSubCat && aSubCat === phSubCat) return true;
+          }
+          return false;
+        });
+        if (narrowed.length > 0) filtered = narrowed;
       }
       filtered = filtered.filter((a) => !existingAssetIds.has(a.id));
     }
@@ -466,7 +485,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     }
 
     return filtered;
-  }, [assets, searchQuery, showPicker, isSeller, buyerId, pickerResourceType, attachingPlaceholder, existingAssetIds]);
+  }, [assets, searchQuery, showPicker, isSeller, buyerId, pickerResourceType, attachingPlaceholder, existingAssetIds, resourceIdToSubCategory]);
 
   // ── Handlers ──────────────────────────────────────────────────
 

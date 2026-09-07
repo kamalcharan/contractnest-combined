@@ -207,6 +207,8 @@
     // R2: Active (default) vs Inactive view. R1: product confirm for deactivation.
     const [activeFilter, setActiveFilter] = useState<'active' | 'inactive'>('active');
     const [deactivateTarget, setDeactivateTarget] = useState<TenantAsset | null>(null);
+    // R5: narrow the grid to one client's equipment ('' = all clients)
+    const [contactFilter, setContactFilter] = useState<string>('');
 
     // ── Data: Assets (filtered by ownership_type based on perspective) ──
     const ownershipType = registryMode === 'equipment'
@@ -220,8 +222,9 @@
         with_contracts: true, // R4: contract chips on cards
         ...(ownershipType ? { ownership_type: ownershipType } : {}),
         ...(activeFilter === 'inactive' ? { include_inactive: true } : {}),
+        ...(contactFilter ? { contact_id: contactFilter } : {}), // R5: client filter
       }),
-      [ownershipType, activeFilter]
+      [ownershipType, activeFilter, contactFilter]
     );
 
     const {
@@ -270,6 +273,20 @@
         setSearchParams(newParams, { replace: true });
       }
     }, [selectedSubCategory, searchQuery, setSearchParams, searchParams]);
+
+    // R7: resolve an asset's category/type DISPLAY NAME for the card's sub line
+    // (same three-way id resolution as assetSubCategory below).
+    const categoryIdToName = useMemo(() => {
+      const m = new Map<string, string>();
+      for (const r of equipmentResources) m.set(r.id, r.name);
+      for (const t of templateResources) if (!m.has(t.id)) m.set(t.id, t.name);
+      return m;
+    }, [equipmentResources, templateResources]);
+
+    const assetCategoryName = (a: TenantAsset): string | undefined =>
+      categoryIdToName.get(a.asset_type_id || '') ||
+      categoryIdToName.get(a.template_id || '') ||
+      undefined;
 
     // Resolve an asset's sub-category. asset_type_id may hold a resource id
     // (manual adds) OR a template id (buyer adds); seeded/onboarding instances
@@ -678,6 +695,35 @@
               </div>
 
               <div className="flex items-center gap-2">
+                {/* R5: client filter — hidden for "my equipment" (self) view where
+                    assets have no owning contact */}
+                {ownershipType !== 'self' && contactsList.length > 0 && (
+                  <select
+                    value={contactFilter}
+                    onChange={(e) => setContactFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border text-xs font-medium max-w-[180px]"
+                    style={{
+                      borderColor: colors.utility.primaryText + '20',
+                      backgroundColor: colors.utility.primaryBackground,
+                      color: contactFilter ? colors.brand.primary : colors.utility.secondaryText,
+                    }}
+                    title="Filter by client"
+                  >
+                    <option value="">All clients</option>
+                    {[...contactsList]
+                      .sort((a, b) =>
+                        (a.displayName || a.company_name || a.name || '').localeCompare(
+                          b.displayName || b.company_name || b.name || ''
+                        )
+                      )
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.displayName || c.company_name || c.name || 'Unknown'}
+                        </option>
+                      ))}
+                  </select>
+                )}
+
                 {/* R2: Active / Inactive view toggle */}
                 <div
                   className="flex items-center rounded-lg border overflow-hidden"
@@ -773,6 +819,7 @@
                     key={asset.id}
                     asset={asset}
                     clientName={asset.owner_contact_id ? contactNameMap.get(asset.owner_contact_id) : undefined}
+                    categoryName={assetCategoryName(asset)}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onReactivate={handleReactivate}

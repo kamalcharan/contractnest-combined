@@ -1444,3 +1444,58 @@ Test checklist (/equipment-registry, Signia):
   [ ] Cards of attached assets show a clickable CN-#### chip → opens contract
   [ ] Contract Equipment tab picker + wizard still work (shared card — picker
       mode unchanged; registry-only props are additive)
+
+═══════════════════════════════════════════════════
+REGISTRY HARDENING R5-R7 (2026-09-07) — completes the 7-item list
+═══════════════════════════════════════════════════
+  R5  Client filter dropdown on the registry toolbar ("All clients" +
+      each contact, alphabetical). Filters server-side via the existing
+      contact_id param. Hidden in "My Equipment" (self) view where
+      assets have no owning contact.
+  R6  BUG FIX (contract side): the attach-placeholder picker matched
+      category ONLY by asset_type_id === category_id. Registry assets
+      whose asset_type_id holds a TEMPLATE id (buyer adds) or that link
+      via template_id only (seeded) were invisibly filtered out → empty
+      picker → auto-open create form → duplicate unit created instead of
+      attaching the existing one. Now matches by id on either field,
+      then by shared sub-category; if nothing matches at all it falls
+      back to the unnarrowed list instead of hiding units.
+  R7  Registry EquipmentCard restyled to the contract view's MachineCard
+      visual language (same family as the "slide 1 / 0 of 16 visits
+      proven / View logbook" cards): name + SN·location·make sub line
+      (falls back to category name, e.g. "HVAC Systems"), status pill
+      top-right, "Good · Medium criticality · <client>" meta line,
+      warranty line, contract chips, footer "Last serviced <date>" /
+      "Not serviced yet" + pill-style Edit + deactivate icon (or
+      Reactivate on inactive cards). Registry facts replace the
+      contract-only visits/logbook data. Picker (Add/Added/Remove) mode
+      is visually refreshed but functionally unchanged — wizard and
+      Equipment-tab picker keep working as before.
+
+No backend change in this batch (edge v11 from R1-R4 already serves
+everything R5-R7 need). No DB migration.
+
+Files:
+  contractnest-ui/src/pages/equipment-registry/index.tsx          (R5 + category names; supersedes R1-R4 copy)
+  contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx  (R7 rewrite; supersedes R1-R4 copy)
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx       (R6; also carries earlier attach-flow fixes)
+
+Copy (UI only — no api restart needed for this batch):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  # Ctrl+F5 after copying. If you have NOT yet copied the R1-R4 batch,
+  # copy that first (types/serviceURLs/useAssetRegistry/controller) —
+  # these files depend on it.
+
+Test checklist:
+  [ ] /equipment-registry: cards now read like the contract cards
+      (name, "HVAC Systems"-style sub line, "Good · Medium criticality ·
+      <client>", status pill, Edit pill + archive icon on hover)
+  [ ] Client dropdown filters the grid; "All clients" restores
+  [ ] Contract CN-1005 → Attach asset on a placeholder → existing units
+      OF THE CLIENT for that category appear in the picker (not an
+      auto-opened create form) when such units exist
+  [ ] Picker Add/Added/Remove behavior unchanged; wizard asset step OK
+  [ ] R1-R4 retests still pass (deactivate dialog, inactive filter,
+      in-contract guard, contract chips)
