@@ -1377,3 +1377,70 @@ Retest (CN-1005):
   [ ] Cards update IMMEDIATELY (placeholder becomes real unit, no F5)
   [ ] While the slider is open, no stale "No equipment..." div behind it
   [ ] Remove a unit → count/cards update immediately too
+
+═══════════════════════════════════════════════════
+REGISTRY HARDENING R1-R4 (2026-09-07)
+═══════════════════════════════════════════════════
+Owner approved all 7 registry items; this batch is the first four:
+  R1  window.confirm on registry delete → product ConfirmationDialog,
+      action relabeled "Deactivate" (Archive icon). Nothing is ever
+      hard-deleted (edge already soft-deleted; now the UI says so).
+  R2  Active | Inactive toggle on the registry toolbar. Inactive view
+      lists deactivated assets with a "Reactivate" action (PATCH
+      is_active=true through the existing update endpoint).
+  R3  Server guard: deactivating an asset attached to a LIVE contract
+      (active/draft/pending_acceptance/sent) is refused with 409
+      ASSET_IN_CONTRACT naming the contract number(s). UI also
+      pre-blocks with an informational dialog when it already knows
+      the contracts. Remove from contract first, then deactivate.
+  R4  Contract chips on registry cards (e.g. "CN-1005") — clickable,
+      navigate to the contract. Served by the list endpoint via a new
+      with_contracts=true param (equipment_details scan on live
+      contracts, asset_registry_id OR id match).
+
+DEPLOYED LIVE by Claude (do not re-run/re-deploy):
+  - edge client-asset-registry v11 (was v10) — include_inactive +
+    with_contracts params, R3 guard, deactivate wording. Post-deploy
+    byte-verified. File in this batch is source-of-record.
+  - Guard logic verified against live data: CN-1005's attached units
+    resolve correctly (slide 1/2/3, Equip 1...).
+No DB migration in this batch.
+
+Files:
+  contractnest-edge/supabase/functions/client-asset-registry/index.ts  (record only — deployed)
+  contractnest-api/src/controllers/clientAssetRegistryController.ts    (forwards the 2 new params)
+  contractnest-ui/src/types/assetRegistry.ts
+  contractnest-ui/src/services/serviceURLs.ts                          (also carries earlier EVENT_ASSETS entry)
+  contractnest-ui/src/hooks/queries/useAssetRegistry.ts
+  contractnest-ui/src/pages/equipment-registry/index.tsx
+  contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\clientAssetRegistryController.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\types\assetRegistry.ts" -Destination "contractnest-ui\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useAssetRegistry.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\client-asset-registry\index.ts" -Destination "contractnest-edge\supabase\functions\client-asset-registry\" -Force
+  # RESTART the api dev server (controller changed). UI hot-reloads; Ctrl+F5 once.
+
+Production checklist:
+  Transaction Management: n/a (single-row soft-delete; guard is read-then-write on one row)
+  Race Condition Handling: server-side guard is authoritative (client pre-block is UX only);
+    stale-client deactivate still refused by edge 409
+  Error Handling: 409 ASSET_IN_CONTRACT message surfaces verbatim in toast; guard lookup
+    failure fails CLOSED (500, delete not allowed through)
+  Toasts: existing vaniToast (Deactivated / Deactivate Failed / Updated)
+  Loaders: existing VaNiLoader + ConfirmationDialog isLoading state
+
+Test checklist (/equipment-registry, Signia):
+  [ ] Deactivate on an UNATTACHED asset → product dialog (not browser alert),
+      confirm → card leaves Active view, toast "Equipment Deactivated"
+  [ ] Toolbar Inactive → deactivated asset listed, dimmed, "Inactive" badge,
+      hover shows "Reactivate" → click → back in Active view
+  [ ] Deactivate on an asset attached to CN-1005 (e.g. "slide 1") →
+      "Cannot deactivate yet" dialog naming CN-1005; no state change
+  [ ] Cards of attached assets show a clickable CN-#### chip → opens contract
+  [ ] Contract Equipment tab picker + wizard still work (shared card — picker
+      mode unchanged; registry-only props are additive)
