@@ -849,7 +849,18 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 
           {/* Picker body — equipment card grid */}
           <div className="px-5 py-4">
-            {isLoading ? (
+            {isAddFormOpen && attachingPlaceholder ? (
+              // Attach flow jumped straight into the add-asset form — keep the
+              // background quiet instead of showing a stale empty-state/grid.
+              <div
+                className="flex items-center gap-2.5 py-3 text-sm"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                <Package className="h-4 w-4 flex-shrink-0" style={{ color: colors.brand.primary }} />
+                Registering a new {attachingPlaceholder.resource_type === 'entity' ? 'facility' : 'unit'} for
+                the "{attachingPlaceholder.category_name}" slot…
+              </div>
+            ) : isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <VaNiLoader size="sm" message="Loading equipment..." />
               </div>

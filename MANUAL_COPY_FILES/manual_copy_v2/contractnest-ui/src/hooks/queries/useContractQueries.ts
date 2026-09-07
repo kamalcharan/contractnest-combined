@@ -538,6 +538,8 @@ export const useBuyerAddEquipment = () => {
     },
     onSuccess: (result, { contractId }) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      // Detail page reads via useContractDetailsV2 — invalidate that cache too
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
       vaniToast.success('Equipment Added', {
         message: 'Your equipment has been added to this contract.',
         duration: 4000,
@@ -571,6 +573,8 @@ export const useBuyerRemoveEquipment = () => {
     },
     onSuccess: (result, { contractId }) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      // Detail page reads via useContractDetailsV2 — invalidate that cache too
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
       vaniToast.success('Equipment Removed', {
         message: 'Equipment has been removed from this contract.',
         duration: 4000,
@@ -608,6 +612,8 @@ export const useSellerAddEquipment = () => {
     },
     onSuccess: (result, { contractId }) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      // Detail page reads via useContractDetailsV2 — invalidate that cache too
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
       vaniToast.success('Equipment Added', {
         message: 'Equipment has been added to this contract.',
         duration: 4000,
@@ -641,6 +647,8 @@ export const useSellerRemoveEquipment = () => {
     },
     onSuccess: (result, { contractId }) => {
       queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      // Detail page reads via useContractDetailsV2 — invalidate that cache too
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
       vaniToast.success('Equipment Removed', {
         message: 'Equipment has been removed from this contract.',
         duration: 4000,
