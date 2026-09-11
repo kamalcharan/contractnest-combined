@@ -1557,3 +1557,41 @@ Test checklist:
   [ ] Contract CN-1005 Equipment tab: cards look EXACTLY as before
       (no regression — contract view passes no new props)
   [ ] Deactivate/Reactivate/Inactive filter/client filter still work
+
+═══════════════════════════════════════════════════
+BBB CUTOVER PHASE 1+2 — APPLIED LIVE 2026-09-11 (record only, DO NOT RE-RUN)
+═══════════════════════════════════════════════════
+Owner go ("i guess we should go forward"); physical DB backup of
+10 Sep 22:14 UTC noted as disaster net. Pre-flight audit first
+(attendance + money-in, live & test): attendance references the
+SCHEDULE only (348 rows, 0 event refs) — structurally unaffected;
+all money-in writers target t_contract_events, mirrored by the
+already-live global bridge.
+
+  jtd-cutover/004_bbb_copy.sql    — 490 rows / 70 contracts copied
+    id-preserving (both environments, is_live verbatim), in-txn
+    per-contract count/Σ verification passed, 0 events without twin,
+    settled ₹3,79,500 identical both sides.
+  jtd-cutover/005_bbb_fk_swap.sql — 141 allocation rows jtd-stamped
+    (contract_event_id kept), 0 invoice backfills (correct — BBB
+    invoices are contract-level). First attempt ABORTED by its own
+    check: 002's predicate also flagged 3 legitimate V2-born Signia
+    allocations (jtd_id set, contract_event_id NULL — CN-1003's 2 Sep
+    payments). Predicate tightened to both-ids-set-and-different;
+    nothing was written by the aborted attempt.
+
+Post-checks: bridge harness on BBB rows OK both directions (rolled
+back); drift 0 across all 93 migrated contracts; BBB money surface
+unchanged (live settled ₹3,42,000 / 132 paid events / receipts
+₹3,53,100). Rollback (through Phase 5): DELETE tagged BBB n_jtd rows +
+SET jtd_id=NULL on the 141 allocations.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/jtd-cutover/004_bbb_copy.sql
+  contractnest-edge/supabase/migrations/jtd-cutover/005_bbb_fk_swap.sql
+  ClaudeDocumentation/productled/Sprint-2-5-7-POA.md  (status board updated)
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\004_bbb_copy.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\005_bbb_fk_swap.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force

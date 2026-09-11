@@ -20,7 +20,7 @@ API/UI via MANUAL_COPY_FILES → owner copies, tests, merges. Never pushed to su
 | B3 | Sprint 7 — execution loop remainder (ticket, prove, mobile UI, invoice, report) | ⬜ (B3.2 already closed) |
 | B4 | Extend — WhatsApp/email touchpoints (T1→T2→T3) | ⬜ |
 | C  | Sprint 5 — repair sweep (report-first) | ⬜ can run parallel any time |
-| A  | Cutover remainder (BBB copy → soak → flip → retire) | ⚠️ **WINDOW OPEN NOW (6–18 Sep; today 11 Sep; BBB meeting 19 Sep)** — needs owner go to start the BBB copy |
+| A  | Cutover remainder (BBB copy → soak → flip → retire) | ✅ **BBB COPY DONE 2026-09-11** (owner go; physical backup 10 Sep 22:14 UTC as disaster net). 490 rows / 70 contracts id-preserving, 0 twins missing, ₹3,79,500 settled identical both sides; 141 allocations jtd-stamped; bridge harness-proven on BBB both directions; drift 0 across all 93 migrated contracts (Signia 23 + BBB 70); money-in surface unchanged (live settled ₹3,42,000 / 132 paid / receipts ₹3,53,100). **Soaking until 19 Sep meeting** (daily audit_dual_read_check). Note: 005 re-run needed a verification-predicate fix — 002's check also flagged V2-born allocations (jtd_id set, contract_event_id legitimately NULL); now only both-set-and-different counts as mismatch. OPEN: 4 stale pending declarations (₹15,000, dead billing_event_ids from the Aug restatement) — reject/keep is an owner call, independent of the copy |
 
 ### Progress log 4–11 Sep (between B1 and B2)
 
