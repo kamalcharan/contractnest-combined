@@ -3,7 +3,7 @@
   // Sidebar groups equipment by sub_category from t_category_resources_master
 
   import React, { useState, useEffect, useMemo } from 'react';
-  import { useSearchParams } from 'react-router-dom';
+  import { useSearchParams, useNavigate } from 'react-router-dom';
   import {
     Plus, Search, X, Download, Package, Layers,
   } from 'lucide-react';
@@ -30,9 +30,15 @@
 
   // Types
   import type { TenantAsset, AssetRegistryFilters, AssetFormData } from '@/types/assetRegistry';
+  import { STATUS_CONFIG } from '@/types/assetRegistry';
+  import type { ContractEquipmentDetail } from '@/types/contracts';
+  import type { MachineServiceState } from '@/components/contracts/fleet/fleetTypes';
 
   // Components
-  import EquipmentCard from './EquipmentCard';
+  // ONE card for both surfaces: the registry renders the contract view's
+  // MachineCard itself (owner directive — single card, adapted per situation).
+  // EquipmentCard remains only as the picker (Add/Added/Remove) card.
+  import MachineCard from '@/components/contracts/fleet/MachineCard';
   import EquipmentFormDialog from './EquipmentFormDialog';
   import EquipmentEmptyState from './EmptyState';
   import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
@@ -90,6 +96,7 @@
 
   const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment' }) => {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const { currentTenant, perspective } = useAuth();
     const { isDarkMode, currentTheme } = useTheme();
     const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -812,20 +819,68 @@
                 <VaNiLoader size="sm" message={`Loading ${modeConfig.itemLabel}...`} />
               </div>
             ) : displayAssets.length > 0 ? (
-              /* Equipment Grid */
+              /* Equipment Grid — same MachineCard as the contract Equipment tab */
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {displayAssets.map((asset) => (
-                  <EquipmentCard
-                    key={asset.id}
-                    asset={asset}
-                    clientName={asset.owner_contact_id ? contactNameMap.get(asset.owner_contact_id) : undefined}
-                    categoryName={assetCategoryName(asset)}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onReactivate={handleReactivate}
-                    disabled={isMutating}
-                  />
-                ))}
+                {displayAssets.map((asset) => {
+                  // Adapt the registry asset to the card's contract-detail shape
+                  const detail: ContractEquipmentDetail = {
+                    id: asset.id,
+                    asset_registry_id: asset.id,
+                    resource_type: (asset.resource_type_id || '').toLowerCase() === 'asset' ? 'entity' : 'equipment',
+                    category_id: asset.asset_type_id,
+                    category_name: assetCategoryName(asset) || '',
+                    item_name: asset.name,
+                    quantity: 1,
+                    make: asset.make,
+                    model: asset.model,
+                    serial_number: asset.serial_number,
+                    condition: asset.condition,
+                    criticality: asset.criticality,
+                    location: asset.location,
+                  };
+
+                  // Aggregated visits state from the edge (with_contracts=true);
+                  // one synthesized overdue visit carries the "Due: <date> (missed)" text
+                  const svc = asset.service_state;
+                  const state: MachineServiceState | null = svc && svc.total_visits > 0 ? {
+                    machineId: asset.id,
+                    visits: svc.first_overdue_date
+                      ? [{ key: 'overdue', row: null, event: null, dateKey: svc.first_overdue_date, isProven: false, isOverdue: true, isLocked: false }]
+                      : [],
+                    provenCount: svc.proven_count,
+                    totalVisits: svc.total_visits,
+                    overdueCount: svc.overdue_count,
+                    nextDueDate: svc.next_due_date,
+                    lastProven: svc.last_proven_date ? { dateKey: svc.last_proven_date, assignee: null } : null,
+                  } : null;
+
+                  const firstContract = asset.contracts?.[0];
+
+                  return (
+                    <MachineCard
+                      key={asset.id}
+                      colors={colors}
+                      detail={detail}
+                      isPlaceholder={false}
+                      state={state}
+                      hasServiceData={!!state}
+                      clientName={asset.owner_contact_id ? contactNameMap.get(asset.owner_contact_id) : undefined}
+                      canRemove={false}
+                      canAttach={false}
+                      removing={false}
+                      pillLabel={!asset.is_active ? 'Inactive' : (STATUS_CONFIG[asset.status]?.label || 'Active')}
+                      pillTone={!asset.is_active ? 'muted' : 'success'}
+                      dimmed={!asset.is_active}
+                      contractRefs={asset.contracts}
+                      onOpenContract={(cid) => navigate(`/contracts/${cid}`)}
+                      noVisitsNote={(asset.contracts?.length || 0) > 0 ? 'No visits scheduled yet' : 'Not in any contract yet'}
+                      onOpenLogbook={state && firstContract ? () => navigate(`/contracts/${firstContract.id}`) : undefined}
+                      onEdit={asset.is_active && !isMutating ? () => handleEdit(asset) : undefined}
+                      onDeactivate={asset.is_active && !isMutating ? () => handleDelete(asset) : undefined}
+                      onReactivate={!asset.is_active && !isMutating ? () => handleReactivate(asset) : undefined}
+                    />
+                  );
+                })}
               </div>
             ) : searchQuery && !isError ? (
               /* No search results */

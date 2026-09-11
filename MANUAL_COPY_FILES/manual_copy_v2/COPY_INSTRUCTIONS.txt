@@ -1499,3 +1499,61 @@ Test checklist:
   [ ] Picker Add/Added/Remove behavior unchanged; wizard asset step OK
   [ ] R1-R4 retests still pass (deactivate dialog, inactive filter,
       in-contract guard, contract chips)
+
+═══════════════════════════════════════════════════
+SINGLE CARD — REGISTRY NOW RENDERS MachineCard ITSELF (2026-09-11)
+═══════════════════════════════════════════════════
+Owner directive: "one single card, adopted to both situations."
+/equipment-registry no longer uses a lookalike — it renders the SAME
+MachineCard component as the contract Equipment tab, with real
+aggregated visit numbers:
+
+  - The visits row ("0 of 16 visits proven · 2 overdue"), the
+    "Due: 17 Aug (missed)" / "Next: <date>" text and the progress bar
+    now appear on registry cards, aggregated across the asset's live
+    contracts. Verified against CN-1005: slide 1/2/3 each return
+    16 total / 0 proven / 2 overdue / due 17 Aug — identical to the
+    contract view.
+  - MachineCard gained OPTIONAL registry-mode props (pill label/tone,
+    contract chips, Edit / Deactivate / Reactivate, no-visits note,
+    dimmed). The contract view passes none of them → pixel-unchanged.
+  - Registry pill shows Active/Inactive (asset status) where the
+    contract shows Attached; "View logbook" navigates to the asset's
+    contract; the red icon is Deactivate (archive) in the registry.
+  - Asset in no contract: same card, footer reads "Not in any
+    contract yet".
+  - EquipmentCard now serves ONLY the picker (Add/Added/Remove) in the
+    contract tab + wizard — unchanged behavior.
+
+DEPLOYED LIVE by Claude (do not re-deploy):
+  edge client-asset-registry v13 — with_contracts=true now also returns
+  service_state per asset (proven/total/overdue/next-due/first-missed/
+  last-serviced) from t_contract_event_assets × t_contract_events with
+  n_jtd fallback (V2-native contracts like CN-1005 have jobs ONLY in
+  n_jtd — without the fallback the numbers came back dateless).
+  Post-deploy byte-verified; aggregation verified against live CN-1005.
+
+Files:
+  contractnest-edge/supabase/functions/client-asset-registry/index.ts  (record only — v13 deployed)
+  contractnest-ui/src/components/contracts/fleet/MachineCard.tsx        (additive optional props)
+  contractnest-ui/src/pages/equipment-registry/index.tsx                (renders MachineCard; supersedes earlier copies)
+  contractnest-ui/src/types/assetRegistry.ts                            (adds service_state; supersedes earlier copy)
+
+Copy (UI only — no api restart):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\fleet\MachineCard.tsx" -Destination "contractnest-ui\src\components\contracts\fleet\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\types\assetRegistry.ts" -Destination "contractnest-ui\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\client-asset-registry\index.ts" -Destination "contractnest-edge\supabase\functions\client-asset-registry\" -Force
+  # Ctrl+F5 after copying
+
+Test checklist:
+  [ ] /equipment-registry: slide 1/2/3 cards are IDENTICAL in form to the
+      CN-1005 contract cards — "0 of 16 visits proven · 2 overdue",
+      "Due: 17 Aug (missed)", progress bar — plus CN-1005 chip and
+      Active pill; footer: "Not serviced yet" · View logbook · Edit ·
+      archive icon
+  [ ] View logbook on a registry card opens CN-1005
+  [ ] An asset not in any contract: same card, "Not in any contract yet"
+  [ ] Contract CN-1005 Equipment tab: cards look EXACTLY as before
+      (no regression — contract view passes no new props)
+  [ ] Deactivate/Reactivate/Inactive filter/client filter still work

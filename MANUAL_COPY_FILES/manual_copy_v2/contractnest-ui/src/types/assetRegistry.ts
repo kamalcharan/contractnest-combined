@@ -61,12 +61,24 @@ export interface TenantAsset {
   // Present only when the list is fetched with with_contracts=true —
   // live contracts (active/draft/pending_acceptance/sent) referencing this asset.
   contracts?: AssetContractRef[];
+  // Also with_contracts=true only — aggregated visit/proof state across the
+  // asset's live contracts (drives the shared MachineCard's visits row)
+  service_state?: AssetServiceState | null;
 }
 
 export interface AssetContractRef {
   id: string;
   contract_number: string;
   status: string;
+}
+
+export interface AssetServiceState {
+  proven_count: number;
+  total_visits: number;
+  overdue_count: number;
+  next_due_date: string | null;
+  first_overdue_date: string | null;
+  last_proven_date: string | null;
 }
 
 export interface ContractAsset {

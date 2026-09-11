@@ -128,7 +128,11 @@ const LIVE_CONTRACT_STATUSES = ['active', 'draft', 'pending_acceptance', 'sent']
 // Throws on query error — callers decide whether that is fatal.
 async function fetchContractRefsByAsset(supabase: any, tenantId: string, assetIds: string[]) {
   const map = new Map<string, { id: string; contract_number: string; status: string }[]>();
-  if (assetIds.length === 0) return map;
+  // equipment_details item id -> registry asset id, for items that carry both.
+  // Per-asset event rows key asset_ref by COALESCE(asset_registry_id, item id),
+  // so service-state lookups must match either spelling.
+  const aliases = new Map<string, string>();
+  if (assetIds.length === 0) return { map, aliases };
   const wanted = new Set(assetIds);
 
   const { data, error } = await supabase
@@ -153,9 +157,137 @@ async function fetchContractRefsByAsset(supabase: any, tenantId: string, assetId
         if (!map.has(ref)) map.set(ref, []);
         map.get(ref)!.push({ id: c.id, contract_number: c.contract_number, status: c.status });
       }
+      if (item?.asset_registry_id && item?.id && wanted.has(item.asset_registry_id)) {
+        aliases.set(item.id, item.asset_registry_id);
+      }
     }
   }
-  return map;
+  return { map, aliases };
+}
+
+// ============================================
+// SHARED: per-asset service state (single-card reuse — registry renders the
+// contract view's MachineCard, so it needs the same visits-proven numbers)
+// ============================================
+// Aggregates t_contract_event_assets × t_contract_events per registry asset,
+// across the asset's LIVE contracts, mirroring the UI's buildFleetServiceMap
+// semantics (fleetTypes.ts). "Today" is IST, per platform convention.
+// NOTE (Phase 6): event dates come from t_contract_events, which the JTD
+// cutover keeps id-identical and mirrored until retirement; repoint to n_jtd
+// when t_contract_events is retired.
+const CLOSED_EVENT_STATUSES = new Set(['completed', 'cancelled', 'skipped']);
+
+function istTodayKey(): string {
+  return new Date(Date.now() + 5.5 * 3600 * 1000).toISOString().split('T')[0];
+}
+
+async function fetchServiceStateByAsset(
+  supabase: any,
+  tenantId: string,
+  isLive: boolean,
+  refs: { map: Map<string, any[]>; aliases: Map<string, string> }
+) {
+  const stateMap = new Map<string, any>();
+  // Only assets inside live contracts can have visits
+  const assetIds = [...refs.map.keys()];
+  if (assetIds.length === 0) return stateMap;
+
+  // asset_ref spellings to query: registry id + any item-id aliases
+  const refToAsset = new Map<string, string>();
+  for (const id of assetIds) refToAsset.set(id, id);
+  for (const [itemId, registryId] of refs.aliases) refToAsset.set(itemId, registryId);
+  const allRefs = [...refToAsset.keys()];
+
+  // Chunked fetch of per-asset rows (keep .in() lists bounded)
+  const rows: any[] = [];
+  for (let i = 0; i < allRefs.length; i += 100) {
+    const { data, error } = await supabase
+      .from('t_contract_event_assets')
+      .select('asset_ref, event_id, status, proven_at')
+      .eq('tenant_id', tenantId)
+      .eq('is_live', isLive)
+      .eq('is_active', true)
+      .in('asset_ref', allRefs.slice(i, i + 100));
+    if (error) throw new Error(`event-asset lookup failed: ${error.message}`);
+    rows.push(...(data || []));
+  }
+  if (rows.length === 0) return stateMap;
+
+  // Fetch the parent events (dates + statuses), chunked.
+  // event_id points at t_contract_events (V1 / migrated contracts) OR at an
+  // n_jtd service job (V2-native contracts — same id space post-cutover but
+  // jobs created after the copy exist ONLY in n_jtd). Resolve from events
+  // first, then fall back to n_jtd for any ids not found there.
+  const eventIds = [...new Set(rows.map((r) => r.event_id).filter(Boolean))];
+  const eventById = new Map<string, any>();
+  for (let i = 0; i < eventIds.length; i += 100) {
+    const { data, error } = await supabase
+      .from('t_contract_events')
+      .select('id, scheduled_date, status')
+      .eq('tenant_id', tenantId)
+      .in('id', eventIds.slice(i, i + 100));
+    if (error) throw new Error(`event lookup failed: ${error.message}`);
+    for (const e of data || []) eventById.set(e.id, e);
+  }
+  const missingIds = eventIds.filter((id) => !eventById.has(id));
+  for (let i = 0; i < missingIds.length; i += 100) {
+    const { data, error } = await supabase
+      .from('n_jtd')
+      .select('id, scheduled_at, status_code')
+      .eq('tenant_id', tenantId)
+      .in('id', missingIds.slice(i, i + 100));
+    if (error) throw new Error(`jtd lookup failed: ${error.message}`);
+    for (const j of data || []) {
+      eventById.set(j.id, { id: j.id, scheduled_date: j.scheduled_at, status: j.status_code });
+    }
+  }
+
+  const today = istTodayKey();
+
+  for (const r of rows) {
+    if (r.status === 'blocked_placeholder') continue; // locked slots aren't visits
+    const assetId = refToAsset.get(r.asset_ref);
+    if (!assetId) continue;
+
+    let s = stateMap.get(assetId);
+    if (!s) {
+      s = {
+        proven_count: 0, total_visits: 0, overdue_count: 0,
+        next_due_date: null as string | null,
+        first_overdue_date: null as string | null,
+        last_proven_date: null as string | null,
+      };
+      stateMap.set(assetId, s);
+    }
+
+    const event = eventById.get(r.event_id) || null;
+    const dateKey = event?.scheduled_date ? String(event.scheduled_date).split('T')[0] : '';
+    const isProven = r.status === 'proven';
+    const isOverdue =
+      !isProven && !!event &&
+      (event.status === 'overdue' ||
+        (!!dateKey && dateKey < today && !CLOSED_EVENT_STATUSES.has(event.status)));
+
+    s.total_visits += 1;
+    if (isProven) {
+      s.proven_count += 1;
+      const provenKey = r.proven_at ? String(r.proven_at).split('T')[0] : dateKey || null;
+      if (provenKey && (!s.last_proven_date || provenKey > s.last_proven_date)) {
+        s.last_proven_date = provenKey;
+      }
+    } else {
+      if (isOverdue) {
+        s.overdue_count += 1;
+        if (dateKey && (!s.first_overdue_date || dateKey < s.first_overdue_date)) {
+          s.first_overdue_date = dateKey;
+        }
+      }
+      if (dateKey && dateKey >= today && (!s.next_due_date || dateKey < s.next_due_date)) {
+        s.next_due_date = dateKey;
+      }
+    }
+  }
+  return stateMap;
 }
 
 // ============================================
@@ -235,8 +367,13 @@ async function handleGet(supabase: any, tenantId: string, params: URLSearchParam
   let rows = data;
   if (withContracts && data && data.length > 0) {
     try {
-      const refMap = await fetchContractRefsByAsset(supabase, tenantId, data.map((a: any) => a.id));
-      rows = data.map((a: any) => ({ ...a, contracts: refMap.get(a.id) || [] }));
+      const refs = await fetchContractRefsByAsset(supabase, tenantId, data.map((a: any) => a.id));
+      const stateMap = await fetchServiceStateByAsset(supabase, tenantId, isLive, refs);
+      rows = data.map((a: any) => ({
+        ...a,
+        contracts: refs.map.get(a.id) || [],
+        service_state: stateMap.get(a.id) || null,
+      }));
     } catch (e: any) {
       console.error('[ClientAssetRegistry] with_contracts enrichment skipped:', e?.message);
     }
@@ -385,8 +522,8 @@ async function handleDelete(supabase: any, tenantId: string, assetId: string) {
   // R3 guard: an asset attached to a live contract cannot be deactivated —
   // it must be removed from the contract first. Guard failure is fatal
   // (bubbles to the 500 handler) so a broken lookup never lets a delete through.
-  const refMap = await fetchContractRefsByAsset(supabase, tenantId, [assetId]);
-  const inContracts = refMap.get(assetId) || [];
+  const refs = await fetchContractRefsByAsset(supabase, tenantId, [assetId]);
+  const inContracts = refs.map.get(assetId) || [];
   if (inContracts.length > 0) {
     const nums = inContracts.map((c) => c.contract_number).filter(Boolean).join(', ');
     return jsonResponse({
