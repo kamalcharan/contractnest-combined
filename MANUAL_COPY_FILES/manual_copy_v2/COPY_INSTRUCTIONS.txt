@@ -1595,3 +1595,29 @@ Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\004_bbb_copy.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\005_bbb_fk_swap.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════
+B2.1 + B2.2 — DEFAULT FORM SEED + MAPPING COLUMNS (2026-09-12, record only)
+═══════════════════════════════════════════════════
+APPLIED LIVE by Claude — do not re-run (guard RAISEs if form exists).
+
+  B2.1  Platform-default form "General Service Completion" seeded in
+        m_form_templates (id f0000000-0000-4000-a000-000000000001,
+        status approved, source platform_default). Deliberately short:
+        2 required selects (work status, asset condition) + 2 optional
+        notes. NO identification section — per D10, asset/visit identity
+        prefills from the job, never typed. Schema shape identical to
+        KT-composed forms so builder + renderer open it unchanged.
+        OWNER GATE: review the content (fields/options/wording) — it is
+        visible in catalog-studio's form list; changes are cheap until
+        the resolver (B2.3) starts writing mapping rows against it.
+  B2.2  m_form_template_mappings gains contract_block_id,
+        resource_template_id, require_upload (default false),
+        resolved_via + unique index (contract, block-or-sentinel, form).
+        Table was empty pre-migration; purely additive.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/service-execution/003_b2_default_form_and_mapping_columns.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\003_b2_default_form_and_mapping_columns.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
