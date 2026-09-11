@@ -9,16 +9,45 @@ API/UI via MANUAL_COPY_FILES → owner copies, tests, merges. Never pushed to su
 
 ---
 
-## Status board
+## Status board (updated 2026-09-11)
 
 | Step | Scope | Status |
 |---|---|---|
 | B1 | Per-asset foundation (fan-out V2 + read route) | ✅ **DONE — owner-verified 2026-09-03** on CN-1005: Equipment tab "0/48 visits proven", 3 locked placeholders w/ Attach asset; Tasks tab "0/3 assets proven" chips |
-| B2 | Sprint 2 — forms bind (resolver + picker + gating) | ⬜ next |
-| B3 | Sprint 7 — execution loop (prove → complete → report → invoice) | ⬜ |
+| B3.2 | Attach-asset unlock on V2 (pulled forward from B3) | ✅ **DONE — owner-verified** via the attach-flow fix batch (see log below): placeholder → real asset replacement works end-to-end on CN-1005, coverage cap enforced, proof rows unlock |
+| R | **Registry hardening R1–R7** (owner-inserted 2026-09-07, all approved) | ✅ **DONE — owner-verified 2026-09-11** ("equipment registry cards is now good"); facility registry same path by construction, no test data yet |
+| B2 | Sprint 2 — forms bind (resolver + picker + gating) | ⬜ **NEXT — starts at B2.1** |
+| B3 | Sprint 7 — execution loop remainder (ticket, prove, mobile UI, invoice, report) | ⬜ (B3.2 already closed) |
 | B4 | Extend — WhatsApp/email touchpoints (T1→T2→T3) | ⬜ |
 | C  | Sprint 5 — repair sweep (report-first) | ⬜ can run parallel any time |
-| A  | Cutover remainder (BBB copy → soak → flip → retire) | ⏸ parked until owner reopens (~6 Sep+) |
+| A  | Cutover remainder (BBB copy → soak → flip → retire) | ⚠️ **WINDOW OPEN NOW (6–18 Sep; today 11 Sep; BBB meeting 19 Sep)** — needs owner go to start the BBB copy |
+
+### Progress log 4–11 Sep (between B1 and B2)
+
+- **Attach flow made bug-free** (owner: "go ahead and make it bug free"): `replaces_item_id`
+  was dropped at API + edge before RPCs that already had replacement branches — fixed in
+  all four layers (UI → API → edge `contracts` v55 → RPCs); coverage cap added
+  (`SLOTS_OPEN` refusal while same-category placeholder slots open);
+  `unlock_placeholder_event_assets` re-issued (also refreshes asset name).
+- **Attach UX polish**: slider prefill (category/type/client), direct-slider on empty
+  picker, stale-picker strip, instant card refresh (`contract-details-v2` invalidation
+  added to all four equipment mutations).
+- **Registry hardening R1–R7** (owner approved all 7):
+  R1 product ConfirmationDialog + "Deactivate" language (window.confirm removed) ·
+  R2 Active/Inactive filter + Reactivate ·
+  R3 server guard `ASSET_IN_CONTRACT` (409, fails closed) + UI pre-block ·
+  R4 clickable CN-#### contract chips ·
+  R5 client filter dropdown ·
+  R6 picker three-way category matching (template-linked units no longer hidden →
+  duplicate-creation trap closed) ·
+  R7→**single card**: registry renders the contract view's `MachineCard` itself
+  (additive optional props; contract view pixel-unchanged), with REAL aggregated
+  visits state via edge `client-asset-registry` v13 (`with_contracts=true` returns
+  `contracts[]` + `service_state` from `t_contract_event_assets` × events, with
+  n_jtd fallback for V2-native contracts). Verified: slide 1/2/3 = 16/0 proven/
+  2 overdue/due 17 Aug — identical numbers both surfaces.
+- Edge deploys live: `contracts` v55, `client-asset-registry` v11→v13. No new DB migrations
+  beyond the already-logged service-execution/001+002.
 
 ---
 
@@ -42,7 +71,7 @@ submission against a placeholder is rejected; block picker shows real forms.
 | # | Item | Layer | Gate |
 |---|---|---|---|
 | B3.1 | **TKT- sequence** + ticket born at Start Service (`in_progress`, `started_at`; events attach via `t_service_ticket_events`) | DB + API | — |
-| B3.2 | **Attach-asset unlock on V2**: port/verify `unlock_placeholder_event_assets` for jtd-keyed rows (Equipment tab's "Attach asset" button must unlock V2 rows) | DB (live) | owner attaches a real asset on CN-1005 |
+| B3.2 | ~~Attach-asset unlock on V2~~ | DB (live) | ✅ done early (2026-09-08 attach-flow batch) — owner-verified on CN-1005 |
 | B3.3 | **Mark-asset-proven endpoint** (+ `require_upload` enforcement) + **completion cascade**: all proven → job → completed (legal transitions) → ticket completed | DB + edge + API | harness |
 | B3.4 | **Mobile-first execution UI** per D10 (sequential cards, auto-advance, camera-first, prefill-statics-never-proof; desktop drawer = same engine) | UI | owner tests on phone |
 | B3.5 | **Beyond-scope persistence → on-the-fly invoice** (D5: own lines, contract+ticket provenance, NO billing event, tax from settings) | DB + edge + API + UI | owner reviews invoice |
@@ -67,11 +96,13 @@ submission against a placeholder is rejected; block picker shows real forms.
 
 Group-session half of Sprint 5: **done-as-built** (BBB production pipeline) — no action.
 
-## A — Cutover remainder (parked until owner reopens)
+## A — Cutover remainder (⚠️ window open — owner go needed)
 
-BBB copy + bridge (same survived migrations, BBB tenant id) in the 6–18 Sep window →
-soak with daily `audit_dual_read_check` → 19 Sep meeting on V2 = retirement gate →
-Phase 5 flip (readers/UI) → Phase 6 archive (30-day hold). Signia soak continues daily meanwhile.
+BBB copy + bridge (same survived migrations, BBB tenant id `dd194710-…2c1f`) in the
+**6–18 Sep window — open now, 19 Sep meeting is the soak deadline**. Copy early in the
+window = longer soak with daily `audit_dual_read_check` before the meeting →
+19 Sep meeting on V2 = retirement gate → Phase 5 flip (readers/UI) →
+Phase 6 archive (30-day hold). Signia soak continues daily meanwhile (23/23 ok since 5 Sep).
 
 ---
 
