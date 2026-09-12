@@ -1621,3 +1621,31 @@ Files (record only):
 
 Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\003_b2_default_form_and_mapping_columns.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+
+═══════════════════════════════════════════════════
+B2.3 — ACTIVATION RESOLVER (2026-09-12, record only, DO NOT RE-RUN)
+═══════════════════════════════════════════════════
+APPLIED LIVE by Claude (service_execution_004 + 004b fix).
+resolve_contract_form_mappings(contract, tenant) implements the D9
+ladder (block form → KT form → contract fallback → platform default),
+fired at activation by trg_zz_resolve_form_mappings on t_contracts.
+Block policy 'none' = opt-out (no rows); contract-level policy 'none'
+(the wizard default on 302/303 contracts) = unspecified → ladder falls
+to the platform default, per D8.
+
+Harness (rolled back, live DB): platform_default ✓ · idempotent ✓ ·
+block_config + require_upload ✓ · block 'none' opt-out ✓ · kt_type via
+equipment match ✓ · contract_fallback ✓ · NEW EDGE FOUND: the only
+smart_form contract's 6 selected forms are all DRAFT — first version
+wrote zero rows; fixed to fall through to platform default (004b).
+
+NOTE for B2.4: the picker must write
+  custom_fields.config.evidence = {policy, formTemplateId, requireUpload}
+on service blocks — that is the shape rung 1 reads.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/service-execution/004_b23_activation_resolver.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\004_b23_activation_resolver.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force

@@ -16,7 +16,7 @@ API/UI via MANUAL_COPY_FILES → owner copies, tests, merges. Never pushed to su
 | B1 | Per-asset foundation (fan-out V2 + read route) | ✅ **DONE — owner-verified 2026-09-03** on CN-1005: Equipment tab "0/48 visits proven", 3 locked placeholders w/ Attach asset; Tasks tab "0/3 assets proven" chips |
 | B3.2 | Attach-asset unlock on V2 (pulled forward from B3) | ✅ **DONE — owner-verified** via the attach-flow fix batch (see log below): placeholder → real asset replacement works end-to-end on CN-1005, coverage cap enforced, proof rows unlock |
 | R | **Registry hardening R1–R7** (owner-inserted 2026-09-07, all approved) | ✅ **DONE — owner-verified 2026-09-11** ("equipment registry cards is now good"); facility registry same path by construction, no test data yet |
-| B2 | Sprint 2 — forms bind (resolver + picker + gating) | ⬜ **NEXT — starts at B2.1** |
+| B2 | Sprint 2 — forms bind (resolver + picker + gating) | 🔶 **B2.1+B2.2 done 2026-09-12** (seed owner-approved; mapping columns live) · **B2.3 done 2026-09-12** (resolver + activation trigger live, harness-proven on all 4 rungs + opt-out + idempotency; T5 caught a real edge — all 6 wizard-selected forms on the one smart_form contract are DRAFT → resolver now falls through to platform default instead of writing zero rows). Next: **B2.4** block picker (UI+API) |
 | B3 | Sprint 7 — execution loop remainder (ticket, prove, mobile UI, invoice, report) | ⬜ (B3.2 already closed) |
 | B4 | Extend — WhatsApp/email touchpoints (T1→T2→T3) | ⬜ |
 | C  | Sprint 5 — repair sweep (report-first) | ⬜ can run parallel any time |
