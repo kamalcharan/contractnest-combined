@@ -1371,6 +1371,9 @@ export const API_ENDPOINTS = {
       const qs = params.toString();
       return qs ? `/api/forms/templates?${qs}` : '/api/forms/templates';
     },
+    // Resolved form mappings for a contract (B2.5 — execution surface read path)
+    MAPPINGS: (contractId: string) =>
+      `/api/forms/mappings?contract_id=${encodeURIComponent(contractId)}`,
     // Tenant form selections (bookmarks)
     SELECTIONS: {
       LIST: '/api/forms/selections',

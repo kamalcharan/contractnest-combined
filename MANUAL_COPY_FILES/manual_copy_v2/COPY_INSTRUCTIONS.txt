@@ -1749,3 +1749,70 @@ which are 'none' on these contracts) — that wiring is B2.5, so the
 form is intentionally not visible in tickets until B2.5 lands.
 File: contractnest-edge/supabase/migrations/service-execution/005_backfill_signia_form_mappings.sql
 Copy: Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\005_backfill_signia_form_mappings.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+
+═══════════════════════════════════════════════════════════════════
+BATCH B2.5 (2026-09-12) — Submission gating + the drawer finally
+reads RESOLVED form mappings ("general form is not visible" fix)
+═══════════════════════════════════════════════════════════════════
+What this closes: after B2.3/backfill, every active signia contract
+HAS a resolved form mapping ("General Service Completion"), but the
+service-ticket drawer only read the contract wizard's evidence fields
+(= 'none' on old contracts), so the form never showed. This batch
+wires the drawer to the resolved mappings AND locks submissions to a
+real (non-placeholder) asset slot server-side.
+
+ALREADY LIVE (applied by assistant — no action, records only):
+  · DB migration service_execution_006: m_form_submissions.event_asset_id
+    + BEFORE INSERT trigger trg_zz_submission_asset_gate — refuses
+    missing binding when the visit tracks per-asset proof
+    (SUBMISSION_ASSET_REQUIRED), cross-visit binding (…_MISMATCH),
+    placeholder slots (…_PLACEHOLDER). Harness: 5/5 in a rolled-back
+    txn (negative-test proof per POA gate).
+  · smart-forms edge v7 deployed (fetch-verified): + GET /smart-forms/
+    mappings?contract_id=… (active mappings + template names, block-
+    level rows first) and the same three gate checks as friendly 422s
+    before insert. NOTE: v7 was rebuilt from the DEPLOYED v6 source —
+    the repo copy of smart-forms/index.ts had drifted; the staged copy
+    is the new source-of-record.
+
+Files (API — RESTART api dev server, new route):
+  contractnest-api/src/services/tenantFormsService.ts   (+listMappings)
+  contractnest-api/src/routes/tenantFormsRoutes.ts      (+GET /api/forms/mappings; POST /submissions now forwards event_asset_id)
+  contractnest-api/src/validators/tenantFormsValidators.ts (+listMappingsValidation; event_asset_id optional UUID)
+  contractnest-api/src/types/tenantForms.dto.ts         (+event_asset_id on CreateSubmissionRequest)
+Files (UI):
+  contractnest-ui/src/services/serviceURLs.ts           (SMART_FORMS.MAPPINGS)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts (+useContractFormMappings)
+  contractnest-ui/src/components/contracts/OperationsTab.tsx  (effective-evidence fallback)
+  contractnest-ui/src/components/contracts/SellerTasksTab.tsx (same fallback)
+Files (edge/DB records — DO NOT RE-RUN, already live):
+  contractnest-edge/supabase/functions/smart-forms/index.ts
+  contractnest-edge/supabase/migrations/service-execution/006_b25_submission_asset_gate.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\tenantFormsService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\tenantFormsRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\validators\tenantFormsValidators.ts" -Destination "contractnest-api\src\validators\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\types\tenantForms.dto.ts" -Destination "contractnest-api\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFormTemplates.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\OperationsTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\smart-forms\index.ts" -Destination "contractnest-edge\supabase\functions\smart-forms\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\006_b25_submission_asset_gate.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  # RESTART the api dev server (new /api/forms/mappings route). Ctrl+F5 in browser.
+
+How the fallback decides (both Operations and Tasks tabs):
+  wizard says smart_form WITH forms  → wizard selection wins (unchanged)
+  otherwise, resolved mappings exist → drawer shows those forms
+                                       (policy presented as smart_form)
+  no mappings either                 → exactly today's behavior
+
+Test checklist (Signia, e.g. CN-1005):
+  [ ] Contract → Tasks (or Operations) → a service due → Start Service
+      → drawer's Evidence section now lists "General Service Completion"
+  [ ] A contract whose wizard explicitly selected smart forms still
+      shows ITS forms (wizard choice wins over fallback)
+  [ ] Drawer otherwise unchanged (statuses, beyond-scope, complete flow)
+  [ ] "Open Form" button is still display-only — actual form-fill UI is
+      B3.4, expected; placeholder rejection is already server-proven

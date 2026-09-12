@@ -52,6 +52,25 @@ export class TenantFormsService {
     }
   }
 
+  // ---- MAPPINGS (B2.5: resolved form mappings for a contract) ----
+
+  async listMappings(
+    authHeader: string,
+    tenantId: string,
+    contractId: string
+  ): Promise<any> {
+    try {
+      const url = `${BASE_URL}/mappings?contract_id=${encodeURIComponent(contractId)}`;
+      const response = await axios.get(url, {
+        headers: this.getHeaders(authHeader, tenantId),
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('[TenantFormsService] listMappings error:', error.message);
+      throw error;
+    }
+  }
+
   // ---- SELECTIONS ----
 
   async listSelections(
