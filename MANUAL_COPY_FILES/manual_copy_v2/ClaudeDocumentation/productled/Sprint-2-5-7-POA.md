@@ -24,11 +24,15 @@ API/UI via MANUAL_COPY_FILES → owner copies, tests, merges. Never pushed to su
 
 ### PENDING (as of 2026-09-12 night — B4 notifications closed)
 
-1. **Merge Debt (NEXT, owner-sequenced)** — Phase 2 package ready:
-   `MANUAL_COPY_FILES/manual_copy_v2/PHASE2_MERGE_COMMANDS.md` (116 staged
-   files → UI/API/edge/docs commits + parent refs). Owner runs when done
-   testing. Decisions inside: include `hide-contact-overview-tab` (recommend
-   yes), defer `adhoc-invoice-no-contract` (UI never tested — recommend defer).
+1. **Merge Debt — ✅ CLEARED 2026-09-12** (owner ran the merges; verified
+   remotely): UI main 3f8715d / API main 21e01bf / Edge main 25f66da /
+   Docs master a9743c4 all carry the batch; parent master submodule
+   pointers updated to exactly those commits. `hide-contact-overview-tab`
+   rode the UI merge (Overview tab commented out on main).
+   Trailing items: (a) the FINAL POA edit (B4 close + this pending list)
+   post-dates the docs merge — one more copy+commit of the POA whenever
+   convenient; (b) `adhoc-invoice-no-contract` stays deliberately unmerged
+   (UI never tested) — its own batch later.
 2. **PayNow (after merge debt, owner-sequenced)** — GPay rejects the
    check-in page's upi:// intent link; mc=0000 didn't fix; browser-intent vs
    QR-scan is the lead suspect.
