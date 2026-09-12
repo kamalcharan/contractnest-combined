@@ -55,6 +55,14 @@ router.get('/:id/details', contractControllerV2.getContractDetails);
 router.get('/:id/event-assets', contractControllerV2.getEventAssets);
 
 /**
+ * @route POST /api/v2/contracts/:id/event-assets/:assetId/prove
+ * @description B3.3 — mark one asset of a visit proven (optionally binding a
+ * form submission / evidence upload). Server enforces placeholder refusal +
+ * require_upload; cascades all-proven → event completed → ticket completed.
+ */
+router.post('/:id/event-assets/:assetId/prove', contractControllerV2.markEventAssetProven);
+
+/**
  * @route PATCH /api/v2/contracts/:id/status
  * @description V2 status transition — activation materializes n_jtd job
  * rows from computed_events, then delegates to the untouched V1 engine.

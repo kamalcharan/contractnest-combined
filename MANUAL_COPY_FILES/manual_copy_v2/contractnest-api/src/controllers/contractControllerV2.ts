@@ -145,6 +145,44 @@ class ContractControllerV2 {
   };
 
   /**
+   * POST /api/v2/contracts/:id/event-assets/:assetId/prove
+   * B3.3 — mark one asset of a visit proven. Server-side rules (RPC):
+   * placeholder refused, require_upload enforced, completion cascade.
+   */
+  markEventAssetProven = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { id, assetId } = req.params;
+      const tenantId = req.headers['x-tenant-id'] as string;
+      const environment = (req.headers['x-environment'] as string) || 'live';
+      const userJWT = req.headers.authorization?.replace('Bearer ', '') || '';
+      const userId = req.user?.id || '';
+
+      const result = await this.contractServiceV2.markEventAssetProven(
+        id, assetId,
+        {
+          form_submission_id: req.body?.form_submission_id,
+          evidence_id: req.body?.evidence_id,
+          proven_by_name: req.body?.proven_by_name,
+        },
+        userJWT, tenantId, userId, environment
+      );
+
+      if (!result.success) {
+        const code = (result as any).code;
+        const status = code === 'NOT_FOUND' ? 404 :
+          (code === 'UPLOAD_REQUIRED' || code === 'ASSET_PLACEHOLDER' || code === 'SUBMISSION_MISMATCH') ? 422 : 400;
+        res.status(status).json(result);
+        return;
+      }
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error('[ContractControllerV2] Error in markEventAssetProven:', error);
+      internalError(res, 'Failed to mark asset proven');
+    }
+  };
+
+  /**
    * POST /api/v2/contracts/:id/record-payment
    * JTD Nucleus Step 4 — V2 payment path. Same request/response shape as
    * V1's POST /api/contracts/:id/invoices/record-payment; settlement lands

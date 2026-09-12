@@ -3,7 +3,7 @@
 // Evidence step). Reads GET /api/forms/templates (status=approved default),
 // which proxies the smart-forms edge function.
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
@@ -104,6 +104,80 @@ export const useContractFormMappings = (
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: 1,
+  });
+};
+
+// ---------------------------------------------------------------------------
+// B3.4 — single template with schema (drives the form-fill renderer),
+// and submission create (event_asset_id-bound; server gate enforces the
+// per-asset rules and the API forwards event_asset_id since B2.5).
+// ---------------------------------------------------------------------------
+
+export interface FormSchemaField {
+  id: string;
+  type: string; // select | textarea | text | number | date | checkbox
+  label: string;
+  help_text?: string;
+  options?: { label: string; value: string }[];
+  validation?: { required?: boolean };
+}
+
+export interface FormSchemaSection {
+  id: string;
+  title: string;
+  fields: FormSchemaField[];
+}
+
+export interface FormTemplateDetail extends FormTemplateOption {
+  schema: {
+    title?: string;
+    sections: FormSchemaSection[];
+    settings?: Record<string, unknown>;
+  };
+}
+
+export const useFormTemplateDetail = (
+  templateId?: string,
+  options?: { enabled?: boolean }
+) => {
+  const { currentTenant } = useAuth();
+
+  return useQuery<FormTemplateDetail>({
+    queryKey: ['form-template-detail', templateId],
+    queryFn: async () => {
+      const response = await api.get(API_ENDPOINTS.SMART_FORMS.TEMPLATE_DETAIL(templateId!));
+      return response.data?.data || response.data;
+    },
+    enabled: !!currentTenant?.id && !!templateId && (options?.enabled !== false),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+};
+
+export interface CreateSubmissionInput {
+  form_template_id: string;
+  service_event_id: string;
+  contract_id: string;
+  mapping_id?: string;
+  event_asset_id?: string;
+  responses: Record<string, unknown>;
+}
+
+export const useCreateFormSubmission = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateSubmissionInput) => {
+      const response = await api.post(API_ENDPOINTS.SMART_FORMS.SUBMISSIONS.CREATE, input);
+      return response.data?.data || response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['form-submissions'] });
+    },
+    // Errors are surfaced by the caller (FormFillModal shows the server's
+    // specific gate message — REQUIRED / MISMATCH / PLACEHOLDER).
   });
 };
 

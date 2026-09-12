@@ -43,6 +43,21 @@ router.get('/templates', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/forms/templates/:id — Single template with schema (B3.4 form-fill)
+router.get('/templates/:id', getSubmissionValidation, validateRequest, async (req: Request, res: Response) => {
+  const requestId = generateRequestId();
+  try {
+    const authHeader = req.headers.authorization || '';
+    const tenantId = (req.headers['x-tenant-id'] as string) || '';
+
+    const result = await tenantFormsService.getTemplate(authHeader, tenantId, req.params.id);
+    res.json(result);
+  } catch (error: any) {
+    console.error(`[TenantFormsRoutes] GET /templates/:id error [${requestId}]:`, error.message);
+    return handleEdgeError(res, error, requestId);
+  }
+});
+
 // ============================================================================
 // MAPPINGS — Resolved form mappings for a contract (B2.5 read path)
 // ============================================================================

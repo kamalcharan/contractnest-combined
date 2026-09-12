@@ -1035,6 +1035,9 @@ export const API_ENDPOINTS = {
     SELLER_ADD_EQUIPMENT: (id: string) => `/api/contracts/${id}/seller-equipment`,
     SELLER_REMOVE_EQUIPMENT: (id: string) => `/api/contracts/${id}/seller-equipment`,
     EVENT_ASSETS: (id: string) => `/api/v2/contracts/${id}/event-assets`, // B1: served by contracts-v2 (jtd-grain rows)
+    // B3.3: mark one asset of a visit proven (cascades event → ticket completion)
+    EVENT_ASSET_PROVE: (id: string, assetId: string) =>
+      `/api/v2/contracts/${id}/event-assets/${assetId}/prove`,
 
     // Dashboard stats
     STATS: '/api/contracts/stats',
@@ -1175,6 +1178,8 @@ export const API_ENDPOINTS = {
       CREATE: '/api/service-execution',
       GET: (ticketId: string) => `/api/service-execution/${ticketId}`,
       UPDATE: (ticketId: string) => `/api/service-execution/${ticketId}`,
+      // B3.5 — beyond-scope on-the-fly invoice for a ticket
+      INVOICE: (ticketId: string) => `/api/service-execution/${ticketId}/invoice`,
 
       LIST_WITH_FILTERS: (filters: ServiceTicketFilters = {}) => {
         const params = new URLSearchParams();
@@ -1374,6 +1379,8 @@ export const API_ENDPOINTS = {
     // Resolved form mappings for a contract (B2.5 — execution surface read path)
     MAPPINGS: (contractId: string) =>
       `/api/forms/mappings?contract_id=${encodeURIComponent(contractId)}`,
+    // Single template with schema (B3.4 — form-fill renderer)
+    TEMPLATE_DETAIL: (id: string) => `/api/forms/templates/${id}`,
     // Tenant form selections (bookmarks)
     SELECTIONS: {
       LIST: '/api/forms/selections',
