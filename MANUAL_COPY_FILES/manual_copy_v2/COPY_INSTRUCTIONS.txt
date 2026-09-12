@@ -1738,3 +1738,14 @@ Files (same copy commands as the B2.4 batch above — these two are in it):
 Extra test:
   [ ] Service block → Pricing → enter 0 → Next proceeds, Save works,
       reopen shows 0 (not blank)
+
+── B2 backfill (2026-09-12, record only, DO NOT RE-RUN) ──
+Older contracts predate the activation resolver, so they had no form
+mappings (owner: "may be older contracts/tasks - need seeding?").
+APPLIED LIVE: resolver run over signia's 50 active contracts → 50
+platform_default rows. NOTE: the service-ticket drawer does NOT read
+the mapping table yet (it reads the contract wizard's evidence fields,
+which are 'none' on these contracts) — that wiring is B2.5, so the
+form is intentionally not visible in tickets until B2.5 lands.
+File: contractnest-edge/supabase/migrations/service-execution/005_backfill_signia_form_mappings.sql
+Copy: Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\005_backfill_signia_form_mappings.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
