@@ -1816,3 +1816,41 @@ Test checklist (Signia, e.g. CN-1005):
   [ ] Drawer otherwise unchanged (statuses, beyond-scope, complete flow)
   [ ] "Open Form" button is still display-only — actual form-fill UI is
       B3.4, expected; placeholder rejection is already server-proven
+
+── Addendum to B2.5 (2026-09-12): WHICH EQUIPMENT? — visit coverage
+   made visible (owner: "when TASKS are opened - it is not clear -
+   it is showing to which equipments") ──
+Model reminder (unchanged): one service event = ONE shared visit
+covering ALL assets attached to that block; per-asset proof happens
+inside the visit. Different cadence per equipment = separate blocks.
+This addendum only SURFACES that — no schema/backend change.
+
+1. Event cards (Tasks + Operations): the "n/m assets proven" chip row
+   now always shows "Covers: slide 1, slide 2 +1 more" (hover = full
+   list; chip still expands to the per-asset status list).
+2. Service Execution drawer: every service event row now lists its
+   covered assets as chips (green tick = proven, amber lock =
+   awaiting asset). "Start Service" / "Book appointment" on a
+   multi-equipment contract is no longer ambiguous — the appointment
+   is for the visit, i.e. all listed assets.
+
+Files:
+  contractnest-ui/src/components/contracts/EventAssetProgress.tsx
+  contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EventAssetProgress.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ServiceExecutionDrawer.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+
+Extra tests (CN-1005 — 6 equipment):
+  [ ] Tasks tab: each service card shows "Covers: …" names next to the
+      0/3 chip (no expand needed)
+  [ ] Start Service: drawer event row lists the covered assets as chips
+  [ ] Single-equipment contracts look sane (one name, no clutter)
+
+REMINDER — "templates not visible" from the same test round: server
+side is verified (CN-1005 has its mapping rows, edge v7 live) but the
+edge logs show the /mappings request NEVER arrived — the B2.5 copy
+must be applied and the API dev server RESTARTED (new
+/api/forms/mappings route), then Ctrl+F5. DevTools → Network →
+"mappings": 404 = API not restarted; absent = UI files not loaded.
