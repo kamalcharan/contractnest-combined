@@ -1649,3 +1649,70 @@ Files (record only):
 Copy:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\004_b23_activation_resolver.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════
+B2.4 — REAL BLOCK PICKER (2026-09-12)
+═══════════════════════════════════════════════════
+Finding first: the catalog-studio Evidence step existed but was NEVER
+wired into the wizard — the service wizard went Delivery → Pricing →
+Business Rules, so the mocked step was unreachable. B2.4 wires it in
+as step 5 (service + session; both step maps kept aligned) and makes
+it real:
+
+  · Choice per service block: Automatic (recommended — D9 ladder) ·
+    Specific smart form (real approved templates from the DB, with
+    "also require upload" for the D4 form+photo combo) · Upload only ·
+    None. OTP stays its own toggle (existing requiresOTP field).
+  · New API: GET /api/forms/templates (status=approved default) →
+    smart-forms edge. Tenant-accessible, no admin gate.
+  · Choice persists as custom_fields.config.evidence =
+    {policy, formTemplateId, formName, requireUpload} — exactly the
+    shape the live activation resolver's rung 1 reads; snapshots into
+    contracts for free. Full edit round-trip (meta fallback pattern,
+    explicit 'automatic' clear sentinel so a saved choice can be
+    removed).
+  · Wizard validation: picking "Specific smart form" without choosing
+    a form blocks Next; Pricing validation moved to step 6.
+
+DEPLOYED LIVE by Claude (do not re-run): resolver patched
+(service_execution_004c) — block policy 'upload' now skips FORM
+mappings like 'none' (upload enforcement is a B3.3 execution concern),
+final version in the 004 source-of-record file.
+
+Files:
+  contractnest-api/src/services/tenantFormsService.ts        (+listTemplates)
+  contractnest-api/src/routes/tenantFormsRoutes.ts           (+GET /templates)
+  contractnest-ui/src/services/serviceURLs.ts                (+SMART_FORMS.TEMPLATES; carries earlier entries)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts      (NEW)
+  contractnest-ui/src/utils/catalog-studio/wizard-data.ts    (Evidence step @5, 7 steps)
+  contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts (config.evidence write + read-back)
+  contractnest-ui/src/pages/catalog-studio/data/wizard-steps.ts (mirror aligned)
+  contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/EvidenceStep.tsx (rewrite)
+  contractnest-edge/supabase/migrations/service-execution/004_b23_activation_resolver.sql (updated record)
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\tenantFormsService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\tenantFormsRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFormTemplates.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Destination "contractnest-ui\src\utils\catalog-studio\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\catalog-studio\data\wizard-steps.ts" -Destination "contractnest-ui\src\pages\catalog-studio\data\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\EvidenceStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\004_b23_activation_resolver.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  # RESTART the api dev server (new route). UI hot-reloads; Ctrl+F5 once.
+
+Test checklist (catalog-studio, Signia):
+  [ ] Edit/create a SERVICE block → wizard now shows 7 steps with
+      "Evidence" at step 5
+  [ ] Evidence step: 4 choice cards + OTP; "Specific smart form" lists
+      REAL approved forms (incl. "General Service Completion (v1)") —
+      no more General Service Report/Maintenance Checklist mocks
+  [ ] Pick a form + tick "also require upload" → Save → reopen block →
+      choice is still there
+  [ ] Choosing "Specific smart form" without picking a form blocks Next
+  [ ] Switch back to Automatic → Save → reopen → back to Automatic
+  [ ] Pricing still validates (now on step 6); Business Rules step 7 OK
+  [ ] Group Session block wizard shows the same 7 steps and still saves
