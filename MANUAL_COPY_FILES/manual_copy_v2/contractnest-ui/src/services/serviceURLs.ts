@@ -1363,6 +1363,14 @@ export const API_ENDPOINTS = {
       CREATE: '/api/admin/forms',
       UPDATE: (id: string) => `/api/admin/forms/${id}`,
     },
+    // Approved templates for tenant-facing pickers (B2.4 block wizard)
+    TEMPLATES: (filters: { status?: string; search?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (filters.status) params.append('status', filters.status);
+      if (filters.search) params.append('search', filters.search);
+      const qs = params.toString();
+      return qs ? `/api/forms/templates?${qs}` : '/api/forms/templates';
+    },
     // Tenant form selections (bookmarks)
     SELECTIONS: {
       LIST: '/api/forms/selections',

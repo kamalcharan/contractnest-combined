@@ -1,7 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- service-execution/004_b23_activation_resolver.sql
--- B2.3 — APPLIED LIVE 2026-09-12 (two migrations: service_execution_004
--- + 004b fall-through fix). Source-of-record; final function version below.
+-- B2.3 — APPLIED LIVE 2026-09-12 (three migrations: service_execution_004
+-- + 004b fall-through fix + 004c upload-only rule). Source-of-record;
+-- final function version below. 004c (B2.4 companion): block evidence
+-- policy 'upload' skips FORM mappings like 'none' — upload-only proof
+-- must not force a form; upload enforcement is read from block config
+-- at execution time (B3.3).
 --
 -- resolve_contract_form_mappings(contract, tenant) — the D9 ladder,
 -- writing m_form_template_mappings rows; fired at contract activation by
@@ -85,7 +89,8 @@ BEGIN
         v_ev     := v_block.custom_fields->'config'->'evidence';
         v_policy := v_ev->>'policy';
 
-        IF v_policy = 'none' THEN CONTINUE; END IF;
+        -- Explicit opt-outs from FORM mappings: 'none' and upload-only proof (004c)
+        IF v_policy IN ('none','upload') THEN CONTINUE; END IF;
 
         v_form_id := NULL;
         BEGIN
