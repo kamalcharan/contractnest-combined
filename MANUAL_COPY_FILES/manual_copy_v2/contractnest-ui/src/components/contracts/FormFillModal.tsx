@@ -262,6 +262,30 @@ const FormFillModal: React.FC<FormFillModalProps> = ({
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {/* Guard: evidence needs a visit — without a service event there is
+              nothing (and no equipment) to record against */}
+          {serviceEvents.length === 0 && (
+            <div
+              className="flex items-start gap-2 rounded-lg border p-3 text-xs"
+              style={{ borderColor: '#f59e0b40', backgroundColor: '#f59e0b10', color: '#b45309' }}
+            >
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                No service visit in this drawer — add the service event (From Contract)
+                first, then fill the evidence form for its equipment.
+              </span>
+            </div>
+          )}
+
+          {/* Which equipment: when the visit has no per-asset rows (legacy
+              contracts), the form applies to the visit as a whole */}
+          {serviceEvents.length > 0 && assets.length === 0 && (
+            <p className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+              This visit has no per-equipment tracking — the form is recorded
+              against the visit as a whole.
+            </p>
+          )}
+
           {/* Visit selector (only when the drawer holds several service events) */}
           {serviceEvents.length > 1 && (
             <div>
@@ -385,12 +409,14 @@ const FormFillModal: React.FC<FormFillModalProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || loadingTemplate || !!templateError}
+            disabled={submitting || loadingTemplate || !!templateError || serviceEvents.length === 0}
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: colors.brand.primary, color: '#ffffff' }}
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {assetId ? 'Submit & mark proven' : 'Submit form'}
+            {assetId
+              ? `Submit & mark "${(assets.find((a) => a.id === assetId)?.asset_name || 'asset')}" proven`
+              : 'Submit form'}
           </button>
         </div>
       </div>
