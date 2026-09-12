@@ -164,7 +164,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           const valid = variantPricingRecords && variantPricingRecords.length > 0 &&
                         variantPricingRecords.some(r => Number.isFinite(Number(r.amount)) && Number(r.amount) >= 0);
           if (!valid) {
-            errors.push('Enter price for at least one variant in Variant Pricing');
+            errors.push('Enter price for at least one variant in Variant Pricing (0 is allowed)');
           }
         } else if (hasVariants) {
           // Same for All with variants: base price applies to all variants
