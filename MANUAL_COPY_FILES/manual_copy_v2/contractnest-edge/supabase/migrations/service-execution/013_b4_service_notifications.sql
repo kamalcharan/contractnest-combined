@@ -58,3 +58,20 @@
 -- n_jtd_source_types rows (order matters for FKs).
 -- Live bodies: pg_get_functiondef on each function name above.
 -- ═══════════════════════════════════════════════════════════════════
+
+-- ── 013b (live): Meta forbids leading/trailing variables — all five bodies
+--    reworded (owner hit the rule in the MSG91 panel); variable order/count
+--    unchanged, registry content synced.
+-- ── 013c (live): t_service_ticket_events.event_type is 'service_visit' for
+--    V2-native events (n_jtd event_type_code) vs 'service' for legacy —
+--    started-enqueue's service-name lookup now accepts both (live-send test
+--    caught the "your equipment" fallback).
+-- ── LIVE SEND VERIFIED 2026-09-12 (post Meta approval): signia's
+--    n_jtd_tenant_config.channels_enabled.whatsapp was FALSE (worker refused
+--    "Blocked: whatsapp disabled for this tenant" — the /integrations gate
+--    working) → enabled for signia (both envs, matching BBB). Re-fired
+--    service_visit_started for test ticket TKT-10002 → status 'sent',
+--    provider_message_id bc0a6e039bb94c30a3e6f434a1f10936, recipient
+--    919885164233 (owner-approved number). Handset confirmation = B4.1 gate.
+--    NOTE: test ticket TKT-10002 ("B4 live send verification") left on
+--    CN-1005 with no linked event — cancel/complete at leisure.
