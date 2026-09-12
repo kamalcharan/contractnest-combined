@@ -20,6 +20,11 @@
 //                           (allocations carry jtd_id; job → paid /
 //                           partial_payment). Payload mirrors V1's
 //                           handleRecordPayment exactly.
+//   POST  /:id/event-assets/:assetId/prove — B3.3 (v7, 2026-09-12):
+//                           mark_event_asset_proven — per-asset proof with
+//                           require_upload enforcement + completion cascade
+//                           (all proven → event completed [events or n_jtd]
+//                           → all ticket events closed → ticket completed).
 // Nothing else (list/update/etc.) is implemented here;
 // contracts/index.ts is completely untouched.
 //
@@ -134,6 +139,36 @@ serve(async (req: Request) => {
     }
 
     const body = requestBody ? JSON.parse(requestBody) : {};
+
+    // ── POST /:id/event-assets/:assetId/prove — B3.3 mark asset proven ──
+    // RPC enforces: placeholder refusal, require_upload, submission binding;
+    // cascades all-proven → event completed (events table or n_jtd) →
+    // all ticket events closed → ticket completed.
+    if (req.method === 'POST') {
+      const proveUrl = new URL(req.url);
+      const proveMatch = proveUrl.pathname.match(/\/contracts-v2\/([0-9a-f-]{36})\/event-assets\/([0-9a-f-]{36})\/prove\/?$/i);
+      if (proveMatch) {
+        const eventAssetId = proveMatch[2];
+
+        const { data, error } = await supabase.rpc('mark_event_asset_proven', {
+          p_tenant_id: tenantId,
+          p_event_asset_id: eventAssetId,
+          p_form_submission_id: body.form_submission_id || null,
+          p_evidence_id: body.evidence_id || null,
+          p_proven_by: userId || body.proven_by || null,
+          p_proven_by_name: body.proven_by_name || null
+        });
+
+        if (error) {
+          console.error('[contracts-v2] mark-proven RPC error:', JSON.stringify(error));
+          return jsonResponse({ success: false, error: error.message, code: 'RPC_ERROR' }, 500);
+        }
+        const proveStatus = data?.success ? 200 :
+          data?.code === 'NOT_FOUND' ? 404 :
+          data?.code === 'UPLOAD_REQUIRED' || data?.code === 'ASSET_PLACEHOLDER' || data?.code === 'SUBMISSION_MISMATCH' ? 422 : 400;
+        return jsonResponse(data, proveStatus);
+      }
+    }
 
     // ── POST /:id/record-payment — V2 payment (JTD Nucleus Step 4) ──
     // Same payload construction as V1's handleRecordPayment; the RPC

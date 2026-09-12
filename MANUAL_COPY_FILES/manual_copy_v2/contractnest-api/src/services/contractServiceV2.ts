@@ -114,6 +114,25 @@ class ContractServiceV2 {
   }
 
   /**
+   * B3.3 — mark one event-asset proven. POST contracts-v2/:id/event-assets/
+   * :assetId/prove → mark_event_asset_proven (placeholder refusal,
+   * require_upload enforcement, completion cascade event → ticket).
+   */
+  async markEventAssetProven(
+    contractId: string,
+    eventAssetId: string,
+    body: { form_submission_id?: string; evidence_id?: string; proven_by_name?: string },
+    userJWT: string,
+    tenantId: string,
+    userId: string,
+    environment: string = 'live'
+  ): Promise<EdgeFunctionResponseV2> {
+    const url = `${this.edgeFunctionUrl}/${contractId}/event-assets/${eventAssetId}/prove`;
+    const payload = { ...body, proven_by: userId };
+    return await this.makeRequest('POST', url, payload, userJWT, tenantId, environment);
+  }
+
+  /**
    * JTD Nucleus Step 4 — V2 payment. POST contracts-v2/:id/record-payment
    * → record_invoice_payment_v2: receipt / invoice header / auto-activation
    * via the untouched V1 core, then settlement against n_jtd JOB rows

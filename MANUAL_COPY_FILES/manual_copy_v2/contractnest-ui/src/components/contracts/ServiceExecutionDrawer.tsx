@@ -34,6 +34,7 @@ import {
   useContractEventOperations,
   useContractEventAssets,
 } from '@/hooks/queries/useContractEventQueries';
+import FormFillModal from '@/components/contracts/FormFillModal';
 import {
   useCreateServiceTicket,
 } from '@/hooks/queries/useServiceExecution';
@@ -517,6 +518,8 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
   const [showTeamDropdown, setShowTeamDropdown] = useState(false);
   const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
   const [teamSearch, setTeamSearch] = useState('');
+  // B3.4 — which evidence form is open in the fill modal (null = closed)
+  const [openFormTemplate, setOpenFormTemplate] = useState<{ id: string; name: string } | null>(null);
 
   // ─── Hooks ───
   const { options: teamMembers, isLoading: loadingTeam, error: teamError } = useContactsForResourceDropdown(teamSearch || undefined);
@@ -613,9 +616,11 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
       await createTicket.mutateAsync({
         contract_id: contractId,
         event_ids: drawerEvents.map((e) => e.id),
-        assigned_to_id: assigneeId || undefined,
+        assigned_to: assigneeId || undefined,
         assigned_to_name: assigneeName || undefined,
         notes: notes || undefined,
+        // This drawer IS Start Service — ticket is born in_progress (B3.1)
+        start_now: true,
       });
       onClose();
     } finally {
@@ -1329,6 +1334,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                               </p>
                             </div>
                             <button
+                              onClick={() => setOpenFormTemplate({ id: form.form_template_id, name: form.name })}
                               className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90"
                               style={{ backgroundColor: colors.brand.primary, color: '#ffffff' }}
                             >
@@ -1419,6 +1425,19 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* B3.4 — evidence form fill (submission bound to one asset, then proven) */}
+      {openFormTemplate && (
+        <FormFillModal
+          isOpen={!!openFormTemplate}
+          onClose={() => setOpenFormTemplate(null)}
+          contractId={contractId}
+          formTemplateId={openFormTemplate.id}
+          formName={openFormTemplate.name}
+          serviceEvents={drawerEvents.filter((e) => e.event_type === 'service')}
+          eventAssetsByEvent={eventAssetsByEvent}
+        />
+      )}
 
       <style>{`
         @keyframes slideInRight {

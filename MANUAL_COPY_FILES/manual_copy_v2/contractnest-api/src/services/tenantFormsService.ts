@@ -52,6 +52,23 @@ export class TenantFormsService {
     }
   }
 
+  async getTemplate(
+    authHeader: string,
+    tenantId: string,
+    templateId: string
+  ): Promise<any> {
+    try {
+      const url = `${BASE_URL}/${encodeURIComponent(templateId)}`;
+      const response = await axios.get(url, {
+        headers: this.getHeaders(authHeader, tenantId),
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('[TenantFormsService] getTemplate error:', error.message);
+      throw error;
+    }
+  }
+
   // ---- MAPPINGS (B2.5: resolved form mappings for a contract) ----
 
   async listMappings(
