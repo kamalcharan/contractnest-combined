@@ -1854,3 +1854,101 @@ edge logs show the /mappings request NEVER arrived — the B2.5 copy
 must be applied and the API dev server RESTARTED (new
 /api/forms/mappings route), then Ctrl+F5. DevTools → Network →
 "mappings": 404 = API not restarted; absent = UI files not loaded.
+
+═══════════════════════════════════════════════════════════════════
+BATCH SPRINT-2+7 COMPLETION (2026-09-12) — B2.6 + B3.1 + B3.3 + B3.4
++ B3.5 + B3.6 + B3.7, one continuous build (owner: "until sprint 2
+and 7 are completed - it will be difficult to test")
+═══════════════════════════════════════════════════════════════════
+
+ALREADY LIVE (applied/deployed by assistant — records only, DO NOT RE-RUN):
+  · Migrations 007+007b+007c (TKT sequence hardening + start_now +
+    jtd event linking), 008+008b+008c (mark_event_asset_proven +
+    cascade), 009 (create_beyond_scope_invoice), 010+010b (report_token
+    + get_service_ticket_report + detail RPC fixes), 011
+    (t_service_ticket_events FK → dual-table trigger).
+  · Edge deploys: service-execution v5, contracts-v2 v7,
+    service-report v1 (new, public, verify_jwt=false).
+  · B3.7 E2E harness: ALL GREEN in a rolled-back txn on CN-1005 —
+    ticket born in_progress w/ jtd event linked · placeholder submission
+    refused · 2 assets proven via gated submissions · placeholder prove
+    refused · mid-flow attach · 3rd proof cascades visit+ticket to
+    completed · cross-links verified (3 subs, 3 proven w/ links) ·
+    beyond-scope invoice · complete report. Three REAL bugs were found
+    and fixed by the harness on the way (jtd event lookup, composite
+    block_id cast, jtd link FK) — none survive.
+
+What you get after this copy:
+  1. B3.1 — "Create Ticket" from Start Service births the ticket
+     in_progress with started_at; TKT numbers no longer duplicate
+     (signia had no sequence row → everything was TKT-10001); the
+     assignee finally persists (assigned_to_id was silently dropped
+     end-to-end).
+  2. B3.4 — "Open Form" WORKS: renders the form's sections, you pick
+     which asset it's for (proven/awaiting-asset chips disabled),
+     Submit saves the gated submission AND marks the asset proven,
+     auto-advances to the next unproven asset.
+  3. B3.3 — proving the last asset completes the visit and, when all
+     the ticket's events are closed, the ticket (server cascade).
+  4. B3.5 — beyond-scope items now carry an editable amount; lines
+     with amount > 0 become an UNPAID invoice at Create Ticket
+     (tax auto-applied from your tax settings; no billing event).
+  5. B3.6 — completed (or any) ticket has a public, printable report:
+     ServiceTicketDetail header now shows "View Report" →
+     /report/service/<token> (shareable link, no login).
+  6. B2.6 — contract wizard service rows show an evidence chip
+     ("Form: …", "Upload proof only", "No evidence form", or
+     "Form: auto (default)") — display-only preview of the resolver.
+
+Files (API — RESTART api dev server):
+  contractnest-api/src/services/serviceExecutionService.ts
+  contractnest-api/src/controllers/serviceExecutionController.ts
+  contractnest-api/src/routes/serviceExecutionRoutes.ts
+  contractnest-api/src/validators/serviceExecutionValidators.ts
+  contractnest-api/src/services/contractServiceV2.ts
+  contractnest-api/src/controllers/contractControllerV2.ts
+  contractnest-api/src/routes/contractRoutesV2.ts
+  contractnest-api/src/services/tenantFormsService.ts      (+getTemplate)
+  contractnest-api/src/routes/tenantFormsRoutes.ts         (+GET /templates/:id)
+Files (UI):
+  contractnest-ui/src/App.tsx                               (+/report/service/:token route)
+  contractnest-ui/src/components/contracts/FormFillModal.tsx (NEW)
+  contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx
+  contractnest-ui/src/components/contracts/ServiceTicketDetail.tsx
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+  contractnest-ui/src/pages/report/ServiceReportPage.tsx    (NEW)
+  contractnest-ui/src/hooks/queries/useContractEventQueries.ts (+useMarkEventAssetProven)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts     (+detail/submission hooks)
+  contractnest-ui/src/hooks/queries/useServiceExecution.ts  (+beyond-scope invoice; assigned_to fix)
+  contractnest-ui/src/services/serviceURLs.ts
+Files (records — already live, DO NOT RE-RUN):
+  contractnest-edge/supabase/functions/service-execution/index.ts
+  contractnest-edge/supabase/functions/contracts-v2/index.ts
+  contractnest-edge/supabase/functions/service-report/index.ts (NEW)
+  contractnest-edge/supabase/migrations/service-execution/007..011 (5 files)
+
+Copy:
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/tenant-bbb-data-issues-buwxqm
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\*" -Destination "contractnest-api\src\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\*" -Destination "contractnest-ui\src\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\*" -Destination "contractnest-edge\supabase\" -Recurse -Force
+  # (recursive copy is safe: the staged trees mirror the repo layout and
+  #  contain only files meant to overwrite; API restart + Ctrl+F5 after)
+
+FULL-LOOP TEST (CN-1005, Signia):
+  [ ] Tasks → service due → Start Service → Evidence shows "General
+      Service Completion"; Covers/asset chips visible on the event row
+  [ ] Assign someone, Create Ticket → toast shows TKT-10002 (not 10001);
+      ticket is In Progress
+  [ ] Open Form → pick asset → fill required selects → "Submit & mark
+      proven" → asset flips to proven, auto-advances to next asset
+  [ ] Prove all 3 assets → visit completes; when every event on the
+      ticket is closed, ticket flips to Completed
+  [ ] Beyond Scope: add an item, set an amount → Create Ticket → second
+      toast: beyond-scope invoice INV-#### (unpaid) — visible on the
+      contract's Financials
+  [ ] Ticket detail → "View Report" → public printable report opens
+      (assets + form answers + notes); link works in an incognito tab
+  [ ] Contract wizard → Add Service Blocks → each service row shows the
+      evidence chip

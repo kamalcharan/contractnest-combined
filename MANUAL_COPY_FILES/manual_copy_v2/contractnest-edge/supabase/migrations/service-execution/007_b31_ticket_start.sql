@@ -1,9 +1,13 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- service-execution/007_b31_ticket_start.sql
--- B3.1 — APPLIED LIVE 2026-09-12 (service_execution_007 + 007b fix).
--- Source-of-record — DO NOT RE-RUN. Final function body = 007b (the live
--- definition); 007's first run was harness-caught: the auto-provision
--- INSERT missed t_category_details.display_name NOT NULL.
+-- B3.1 — APPLIED LIVE 2026-09-12 (service_execution_007 + 007b + 007c).
+-- Source-of-record — DO NOT RE-RUN. Final function body = 007c (the live
+-- definition). 007's first run was harness-caught (auto-provision INSERT
+-- missed t_category_details.display_name NOT NULL); 007c was E2E-caught:
+-- the event-link loop only recognized t_contract_events rows, so V2-native
+-- (n_jtd-only) visits were silently never linked to the ticket — now falls
+-- back to n_jtd (event_type_code/block_name). Pairs with migration 011
+-- (t_service_ticket_events FK swap) which the link insert also needed.
 --
 -- What changed vs the pre-B3.1 create_service_ticket:
 --   1. UNIQUE INDEX ux_service_tickets_tenant_number

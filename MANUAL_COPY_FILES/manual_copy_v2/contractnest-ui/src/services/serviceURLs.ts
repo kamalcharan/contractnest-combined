@@ -1178,6 +1178,8 @@ export const API_ENDPOINTS = {
       CREATE: '/api/service-execution',
       GET: (ticketId: string) => `/api/service-execution/${ticketId}`,
       UPDATE: (ticketId: string) => `/api/service-execution/${ticketId}`,
+      // B3.5 — beyond-scope on-the-fly invoice for a ticket
+      INVOICE: (ticketId: string) => `/api/service-execution/${ticketId}/invoice`,
 
       LIST_WITH_FILTERS: (filters: ServiceTicketFilters = {}) => {
         const params = new URLSearchParams();

@@ -242,6 +242,49 @@ export const useCreateServiceTicket = () => {
   });
 };
 
+// B3.5 — beyond-scope invoice raised from a ticket's beyond-scope lines.
+// Server (create_beyond_scope_invoice) totals lines itself, applies the
+// tenant's default tax rate, and writes an UNPAID invoice with contract +
+// ticket provenance. No billing event is created (D5).
+export const useCreateBeyondScopeInvoice = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      ticketId: string;
+      contract_id: string;
+      line_items: { name: string; description?: string; amount: number; block_id?: string }[];
+      notes?: string;
+    }) => {
+      const response = await api.post(
+        API_ENDPOINTS.SERVICE_EXECUTION.TICKETS.INVOICE(params.ticketId),
+        {
+          contract_id: params.contract_id,
+          line_items: params.line_items,
+          notes: params.notes,
+        }
+      );
+      return response.data?.data || response.data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['contract-details-v2'] });
+      toast({
+        title: 'Beyond-scope invoice created',
+        description: `${data?.invoice_number || 'Invoice'} · total ${data?.total_amount ?? ''} (incl. tax)`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Beyond-scope invoice failed',
+        description: error?.response?.data?.error || error.message || 'An error occurred',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useUpdateServiceTicket = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
