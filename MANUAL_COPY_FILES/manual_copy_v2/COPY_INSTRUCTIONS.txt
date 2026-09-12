@@ -396,6 +396,32 @@ STEP 6 — PAPER PACKAGE DELIVERED (2026-08-20). Nothing executed.
   Copy command:
   Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\jtd-cutover-package.md" -Destination "ClaudeDocumentation\jtd-cutover-package.md" -Force
 
+  ─────────────────────────────────────────────────────────────
+  🔧 CUTOVER BUILD ITEM DONE — receipt-cancel is now job-aware
+     (owner-queued "next task", 2026-08-24)
+  ─────────────────────────────────────────────────────────────
+  - contractnest-edge/supabase/migrations/jtd-nucleus/008_cancel_receipt_reverses_jobs.sql
+    cancel_invoice_receipt reversed ONLY t_contract_events, then
+    deleted the allocations — on a jobs contract the invoice would
+    un-pay while the JOB stayed 'paid' (the audit's chk10 risk).
+    Additive splice before the allocation DELETE: mirror-reverse
+    n_jtd via a.jtd_id = j.id — amount_settled decreases, status
+    walks back paid → partial_payment → scheduled, completed_at
+    clears unless still fully covered by other receipts, note says
+    which receipt was cancelled. PROVABLY a no-op for every legacy
+    receipt (their allocations have jtd_id NULL — all of BBB).
+    cancel_or_writeoff_invoice needs nothing: V1 never touched
+    events/allocations there, so jobs contracts already have parity.
+    ALREADY APPLIED LIVE — re-running no-ops (marker-guarded).
+    HARNESS R-A (rolled back, CN-1005's real RCP-10003 ₹5,600):
+      both jobs → scheduled, settled 0, completed_at cleared, note
+      'receipt RCP-10003 cancelled — harness'; allocations deleted;
+      invoice → unpaid. Post-rollback verified untouched
+      (partially_paid 5600/11600, 2 paid jobs stamped).
+    The cutover entry-criteria build item is CLOSED with this.
+  Copy command:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Destination "contractnest-edge\supabase\migrations\jtd-nucleus\008_cancel_receipt_reverses_jobs.sql" -Force
+
 ═════════════════════════════════════════════════════════════════
 💳 SUBSCRIPTIONS — quarterly checkout + gateway verify fixed
    (owner-approved "go ahead fix", 2026-08-20)
@@ -1100,3 +1126,829 @@ Write-Host "Copied. Restart contractnest-api, hard-refresh the UI, and run the S
 - [ ] RFQ mode: unaffected (gate skipped)
 - [ ] Template save: unaffected (returns before the backstop)
 ═══════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════
+SECTION: SERVICE EXECUTION V3 — SPEC FREEZE (B0) — added 2026-09-01
+═══════════════════════════════════════════════════════════════════
+Submodule affected: ClaudeDocumentation (branch master)
+Files (documentation only — no code, no DB changes):
+  ClaudeDocumentation/productled/Service-Execution-V3-Handoff.html
+      Interactive 7-screen UX handoff (visit drawer, mobile flow,
+      report, on-the-fly invoice, Extend touchpoints, WhatsApp).
+  ClaudeDocumentation/productled/Service-Execution-V3-Decisions.md
+      Decisions log D1-D11 + verified structural facts + build
+      batches B1-B4 for Sprints 2 & 7.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\*" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — SIGNIA PHASES 1+2 (added 2026-09-01)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (files are SOURCE-OF-RECORD ONLY —
+both migrations ALREADY APPLIED LIVE 2026-09-01, do NOT re-run)
+
+Files:
+  contractnest-edge/supabase/migrations/jtd-cutover/001_signia_copy.sql
+      Phase 1: id-preserving copy, 23 signia contracts / 356 event rows
+      → n_jtd job rows (same ids). Verified: all counts/sums match,
+      0 events without twin, settled ₹21,300 carried.
+  contractnest-edge/supabase/migrations/jtd-cutover/002_signia_fk_swap.sql
+      Phase 2: 3 receipt allocations → jtd_id (₹21,300);
+      t_invoices.jtd_id column added (0 backfill — correct, see file).
+  contractnest-edge/supabase/migrations/jtd-cutover/audit_dual_read_check.sql
+      READ-ONLY daily watchdog. Baseline: 23/23 ok.
+
+Copy:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\jtd-cutover" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\*" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+Post-copy verification already done live:
+  get_contract_details_v2 for CN-1003/CN-1004 (signia live) now returns
+  events.source='jtd' with 25/51 items and settled 15,800/5,500 — the
+  contract page serves migrated contracts from jobs automatically.
+
+NOT yet done (Phases 3-4, next): writers (scanner, reminder cron,
+event-status fns) and readers (finance RPCs) still on t_contract_events.
+Until then: status changes made by V1 writers (e.g. overdue cron) will
+show as DRIFT in the audit — expected, run audit daily.
+
+═══════════════════════════════════════════════════════════════════
+SECTION: JTD CUTOVER — PHASE 3 SYNC BRIDGE (added 2026-09-02)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — applied
+live 2026-09-02, idempotent but do not re-run without reason)
+
+File:
+  contractnest-edge/supabase/migrations/jtd-cutover/003_bidirectional_sync.sql
+      Bidirectional sync bridge (two AFTER UPDATE triggers) keeping
+      migrated contracts' event rows and job rows in lockstep — covers
+      all 10 V1 writers with ZERO V1 function edits. One-time reconcile
+      healed both live drifts (CN-1003-test payment ₹600, CN-1019
+      scanner status flips). Verified: harness proved both directions,
+      drift = 0 across all 23 migrated contracts.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\003_bidirectional_sync.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: MSG91 WEBHOOK v2 — RAW INBOUND CAPTURE (added 2026-09-03)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-edge (SOURCE-OF-RECORD ONLY — migration
+applied live + function DEPLOYED as msg91-webhook v2 on 2026-09-03)
+
+Files:
+  contractnest-edge/supabase/migrations/msg91_inbound_raw_capture.sql
+      n_webhook_inbound_raw table (RLS on, no policies — service-role only).
+  contractnest-edge/supabase/functions/msg91-webhook/index.ts
+      v2: every payload posted to the webhook is stored verbatim in
+      n_webhook_inbound_raw BEFORE processing (delivery reports, inbound
+      messages, WhatsApp Flow nfm_reply). Rest of the function unchanged.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\msg91_inbound_raw_capture.sql" -Destination "contractnest-edge\supabase\migrations\" -Force
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\functions\msg91-webhook" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\msg91-webhook\index.ts" -Destination "contractnest-edge\supabase\functions\msg91-webhook\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: B1 — PER-ASSET FOUNDATION (Sprint 2+7) — added 2026-09-03
+═══════════════════════════════════════════════════════════════════
+Submodules affected: contractnest-edge (migration = source-of-record,
+APPLIED LIVE; contracts-v2 edge fn DEPLOYED as v6), contractnest-api,
+contractnest-ui.
+
+Files:
+  contractnest-edge/supabase/migrations/service-execution/001_event_assets_v2_foundation.sql
+      V2 per-asset fan-out (n_jtd service jobs × equipment_details),
+      additive activation trigger, FK transition (events-only FK →
+      either-table validation trigger), backfill (CN-1005: 48 rows,
+      CN-1027: 11 rows). ALREADY APPLIED LIVE — do not re-run.
+  contractnest-edge/supabase/functions/contracts-v2/index.ts
+      v6 (DEPLOYED): adds GET /:id/event-assets — rows grouped by
+      event id, shaped for useContractEventAssets.
+  contractnest-api/src/services/contractServiceV2.ts      — getEventAssets()
+  contractnest-api/src/controllers/contractControllerV2.ts — getEventAssets handler
+  contractnest-api/src/routes/contractRoutesV2.ts          — GET /:id/event-assets
+  contractnest-ui/src/services/serviceURLs.ts
+      EVENT_ASSETS now points at /api/v2/contracts/:id/event-assets
+      (was /api/contracts/... — a route that never existed).
+
+Copy:
+  New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\service-execution" | Out-Null
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\*" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts-v2\index.ts" -Destination "contractnest-edge\supabase\functions\contracts-v2\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractServiceV2.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractControllerV2.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\contractRoutesV2.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+
+Test checklist (after copy, npm run dev on api + ui):
+  [ ] Open signia contract CN-1005 (V2) → Tasks/Operations tab → service
+      event cards show the "n/m assets proven" chip (48 placeholder rows)
+  [ ] Expand the chip → per-asset list renders (blocked_placeholder)
+  [ ] Open a V1-era contract (CN-1003 live) → page unchanged, no errors
+      (its event-assets come back grouped by the same ids)
+  [ ] Create + activate a NEW V2 contract with equipment → fan-out rows
+      appear automatically (trigger)
+
+═══════════════════════════════════════════════════════════════════
+SECTION: SPRINT 2-5-7 POA (added 2026-09-03) — documentation only
+═══════════════════════════════════════════════════════════════════
+  ClaudeDocumentation/productled/Sprint-2-5-7-POA.md
+      Stepwise plan of action: B1 done (owner-verified), B2-B4 + C
+      queued with per-step owner gates; Track A parked.
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════════════════════
+SECTION: ADD-EQUIPMENT CATEGORY PREFILL (added 2026-09-03)
+═══════════════════════════════════════════════════════════════════
+Submodule affected: contractnest-ui (2 files, UI only — no DB/edge change)
+
+Fix: the Add Equipment slide opened from a contract now pre-selects the
+CATEGORY and exact EQUIPMENT TYPE the context already knows — from the
+placeholder being attached, or from the contract's single coverage
+category (CN-1005's case). Client/owner was already locked (unchanged).
+Multi-category contracts with no placeholder context still show the
+dropdown unselected (genuinely ambiguous).
+
+Files:
+  contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx
+      New optional prop defaultAssetTypeId — pre-selects the exact type
+      and derives the category; existing callers unaffected.
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx
+      Derives the defaults from attachingPlaceholder / single-coverage
+      contract and passes both props to the dialog.
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+
+Test checklist:
+  [ ] CN-1005 → Equipment tab → "+ Add Equipment": Category = HVAC System
+      and Equipment Type pre-selected; Client still locked to buyer
+  [ ] Same via a placeholder card's "Attach asset" → "+ Add Equipment"
+  [ ] Save → new asset lands in registry AND attaches; placeholder unlocks
+  [ ] Equipment-registry page's own Add dialog (no contract context):
+      behaves exactly as before (no category pre-selected)
+
+── Addendum to ADD-EQUIPMENT CATEGORY PREFILL (2026-09-03) ──
+EquipmentTab.tsx also now passes lockedContactName, so the Client/Owner
+card shows the buyer's REAL NAME instead of "Selected Client".
+(Same copy command as the section above — file updated in place.)
+
+── Addendum 2 to ADD-EQUIPMENT CATEGORY PREFILL (2026-09-03) ──
+EquipmentTab.tsx: creating a NEW asset from an attach flow now REPLACES
+the placeholder (replacesItemId + advance-to-next, mirroring the
+pick-existing path) instead of adding a 4th unit. Same copy command.
+
+═══════════════════════════════════════════════════════════════════
+SECTION: ATTACH-ASSET BUG FIX — FOUR LAYERS (added 2026-09-04)
+═══════════════════════════════════════════════════════════════════
+Bug: attaching an asset APPENDED a new unit instead of replacing the
+placeholder (CN-1005 went 3→4→6). Root cause: UI sent replaces_item_id
+but API + edge dropped it before the RPC (whose replacement branch was
+complete all along). Fix layers:
+  L1 DB (APPLIED LIVE — do not re-run): coverage cap (plain adds refused
+     while same-category slots open, code SLOTS_OPEN) + unlock refreshes
+     asset name. Harness-proven on CN-1005 (6→6 swap, 16 rows unlocked,
+     append refused), rolled back.
+  L2 edge contracts fn v55 DEPLOYED (source-of-record in this batch,
+     byte-verified).
+  L3 API pass-through (copy below, restart api).
+  L4 UI — already correct, nothing to copy.
+
+Files:
+  contractnest-edge/supabase/migrations/service-execution/002_attach_guard.sql   (record only)
+  contractnest-edge/supabase/functions/contracts/index.ts                        (record only — deployed)
+  contractnest-api/src/controllers/contractController.ts
+  contractnest-api/src/services/contractService.ts
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\contractService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\002_attach_guard.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\" -Force
+  # RESTART the api dev server after copying
+
+Test checklist (CN-1005):
+  [ ] First: trash the 3 stray attached units (Equip 1 + 2 test units)
+      so the contract is back to 3 placeholders
+  [ ] Attach asset on a placeholder → pick/create a unit → count stays 3,
+      placeholder card becomes the real unit
+  [ ] The unit's card: "Visits locked until attached" GONE; proof rows open
+  [ ] Try "+ Add Equipment" WITHOUT going through a placeholder while
+      slots remain → clear refusal message (SLOTS_OPEN)
+
+── Addendum 3 to ADD-EQUIPMENT / ATTACH FLOW (2026-09-04) ──
+EquipmentTab.tsx: "Attach asset" now opens the Add Equipment slider
+DIRECTLY when the picker would be empty (no matching registry unit) —
+no more dead-end "No equipment in registry yet" div. Picker still
+appears when there ARE units to choose from. Same copy command.
+
+── Addendum 4 to ADD-EQUIPMENT / ATTACH FLOW (2026-09-07) ──
+Two polish fixes from the latest attach test on CN-1005:
+
+1) STALE CARDS UNTIL F5: the contract detail page reads equipment via
+   useContractDetailsV2 (query key 'contract-details-v2'), but the four
+   equipment mutations only invalidated the V1 key — so after save the
+   cards refreshed only on manual page reload. All four mutations
+   (useBuyerAddEquipment / useBuyerRemoveEquipment / useSellerAddEquipment
+   / useSellerRemoveEquipment) now also invalidate 'contract-details-v2'
+   (same fix pattern as the earlier record-payment stale-UI bug).
+
+2) STALE EMPTY PICKER DIV BEHIND THE SLIDER: when "Attach asset" jumps
+   straight into the Add Equipment slider (empty registry), the picker
+   body behind it showed the old "No equipment in registry yet" empty
+   state. It now shows a single quiet line — 'Registering a new unit for
+   the "<category>" slot…' — while the slider is open.
+
+Files:
+  contractnest-ui/src/hooks/queries/useContractQueries.ts
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  # Vite hot-reloads; hard refresh (Ctrl+F5) once after copying
+
+Retest (CN-1005):
+  [ ] Attach asset → slider opens with prefill → Save
+  [ ] Cards update IMMEDIATELY (placeholder becomes real unit, no F5)
+  [ ] While the slider is open, no stale "No equipment..." div behind it
+  [ ] Remove a unit → count/cards update immediately too
+
+═══════════════════════════════════════════════════
+REGISTRY HARDENING R1-R4 (2026-09-07)
+═══════════════════════════════════════════════════
+Owner approved all 7 registry items; this batch is the first four:
+  R1  window.confirm on registry delete → product ConfirmationDialog,
+      action relabeled "Deactivate" (Archive icon). Nothing is ever
+      hard-deleted (edge already soft-deleted; now the UI says so).
+  R2  Active | Inactive toggle on the registry toolbar. Inactive view
+      lists deactivated assets with a "Reactivate" action (PATCH
+      is_active=true through the existing update endpoint).
+  R3  Server guard: deactivating an asset attached to a LIVE contract
+      (active/draft/pending_acceptance/sent) is refused with 409
+      ASSET_IN_CONTRACT naming the contract number(s). UI also
+      pre-blocks with an informational dialog when it already knows
+      the contracts. Remove from contract first, then deactivate.
+  R4  Contract chips on registry cards (e.g. "CN-1005") — clickable,
+      navigate to the contract. Served by the list endpoint via a new
+      with_contracts=true param (equipment_details scan on live
+      contracts, asset_registry_id OR id match).
+
+DEPLOYED LIVE by Claude (do not re-run/re-deploy):
+  - edge client-asset-registry v11 (was v10) — include_inactive +
+    with_contracts params, R3 guard, deactivate wording. Post-deploy
+    byte-verified. File in this batch is source-of-record.
+  - Guard logic verified against live data: CN-1005's attached units
+    resolve correctly (slide 1/2/3, Equip 1...).
+No DB migration in this batch.
+
+Files:
+  contractnest-edge/supabase/functions/client-asset-registry/index.ts  (record only — deployed)
+  contractnest-api/src/controllers/clientAssetRegistryController.ts    (forwards the 2 new params)
+  contractnest-ui/src/types/assetRegistry.ts
+  contractnest-ui/src/services/serviceURLs.ts                          (also carries earlier EVENT_ASSETS entry)
+  contractnest-ui/src/hooks/queries/useAssetRegistry.ts
+  contractnest-ui/src/pages/equipment-registry/index.tsx
+  contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\controllers\clientAssetRegistryController.ts" -Destination "contractnest-api\src\controllers\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\types\assetRegistry.ts" -Destination "contractnest-ui\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useAssetRegistry.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\client-asset-registry\index.ts" -Destination "contractnest-edge\supabase\functions\client-asset-registry\" -Force
+  # RESTART the api dev server (controller changed). UI hot-reloads; Ctrl+F5 once.
+
+Production checklist:
+  Transaction Management: n/a (single-row soft-delete; guard is read-then-write on one row)
+  Race Condition Handling: server-side guard is authoritative (client pre-block is UX only);
+    stale-client deactivate still refused by edge 409
+  Error Handling: 409 ASSET_IN_CONTRACT message surfaces verbatim in toast; guard lookup
+    failure fails CLOSED (500, delete not allowed through)
+  Toasts: existing vaniToast (Deactivated / Deactivate Failed / Updated)
+  Loaders: existing VaNiLoader + ConfirmationDialog isLoading state
+
+Test checklist (/equipment-registry, Signia):
+  [ ] Deactivate on an UNATTACHED asset → product dialog (not browser alert),
+      confirm → card leaves Active view, toast "Equipment Deactivated"
+  [ ] Toolbar Inactive → deactivated asset listed, dimmed, "Inactive" badge,
+      hover shows "Reactivate" → click → back in Active view
+  [ ] Deactivate on an asset attached to CN-1005 (e.g. "slide 1") →
+      "Cannot deactivate yet" dialog naming CN-1005; no state change
+  [ ] Cards of attached assets show a clickable CN-#### chip → opens contract
+  [ ] Contract Equipment tab picker + wizard still work (shared card — picker
+      mode unchanged; registry-only props are additive)
+
+═══════════════════════════════════════════════════
+REGISTRY HARDENING R5-R7 (2026-09-07) — completes the 7-item list
+═══════════════════════════════════════════════════
+  R5  Client filter dropdown on the registry toolbar ("All clients" +
+      each contact, alphabetical). Filters server-side via the existing
+      contact_id param. Hidden in "My Equipment" (self) view where
+      assets have no owning contact.
+  R6  BUG FIX (contract side): the attach-placeholder picker matched
+      category ONLY by asset_type_id === category_id. Registry assets
+      whose asset_type_id holds a TEMPLATE id (buyer adds) or that link
+      via template_id only (seeded) were invisibly filtered out → empty
+      picker → auto-open create form → duplicate unit created instead of
+      attaching the existing one. Now matches by id on either field,
+      then by shared sub-category; if nothing matches at all it falls
+      back to the unnarrowed list instead of hiding units.
+  R7  Registry EquipmentCard restyled to the contract view's MachineCard
+      visual language (same family as the "slide 1 / 0 of 16 visits
+      proven / View logbook" cards): name + SN·location·make sub line
+      (falls back to category name, e.g. "HVAC Systems"), status pill
+      top-right, "Good · Medium criticality · <client>" meta line,
+      warranty line, contract chips, footer "Last serviced <date>" /
+      "Not serviced yet" + pill-style Edit + deactivate icon (or
+      Reactivate on inactive cards). Registry facts replace the
+      contract-only visits/logbook data. Picker (Add/Added/Remove) mode
+      is visually refreshed but functionally unchanged — wizard and
+      Equipment-tab picker keep working as before.
+
+No backend change in this batch (edge v11 from R1-R4 already serves
+everything R5-R7 need). No DB migration.
+
+Files:
+  contractnest-ui/src/pages/equipment-registry/index.tsx          (R5 + category names; supersedes R1-R4 copy)
+  contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx  (R7 rewrite; supersedes R1-R4 copy)
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx       (R6; also carries earlier attach-flow fixes)
+
+Copy (UI only — no api restart needed for this batch):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EquipmentTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  # Ctrl+F5 after copying. If you have NOT yet copied the R1-R4 batch,
+  # copy that first (types/serviceURLs/useAssetRegistry/controller) —
+  # these files depend on it.
+
+Test checklist:
+  [ ] /equipment-registry: cards now read like the contract cards
+      (name, "HVAC Systems"-style sub line, "Good · Medium criticality ·
+      <client>", status pill, Edit pill + archive icon on hover)
+  [ ] Client dropdown filters the grid; "All clients" restores
+  [ ] Contract CN-1005 → Attach asset on a placeholder → existing units
+      OF THE CLIENT for that category appear in the picker (not an
+      auto-opened create form) when such units exist
+  [ ] Picker Add/Added/Remove behavior unchanged; wizard asset step OK
+  [ ] R1-R4 retests still pass (deactivate dialog, inactive filter,
+      in-contract guard, contract chips)
+
+═══════════════════════════════════════════════════
+SINGLE CARD — REGISTRY NOW RENDERS MachineCard ITSELF (2026-09-11)
+═══════════════════════════════════════════════════
+Owner directive: "one single card, adopted to both situations."
+/equipment-registry no longer uses a lookalike — it renders the SAME
+MachineCard component as the contract Equipment tab, with real
+aggregated visit numbers:
+
+  - The visits row ("0 of 16 visits proven · 2 overdue"), the
+    "Due: 17 Aug (missed)" / "Next: <date>" text and the progress bar
+    now appear on registry cards, aggregated across the asset's live
+    contracts. Verified against CN-1005: slide 1/2/3 each return
+    16 total / 0 proven / 2 overdue / due 17 Aug — identical to the
+    contract view.
+  - MachineCard gained OPTIONAL registry-mode props (pill label/tone,
+    contract chips, Edit / Deactivate / Reactivate, no-visits note,
+    dimmed). The contract view passes none of them → pixel-unchanged.
+  - Registry pill shows Active/Inactive (asset status) where the
+    contract shows Attached; "View logbook" navigates to the asset's
+    contract; the red icon is Deactivate (archive) in the registry.
+  - Asset in no contract: same card, footer reads "Not in any
+    contract yet".
+  - EquipmentCard now serves ONLY the picker (Add/Added/Remove) in the
+    contract tab + wizard — unchanged behavior.
+
+DEPLOYED LIVE by Claude (do not re-deploy):
+  edge client-asset-registry v13 — with_contracts=true now also returns
+  service_state per asset (proven/total/overdue/next-due/first-missed/
+  last-serviced) from t_contract_event_assets × t_contract_events with
+  n_jtd fallback (V2-native contracts like CN-1005 have jobs ONLY in
+  n_jtd — without the fallback the numbers came back dateless).
+  Post-deploy byte-verified; aggregation verified against live CN-1005.
+
+Files:
+  contractnest-edge/supabase/functions/client-asset-registry/index.ts  (record only — v13 deployed)
+  contractnest-ui/src/components/contracts/fleet/MachineCard.tsx        (additive optional props)
+  contractnest-ui/src/pages/equipment-registry/index.tsx                (renders MachineCard; supersedes earlier copies)
+  contractnest-ui/src/types/assetRegistry.ts                            (adds service_state; supersedes earlier copy)
+
+Copy (UI only — no api restart):
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\fleet\MachineCard.tsx" -Destination "contractnest-ui\src\components\contracts\fleet\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\equipment-registry\index.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\types\assetRegistry.ts" -Destination "contractnest-ui\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\client-asset-registry\index.ts" -Destination "contractnest-edge\supabase\functions\client-asset-registry\" -Force
+  # Ctrl+F5 after copying
+
+Test checklist:
+  [ ] /equipment-registry: slide 1/2/3 cards are IDENTICAL in form to the
+      CN-1005 contract cards — "0 of 16 visits proven · 2 overdue",
+      "Due: 17 Aug (missed)", progress bar — plus CN-1005 chip and
+      Active pill; footer: "Not serviced yet" · View logbook · Edit ·
+      archive icon
+  [ ] View logbook on a registry card opens CN-1005
+  [ ] An asset not in any contract: same card, "Not in any contract yet"
+  [ ] Contract CN-1005 Equipment tab: cards look EXACTLY as before
+      (no regression — contract view passes no new props)
+  [ ] Deactivate/Reactivate/Inactive filter/client filter still work
+
+═══════════════════════════════════════════════════
+BBB CUTOVER PHASE 1+2 — APPLIED LIVE 2026-09-11 (record only, DO NOT RE-RUN)
+═══════════════════════════════════════════════════
+Owner go ("i guess we should go forward"); physical DB backup of
+10 Sep 22:14 UTC noted as disaster net. Pre-flight audit first
+(attendance + money-in, live & test): attendance references the
+SCHEDULE only (348 rows, 0 event refs) — structurally unaffected;
+all money-in writers target t_contract_events, mirrored by the
+already-live global bridge.
+
+  jtd-cutover/004_bbb_copy.sql    — 490 rows / 70 contracts copied
+    id-preserving (both environments, is_live verbatim), in-txn
+    per-contract count/Σ verification passed, 0 events without twin,
+    settled ₹3,79,500 identical both sides.
+  jtd-cutover/005_bbb_fk_swap.sql — 141 allocation rows jtd-stamped
+    (contract_event_id kept), 0 invoice backfills (correct — BBB
+    invoices are contract-level). First attempt ABORTED by its own
+    check: 002's predicate also flagged 3 legitimate V2-born Signia
+    allocations (jtd_id set, contract_event_id NULL — CN-1003's 2 Sep
+    payments). Predicate tightened to both-ids-set-and-different;
+    nothing was written by the aborted attempt.
+
+Post-checks: bridge harness on BBB rows OK both directions (rolled
+back); drift 0 across all 93 migrated contracts; BBB money surface
+unchanged (live settled ₹3,42,000 / 132 paid events / receipts
+₹3,53,100). Rollback (through Phase 5): DELETE tagged BBB n_jtd rows +
+SET jtd_id=NULL on the 141 allocations.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/jtd-cutover/004_bbb_copy.sql
+  contractnest-edge/supabase/migrations/jtd-cutover/005_bbb_fk_swap.sql
+  ClaudeDocumentation/productled/Sprint-2-5-7-POA.md  (status board updated)
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\004_bbb_copy.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\jtd-cutover\005_bbb_fk_swap.sql" -Destination "contractnest-edge\supabase\migrations\jtd-cutover\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════
+B2.1 + B2.2 — DEFAULT FORM SEED + MAPPING COLUMNS (2026-09-12, record only)
+═══════════════════════════════════════════════════
+APPLIED LIVE by Claude — do not re-run (guard RAISEs if form exists).
+
+  B2.1  Platform-default form "General Service Completion" seeded in
+        m_form_templates (id f0000000-0000-4000-a000-000000000001,
+        status approved, source platform_default). Deliberately short:
+        2 required selects (work status, asset condition) + 2 optional
+        notes. NO identification section — per D10, asset/visit identity
+        prefills from the job, never typed. Schema shape identical to
+        KT-composed forms so builder + renderer open it unchanged.
+        OWNER GATE: review the content (fields/options/wording) — it is
+        visible in catalog-studio's form list; changes are cheap until
+        the resolver (B2.3) starts writing mapping rows against it.
+  B2.2  m_form_template_mappings gains contract_block_id,
+        resource_template_id, require_upload (default false),
+        resolved_via + unique index (contract, block-or-sentinel, form).
+        Table was empty pre-migration; purely additive.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/service-execution/003_b2_default_form_and_mapping_columns.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\003_b2_default_form_and_mapping_columns.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+
+═══════════════════════════════════════════════════
+B2.3 — ACTIVATION RESOLVER (2026-09-12, record only, DO NOT RE-RUN)
+═══════════════════════════════════════════════════
+APPLIED LIVE by Claude (service_execution_004 + 004b fix).
+resolve_contract_form_mappings(contract, tenant) implements the D9
+ladder (block form → KT form → contract fallback → platform default),
+fired at activation by trg_zz_resolve_form_mappings on t_contracts.
+Block policy 'none' = opt-out (no rows); contract-level policy 'none'
+(the wizard default on 302/303 contracts) = unspecified → ladder falls
+to the platform default, per D8.
+
+Harness (rolled back, live DB): platform_default ✓ · idempotent ✓ ·
+block_config + require_upload ✓ · block 'none' opt-out ✓ · kt_type via
+equipment match ✓ · contract_fallback ✓ · NEW EDGE FOUND: the only
+smart_form contract's 6 selected forms are all DRAFT — first version
+wrote zero rows; fixed to fall through to platform default (004b).
+
+NOTE for B2.4: the picker must write
+  custom_fields.config.evidence = {policy, formTemplateId, requireUpload}
+on service blocks — that is the shape rung 1 reads.
+
+Files (record only):
+  contractnest-edge/supabase/migrations/service-execution/004_b23_activation_resolver.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\004_b23_activation_resolver.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\ClaudeDocumentation\productled\Sprint-2-5-7-POA.md" -Destination "ClaudeDocumentation\productled\" -Force
+
+═══════════════════════════════════════════════════
+B2.4 — REAL BLOCK PICKER (2026-09-12)
+═══════════════════════════════════════════════════
+Finding first: the catalog-studio Evidence step existed but was NEVER
+wired into the wizard — the service wizard went Delivery → Pricing →
+Business Rules, so the mocked step was unreachable. B2.4 wires it in
+as step 5 (service + session; both step maps kept aligned) and makes
+it real:
+
+  · Choice per service block: Automatic (recommended — D9 ladder) ·
+    Specific smart form (real approved templates from the DB, with
+    "also require upload" for the D4 form+photo combo) · Upload only ·
+    None. OTP stays its own toggle (existing requiresOTP field).
+  · New API: GET /api/forms/templates (status=approved default) →
+    smart-forms edge. Tenant-accessible, no admin gate.
+  · Choice persists as custom_fields.config.evidence =
+    {policy, formTemplateId, formName, requireUpload} — exactly the
+    shape the live activation resolver's rung 1 reads; snapshots into
+    contracts for free. Full edit round-trip (meta fallback pattern,
+    explicit 'automatic' clear sentinel so a saved choice can be
+    removed).
+  · Wizard validation: picking "Specific smart form" without choosing
+    a form blocks Next; Pricing validation moved to step 6.
+
+DEPLOYED LIVE by Claude (do not re-run): resolver patched
+(service_execution_004c) — block policy 'upload' now skips FORM
+mappings like 'none' (upload enforcement is a B3.3 execution concern),
+final version in the 004 source-of-record file.
+
+Files:
+  contractnest-api/src/services/tenantFormsService.ts        (+listTemplates)
+  contractnest-api/src/routes/tenantFormsRoutes.ts           (+GET /templates)
+  contractnest-ui/src/services/serviceURLs.ts                (+SMART_FORMS.TEMPLATES; carries earlier entries)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts      (NEW)
+  contractnest-ui/src/utils/catalog-studio/wizard-data.ts    (Evidence step @5, 7 steps)
+  contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts (config.evidence write + read-back)
+  contractnest-ui/src/pages/catalog-studio/data/wizard-steps.ts (mirror aligned)
+  contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/EvidenceStep.tsx (rewrite)
+  contractnest-edge/supabase/migrations/service-execution/004_b23_activation_resolver.sql (updated record)
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\tenantFormsService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\tenantFormsRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFormTemplates.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Destination "contractnest-ui\src\utils\catalog-studio\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\pages\catalog-studio\data\wizard-steps.ts" -Destination "contractnest-ui\src\pages\catalog-studio\data\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\EvidenceStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\004_b23_activation_resolver.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  # RESTART the api dev server (new route). UI hot-reloads; Ctrl+F5 once.
+
+Test checklist (catalog-studio, Signia):
+  [ ] Edit/create a SERVICE block → wizard now shows 7 steps with
+      "Evidence" at step 5
+  [ ] Evidence step: 4 choice cards + OTP; "Specific smart form" lists
+      REAL approved forms (incl. "General Service Completion (v1)") —
+      no more General Service Report/Maintenance Checklist mocks
+  [ ] Pick a form + tick "also require upload" → Save → reopen block →
+      choice is still there
+  [ ] Choosing "Specific smart form" without picking a form blocks Next
+  [ ] Switch back to Automatic → Save → reopen → back to Automatic
+  [ ] Pricing still validates (now on step 6); Business Rules step 7 OK
+  [ ] Group Session block wizard shows the same 7 steps and still saves
+
+── Addendum to B2.4 (2026-09-12): ZERO IS A VALID PRICE ──
+Owner: "it wont take '0' as a price... '0' is a value."
+catalog-studio Pricing Configuration now accepts 0 everywhere:
+  · wizard validation (all 4 service pricing branches + spare) requires
+    a record whose amount is a finite number >= 0 — still refuses a
+    missing/blank price, no longer refuses 0
+  · the base amount input's min={1} → min={0}
+  · tier price + resource price-per-unit inputs no longer blank out a
+    typed 0 (|| '' → ?? '')
+Unchanged on purpose: CADENCE-scheme pricing still needs a non-zero
+base total (installments of ₹0 are contradictory) — say the word if a
+free cadence block is a real case.
+
+Files (same copy commands as the B2.4 batch above — these two are in it):
+  contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\" -Force
+
+Extra test:
+  [ ] Service block → Pricing → enter 0 → Next proceeds, Save works,
+      reopen shows 0 (not blank)
+
+── B2 backfill (2026-09-12, record only, DO NOT RE-RUN) ──
+Older contracts predate the activation resolver, so they had no form
+mappings (owner: "may be older contracts/tasks - need seeding?").
+APPLIED LIVE: resolver run over signia's 50 active contracts → 50
+platform_default rows. NOTE: the service-ticket drawer does NOT read
+the mapping table yet (it reads the contract wizard's evidence fields,
+which are 'none' on these contracts) — that wiring is B2.5, so the
+form is intentionally not visible in tickets until B2.5 lands.
+File: contractnest-edge/supabase/migrations/service-execution/005_backfill_signia_form_mappings.sql
+Copy: Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\005_backfill_signia_form_mappings.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+
+═══════════════════════════════════════════════════════════════════
+BATCH B2.5 (2026-09-12) — Submission gating + the drawer finally
+reads RESOLVED form mappings ("general form is not visible" fix)
+═══════════════════════════════════════════════════════════════════
+What this closes: after B2.3/backfill, every active signia contract
+HAS a resolved form mapping ("General Service Completion"), but the
+service-ticket drawer only read the contract wizard's evidence fields
+(= 'none' on old contracts), so the form never showed. This batch
+wires the drawer to the resolved mappings AND locks submissions to a
+real (non-placeholder) asset slot server-side.
+
+ALREADY LIVE (applied by assistant — no action, records only):
+  · DB migration service_execution_006: m_form_submissions.event_asset_id
+    + BEFORE INSERT trigger trg_zz_submission_asset_gate — refuses
+    missing binding when the visit tracks per-asset proof
+    (SUBMISSION_ASSET_REQUIRED), cross-visit binding (…_MISMATCH),
+    placeholder slots (…_PLACEHOLDER). Harness: 5/5 in a rolled-back
+    txn (negative-test proof per POA gate).
+  · smart-forms edge v7 deployed (fetch-verified): + GET /smart-forms/
+    mappings?contract_id=… (active mappings + template names, block-
+    level rows first) and the same three gate checks as friendly 422s
+    before insert. NOTE: v7 was rebuilt from the DEPLOYED v6 source —
+    the repo copy of smart-forms/index.ts had drifted; the staged copy
+    is the new source-of-record.
+
+Files (API — RESTART api dev server, new route):
+  contractnest-api/src/services/tenantFormsService.ts   (+listMappings)
+  contractnest-api/src/routes/tenantFormsRoutes.ts      (+GET /api/forms/mappings; POST /submissions now forwards event_asset_id)
+  contractnest-api/src/validators/tenantFormsValidators.ts (+listMappingsValidation; event_asset_id optional UUID)
+  contractnest-api/src/types/tenantForms.dto.ts         (+event_asset_id on CreateSubmissionRequest)
+Files (UI):
+  contractnest-ui/src/services/serviceURLs.ts           (SMART_FORMS.MAPPINGS)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts (+useContractFormMappings)
+  contractnest-ui/src/components/contracts/OperationsTab.tsx  (effective-evidence fallback)
+  contractnest-ui/src/components/contracts/SellerTasksTab.tsx (same fallback)
+Files (edge/DB records — DO NOT RE-RUN, already live):
+  contractnest-edge/supabase/functions/smart-forms/index.ts
+  contractnest-edge/supabase/migrations/service-execution/006_b25_submission_asset_gate.sql
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\services\tenantFormsService.ts" -Destination "contractnest-api\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\routes\tenantFormsRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\validators\tenantFormsValidators.ts" -Destination "contractnest-api\src\validators\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\types\tenantForms.dto.ts" -Destination "contractnest-api\src\types\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\hooks\queries\useFormTemplates.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\OperationsTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\functions\smart-forms\index.ts" -Destination "contractnest-edge\supabase\functions\smart-forms\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\migrations\service-execution\006_b25_submission_asset_gate.sql" -Destination "contractnest-edge\supabase\migrations\service-execution\" -Force
+  # RESTART the api dev server (new /api/forms/mappings route). Ctrl+F5 in browser.
+
+How the fallback decides (both Operations and Tasks tabs):
+  wizard says smart_form WITH forms  → wizard selection wins (unchanged)
+  otherwise, resolved mappings exist → drawer shows those forms
+                                       (policy presented as smart_form)
+  no mappings either                 → exactly today's behavior
+
+Test checklist (Signia, e.g. CN-1005):
+  [ ] Contract → Tasks (or Operations) → a service due → Start Service
+      → drawer's Evidence section now lists "General Service Completion"
+  [ ] A contract whose wizard explicitly selected smart forms still
+      shows ITS forms (wizard choice wins over fallback)
+  [ ] Drawer otherwise unchanged (statuses, beyond-scope, complete flow)
+  [ ] "Open Form" button is still display-only — actual form-fill UI is
+      B3.4, expected; placeholder rejection is already server-proven
+
+── Addendum to B2.5 (2026-09-12): WHICH EQUIPMENT? — visit coverage
+   made visible (owner: "when TASKS are opened - it is not clear -
+   it is showing to which equipments") ──
+Model reminder (unchanged): one service event = ONE shared visit
+covering ALL assets attached to that block; per-asset proof happens
+inside the visit. Different cadence per equipment = separate blocks.
+This addendum only SURFACES that — no schema/backend change.
+
+1. Event cards (Tasks + Operations): the "n/m assets proven" chip row
+   now always shows "Covers: slide 1, slide 2 +1 more" (hover = full
+   list; chip still expands to the per-asset status list).
+2. Service Execution drawer: every service event row now lists its
+   covered assets as chips (green tick = proven, amber lock =
+   awaiting asset). "Start Service" / "Book appointment" on a
+   multi-equipment contract is no longer ambiguous — the appointment
+   is for the visit, i.e. all listed assets.
+
+Files:
+  contractnest-ui/src/components/contracts/EventAssetProgress.tsx
+  contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx
+
+Copy:
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\EventAssetProgress.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\contracts\ServiceExecutionDrawer.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+
+Extra tests (CN-1005 — 6 equipment):
+  [ ] Tasks tab: each service card shows "Covers: …" names next to the
+      0/3 chip (no expand needed)
+  [ ] Start Service: drawer event row lists the covered assets as chips
+  [ ] Single-equipment contracts look sane (one name, no clutter)
+
+REMINDER — "templates not visible" from the same test round: server
+side is verified (CN-1005 has its mapping rows, edge v7 live) but the
+edge logs show the /mappings request NEVER arrived — the B2.5 copy
+must be applied and the API dev server RESTARTED (new
+/api/forms/mappings route), then Ctrl+F5. DevTools → Network →
+"mappings": 404 = API not restarted; absent = UI files not loaded.
+
+═══════════════════════════════════════════════════════════════════
+BATCH SPRINT-2+7 COMPLETION (2026-09-12) — B2.6 + B3.1 + B3.3 + B3.4
++ B3.5 + B3.6 + B3.7, one continuous build (owner: "until sprint 2
+and 7 are completed - it will be difficult to test")
+═══════════════════════════════════════════════════════════════════
+
+ALREADY LIVE (applied/deployed by assistant — records only, DO NOT RE-RUN):
+  · Migrations 007+007b+007c (TKT sequence hardening + start_now +
+    jtd event linking), 008+008b+008c (mark_event_asset_proven +
+    cascade), 009 (create_beyond_scope_invoice), 010+010b (report_token
+    + get_service_ticket_report + detail RPC fixes), 011
+    (t_service_ticket_events FK → dual-table trigger).
+  · Edge deploys: service-execution v5, contracts-v2 v7,
+    service-report v1 (new, public, verify_jwt=false).
+  · B3.7 E2E harness: ALL GREEN in a rolled-back txn on CN-1005 —
+    ticket born in_progress w/ jtd event linked · placeholder submission
+    refused · 2 assets proven via gated submissions · placeholder prove
+    refused · mid-flow attach · 3rd proof cascades visit+ticket to
+    completed · cross-links verified (3 subs, 3 proven w/ links) ·
+    beyond-scope invoice · complete report. Three REAL bugs were found
+    and fixed by the harness on the way (jtd event lookup, composite
+    block_id cast, jtd link FK) — none survive.
+
+What you get after this copy:
+  1. B3.1 — "Create Ticket" from Start Service births the ticket
+     in_progress with started_at; TKT numbers no longer duplicate
+     (signia had no sequence row → everything was TKT-10001); the
+     assignee finally persists (assigned_to_id was silently dropped
+     end-to-end).
+  2. B3.4 — "Open Form" WORKS: renders the form's sections, you pick
+     which asset it's for (proven/awaiting-asset chips disabled),
+     Submit saves the gated submission AND marks the asset proven,
+     auto-advances to the next unproven asset.
+  3. B3.3 — proving the last asset completes the visit and, when all
+     the ticket's events are closed, the ticket (server cascade).
+  4. B3.5 — beyond-scope items now carry an editable amount; lines
+     with amount > 0 become an UNPAID invoice at Create Ticket
+     (tax auto-applied from your tax settings; no billing event).
+  5. B3.6 — completed (or any) ticket has a public, printable report:
+     ServiceTicketDetail header now shows "View Report" →
+     /report/service/<token> (shareable link, no login).
+  6. B2.6 — contract wizard service rows show an evidence chip
+     ("Form: …", "Upload proof only", "No evidence form", or
+     "Form: auto (default)") — display-only preview of the resolver.
+
+Files (API — RESTART api dev server):
+  contractnest-api/src/services/serviceExecutionService.ts
+  contractnest-api/src/controllers/serviceExecutionController.ts
+  contractnest-api/src/routes/serviceExecutionRoutes.ts
+  contractnest-api/src/validators/serviceExecutionValidators.ts
+  contractnest-api/src/services/contractServiceV2.ts
+  contractnest-api/src/controllers/contractControllerV2.ts
+  contractnest-api/src/routes/contractRoutesV2.ts
+  contractnest-api/src/services/tenantFormsService.ts      (+getTemplate)
+  contractnest-api/src/routes/tenantFormsRoutes.ts         (+GET /templates/:id)
+Files (UI):
+  contractnest-ui/src/App.tsx                               (+/report/service/:token route)
+  contractnest-ui/src/components/contracts/FormFillModal.tsx (NEW)
+  contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx
+  contractnest-ui/src/components/contracts/ServiceTicketDetail.tsx
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+  contractnest-ui/src/pages/report/ServiceReportPage.tsx    (NEW)
+  contractnest-ui/src/hooks/queries/useContractEventQueries.ts (+useMarkEventAssetProven)
+  contractnest-ui/src/hooks/queries/useFormTemplates.ts     (+detail/submission hooks)
+  contractnest-ui/src/hooks/queries/useServiceExecution.ts  (+beyond-scope invoice; assigned_to fix)
+  contractnest-ui/src/services/serviceURLs.ts
+Files (records — already live, DO NOT RE-RUN):
+  contractnest-edge/supabase/functions/service-execution/index.ts
+  contractnest-edge/supabase/functions/contracts-v2/index.ts
+  contractnest-edge/supabase/functions/service-report/index.ts (NEW)
+  contractnest-edge/supabase/migrations/service-execution/007..011 (5 files)
+
+Copy:
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  git pull origin claude/tenant-bbb-data-issues-buwxqm
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-api\src\*" -Destination "contractnest-api\src\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\*" -Destination "contractnest-ui\src\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-edge\supabase\*" -Destination "contractnest-edge\supabase\" -Recurse -Force
+  # (recursive copy is safe: the staged trees mirror the repo layout and
+  #  contain only files meant to overwrite; API restart + Ctrl+F5 after)
+
+FULL-LOOP TEST (CN-1005, Signia):
+  [ ] Tasks → service due → Start Service → Evidence shows "General
+      Service Completion"; Covers/asset chips visible on the event row
+  [ ] Assign someone, Create Ticket → toast shows TKT-10002 (not 10001);
+      ticket is In Progress
+  [ ] Open Form → pick asset → fill required selects → "Submit & mark
+      proven" → asset flips to proven, auto-advances to next asset
+  [ ] Prove all 3 assets → visit completes; when every event on the
+      ticket is closed, ticket flips to Completed
+  [ ] Beyond Scope: add an item, set an amount → Create Ticket → second
+      toast: beyond-scope invoice INV-#### (unpaid) — visible on the
+      contract's Financials
+  [ ] Ticket detail → "View Report" → public printable report opens
+      (assets + form answers + notes); link works in an incognito tab
+  [ ] Contract wizard → Add Service Blocks → each service row shows the
+      evidence chip

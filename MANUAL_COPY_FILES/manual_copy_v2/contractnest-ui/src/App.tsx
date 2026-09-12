@@ -44,6 +44,7 @@ import MainLayout from './components/layout/MainLayout';
 import SessionCheckinPage from './pages/checkin/SessionCheckinPage'; // [batch3-checkin]
 import ChairCheckinPage from './pages/session-checkin/ChairCheckinPage'; // [batch3-checkin]
 import VendorQuotePage from './pages/quote/VendorQuotePage'; // [rfq] public vendor quote response
+import ServiceReportPage from './pages/report/ServiceReportPage'; // [B3.6] public service report (token link)
 
 // Catalog Pages
 
@@ -388,6 +389,8 @@ const AppContent: React.FC = () => {
           <Route path="/checkin/:token" element={<SessionCheckinPage />} />
           {/* [rfq] public vendor quote response — no auth, gated by (cnak, secret) in the URL */}
           <Route path="/quote/:cnak/:secret" element={<VendorQuotePage />} />
+          {/* [B3.6] public service report — no auth, gated by the per-ticket report_token */}
+          <Route path="/report/service/:token" element={<ServiceReportPage />} />
           <Route path="/session-checkin" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route index element={<ChairCheckinPage />} />
           </Route>
