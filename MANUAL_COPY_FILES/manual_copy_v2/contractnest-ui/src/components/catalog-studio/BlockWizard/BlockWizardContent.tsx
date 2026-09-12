@@ -162,7 +162,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           // Per Variant: each variant must have pricing
           const variantPricingRecords = data.meta?.variantPricingRecords as Array<{ amount: number }> | undefined;
           const valid = variantPricingRecords && variantPricingRecords.length > 0 &&
-                        variantPricingRecords.some(r => r.amount > 0);
+                        variantPricingRecords.some(r => Number.isFinite(Number(r.amount)) && Number(r.amount) >= 0);
           if (!valid) {
             errors.push('Enter price for at least one variant in Variant Pricing');
           }
@@ -170,15 +170,15 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           // Same for All with variants: base price applies to all variants
           const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
           const valid = pricingRecords && pricingRecords.length > 0 &&
-                        pricingRecords.some(r => r.amount > 0);
+                        pricingRecords.some(r => Number.isFinite(Number(r.amount)) && Number(r.amount) >= 0);
           if (!valid) {
-            errors.push('Enter a base price — it will apply to all variants');
+            errors.push('Enter a base price — it will apply to all variants (0 is allowed)');
           }
         } else if (pricingMode === 'resource_based') {
           // Resource-based without variants: need resource pricing
           const resourcePricingRecords = data.meta?.resourcePricingRecords as Array<{ pricePerUnit: number }> | undefined;
           const valid = resourcePricingRecords && resourcePricingRecords.length > 0 &&
-                        resourcePricingRecords.some(r => r.pricePerUnit > 0);
+                        resourcePricingRecords.some(r => Number.isFinite(Number(r.pricePerUnit)) && Number(r.pricePerUnit) >= 0);
           if (!valid) {
             errors.push('Enter price per unit for at least one resource');
           }
@@ -186,9 +186,9 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           // Independent pricing
           const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
           const valid = pricingRecords && pricingRecords.length > 0 &&
-                        pricingRecords.some(r => r.amount > 0);
+                        pricingRecords.some(r => Number.isFinite(Number(r.amount)) && Number(r.amount) >= 0);
           if (!valid) {
-            errors.push('Enter a price in Currency-Specific Pricing');
+            errors.push('Enter a price in Currency-Specific Pricing (0 is allowed)');
           }
         }
 
@@ -208,7 +208,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       if (step === 3) {
         const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
         const hasValidPrice = pricingRecords && pricingRecords.length > 0 &&
-                              pricingRecords.some(r => r.amount > 0);
+                              pricingRecords.some(r => Number.isFinite(Number(r.amount)) && Number(r.amount) >= 0);
         if (!hasValidPrice) {
           errors.push('Price is required');
         }

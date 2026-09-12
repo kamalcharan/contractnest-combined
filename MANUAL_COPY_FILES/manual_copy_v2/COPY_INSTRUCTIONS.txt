@@ -1716,3 +1716,25 @@ Test checklist (catalog-studio, Signia):
   [ ] Switch back to Automatic → Save → reopen → back to Automatic
   [ ] Pricing still validates (now on step 6); Business Rules step 7 OK
   [ ] Group Session block wizard shows the same 7 steps and still saves
+
+── Addendum to B2.4 (2026-09-12): ZERO IS A VALID PRICE ──
+Owner: "it wont take '0' as a price... '0' is a value."
+catalog-studio Pricing Configuration now accepts 0 everywhere:
+  · wizard validation (all 4 service pricing branches + spare) requires
+    a record whose amount is a finite number >= 0 — still refuses a
+    missing/blank price, no longer refuses 0
+  · the base amount input's min={1} → min={0}
+  · tier price + resource price-per-unit inputs no longer blank out a
+    typed 0 (|| '' → ?? '')
+Unchanged on purpose: CADENCE-scheme pricing still needs a non-zero
+base total (installments of ₹0 are contradictory) — say the word if a
+free cadence block is a real case.
+
+Files (same copy commands as the B2.4 batch above — these two are in it):
+  contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+  Copy-Item "MANUAL_COPY_FILES\manual_copy_v2\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\" -Force
+
+Extra test:
+  [ ] Service block → Pricing → enter 0 → Next proceeds, Save works,
+      reopen shows 0 (not blank)
