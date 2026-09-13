@@ -1,0 +1,65 @@
+CONTRACTS LIST V3 - PROMINENT CONTACTS-STYLE BADGES
+Branch: codex/contracts-list-v1 (local-only release)
+Submodule: contractnest-ui only. Apply on list v1 or v2; includes the v2 correction.
+
+CHANGES
+- Reuse Contacts' CONTACT_CLASSIFICATION_CONFIG and getClassificationColors.
+- Client blue; Vendor purple; Partner orange; Team Member indigo.
+- Larger 12px semibold rounded pills, 6px/12px padding, border and classification icon.
+- Missing contact links and missing/invalid classifications are visible.
+- Failed classification loading has an explicit message and Retry.
+- No invented Client default and no silently hidden classification failure.
+- No modifications to Contacts screens, App.tsx, backend or stored records.
+- This release addresses classification rendering only, not a complete audit of
+  every remaining display fallback in the contract list.
+
+FILES / EXACT DESTINATIONS
+contractnest-ui\src\pages\contracts\experience\ContactClassificationBadge.tsx
+  Styling using the existing Contacts colours; explicit missing/error/retry states.
+contractnest-ui\src\pages\contracts\experience\index.tsx
+  Included unchanged from v2 so installation also works over v1.
+
+PULL / COPY - WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/contracts-list-v1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+Get-Content "MANUAL_COPY_FILES\contracts-list-v3\COPY_COMMANDS.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\contracts-list-v3\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the output." }
+
+The script verifies known v1/v2 baselines, backs up existing files and copies
+the exact two paths above. It refuses to overwrite unrelated changes.
+Ctrl+F5 at /contracts/experience. No API restart or DB migration.
+
+TEST BEFORE COMMITTING / MERGING
+[ ] Partner badges match the orange classification styling in Contacts.
+[ ] Client/Vendor/Team Member colours match Contacts; multiple classifications show.
+[ ] Badges are easy to read on desktop and mobile, including dark themes.
+[ ] Missing contact classification is explicitly visible, not replaced with Client.
+[ ] Failed loading shows a retry action; retry does not open the contract.
+[ ] Existing Contacts and /contracts pages are unchanged.
+
+AFTER APPROVAL - UI ONLY
+cd contractnest-ui
+git status --short
+git add -- src/pages/contracts/experience/index.tsx src/pages/contracts/experience/ContactClassificationBadge.tsx
+git diff --cached
+git commit -m "Match contracts list badges to Contacts and expose classification errors"
+git branch --show-current
+# Push your actual review branch; if following the prior instructions:
+git push origin codex/contracts-list-v1
+cd ..
+
+API / EDGE / FAMILYKNOWS / MOBILE / DOCUMENTATION: not affected.
+After the UI review branch is approved and merged, update the parent reference:
+git -C contractnest-ui switch main
+git -C contractnest-ui pull --ff-only origin main
+git add -- contractnest-ui
+git commit -m "Update UI with reviewed Contacts-style classification badges"
+git branch --show-current
+# Push and merge the actual parent branch through your reviewed workflow.
+git status
+git -C contractnest-ui status
+
+Rollback: original files are under this release's LOCAL_BACKUP timestamp folder.
+Restore only after checking for later edits. No schema or backend rollback.
