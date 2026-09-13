@@ -1,0 +1,111 @@
+{
+  "release": "ux-journey-s1-r5",
+  "prerequisite": "ux-journey-s1-r4",
+  "files": [
+    {
+      "path": "contractnest-ui/src/App.tsx",
+      "releaseHash": "ee323ec53509c2ed0f131a8dbcba6baf77ff9fe9b74dd3544e86438b3a702aae",
+      "baseHash": "921b1f7e884b9331a09b8482774628d5d34b1ec57d6663e65950cc178cf73fa2"
+    },
+    {
+      "path": "contractnest-ui/src/context/AuthContext.tsx",
+      "releaseHash": "e4ff6906ea077101370fa356cfcb4e3a1bd7c2e8a7f37555f2d1eceb5f738a69",
+      "baseHash": "f00d43202ba53e023f81e1ef057ca639694a5e5ef3f7fe98f348038bd9520600"
+    },
+    {
+      "path": "contractnest-ui/src/components/auth/ProtectedRoute.tsx",
+      "releaseHash": "2992003c65af920414ba5d3eeee2674dcf6ac9212ecc3a8ac79a11bed925b5a1",
+      "baseHash": "e5bc7d32ca28385623c3e747f76b1267a23f404b8940bb4d91b0ceaab10390bc"
+    },
+    {
+      "path": "contractnest-ui/src/pages/auth/LoginPage.tsx",
+      "releaseHash": "10637cb436884af41361409b5289febc9accce710f5349f4658b8717353a8280",
+      "baseHash": "07f8cc5441c8686aadecf7fa70d20e5c11ada35c543c1ed28d9ab3f1995a18fd"
+    },
+    {
+      "path": "contractnest-ui/src/pages/auth/GoogleCallbackPage.tsx",
+      "releaseHash": "d2bd0fd8a4f8a7bee32e1ffdcec06759ccf78fc3735fea9ef1300257ed839c9b",
+      "baseHash": "ba1597fc6ea858cf12ebea5db5981a587142fc0c585cbc4690b54196e75ff8be"
+    },
+    {
+      "path": "contractnest-ui/src/pages/auth/SelectTenantPage.tsx",
+      "releaseHash": "482dd94e01cd1a3b3962b190ec2e5aa0648c7a173015b57b2d7e7a3c2dbbdfcf",
+      "baseHash": "263a926ff7e62e1ca8e7a6afa4e5569cfef80a0947f881cf763c01f94e92375f"
+    },
+    {
+      "path": "contractnest-ui/src/components/layout/TenantSwitcher.tsx",
+      "releaseHash": "9e8b46c02bdfd244f2527263e4216f50cc78bcbe4976d0e847da362449c6798b",
+      "baseHash": "0a9e7ca772c2ddb31443d9b9d5e6f1f1ee1899b0b5e9c1e7fcd1ab198d2d4589"
+    },
+    {
+      "path": "contractnest-ui/src/components/layout/MainLayout.tsx",
+      "releaseHash": "18090e1c3c4690f90b5be8a61034b1baeb181fd1074559579095341d06c4ff6d",
+      "baseHash": "7ac61215b7092488cc398b9550191de26353dd2dc6e87b53867d5590c892cf8b"
+    },
+    {
+      "path": "contractnest-ui/src/components/layout/navigation.css",
+      "releaseHash": "0d2fb966e3db982272ef8dd68ee9cea2489925f6f970c748db3647011b7c3bf6",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/utils/constants/industryMenus.ts",
+      "releaseHash": "9b730f796bf820deffc997ba8dc8cb54c389e99573c5f510c32f5edb63377c6c",
+      "baseHash": "9b93f58e81171c45c4ae814efea0f5cf8c7bdd828d29a15ed0e2256911e99c4c"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/index.tsx",
+      "releaseHash": "e3e48d894f96570c9b41fc304a9c610481fb5212e828a935341d1d69cd400588",
+      "baseHash": "dd2c252e3da74363daad6de949dcc50b3ac5a5504c7a84b5b22d132671c4c4f0"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/experience.css",
+      "releaseHash": "cf7b5e1a0c3e6f31dbb08c56e5288a6a6284e5b55667c25e1c06f9a17799e3aa",
+      "baseHash": "2d28cbb83d330ec7a5012e1e0af0c1e7cfecd65c2ac01a2e0783f8dfc6881cbb"
+    },
+    {
+      "path": "contractnest-ui/src/utils/navigation/entry.ts",
+      "releaseHash": "16612ea6335e8d1fba717a35f55f1c988b5300895333554ac2c25257c7e42937",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/utils/navigation/EntryRedirect.tsx",
+      "releaseHash": "1d5dbed12793d1e9e3eaa8a056d3656ca0fc77b78dcab4571d7612cbcf92986c",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/utils/navigation/verify.mjs",
+      "releaseHash": "c91240194185fd47011658b034ed70d669c088ede54b7dc6a8279afdbd3d8ed6",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/components/onboarding/OnboardingLayout.tsx",
+      "releaseHash": "41fba0daeec7fe3477c5d775ce2540768c85c7888dd92a4853b31832d4b19bd4",
+      "baseHash": "eca96f326bfd186805d09e226497f05c52b99b20b0d472a51cc1134e7f1eb977"
+    },
+    {
+      "path": "contractnest-ui/src/contexts/OnboardingContext.tsx",
+      "releaseHash": "b5d74b6edaf413557f7af1bc96d87ff00ebe4fa57dae091bc692bc6f7e0ace00",
+      "baseHash": "ccb99356089a78b45a69e017b94ec053236bc62914d16f1933dc9ba186c0cbd5"
+    },
+    {
+      "path": "contractnest-ui/src/pages/onboarding/OnboardingPendingPage.tsx",
+      "releaseHash": "f00c7153626285503afb0a1de29a9fd4784731411560b0ee9cf80eef59b30038",
+      "baseHash": "6f202135c9a9bb453eb02d5c701afb62b83af097b008753cdc5c585fe2f6c9fd"
+    },
+    {
+      "path": "contractnest-ui/src/pages/onboarding/steps/CompleteStep.tsx",
+      "releaseHash": "b10e7ddf3c1fc11e1d34c4d49efa0967426fa664ceef9174aced6cb98b0ab455",
+      "baseHash": "508d3d40c740518feb06448b4306783ed74083043b502a0b47a89e9259a8cc4f"
+    },
+    {
+      "path": "contractnest-ui/src/lite/onboarding/PlanStep.tsx",
+      "releaseHash": "fed6e93a000be66a6a932fbb656a3e20688fa1712f5d0655e497c5d5aa525d70",
+      "baseHash": "cced7b44947c8854175d6eb76c0364949cede4fc384e1222bed20f9a9f05d7b1"
+    },
+    {
+      "path": "contractnest-ui/src/components/layout/Sidebar.tsx",
+      "releaseHash": "4ec6c4ebc9f308f98f3f60a3c289fac55c0331709b12d81d32e40abec02ba3a8",
+      "baseHash": "8f0083fcca6725b8cf2b6637924bc2ecf94bf2a81ecccc2c6d03ea481ee75f69"
+    }
+  ]
+}
