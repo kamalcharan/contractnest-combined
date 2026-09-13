@@ -1,0 +1,73 @@
+CONTRACT LIST V2 - CONTACT CLASSIFICATION BADGE FIX
+Branch: codex/contracts-list-v1 (local only; incremental package)
+Affected submodule: contractnest-ui only. Requires contracts-list-v1.
+
+ROOT CAUSE
+The first list used contract_type and otherwise defaulted Revenue rows to Client.
+The badge beside a person's name is a CONTACT classification, not necessarily
+the contract's commercial type. They are different concepts in the existing code.
+
+FIX
+Read the linked tenant-local contact's classifications through the existing API.
+Show all recognized saved classifications, including Partner and Team Member.
+Do not show a guessed Client badge on missing data, loading, or request failure.
+Lookups are scoped to tenant/environment, cancellable and deduplicated per contact.
+Shared records never look up the other tenant's private contact IDs.
+No contract/contact data, relationship filters, menus, routes, or old screens change.
+If saved contract relationships disagree with contact classifications, those remain
+separate data; this display fix does not silently reclassify historical contracts.
+
+FILES / EXACT DESTINATIONS
+contractnest-ui\src\pages\contracts\experience\ContactClassificationBadge.tsx
+  New badge reading the contact's actual saved classification.
+contractnest-ui\src\pages\contracts\experience\index.tsx
+  Replace the incorrect inline Client/Partner/Vendor fallback with that badge.
+
+PULL AND COPY - WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/contracts-list-v1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+Get-Content "MANUAL_COPY_FILES\contracts-list-v2\COPY_COMMANDS.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\contracts-list-v2\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the output." }
+
+The script checks the v1 page baseline before copying, backs up index.tsx and
+copies exactly the two listed files. App.tsx is NOT touched by this hotfix.
+Refresh /contracts/experience with Ctrl+F5. Restart npm run dev only if needed.
+
+TEST BEFORE COMMIT / MERGE
+[ ] Govind Babu / CN-1052: shows Partner when the linked contact is saved as Partner.
+[ ] Other BBB partner contacts no longer show Client merely because of Revenue mode.
+[ ] Genuine Client, Vendor and Team Member contacts show their saved classifications.
+[ ] A contact with multiple classifications displays all of them.
+[ ] Missing/deleted/restricted contacts do not produce a fabricated Client badge.
+[ ] Switching tenant or Live/Test never carries over another context's labels.
+[ ] Existing /contracts, wizard, ContractView and list filters remain unchanged.
+
+AFTER APPROVAL
+cd contractnest-ui
+git status --short
+git add -- src/pages/contracts/experience/index.tsx src/pages/contracts/experience/ContactClassificationBadge.tsx
+git diff --cached
+git commit -m "Use saved contact classification for contracts list badges"
+# Push your actual UI review branch, not main before review:
+git branch --show-current
+# If using the previously recommended review branch:
+git push origin codex/contracts-list-v1
+cd ..
+
+API / EDGE / MOBILE / FAMILYKNOWS / DOCUMENTATION: unaffected; no commits needed.
+After UI review/merge, update its approved submodule reference in the parent:
+git -C contractnest-ui switch main
+git -C contractnest-ui pull --ff-only origin main
+git add -- contractnest-ui
+git commit -m "Update UI with approved contact classification badge fix"
+git branch --show-current
+# Push and merge the parent through your normal reviewed workflow.
+git status
+git -C contractnest-ui status
+
+Automated QA uses mock contact responses, including a Partner contact on a
+client-typed contract. Actual CN-1052 data still requires your authenticated check.
+For rollback, restore the backed-up index.tsx only if it has no later edits;
+the new component can remain unused. No database rollback is needed.
