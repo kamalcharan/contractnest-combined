@@ -1,0 +1,60 @@
+SPRINT 1.4 - INLINE START ACTIONS AND WORKSPACE ACCOUNT
+Branch: codex/ux-journey-sprint-1 (local C: source, not GitHub)
+Affected: contractnest-ui only. Requires Sprint 1.3 already applied.
+Entry: /experience after normal login. Default login route is unchanged.
+
+PULL, VERIFY, COPY (Windows PowerShell)
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/ux-journey-sprint-1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\ux-journey-s1-r4\CHECK_BEFORE_COPY.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Baseline differs. Do not overwrite newer work; share the output." }
+
+$ErrorActionPreference = 'Stop'
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\index.tsx" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\experience.css" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\StartChooser.tsx" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\verify.mjs" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\accountSignals.ts" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r4\contractnest-ui\src\pages\experience\TenantAccountNotice.tsx" -Destination "contractnest-ui\src\pages\experience\" -Force
+Write-Host "Copied - open /experience and Ctrl+F5. No API restart needed." -ForegroundColor Green
+
+TEST BEFORE COMMITTING
+cd contractnest-ui
+node src/pages/experience/verify.mjs
+npx vite build --mode production
+npm run dev
+
+Use your actual UI port: http://localhost:5173/experience
+Follow TESTING_CHECKLIST.md. No automatic backend writes in this release.
+Use Test for creating test agreements. Account billing remains real in Test:
+do not pay or purchase anything just to test an account link.
+
+FILES (all inside contractnest-ui/src/pages/experience)
+MOD index.tsx - always-visible start actions; removes duplicate environment
+badge; adds account panel. Existing shared Header remains unchanged.
+MOD StartChooser.tsx - compact actions for established workspace, expanded
+guidance for empty view; no extra open/close click.
+MOD experience.css - scoped multi-theme responsive action/account styling.
+MOD verify.mjs - account signal and existing entry regression checks.
+NEW accountSignals.ts - advisory signals from existing account API; separates
+billing date from plan term; 14-day upcoming window; no credit-expiry claims.
+NEW TenantAccountNotice.tsx - plan name, top two notices, existing subscription
+and billing links; safe loading/error/mismatched-tenant states.
+
+BOUNDARIES
+Existing cockpit, finance, appointments, group sessions, Header, onboarding,
+and ContractWizard screen files are untouched. /experience is not yet an
+operational cockpit replacement. No new DB, API, Edge, payment or AI behavior.
+Account is tenant-wide, intentionally independent of Live/Test and perspective.
+Credit expiry dates are not supplied by this source. We show low-credit flags.
+Allowance notices are advisory; do not disable creation or force upgrades.
+
+AFTER YOUR TESTING (optional, on your UI feature branch)
+git add src/pages/experience/index.tsx src/pages/experience/experience.css src/pages/experience/StartChooser.tsx src/pages/experience/verify.mjs src/pages/experience/accountSignals.ts src/pages/experience/TenantAccountNotice.tsx
+git commit -m "feat(ux): expose workspace actions and tenant account reminders"
+
+Then use your reviewed UI merge/push and parent submodule-update workflow.
+Do not commit unrelated work. Previous sprint files must also be committed
+if they have not yet been included in your UI feature branch.
