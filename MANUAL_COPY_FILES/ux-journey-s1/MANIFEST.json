@@ -1,0 +1,46 @@
+{
+  "release": "ux-journey-s1",
+  "uiBaseline": "3f8715db8bb490bc2dad1d3259d636e64d1516d1",
+  "files": [
+    {
+      "path": "contractnest-ui/src/App.tsx",
+      "releaseHash": "921b1f7e884b9331a09b8482774628d5d34b1ec57d6663e65950cc178cf73fa2",
+      "baseHash": "7c7db268b981243575dfc50c7d4e5508489e190b23b7be6462ace86f2d59cf3c"
+    },
+    {
+      "path": "contractnest-ui/src/context/AuthContext.tsx",
+      "releaseHash": "f00d43202ba53e023f81e1ef057ca639694a5e5ef3f7fe98f348038bd9520600",
+      "baseHash": "3cdf24f8c827a50be3b8ed9db2dcf0530892e26b0f447e02c1845406c48f3896"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/index.tsx",
+      "releaseHash": "cf8ac74db5aabad26371a640a6c489545a9c312a8123113f260277b3a9a1b76d",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/experience.css",
+      "releaseHash": "a08776a88069fb91a5060e874075fb354ee1ad4d8db6a49458421819b27d20b3",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/model.ts",
+      "releaseHash": "71e2ec83c14d484cecb6c974968f0f6133da6014bdc1ce5ddfa1e289c38d1758",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/useExperience.ts",
+      "releaseHash": "0abb09b80bd076227b7c709b371ab70194306e0b3f385861badcf18994a18fe2",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/verify.mjs",
+      "releaseHash": "80a29108963fb3f77e9766aa1ae1cea15ce1741354d2daec4b520401246405d8",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/README.md",
+      "releaseHash": "232e88d15e803e02d2995e31f9dab0ebf1282ebb0a52a034abdb3556c9dd2ad8",
+      "baseHash": null
+    }
+  ]
+}
