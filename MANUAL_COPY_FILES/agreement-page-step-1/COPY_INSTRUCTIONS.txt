@@ -1,0 +1,127 @@
+AGREEMENT PAGE — STEP 1 REVIEW RELEASE
+Branch: codex/agreement-page-step-1
+Only contractnest-ui is affected. No API, Edge, database or other-product changes.
+
+FILES (package paths mirror destination paths under contractnest-ui):
+src/components/contracts/ContractWizard/experience/AgreementPage.tsx — new two-section Agreement page.
+src/components/contracts/ContractWizard/experience/agreement.css — responsive, theme-token styling.
+src/components/contracts/ContractWizard/index.tsx — opt-in page, draft-only validation and compatible resume metadata.
+src/pages/contracts/experience/create.tsx — enables Agreement-only review on the existing isolated route.
+
+WHAT IS INCLUDED
+Client/Partner/Vendor contact picker using existing live contact logic, inline quick-add,
+company/person selection, grouped optional labels, name, start, duration, currency,
+rich-text description, grace period, summary, guarded draft saving.
+No hardcoded Lift, currency, duration or acceptance selection.
+Start date remains visibly today, editable. No claim of ICP-based label recommendation.
+The existing details editor's date preview convention is retained; server dates remain authoritative.
+
+THIS RELEASE ENDS AT AGREEMENT
+Save agreement validates and saves a DRAFT only, then shows the review milestone.
+It does not activate, request acceptance, generate invoices or send messages.
+Next chapters, VaNi, templates and RFP conversion are NOT rebuilt here.
+Existing /contracts and template/VaNi paths retain their existing presentation.
+Resume a saved draft from the existing contracts list: the classic wizard opens early
+enough to collect acceptance. New Agreement-page resume is not part of this slice.
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+STEP 1: Pull the Feature Branch
+The branch is committed LOCALLY, not on GitHub. Use the local repo as the pull source.
+Stop if Git reports a conflict; do not copy over it.
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/agreement-page-step-1
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/agreement-page-step-1
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Resolve it before copying.' }
+
+If that branch already exists, use git switch codex/agreement-page-step-1 instead.
+
+STEP 2: Verify Files Received
+ls MANUAL_COPY_FILES\agreement-page-step-1
+type MANUAL_COPY_FILES\agreement-page-step-1\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files (recommended guarded copy with backups)
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\agreement-page-step-1\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy stopped. Do not overwrite divergent files.' }
+
+Exact individual copy commands (the guarded script performs these equivalent copies):
+Copy-Item "MANUAL_COPY_FILES\agreement-page-step-1\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-page-step-1\contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-page-step-1\contractnest-ui\src\components\contracts\ContractWizard\experience\agreement.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\agreement.css" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-page-step-1\contractnest-ui\src\pages\contracts\experience\create.tsx" -Destination "contractnest-ui\src\pages\contracts\experience\create.tsx" -Force
+Write-Host 'Copied — restart UI, then Ctrl+F5' -ForegroundColor Green
+
+TEST BEFORE COMMITTING OR MERGING. Run STEP 13 now. Proceed below only after approval.
+
+STEP 4: Commit UI Changes (after testing)
+cd contractnest-ui
+git status
+git switch -c codex/agreement-page-step-1
+git add src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/experience/AgreementPage.tsx src/components/contracts/ContractWizard/experience/agreement.css src/pages/contracts/experience/create.tsx
+git commit -m "Build isolated product-led Agreement chapter with guarded draft saving"
+git push -u origin codex/agreement-page-step-1
+cd ..
+If the UI branch already exists, switch to it instead. Do not stage unrelated files.
+
+STEP 5: Commit Edge Changes — NOT APPLICABLE (unchanged).
+STEP 6: Commit API Changes — NOT APPLICABLE (unchanged).
+STEP 7: Commit FamilyKnows Changes — NOT APPLICABLE (unchanged).
+STEP 8: Commit Mobile Changes — NOT APPLICABLE (unchanged).
+STEP 9: Commit Documentation Changes — NOT APPLICABLE (submodule unchanged).
+
+STEP 10: Update Parent Repo Submodule References (after approved UI merge)
+cd contractnest-ui
+git switch main
+git pull origin main
+git merge codex/agreement-page-step-1
+git push origin main
+cd ..
+git add contractnest-ui
+git commit -m "Update UI submodule with approved Agreement chapter"
+git push -u origin codex/agreement-page-step-1
+
+STEP 11: Merge to Master (only after testing and approval)
+git switch master
+git pull origin master
+git merge codex/agreement-page-step-1
+git push origin master
+If your parent integration branch is main, use main instead of master.
+If a submodule conflict occurs, STOP and inspect both revisions; do not blindly
+replace another feature's pointer. Merge the required UI commits, then stage its pointer.
+
+STEP 12: Verify Everything is Clean
+git status
+git -C contractnest-ui status
+Existing unrelated work may still appear. Do not delete or stage it to obtain a clean status.
+
+STEP 13: Restart Dev Server & Test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5
+Use TEST environment. Open:
+http://localhost:5173/contracts/experience/create?relationship=partner
+or /contracts/experience -> New contract -> Client / Partner.
+Expense perspective: /contracts/experience/create?relationship=vendor
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Client, Partner and Vendor filter correctly; no mislabelled contacts.
+[ ] Search and inline-add work with real tenant data; company contact/person selection persists.
+[ ] Selecting a contact collapses to the compact card; Change and contact details work.
+[ ] Currency and duration start unselected; no forced AMC/Lift label.
+[ ] All configured nomenclature groups appear; label can be left unset.
+[ ] Name, dates, duration presets, currency, rich text and grace period update correctly.
+[ ] Required-field errors prevent saves, including Save & Close.
+[ ] Save agreement creates a draft only; no acceptance request, invoice or activation.
+[ ] Failed save keeps the page and entered values; retry does not create duplicates.
+[ ] Resume the draft in the original wizard; verify fields and acceptance prompt.
+[ ] Mobile width: no page-level horizontal scroll; footer and form are usable.
+[ ] Switch product themes/light/dark: readable controls and summary.
+[ ] Original /contracts creation, templates and VaNi still work as before.
+
+Verification: production bundle and targeted TypeScript checks; isolated headless browser
+tests with mocked contacts/mutations (no live customer writes). Real tenant contact search,
+quick-add, notification behavior and end-to-end persistence require the above local acceptance tests.
