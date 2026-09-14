@@ -767,6 +767,43 @@ Verified: new → 1 row · re-declare after CONFIRM → 0 rows + reported · re-
 
 **Still open**: the **guest** index (`uq_payment_decl_guest_catblock_pending`) carries the identical `status='pending'` hole and was deliberately left alone — different index, different function, needs its own lockstep change. And the UI's duplicate-reference warning is still an **exact string match**, which would not have caught Bharat Mangipudi's real pair, `074747724582` vs `074747724582 - 4500`.
 
+### FIXED 2026-09-14 — no plan subscriber was EVER entitled: the payment gate could not be satisfied by an instalment plan
+
+Reported as "I subscribed to the quarterly plan but still get *You're past your contract allowance*". The subscription was fine; the **entitlement never applied**, so `limit_contracts` sat at its default **0** and the soft-warning toast was faithfully reporting a real zero.
+
+`fn_apply_contract_entitlements` defers a priced plan until its invoice clears:
+
+```sql
+AND NOT EXISTS (SELECT 1 FROM t_invoices
+                WHERE contract_id = p_contract_id AND status = 'paid')
+THEN RETURN;
+```
+
+**An instalment-billed plan can never satisfy that.** It is one invoice paid in parts, so it reads `partially_paid` from the first payment until the last — signia's INV-10046 was ₹5,999 of ₹23,996. And `trg_fn_topup_credits_on_payment`, the path that retries settlement when money lands, opens with the *same* test (`IF NEW.status <> 'paid' THEN RETURN NULL`). Both doors used one key nobody had. The grant was not delayed, it was **permanently lost**.
+
+Blast radius: **all three** active plan subscriptions — signia CN-1047, BBB CN-1048, Trinity CN-1043 — every one `partially_paid`, `entitlements_applied_at` absent, `limit_contracts = 0`. Nobody had ever been successfully entitled through this path since it was built.
+
+**⚠️ Only the DB was wrong.** The UI (`useAllowanceWarning.ts`), the API (`tenantContextService.ts`) and the `tenant-context` edge function are all faithful messengers — the edge function's entire involvement is one `supabase.rpc('get_tenant_context')` line. Worth remembering when a limit looks wrong: `subscription` in that RPC is computed **live** from the platform tenant's contracts, but `limits` are **stored columns** on `t_tenant_context`. That asymmetry is exactly why the app looked subscribed while refusing the allowance — and why chasing it through the edge/API layers finds nothing.
+
+**Fix (migration `076`, applied live)** — gate on money received (`status='paid' OR amount_paid > 0`) in both the gate and the retry path, and broaden `trg_topup_credits_on_payment` to `AFTER UPDATE OF status, amount_paid` (an instalment can move `amount_paid` without `status` changing value).
+
+**Second defect found alongside — test contracts were eating paid allowance.** The entitlement triggers filter `is_live = true`; `trg_fn_contract_consumption` never did. signia's counter read 51 when only **7** contracts were live. Fixed in 076; credit grants are deliberately still allowed in test mode so notification testing keeps working.
+
+**Counters were wrong in BOTH directions, which is the trap.** signia was over-counted by test rows (51 vs 7) but BBB was *under*-counted (4 stored vs 52 live) and Trinity likewise (2 vs 17) — rows predating the metering trigger were never counted. A naive "recompute from all live rows" would have put **BBB at 52 against a 50 limit — over-limit on day one of a plan that started that morning**, retroactively charging a customer for contracts created before they had a plan. Meters were instead rebased to what each tenant created **inside its current plan period**, the same basis the existing plan-switch reset already uses.
+
+Verified by a rollback probe forcing both branches at once: a test-mode insert left the meter unmoved and a live insert moved it by exactly 1, then `RAISE` discarded both.
+
+**Migration `077`** sets BBB to its negotiated **60** contracts (the shared Quarterly template carries 50 and no 60-contract template exists). Written to the **contract block as well as** the context row on purpose — the block is what `fn_apply_contract_entitlements` reads, so a context-only edit would be silently reverted by the next renewal or re-apply.
+
+Final state: signia 3/50 · BBB 0/60 · Trinity 0/50, none over limit.
+
+**Still open:**
+- **Usage never resets at renewal.** Nothing decrements or zeroes these counters when a plan period rolls over — only a plan *switch* resets them. A tenant who renews carries last year's count into the new term and will eventually be permanently "over limit". 076 rebased the three current tenants but did not fix the renewal path.
+- **Test contracts still grant real notification credits** (left deliberately, so test-mode notification work still functions). signia holds ~1,019 WhatsApp / 1,020 email credits, of which roughly 880 came from 44 test contracts at 20+20 each. If those pools are ever treated as money, this needs revisiting.
+- **`limit_rfqs` is 0 on every plan**, so any RFQ surface will warn immediately. The code comment says a seller plan leaves RFQs at 0 deliberately — confirm that is still intended before anyone reports it as a bug.
+- **BBB's plan is named "Quarterly" but its term is 365 days** (2026-09-14 → 2027-09-14); "Quarterly" is the billing rhythm, not the term. Same for signia and Trinity. The name will keep reading as a 3-month term to anyone looking at the contract.
+- **The annual allowance vests in full on the first instalment.** Owner decision, and strictly better than today's zero, but a tenant who pays one quarter and stops keeps all 50/60 contracts for the year.
+
 ---
 
 ## ⚠️ Session Reminders

@@ -1,0 +1,32 @@
+PLAN ENTITLEMENT — INSTALMENT PAYMENT GATE
+Applied live to production 2026-09-14 by owner instruction.
+
+*** DO NOT RE-RUN THESE MIGRATIONS ***
+They are already applied. These files are a source-of-record copy only,
+following the same convention as the group-session notification batch.
+
+Submodules affected: NONE.
+This was a database-only defect. contractnest-ui, contractnest-api and
+contractnest-edge are all unchanged -- every layer above the DB was a
+faithful messenger of a stored 0. There is nothing to copy into a checkout.
+
+FILES
+  076_plan_entitlements_instalment_gate.sql
+  077_bbb_contract_allowance_60.sql
+
+WHAT 076 FIXES
+  An instalment-billed plan's invoice sits at 'partially_paid' from the
+  first payment until the last, so fn_apply_contract_entitlements' gate
+  (status = 'paid') could never be satisfied and NO plan subscriber on the
+  platform was ever entitled. trg_fn_topup_credits_on_payment used the same
+  test, so the retry path never fired either -- the grant was not deferred,
+  it was permanently lost.
+
+  Also: trg_fn_contract_consumption had no is_live filter (the entitlement
+  triggers already had one), so test-mode contracts consumed a paid
+  allowance. signia had 44 of its 51 counted contracts in test mode.
+
+WHAT 077 FIXES
+  BBB's negotiated allowance is 60 contracts; the shared Quarterly template
+  carries 50 and no 60-contract template exists. Written to BOTH the
+  contract block and the tenant context so a renewal cannot revert it.
