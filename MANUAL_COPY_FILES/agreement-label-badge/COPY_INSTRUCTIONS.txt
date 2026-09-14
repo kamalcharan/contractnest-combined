@@ -1,0 +1,78 @@
+CHANGES SUMMARY
+Branch: codex/agreement-label-badge (local, not pushed)
+Submodule: contractnest-ui only
+AgreementLabels.tsx: read-only label tag; grouped Change modal is the sole selection control.
+approved-agreement.css: theme-compatible tag styling. No other layout changes.
+Exact destination directory for both files:
+D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\components\contracts\ContractWizard\experience
+Package sources mirror those paths under MANUAL_COPY_FILES\agreement-label-badge\contractnest-ui.
+No API, Edge, database, route, controller or VaNi changes.
+
+STEP 1: Pull local feature branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/agreement-label-badge
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/agreement-label-badge
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/agreement-label-badge instead.
+
+STEP 2: Verify files
+ls MANUAL_COPY_FILES\agreement-label-badge
+type MANUAL_COPY_FILES\agreement-label-badge\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy with baseline checks and backups
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\agreement-label-badge\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy failed. Share the output.' }
+The script checks both targets before copying, backs up originals, then verifies hashes.
+It performs these exact copies after the checks:
+Copy-Item "MANUAL_COPY_FILES\agreement-label-badge\contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementLabels.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementLabels.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-label-badge\contractnest-ui\src\components\contracts\ContractWizard\experience\approved-agreement.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\approved-agreement.css" -Force
+Do not bypass a failed guard by running these copies manually.
+
+TEST BEFORE COMMITTING OR MERGING: perform STEP 13 now; proceed below only after approval.
+
+STEP 4: Commit UI changes after testing
+cd contractnest-ui
+git status
+git add src/components/contracts/ContractWizard/experience/AgreementLabels.tsx src/components/contracts/ContractWizard/experience/approved-agreement.css
+git commit -m "Use read-only agreement label badge with single Change control"
+git push origin HEAD
+cd ..
+This pushes the current UI branch, not an assumed main. Merge that branch to your intended UI main only after review.
+
+STEP 5: Edge changes - none; skip.
+STEP 6: API changes - none; skip.
+STEP 7: FamilyKnows changes - none; skip.
+STEP 8: Mobile changes - none; skip.
+STEP 9: Documentation submodule changes - none; skip.
+
+STEP 10: Update only affected parent reference
+git add contractnest-ui
+git commit -m "Update UI reference for agreement label badge"
+git push origin codex/agreement-label-badge
+
+STEP 11: Merge only after testing
+Verify the actual parent integration branch with git branch -a.
+If it is main:
+git switch main
+git merge codex/agreement-label-badge
+git push origin main
+If it is master, use master instead of main. Stop on conflicts; do not blindly overwrite submodule references.
+
+STEP 12: Verify
+git status
+Unrelated existing changes are not part of this release; do not stage or discard them.
+
+STEP 13: Restart and test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh Ctrl+F5. Open /contracts/experience/create?relationship=partner
+[ ] Agreement label is a tag, not a dropdown; empty state says No label selected.
+[ ] Change opens the same grouped modal; selection updates category strip and tag together.
+[ ] Reopen Change: chosen label is highlighted. Escape leaves selection unchanged.
+[ ] Save a draft and reopen it from /contracts/experience: same label remains.
+[ ] Check mobile and your preferred theme. Existing contract wizard remains unchanged.
+
+VERIFICATION
+Mock browser regression passed, including selected-label payload and saved-draft editing.
+24 mobile theme/mode variants passed overflow checks. No new scoped TypeScript diagnostics.
+Read-only copy preflight passed against current D: files. Real backend writes were not exercised.
