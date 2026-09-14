@@ -1,0 +1,155 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: codex/services-catalog-context-fix (local C: repository; not pushed to GitHub)
+Submodules Affected: contractnest-ui only
+Files Changed:
+contractnest-ui/src/hooks/queries/useCatBlocksTest.ts
+  Reads data.pagination.total/has_more; validates tenant and Live/Test scope.
+contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+  Loads mandatory T&C through the same strict query; keeps agreement-level inclusion.
+contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+  Connects the existing live editors/pricing handlers to dependency-filtered catalogue.
+contractnest-ui/src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx
+  Shows mandatory T&C separately; excludes it from Unassigned/Added; retains FlyBy.
+contractnest-ui/src/components/contracts/ContractWizard/experience/ServicesPage.tsx
+  Validates saved catalogue eligibility; blocks completion without T&C or after context changes.
+contractnest-ui/src/components/contracts/ContractWizard/experience/services.css
+  Styles the compact mandatory-terms section using the current theme.
+contractnest-ui/src/components/contracts/ContractWizard/experience/serviceCatalogModel.ts
+  Matches stored resource/KT dependencies and active currency/resource pricing.
+contractnest-ui/src/components/contracts/ContractWizard/experience/useServiceCatalog.ts
+  Loads tenant resources and the existing template catalogue with complete pagination.
+
+Prerequisite: Services step 3 is already installed.
+This slice ends at SERVICES SAVED. Money/Delivery/Events/Review are not implemented here.
+No route, existing menu, API, Edge or database migration changes.
+Manual mode only. No VaNi calls, contract activation, invoices or appointments.
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: Pull the Feature Branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/services-catalog-context-fix
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/services-catalog-context-fix
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/services-catalog-context-fix instead.
+This uses the local repository because this release has NOT been pushed to origin.
+
+STEP 2: Verify Files Received
+ls MANUAL_COPY_FILES\services-catalog-context-fix
+type MANUAL_COPY_FILES\services-catalog-context-fix\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\services-catalog-context-fix\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy failed. Stop and share the output.' }
+Write-Host 'Copied — restart UI, then Ctrl+F5' -ForegroundColor Green
+
+The script checks ALL files before replacing anything, backs up existing files,
+and verifies each copied file. If local changes differ, STOP rather than force-copy.
+The script creates directories and performs these exact copies after its checks:
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\hooks\queries\useCatBlocksTest.ts" -Destination "contractnest-ui\src\hooks\queries\useCatBlocksTest.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\experience\serviceCatalogModel.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\serviceCatalogModel.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\services-catalog-context-fix\contractnest-ui\src\components\contracts\ContractWizard\experience\useServiceCatalog.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\useServiceCatalog.ts" -Force
+
+STOP HERE TO TEST: run STEP 13 and the checklist before committing, pushing or merging.
+Steps 4-12 are for AFTER acceptance. Prior releases must be committed separately;
+do not stage unrelated work or silently combine unreviewed changes.
+
+STEP 4: Commit UI Changes (after testing)
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch -c codex/services-catalog-context-fix
+git status
+git add src/hooks/queries/useCatBlocksTest.ts src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx src/components/contracts/ContractWizard/experience/ServicesPage.tsx src/components/contracts/ContractWizard/experience/services.css src/components/contracts/ContractWizard/experience/serviceCatalogModel.ts src/components/contracts/ContractWizard/experience/useServiceCatalog.ts
+git commit -m "Fix Services resource currency environment filtering and mandatory terms"
+git push origin codex/services-catalog-context-fix
+
+After review and with a clean working tree:
+git switch main
+git pull --ff-only origin main
+git merge codex/services-catalog-context-fix
+git push origin main
+cd ..
+Stop on conflicts or rejected pushes. Do not discard edits or force-push.
+
+STEP 5: Commit Edge Changes — not applicable.
+STEP 6: Commit API Changes — not applicable.
+STEP 7: Commit FamilyKnows Changes — not applicable.
+STEP 8: Commit Mobile Changes — not applicable.
+STEP 9: Commit Documentation Changes — no documentation submodule changes.
+
+STEP 10: Update Parent Repo Submodule References
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch codex/services-catalog-context-fix
+git add contractnest-ui
+git commit -m "Update UI submodule for catalogue context and T&C fix"
+git push origin codex/services-catalog-context-fix
+
+STEP 11: Merge to Master (parent default)
+git switch master
+git pull --ff-only origin master
+git merge codex/services-catalog-context-fix
+git push origin master
+If a submodule conflict occurs, stop and inspect the competing UI commits.
+Do not resolve by blindly selecting a branch or altering unrelated submodules.
+
+STEP 12: Verify Everything is Clean
+git status
+git -C contractnest-ui status
+Unrelated pre-existing changes may remain. Do not stage or delete them.
+
+STEP 13: Restart Dev Server & Test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5
+Open http://localhost:5173/contracts/experience/create?relationship=partner
+Save Agreement -> Continue to coverage -> Save coverage -> Continue to services.
+Use the existing experience list at /contracts/experience to reopen the saved draft.
+Also test Client Contract and Expense/vendor using the existing context controls.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Agreement and Coverage look as approved, including attached-unit tags.
+[ ] Continue to services appears after saving Coverage.
+[ ] HVAC shows only blocks eligible under its configured resource/KT dependencies and selected currency.
+[ ] Switch coverage: a block restricted to another equipment/facility is not offered here.
+[ ] Live and Test use their own catalogue; no cached cross-environment or cross-tenant records.
+[ ] Mandatory T&C appears once, for the whole agreement, without Add/Remove or Unassigned.
+[ ] Missing T&C blocks Save services but unfinished Save draft remains available.
+[ ] Search, Selected and category filters work within this eligible catalogue.
+[ ] Select the same service for two coverage types; each keeps independent settings.
+[ ] Adjust quantity, price, tax, cadence and service repetition against known catalogue values.
+[ ] Fees show actual configured amounts, not No charge.
+[ ] Group sessions, terms/checklists and document/content settings retain live capabilities.
+[ ] Test existing per-unit splitting and weekday/anchor scheduling where applicable.
+[ ] FlyBy types: Service, Spare Part, Text Block, Document and Group Session.
+[ ] Blank FlyBy names/prices cannot complete Services. A free line requires explicit marking.
+[ ] Entering a positive custom price clears the complimentary flag.
+[ ] Save draft permits unfinished work; Save services validates completion.
+[ ] Close and reopen through experience list: same draft and all selections/settings preserved.
+[ ] Back to Coverage and return without losing services.
+[ ] Failure to load catalogue is visible with Retry; saved selections are retained.
+[ ] Check mobile width, your themes, Buyer/Seller context and Live/Test isolation.
+[ ] Confirm original working wizard remains unchanged.
+[ ] No contract is sent/confirmed, no invoice or appointment is created, no VaNi credit used.
+
+Use Test environment first. Actual API persistence and catalogue records must be
+verified in your local product; automated checks used mock API data.
+Full capabilities preserved by reusing the live editor are code-audited; not every
+real pricing/scheduling combination has been exercised.
+See TEST_RESULTS.md for verification details and remaining checks.
+
+
+DIAGNOSIS
+The previous loader incorrectly expected data.total. The Edge response uses data.pagination.total and has_more.
+Dependencies use tenant resource IDs and/or KT template IDs. The dependency picker bridges those IDs by exact type/name; this patch uses that same bridge, never fuzzy block-name matching.
+Resource-independent blocks remain eligible where they declare no coverage dependency. Missing/invalid rates are not replaced with guessed currency prices.
+No real database writes were performed during automated QA. Test your HVAC catalogue locally before merging.
