@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: codex/coverage-step-2 (local C: repository; not pushed to GitHub)
+Submodules affected: contractnest-ui only
+
+Files changed (package directory mirrors these exact destination paths):
+contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+  Connects Agreement to Coverage, saves/reopens the same draft at Coverage,
+  and guards contact changes. Classic, RFQ, template and VaNi render paths remain.
+contractnest-ui/src/components/contracts/ContractWizard/experience/AgreementPage.tsx
+  Adds Continue to coverage after a successful Agreement save. Approved form is unchanged.
+contractnest-ui/src/components/contracts/ContractWizard/experience/CoveragePage.tsx
+  New coverage cards, tenant recommendations, categorized discovery, registry picker,
+  existing full registration form and explicit deferred-attachment policy.
+contractnest-ui/src/components/contracts/ContractWizard/experience/coverageModel.ts
+  Existing coverage/equipment-details representation with stable placeholders and validation.
+contractnest-ui/src/components/contracts/ContractWizard/experience/coverage.css
+  Approved HTML coverage-card/attachment layout using product theme colours; mobile styling.
+
+This release ends at Coverage saved. Services, Money, Delivery and Events are NOT added here.
+No API/Edge/database migration or changes to existing menu/routes.
+Prerequisite: previously delivered Agreement page and label-badge release are installed.
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: Pull the Feature Branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/coverage-step-2
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/coverage-step-2
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/coverage-step-2 instead.
+
+STEP 2: Verify Files Received
+ls MANUAL_COPY_FILES\coverage-step-2
+type MANUAL_COPY_FILES\coverage-step-2\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\coverage-step-2\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy failed. Stop and share the output.' }
+Write-Host 'Copied — restart UI, then Ctrl+F5' -ForegroundColor Green
+
+The script first checks ALL targets against BASELINE or the already-applied release.
+It backs up replaced files under LOCAL_BACKUP and verifies their hashes after copying.
+If the guard reports local differences, STOP. Do not force-copy over those edits.
+After those checks, the script performs these exact file copies:
+Copy-Item "MANUAL_COPY_FILES\coverage-step-2\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\coverage-step-2\contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\coverage-step-2\contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\coverage-step-2\contractnest-ui\src\components\contracts\ContractWizard\experience\coverageModel.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\coverageModel.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\coverage-step-2\contractnest-ui\src\components\contracts\ContractWizard\experience\coverage.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\coverage.css" -Force
+
+STOP HERE TO TEST: run STEP 13 and the checklist before committing, pushing or merging.
+The remaining steps are only for AFTER your approval. Prior Agreement releases must
+already be committed before publishing this release; do not stage unrelated work.
+
+STEP 4: Commit UI Changes (after testing)
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch -c codex/coverage-step-2
+git status
+git add src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/experience/AgreementPage.tsx src/components/contracts/ContractWizard/experience/CoveragePage.tsx src/components/contracts/ContractWizard/experience/coverageModel.ts src/components/contracts/ContractWizard/experience/coverage.css
+git commit -m "Add product-led Coverage chapter with draft continuation"
+git push origin codex/coverage-step-2
+
+Only after review, with no remaining uncommitted work that belongs in the release:
+git switch main
+git pull --ff-only origin main
+git merge codex/coverage-step-2
+git push origin main
+cd ..
+Stop on a conflict or rejected push. Do not discard changes or force-push.
+
+STEP 5: Commit Edge Changes — not applicable; no Edge files changed.
+STEP 6: Commit API Changes — not applicable; no API files changed.
+STEP 7: Commit FamilyKnows Changes — not applicable.
+STEP 8: Commit Mobile Changes — not applicable.
+STEP 9: Commit Documentation Changes — no documentation submodule changes.
+
+STEP 10: Update Parent Repo Submodule References
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch codex/coverage-step-2
+git add contractnest-ui
+git commit -m "Update UI submodule for Coverage chapter"
+git push origin codex/coverage-step-2
+
+STEP 11: Merge to Master (parent's observed default branch)
+git switch master
+git pull --ff-only origin master
+git merge codex/coverage-step-2
+git push origin master
+If there is a submodule conflict, stop and inspect the competing UI commits.
+Do not resolve by blindly choosing a branch or changing unrelated submodules.
+
+STEP 12: Verify Everything is Clean
+git status
+git -C contractnest-ui status
+Unrelated pre-existing changes may still be present. Do not stage or delete them.
+
+STEP 13: Restart Dev Server & Test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5
+Open http://localhost:5173/contracts/experience/create?relationship=partner
+Use client instead of partner for Client Contract; expense perspective uses vendor.
+Save Agreement, then select Continue to coverage.
+Saved drafts reopen through /contracts/experience. Do not use the legacy list for this test.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Approved Agreement form and read-only label tag remain intact.
+[ ] After saving Agreement, Continue to coverage opens the new chapter.
+[ ] Workspace-recommended types appear first. Browse all types stays categorized.
+[ ] Test at least two different coverage types and multiple unit counts.
+[ ] Select identify-later; covered/attached/remaining counts are accurate.
+[ ] Pick registered units: only selected contact, current live/test environment
+    and chosen coverage types appear. Search by name/serial/location works.
+[ ] Attach only some units; save and reopen the draft. Remaining units stay visible.
+[ ] Register equipment or a facility through the existing full form; the correct
+    contact and type are used. This DOES create a registry record when you submit.
+[ ] Detach a unit and check remaining count increases. Reducing coverage below
+    attached units or removing a type with attached units/services is blocked.
+[ ] Save Coverage, close, reopen from /contracts/experience: same draft, same scope.
+[ ] Go back to Agreement and return: counts and attachments remain intact.
+[ ] Change contact: confirm before detaching previous contact's units; no cross-contact reuse.
+[ ] Service-based / unlabelled agreements can remain without equipment coverage.
+[ ] Check preferred themes and mobile width. Check Revenue and Expense separately.
+[ ] Test in Test environment first. Registry submission uses that environment.
+[ ] No proposal, acceptance request, appointment, invoice or VaNi invocation occurs.
+
+VERIFICATION / LIMITS
+See TEST_RESULTS.md for code/HTML mapping and automated evidence.
+Automated write checks use mock data; run the real API/registry checks above locally.
+Do not infer a real WhatsApp flow or full contract completion from this Coverage slice.
