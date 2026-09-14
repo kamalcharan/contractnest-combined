@@ -1,0 +1,65 @@
+COMMITMENT EDITOR — CLEAR OWNERSHIP FIX
+Branch: codex/commitment-contained-editor
+Affected: contractnest-ui only. Requires commitment-card-editor already applied.
+
+Changes:
+1. ServicesCatalog.tsx: expands the selected commitment inside its own full-width
+   card. Other selected commitments remain below it, not alongside its fields.
+2. CommitmentEditor.tsx: names the commitment, type and coverage in its header;
+   uses delivery wording for spare parts; returns focus to the collapsed card.
+3. services.css: one-column card ownership at all widths, one outer boundary.
+No pricing, catalogue dependency, persistence or original-wizard changes.
+
+PULL AND COPY (Windows PowerShell)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/commitment-contained-editor
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\commitment-contained-editor\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the error; do not overwrite local differences." }
+cd contractnest-ui
+npm run dev
+
+Ctrl+F5. Open /contracts/experience/create?relationship=partner and reach Services,
+or resume your Services draft. No database migration or API restart required.
+
+EXACT PATHS / INDIVIDUAL COPY COMMANDS
+The script above checks all targets before copying, creates backups, and verifies
+hashes. Prefer it to these unguarded reference commands:
+Copy-Item "MANUAL_COPY_FILES\commitment-contained-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-contained-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-contained-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Force
+
+TEST BEFORE MERGING
+[ ] Add a spare part and a service with different prices/counts.
+[ ] Edit the second card: its name/type/coverage and all fields sit inside ONE
+    full-width bordered card; the other commitment is below its Apply/Cancel.
+[ ] Scroll to the end: no field appears beside another commitment.
+[ ] Apply a spare-part price/count change: only that card total changes.
+[ ] Edit the service, change values then Cancel: both cards retain prior values.
+[ ] Spare part says Part delivery schedule/deliveries, not service visits.
+[ ] Save and reopen: values and coverage remain correctly assigned.
+[ ] Repeat on mobile and in your themes; other cards remain below the editor.
+
+REVIEW AND COMMIT — ONLY AFTER TESTING
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git status
+# Stay on your review branch; if needed create a dedicated branch from your
+# current tested UI state: git switch -c codex/commitment-contained-editor
+git add src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx src/components/contracts/ContractWizard/experience/CommitmentEditor.tsx src/components/contracts/ContractWizard/experience/services.css
+git commit -m "Contain commitment editing within its own card"
+git push -u origin HEAD
+cd ..
+git add contractnest-ui
+git commit -m "Update UI for contained commitment editing"
+git push -u origin HEAD
+
+Edge/API/FamilyKnows/Mobile/Documentation are unaffected; do not commit them for
+this release. Merge your reviewed UI branch to main only after acceptance, then
+update the parent submodule pointer via your normal review process. Verify the
+parent default branch rather than assuming main/master.
+git status
+git -C contractnest-ui status
+
+ROLLBACK
+COPY_COMMANDS.ps1 prints LOCAL_BACKUP\<timestamp>. Restore those three files to
+their matching UI paths. No data migration or data rollback is involved.

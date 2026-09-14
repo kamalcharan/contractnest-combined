@@ -1,0 +1,20 @@
+PASS: production-mode UI build. Existing unrelated duplicate-key, bundle-size,
+mixed-import, lottie-eval and Browserslist warnings remain.
+PASS: creation release TypeScript comparison — no new diagnostics.
+PASS: new ownership tests with the real editor/controller and mocked data:
+ - Exactly one editor, nested in its own commitment article.
+ - No separate editor column.
+ - Other card has no editable fields and begins below the complete active card.
+ - Desktop/tablet/mobile widths: 1440, 1024, 390, 320; no horizontal overflow.
+ - Spare-part delivery terminology, name/type/coverage ownership.
+ - Applying spare-part changes does not alter the service card.
+ - Cancelling service changes leaves both cards unchanged.
+ - Save and reopen retain separate values.
+PASS: existing commitment regression suite: apply/cancel, tax totals, billing-only,
+FlyBy, mandatory terms, cadence overrides/final payment, group sessions, per-unit
+split, save/reopen, product themes and original-wizard isolation.
+PASS: manual-copy baseline preflight, actual copying, repeat preflight, hashes.
+
+Screenshots inspected: contained-editor-1440.png and contained-editor-390.png
+in the local sprint1-qa directory (not required for installation).
+Live tenant data was not used. Complete the acceptance checklist locally.
