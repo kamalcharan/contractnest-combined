@@ -1,0 +1,12 @@
+PASS: Mocked-browser regression on the actual Money component and controller.
+- Invalid discount / incomplete choices display Not saved at the save controls.
+- Failed save displays Save was not confirmed and retains entries.
+- Money success displays persistent confirmation; Save draft has its own confirmation.
+- Subsequent edits replace confirmation with Changes not saved yet.
+- Delayed response displays Saving and disables additional save attempts.
+- Successful save/reopen, Services navigation, context lock and prior Money checks pass.
+- 12 themes, light/dark, widths 1440/1024/390/320; no horizontal page overflow.
+PASS: Creation-release TypeScript check: zero added diagnostics.
+PASS: Read-only copy preflight against the D: working copy.
+Browser tests use mock data, not your live tenant. Previous save outcome was not verified.
+No API, database, billing-calculation or lifecycle change in this patch.
