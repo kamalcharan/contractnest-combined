@@ -11,10 +11,13 @@ CORRECTION
 - The /contracts/experience route is now the authoritative presentation choice.
 - Missing markers use persisted-state inference only; no later step is guessed.
 - The old /contracts page and its wizard entry remain untouched.
+- The guarded baseline was refreshed from the exact D: workspace files after
+  the first copy correctly stopped on a mismatch.
 
 PASS: no TypeScript diagnostic points to the changed resume logic or experience
       list page. The full repository check still reports its existing baseline
       errors elsewhere, including older theme-property errors later in the
       shared ContractWizard file.
 PASS: release preflight verifies both source/baseline files atomically.
+PASS: preflight passed directly against the current D: workspace.
 PASS: no API, Edge or database mutation is included.

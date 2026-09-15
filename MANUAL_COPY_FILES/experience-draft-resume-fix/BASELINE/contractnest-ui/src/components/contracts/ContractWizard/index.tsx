@@ -2724,8 +2724,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
     if (experienceStep === 'events') return <EventsPage state={wizardState} relationship={contractType}
       busy={isCreating || isUpdating || isSavingDraft} error={blockedHint}
       onChange={patch => setWizardState(prev => ({...prev,...patch}))}
-      onSave={() => saveDraftToApi(detailsStepIdx)} onBack={() => setExperienceStep('delivery')}
-      onEditServices={() => setExperienceStep('services')} onClose={handleClose}/>;
+      onSave={() => saveDraftToApi(detailsStepIdx)} onBack={() => setExperienceStep('delivery')} onClose={handleClose}/>;
     if (experienceStep === 'delivery') return <DeliveryPage state={wizardState} relationship={contractType}
       onContinue={() => setExperienceStep('events')}
       busy={isCreating || isUpdating || isSavingDraft} saveStatus={draftSaveStatus} error={blockedHint}

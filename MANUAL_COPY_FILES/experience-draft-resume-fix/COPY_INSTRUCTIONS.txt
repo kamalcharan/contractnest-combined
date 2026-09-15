@@ -1,6 +1,8 @@
 EXPERIENCE DRAFT RESUME FIX
 Branch: codex/experience-draft-resume-fix
-Prerequisite: service-frequency-fix release installed.
+Baseline refreshed against the current D: workspace after the first guarded
+copy stopped. The package includes the required Events-to-Services handoff, so
+it does not assume service-frequency-fix changed ContractWizard/index.tsx.
 Affected submodule: contractnest-ui only. Two files. No API/Edge/DB changes.
 
 PULL AND COPY — WINDOWS POWERSHELL
