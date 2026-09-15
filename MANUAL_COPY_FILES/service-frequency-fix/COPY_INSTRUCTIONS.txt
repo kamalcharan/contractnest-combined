@@ -1,0 +1,45 @@
+SERVICE FREQUENCY -> EVENTS CORRECTION
+Branch: codex/service-frequency-fix
+Prerequisite: events-preview release installed.
+Affected submodule: contractnest-ui only. Six files. No API/Edge/DB changes.
+
+PULL AND COPY — WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/service-frequency-fix
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\service-frequency-fix\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not force overwrite." }
+
+Restart UI, then Ctrl+F5.
+
+WHAT IS FIXED
+- A service with quantity > 1 means multiple visits. It now requires the
+  delivery interval (Every ___ days) before Apply/Save can proceed.
+- The error names the service and requested visit count.
+- Existing incomplete drafts no longer display a false 1-of-1 service event.
+  Their payment events remain visible and unchanged.
+- Events Preview blocks completion and links directly to Services for repair.
+- No interval is guessed from billing frequency or contract term.
+
+FILES
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\eventsModel.ts
+contractnest-ui\src\components\contracts\ContractWizard\experience\serviceScheduleRules.ts (new)
+
+TEST
+1. Open Services and edit Air Handling Unit Servicing.
+2. Set visits to 8 and clear delivery interval. Apply must be blocked with a
+   named message asking for Every ___ days.
+3. Enter the correct interval, Apply, save Services, then continue through
+   Money and Delivery.
+4. Events Preview must show Services · 8 and cards 1 of 8 through 8 of 8.
+5. Confirm payment event count and amounts are unchanged.
+6. Reopen the draft and confirm the eight service dates persist.
+7. For an older incomplete draft, verify no false 1-of-1 service card appears;
+   use Fix service schedule in Services, enter the interval, and return.
+8. Test desktop/mobile and your active theme.
+
+Do not merge/push yet. Test first and report the result.

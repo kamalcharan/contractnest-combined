@@ -1,0 +1,21 @@
+QA — SERVICE FREQUENCY HANDOFF
+
+Confirmed original defect through the real experience flow with mocked persistence:
+- Catalogue add -> quantity 8 -> no service interval -> save/reopen -> Events = 1.
+- Catalogue add -> quantity 8 -> 30-day interval -> save/reopen -> Events = 8.
+
+After correction:
+PASS: quantity 8 with missing interval is blocked inside its own editor.
+PASS: quantity 8 with 30-day interval survives save/reopen, Money and Delivery,
+      then produces eight service events in Events Preview.
+PASS: legacy incomplete draft names the service and required interval, suppresses
+      the false service event, preserves the billing event, blocks completion,
+      and navigates to Services for repair.
+PASS: full Events Preview regression: filters, date changes, bulk shifts, holidays,
+      loaders/toasts, save/reopen, 12 themes light/dark, 1440/1024/390/320px.
+PASS: event-model and Money-model regression suites.
+PASS: zero new TypeScript diagnostics against the creation baseline.
+PASS: production Vite build (existing unrelated warnings remain).
+
+No live contract was modified. The browser tests use the real wizard/pages and
+isolated API/auth/persistence fixtures. Verify with your affected local draft.
