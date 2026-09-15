@@ -1,7 +1,8 @@
 import type {ConfigurableBlock} from '@/components/catalog-studio';
+import {resolveServiceScheduleDays} from '@/utils/service-contracts/contractEvents';
 
 export function missingServiceSchedule(block:ConfigurableBlock):boolean {
-  return block.categoryId==='service' && !block.unlimited && !block.config?.billingOnly && Number.isInteger(block.quantity) && block.quantity>1 && !(Number.isFinite(block.serviceCycleDays)&&block.serviceCycleDays!>0);
+  return block.categoryId==='service' && !block.unlimited && !block.config?.billingOnly && Number.isInteger(block.quantity) && block.quantity>1 && resolveServiceScheduleDays(block)<=0;
 }
 
 export function serviceScheduleErrors(blocks:ConfigurableBlock[]):string[] {

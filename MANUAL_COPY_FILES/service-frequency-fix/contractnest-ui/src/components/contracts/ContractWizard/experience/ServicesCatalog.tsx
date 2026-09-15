@@ -9,6 +9,7 @@ import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 import type { CoverageTypeItem } from '../steps/AssetSelectionStep';
 import { isAgreementTerms } from './serviceCatalogModel';
 import {serviceScheduleErrors} from './serviceScheduleRules';
+import {resolveServiceScheduleDays} from '@/utils/service-contracts/contractEvents';
 
 export interface ServicesCatalogProps {
   catalog: Block[]; selected: ConfigurableBlock[]; coverage: CoverageTypeItem[]; currency: string;
@@ -78,12 +79,13 @@ export default function ServicesCatalog(p: ServicesCatalogProps) {
     const label = b.name || 'Name this commitment';
     const billingLabel = getCadenceCycle(b.cycle)?.label || CYCLE_OPTIONS.find(c => c.id === b.cycle)?.label || b.cycle || 'Billing cycle not set';
     const coverage = p.coverage.find(c => c.id === b.coverageTypeId);
+    const inheritedServiceSchedule = !b.serviceCycleDays && b.categoryId === 'service' && b.quantity > 1 && resolveServiceScheduleDays(b) > 0;
     if (instance && editing?.id === b.id) return <article className="sv-row cm-card" data-selected="true" data-editing="true" data-commitment-id={b.id} key={b.id}>{p.editor(b,block)}</article>;
     if (instance) return <article className="sv-row cm-card" data-selected="true" data-editing="false" data-commitment-id={b.id} key={b.id}>
       <div className="cm-card-top"><span className="sv-type">{['service','session'].includes(b.categoryId || '') ? <Wrench size={15}/> : <FileText size={15}/>} {b.categoryName || b.categoryId}</span><span className="cm-added"><Check size={14}/>Added</span></div>
       <h3>{label}</h3><small>{b.isFlyBy ? 'FlyBy · this agreement only' : block ? 'From Catalog Studio' : 'Saved selection · catalogue eligibility needs review'}{b.config?.customPrice !== undefined && ' · Price adjusted'}</small>
       <div className="cm-facts"><span><Boxes size={16}/>{coverage ? `${coverage.resource_name}${b.config?.splitUnitIndex ? ` · Unit ${b.config.splitUnitIndex} of ${b.config.splitUnitTotal}` : ` × ${coverage.unit_count}`}` : b.coverageTypeId ? 'Coverage needs review' : 'Whole agreement'}</span>
-        <span><CalendarDays size={16}/>{b.config?.billingOnly ? 'Billing only · no service visits' : b.unlimited ? 'Ongoing support' : `${b.quantity} ${b.config?.cadencePricing ? 'full payments' : b.categoryId === 'session' ? 'sessions' : b.categoryId === 'service' ? 'visits' : 'items'}`}{!b.config?.billingOnly && b.serviceCycleDays ? ` · every ${b.serviceCycleDays} days` : ''}</span>
+        <span><CalendarDays size={16}/>{b.config?.billingOnly ? 'Billing only · no service visits' : b.unlimited ? 'Ongoing support' : `${b.quantity} ${b.config?.cadencePricing ? 'full payments' : b.categoryId === 'session' ? 'sessions' : b.categoryId === 'service' ? 'visits' : 'items'}`}{!b.config?.billingOnly && b.serviceCycleDays ? ` · every ${b.serviceCycleDays} days` : inheritedServiceSchedule ? ` · ${billingLabel.toLowerCase()} schedule` : ''}</span>
         {priced && <span><Receipt size={16}/>{billingLabel}{b.cycle === 'custom' && b.customCycleDays ? ` · ${b.customCycleDays} days` : ''} billing</span>}</div>
       <div className="cm-pricing"><div><strong>{priced ? missingPrice ? 'Price needed' : money(effectivePrice,b.currency) : 'Included'}</strong><small>{priced ? b.config?.cadencePricing ? 'Per payment' : b.categoryId === 'service' && !b.config?.billingOnly ? 'Per visit' : 'Per unit' : 'No charge'}</small><small>{priced && (b.taxRate ? `${b.taxRate}% tax · ${b.taxInclusion}` : 'No tax configured')}</small></div><div className="sv-price">{priced ? money(b.totalPrice,b.currency) : 'No charge'}<small>Commitment total · configured tax</small></div></div>
       {currencyMismatch && <p role="alert">Currency mismatch: {b.currency}. Review this line; no conversion is assumed.</p>}
