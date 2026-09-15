@@ -1,0 +1,48 @@
+GROUP SESSION CHECK-IN UPI REQUEST FIX
+Branch: codex/checkin-upi-request-fix
+Affected: contractnest-ui only. Two implementation files and one regression test.
+No API/Edge migration, integration setting, payment or attendance record changed.
+
+Run COPY_COMMANDS.ps1. It preflights all targets against the D: baseline or payload before copying; existing files are backed up under LOCAL_BACKUP.
+
+EXACT PATHS relative to parent:
+MANUAL_COPY_FILES/checkin-upi-request-fix/contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+ -> contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+MANUAL_COPY_FILES/checkin-upi-request-fix/contractnest-ui/src/pages/checkin/upiPayment.ts
+ -> contractnest-ui/src/pages/checkin/upiPayment.ts
+MANUAL_COPY_FILES/checkin-upi-request-fix/contractnest-ui/src/pages/checkin/upiPayment.test.cjs
+ -> contractnest-ui/src/pages/checkin/upiPayment.test.cjs
+
+CONFIRMED FINDINGS
+- The current page launched a bare upi://pay. It supplied no payee, amount, currency or request reference.
+- Clipboard success was shown before completion and even when clipboard was unavailable/denied.
+- Read-only BBB live integration check returned configured payee U S R Travels; test has separate details. These were not changed.
+- Existing comments attributed previous failures to signature restrictions without runtime evidence. This release does not claim a cause for a bank-side rejection.
+
+FIX
+- Send pa, pn, tr, tn, am, cu with safely encoded configured values; unique reference per explicit launch.
+- Validate payee/amount/INR before launch. No fabricated merchant category or signing data.
+- Keep launch synchronous with the user gesture; Copy is a separate awaited action with visible failure.
+- Keep manual payment/reference path available when app links fail; warn against duplicate payment and advise contacting the bank for receiver restrictions.
+- No browser-return or launch event marks payment verified. Existing declaration and duplicate/attendance handlers unchanged.
+
+VERIFICATION
+Run from contractnest-ui: node src/pages/checkin/upiPayment.test.cjs
+Tests cover URI values, escaping, rejected malformed/empty data, and clipboard success/failure.
+Production build checked separately. No actual payment or attendance submission performed by agent.
+
+PHONE CHECKS (no payment required for initial test)
+1. Use a BBB check-in QR and select the correct due. Tap Open UPI app.
+2. Confirm GPay displays the configured recipient and correct INR amount. CANCEL payment after inspection.
+3. Return and confirm nothing has been marked paid or attendance submitted merely by opening the app.
+4. Test Copy and manual path. Only enter a real UPI reference after a real successful payment; never use a test reference in Live.
+5. Test both member and guest payment screens and duplicate-payment warnings.
+6. Test environment must use its own configured payee; do not use live recipient as a fallback.
+
+LIMITATION / FOLLOW-UP
+If GPay displays the correct recipient and amount but reports receiver blocked/not allowed, obtain the exact error and ask the receiving bank/PSP to confirm merchant-intent eligibility. A valid URL cannot override bank restrictions. Google documents verified merchant and PSP status-check prerequisites. The current offline declaration flow is not automatic payment verification.
+References:
+https://developers.google.com/pay/india/api/android/in-app-payments
+https://developers.google.com/pay/india/api/web/intro
+
+This package is local and unpublished. Pulling/copying does not deploy a hosted production UI; deploy through your normal tested process after review.
