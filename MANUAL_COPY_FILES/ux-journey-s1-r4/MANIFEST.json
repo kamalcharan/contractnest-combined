@@ -1,0 +1,36 @@
+{
+  "release": "ux-journey-s1-r4",
+  "prerequisite": "ux-journey-s1-r3",
+  "files": [
+    {
+      "path": "contractnest-ui/src/pages/experience/index.tsx",
+      "releaseHash": "dd2c252e3da74363daad6de949dcc50b3ac5a5504c7a84b5b22d132671c4c4f0",
+      "baseHash": "02e4efc3a8b91b93b4258fa01b9f5f1988985d09ac232844cf90bb552d3c2e10"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/experience.css",
+      "releaseHash": "2d28cbb83d330ec7a5012e1e0af0c1e7cfecd65c2ac01a2e0783f8dfc6881cbb",
+      "baseHash": "ad9d4f675da294c4115e8ef6f4fa9055d7a4bbe3bfd7a64f3e6c88e9221af63d"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/StartChooser.tsx",
+      "releaseHash": "8dcab4017cb2aaf2e8356e837f6dd51e3f05c301d3dbcaee462c6fbaa417a013",
+      "baseHash": "b4d785b92002039c80f17e4c61cbbea92dce876ff64cb8973f75a1358c929476"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/verify.mjs",
+      "releaseHash": "9f0d862e77c63613ac166d4e5fe484f9081724f524cd1c7718ed3f89eb6b6c34",
+      "baseHash": "8bc106ee0f4ef9f5031dc017ceaae26a96ed90526fc54eee73432be7de29e768"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/accountSignals.ts",
+      "releaseHash": "58b1c1d070400f65e7ac8dbef212a9923659660341990ff295817d76ce32e804",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/TenantAccountNotice.tsx",
+      "releaseHash": "daec4289b8b6ff8f0b78bc9f30bd3209d3c009805f1c7b9a1d35c424cb817214",
+      "baseHash": null
+    }
+  ]
+}

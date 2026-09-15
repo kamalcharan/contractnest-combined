@@ -1,0 +1,21 @@
+NCONTRACTS MENU AND ROUTE
+Affected submodule: contractnest-ui only.
+Run COPY_COMMANDS.ps1. It checks all targets before copying and backs up existing files.
+
+Exact paths relative to the parent repo:
+MANUAL_COPY_FILES/ncontracts-menu/contractnest-ui/src/App.tsx
+ -> contractnest-ui/src/App.tsx
+MANUAL_COPY_FILES/ncontracts-menu/contractnest-ui/src/utils/constants/industryMenus.ts
+ -> contractnest-ui/src/utils/constants/industryMenus.ts
+
+NContracts is a separate main menu entry opening /ncontracts.
+It renders the existing ContractsExperiencePage inside ProtectedRoute and MainLayout.
+The existing Contracts menu and /contracts/experience remain available unchanged.
+No contract, service, billing or database logic changed.
+
+Test after restarting UI and Ctrl+F5:
+1. Click NContracts in the main menu. Confirm the new contracts list appears.
+2. Confirm /ncontracts opens directly and survives refresh.
+3. Switch Revenue/Expense and Live/Test using existing controls; confirm scoped data.
+4. Open a draft from the new list; confirm the experience wizard resumes.
+5. Click original Contracts / All Contracts; confirm original page is unchanged.

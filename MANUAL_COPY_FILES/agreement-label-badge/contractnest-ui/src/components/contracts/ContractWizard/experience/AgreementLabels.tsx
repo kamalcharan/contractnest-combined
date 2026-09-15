@@ -1,0 +1,73 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import resourcesService from '@/services/resourcesService';
+
+export interface AgreementLabel {
+  id: string;
+  display_name: string;
+  detail_name: string;
+  form_settings?: { group?: string; group_label?: string; short_name?: string };
+}
+
+export default function AgreementLabels({ items, selectedId, selectedName, selectedGroup, onSelect, children }: {
+  items: AgreementLabel[]; selectedId: string | null; selectedName: string | null;
+  selectedGroup: string | null;
+  children: (selector: React.ReactNode) => React.ReactNode;
+  onSelect: (id: string | null, name: string | null, group?: string | null) => void;
+}) {
+  const { currentTenant, isLive, perspective } = useAuth();
+  const [expanded, setExpanded] = useState(false);
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { if (expanded && !dialog.current?.open) dialog.current?.showModal(); }, [expanded]);
+  const close = () => { dialog.current?.close(); setExpanded(false); };
+  const context = useQuery({
+    queryKey: ['agreement-label-priority', currentTenant?.id, isLive, perspective],
+    enabled: !!currentTenant?.id, retry: false,
+    queryFn: async () => {
+      // Read the existing ICP signal directly: do not turn request errors into
+      // a fabricated empty ranking or infer an offering from an industry name.
+      const [ranking, templates] = await Promise.all([
+        api.get('/api/onboarding/resource-ranking'),
+        resourcesService.getResourceTemplates({ limit: 100 }),
+      ]);
+      if (!ranking.data?.success || !ranking.data?.data || !templates?.data) throw new Error('Incomplete ICP context');
+      const groups = new Set<string>();
+      for (const resource of templates.data) {
+        if (ranking.data.data[resource.id]?.forYou !== true) continue;
+        if (resource.resource_type_id === 'equipment') groups.add('equipment_maintenance');
+        if (resource.resource_type_id === 'asset') groups.add('facility_property');
+        if (resource.resource_type_id === 'team_staff') groups.add('service_delivery');
+      }
+      // Never claim an exhaustive category priority from a truncated catalogue.
+      return templates.pagination?.has_more ? [] : [...groups];
+    },
+  });
+  const selected = items.find(item => item.id === selectedId);
+  const suggested = context.data?.length === 1 ? context.data[0] : null;
+  const group = selected?.form_settings?.group || selectedGroup || suggested;
+  const groups = [...new Set(items.map(item => item.form_settings?.group).filter(Boolean))] as string[];
+  const groupName = (key: string) => items.find(item => item.form_settings?.group === key)?.form_settings?.group_label || key;
+  const choose = (item: AgreementLabel | undefined) => onSelect(item?.id || null, item ? item.form_settings?.short_name || item.display_name || item.detail_name : null, item?.form_settings?.group || group);
+  const labelText = selectedId ? selectedName || selected?.form_settings?.short_name || selected?.display_name || selected?.detail_name || 'Saved label unavailable' : 'No label selected';
+  const selector = <div className="ag-label-display">
+    <div>Agreement label <small>· optional</small></div>
+    <div className="ag-label-slot"><span className="ag-label-badge" data-selected={!!selectedId} role="status" aria-label="Agreement label">{labelText}</span></div>
+    {selectedId && !selected && <small>Saved label unavailable in current options.</small>}
+  </div>;
+  return <>
+    <div className="ag-category-strip"><div><strong>{group ? groupName(group) : 'Choose a contract category'}</strong><small>{selectedName ? selectedName + ' · ' : ''}{selectedGroup || selected ? 'Selected for this agreement' : suggested ? 'Suggested from workspace profile' : context.isLoading ? 'Checking workspace profile…' : 'No category selected'}</small></div><button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>{expanded ? 'Close' : 'Change'}</button></div>
+    {context.isError && <p role="alert">Workspace recommendations could not load. You can choose a category using Change. <button type="button" onClick={() => void context.refetch()}>Retry</button></p>}
+    <dialog ref={dialog} className="ag-family-modal" aria-labelledby="ag-family-title" onClose={() => setExpanded(false)} onCancel={() => setExpanded(false)}>
+      <div className="ag-modal-heading"><h2 id="ag-family-title">Contract family &amp; agreement label</h2><button type="button" aria-label="Close contract family chooser" onClick={close}>×</button></div>
+      <p>Equipment such as Lifts is coverage. AMC / CMC is the agreement label. One does not silently determine the other.</p>
+      <div className="ag-family-stack">{groups.map(key => <section key={key} className="ag-family-card">
+        <h3>{groupName(key)}</h3>
+        <p>{({equipment_maintenance:'Equipment coverage, maintenance and comprehensive care',facility_property:'Spaces, properties and facility operations',service_delivery:'Wellness, programmes and other service-based delivery',flexible_hybrid:'Flexible and combined service agreements'} as Record<string,string>)[key]}</p>
+        <div className="ag-family-tabs" role="group" aria-label={groupName(key)}>{items.filter(item => item.form_settings?.group === key).map(item => <button key={item.id} type="button" aria-pressed={selectedId === item.id} onClick={() => { choose(item); close(); }}>{item.form_settings?.short_name || item.display_name}</button>)}</div>
+      </section>)}</div>
+    </dialog>
+    {children(selector)}
+  </>;
+}

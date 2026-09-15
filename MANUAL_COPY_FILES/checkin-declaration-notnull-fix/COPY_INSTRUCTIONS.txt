@@ -1,0 +1,116 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — checkin-declaration-notnull-fix
+═══════════════════════════════════════════════════
+Branch: claude/bbb-checkin-issues-ohrsuf
+
+╔═══════════════════════════════════════════════════════════════╗
+║ STATUS — MIGRATION IS ALREADY APPLIED TO PRODUCTION           ║
+║ (applied 15 Aug 2026 on owner instruction "run the            ║
+║ migration", project uwyqhzotluikawcboldr, migration name      ║
+║ checkin_declaration_not_null_and_attendance_isolation)        ║
+║                                                               ║
+║ 074 — member payment on a meeting day                         ║
+║   ✅ gs_submit_checkin  session-day insert fixed              ║
+║   ✅ gs_submit_checkin  no-session insert hardened            ║
+║   ✅ gs_submit_checkin  attendance isolated from payment      ║
+║   ✅ end-to-end probe   member + meeting day + UPI ref → 1 row║
+║   ✅ isolation probe    payment fails, attendance survives    ║
+║   ✅ CONFIRMED IN THE REAL UI by the owner, 15 Aug 14:52 and  ║
+║      14:54 IST — Yashwanth ₹4,500 and Manjunath ₹7,500 both   ║
+║      landed with attendance AND a declaration                 ║
+║                                                               ║
+║ 075 — duplicate declarations                                  ║
+║   ✅ index widened to status IN ('pending','confirmed')       ║
+║   ✅ all 3 ON CONFLICT clauses repointed in lockstep          ║
+║   ✅ blocked duplicates now REPORTED, not silently discarded  ║
+║   ✅ narrow index uq_..._pending dropped                      ║
+║   ✅ probes: new → 1 row · dup-after-confirm → 0 + reported   ║
+║              · re-declare-after-reject → 1 row (must work)    ║
+║                                                               ║
+║ Both post-checks passed (they RAISE if the rewrite no-ops).   ║
+║ The SQL files here are source-of-record copies of what was    ║
+║ applied. Do NOT re-run them — the anchor assertions will      ║
+║ RAISE on a second run, because the old expressions they look  ║
+║ for are gone. That is intended, not a fault.                  ║
+╚═══════════════════════════════════════════════════════════════╝
+
+FILES IN THIS BATCH
+─────────────────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/
+      074_checkin_declaration_notnull.sql
+      075_checkin_declaration_dedup_any_open_status.sql
+
+Submodules Affected: contractnest-edge (migration files only — DB already live)
+No API change. No UI change. The frontend already sent the payment correctly;
+the 2026-08-06 payment-intent guard in SessionCheckinPage.tsx is working and
+was not touched.
+
+─────────────────────────────────
+WHAT THIS FIXED
+─────────────────────────────────
+A member paying a due at check-in ON A MEETING DAY hit
+  23502 null value in column "session_contract_id"
+and, because the function is one transaction, lost their ATTENDANCE too.
+
+Regression from migration 052: it rewrote gs_submit_checkin to add ON CONFLICT
+and changed session_contract_id from v_mc to v_tok.contract_id, which is NULL
+for every block-scoped token.
+
+Live impact: zero member payment declarations between 27 Jul and 15 Aug 2026.
+  25 Jul (pre-052):  35 attendance / 30 declarations
+   8 Aug (post-052): 13 attendance /  0 member declarations
+
+─────────────────────────────────
+STEP 1: Copy migration file into the submodule
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\checkin-declaration-notnull-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ Migration file copied (DB already live)" -ForegroundColor Green
+
+─────────────────────────────────
+STEP 2: Test — this is the part that matters
+─────────────────────────────────
+The 8 Aug debug session passed while this bug was live, because it tested the
+branches that still worked. Do NOT repeat that. Test the exact combination:
+
+  ⚠️  a MEMBER (not a guest)
+  ⚠️  on a day that HAS a session
+  ⚠️  who actually TYPES a UPI reference and taps "Confirm payment"
+
+Any test missing one of those three will pass regardless of this fix.
+
+Test env has a session today and a member with an open due:
+  token   29d817f7e4c14589bd29f72c611c965b0e2b5083d7464b0388ba1116914ff655
+  member  CHARAN KAMAL  +919949701175
+  due     Quarterly 2/4  ₹4,500  (overdue, 30 Jun 2026)
+
+TESTING CHECKLIST
+- [ ] Open the test check-in link, identify with the phone above
+- [ ] Payment step shows Quarterly 2/4 ₹4,500
+- [ ] Enter a UPI reference, tap "Confirm payment", complete check-in
+- [ ] Page reaches "You're checked in" with NO error
+- [ ] Ops → Group Sessions → "Payments to confirm" shows the declaration
+- [ ] Attendance for the member shows present for today
+- [ ] Repeat WITHOUT entering a reference — attendance still records,
+      no declaration is created (the 2026-08-06 intent guard)
+
+─────────────────────────────────
+STEP 3: BEFORE THE NEXT LIVE MEETING — 18 AUG 2026
+─────────────────────────────────
+18 Aug is a collection day: the quarterly cohort is carrying the overdue
+30 Jun instalment, so most attendees will be shown a Pay step. 8 Aug only had
+2 of 13 with anything outstanding, which is why it looked fine.
+
+Also worth doing before then:
+  - Ask the chair whether any UPI receipts from 8 Aug have no matching
+    declaration. Those members' money may have been paid but never recorded.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test on the test environment and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════

@@ -1,0 +1,76 @@
+SPRINT 1.5 - HOME AND DEFAULT PRODUCT NAVIGATION
+Branch: codex/ux-journey-sprint-1
+Affected submodule: contractnest-ui only. Requires Sprint 1.4 applied.
+Source: local C: parent checkout; no GitHub push performed.
+
+PULL AND COPY - WINDOWS POWERSHELL
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/ux-journey-sprint-1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+
+# Optional: inspect every exact Copy-Item source and destination first.
+Get-Content "MANUAL_COPY_FILES\ux-journey-s1-r5\COPY_COMMANDS.ps1"
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\ux-journey-s1-r5\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Do not overwrite mismatched files; share the output." }
+
+# The script verifies ALL baselines before copying ANY file. It only creates
+# the new navigation folder and copies the 21 explicitly listed UI files.
+# If a shared file has changed in your checkout, stop and request a refreshed
+# package. Do not bypass the guard or overwrite other ongoing work.
+
+RESTART AND TEST
+cd contractnest-ui
+node src/utils/navigation/verify.mjs
+node src/pages/experience/verify.mjs
+npx vite build --mode production
+npm run dev
+
+Hard refresh (Ctrl+F5), then log in normally. Completed full workspaces now
+land on /experience; there is no longer a need to type that URL manually.
+Use your actual UI port. No API restart, migration, payment, or AI deployment.
+
+FILES AND PURPOSES (all paths relative to contractnest-ui/src)
+App.tsx - central entry resolver and Home within the existing layout/gates.
+context/AuthContext.tsx - default handoffs through root; await tenant setup;
+  environment reload resolves Home/Lite; tenant setter correctly async.
+components/auth/ProtectedRoute.tsx - capture requested internal destination.
+pages/auth/LoginPage.tsx - preserve requested route; delegate default entry.
+pages/auth/GoogleCallbackPage.tsx - default entry; safe unlock-return URL.
+pages/auth/SelectTenantPage.tsx - await selected-tenant setup before routing.
+components/layout/TenantSwitcher.tsx - await tenant check before routing.
+components/layout/MainLayout.tsx - collapsible desktop rail; native modal
+  mobile drawer using the actual shared Sidebar and Header.
+components/layout/Sidebar.tsx - identify submenu toggles; expanded state
+  exposed for accessibility; existing menu/access logic preserved.
+components/layout/navigation.css - scoped responsive shared-shell styling.
+utils/constants/industryMenus.ts - Home entry; existing destinations retained.
+pages/experience/index.tsx - remove temporary navigation and duplicate header.
+pages/experience/experience.css - fit Home within the shared content area.
+utils/navigation/entry.ts - default route, safe destination, expiring handoff.
+utils/navigation/EntryRedirect.tsx - dispatch once after auth/tenant readiness.
+utils/navigation/verify.mjs - route matrix, safe URL and storage regression tests.
+components/onboarding/OnboardingLayout.tsx - completed handoff to root/Home.
+contexts/OnboardingContext.tsx - sync confirmed completion before handoff.
+pages/onboarding/OnboardingPendingPage.tsx - confirmed completion handoff.
+pages/onboarding/steps/CompleteStep.tsx - completion destination only.
+lite/onboarding/PlanStep.tsx - express completion destination only.
+
+BOUNDARIES
+VaNi onboarding fields, sequence, APIs, and completion work are not redesigned.
+Only its exit navigation and confirmed completion-state handoff are adjusted.
+Existing contracts, cockpit, finance, appointments, and group-session screens
+are unchanged. Their shared menu/header shell now supports a mobile drawer.
+Lite users retain their existing cockpit/Lite menu and restricted-route gate.
+Direct links do not switch tenant or environment automatically: authorization
+and the destination's existing checks still apply. Users must choose the
+appropriate workspace. Internal pending destinations expire after 30 minutes.
+
+AFTER YOUR TESTING
+Commit only tested UI changes on your UI feature branch, then use your normal
+reviewed merge/push and parent submodule update process. Do not use git add .
+if unrelated work is present. This package does not commit/push your UI repo.
+Suggested message: feat(ux): make Home default with shared responsive navigation
+
+See TESTING_CHECKLIST.md and NEXT_STEPS.md before merging.

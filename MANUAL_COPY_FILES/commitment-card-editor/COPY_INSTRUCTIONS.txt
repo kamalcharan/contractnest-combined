@@ -1,0 +1,121 @@
+CONTRACTNEST — APPROVED COMMITMENT CARDS + SINGLE EDITOR
+Branch: codex/commitment-card-editor
+Affected submodule: contractnest-ui only. No API, Edge, database or WhatsApp changes.
+Requires: services-catalog-context-fix already copied and working.
+Original checklist wizard and its editor are unchanged by this release.
+
+FILES (each source below is inside this release's contractnest-ui folder;
+destination is the same relative path inside your working contractnest-ui):
+src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx
+  Wires the experience-only editor; original rendering and update math remain.
+src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx
+  Selected commitment cards and one editor panel; unchanged catalogue eligibility.
+src\components\contracts\ContractWizard\experience\ServicesPage.tsx
+  Guards chapter saves/navigation until the open edit is applied or cancelled.
+src\components\contracts\ContractWizard\experience\services.css
+  Theme-token styling and responsive cards/editor.
+src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx
+  New staged editor; apply/cancel, cadence, quantity, recurring service settings,
+  FlyBy, split schedules, complimentary, tax summary and billing-only controls.
+src\components\contracts\ContractWizard\experience\CommitmentEditingContext.ts
+  Shares editor-open state with chapter controls.
+
+STEP 1: RECEIVE THE LOCAL FEATURE BRANCH (NOT A GITHUB DOWNLOAD)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/commitment-card-editor
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+
+STEP 2: VERIFY FILES RECEIVED
+Get-ChildItem "MANUAL_COPY_FILES\commitment-card-editor"
+Get-Content "MANUAL_COPY_FILES\commitment-card-editor\COPY_INSTRUCTIONS.txt"
+
+STEP 3: COPY ALL SIX FILES WITH BASELINE CHECKS AND BACKUPS
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\commitment-card-editor\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the error; do not force overwrite." }
+
+The script checks ALL target files before any copy, backs up existing files,
+copies each listed path, and checks hashes. BASELINE files are for comparison,
+not for copying into your UI. A mismatch means your local file has different
+edits: stop and request a refreshed patch. Re-running an applied package is safe.
+
+EXACT INDIVIDUAL COPY COMMANDS (reference; use the guarded script above):
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\commitment-card-editor\contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditingContext.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditingContext.ts" -Force
+
+TEST BEFORE COMMITTING OR MERGING:
+cd contractnest-ui
+npm run dev
+Open http://localhost:5173/contracts/experience/create?relationship=partner
+Complete Agreement and Coverage, then Services. Or resume an existing experience
+draft at Services. Ctrl+F5 after restarting the UI.
+
+TESTING CHECKLIST
+[ ] Add a service for your selected equipment/facility; card shows correct scope.
+[ ] Edit commitment opens one editor; no nested Advanced section.
+[ ] Change quantity/price; Cancel leaves the original card unchanged.
+[ ] Apply updates card/total; it does NOT change Catalog Studio.
+[ ] Save draft/services, leave and reopen; applied values are retained.
+[ ] While editor is open, page Save/Back/Close require apply or cancel first.
+[ ] Billing frequency is independent of service frequency; test custom days.
+[ ] Cadence-priced block: change cadence and back; negotiated price is restored.
+[ ] Where applicable, set final payment for a partial billing period.
+[ ] Billing-only shows no visits; turning it off preserves delivery settings.
+[ ] FlyBy: name, rich description, price or intentional complimentary; apply.
+[ ] FlyBy recurring service: weekday, first date, grace period and per-unit split.
+[ ] Group session count, spare category, content/checklist remain available.
+[ ] Mandatory T&C is retained once at agreement scope and cannot be removed.
+[ ] Resource/currency/tenant/live-test filtering behaves as before.
+[ ] Check your themes and phone-width layout; original wizard still works.
+
+IMPORTANT BEHAVIOR
+Taxes are shown from the real catalogue snapshot, not invented sample tax rates.
+Apply commits to the wizard state; Save draft/services persists the contract.
+Cancel discards local editor changes. Cancelling a just-added FlyBy leaves its
+original placeholder: remove it or complete it before saving Services.
+No appointments, invoices, messages or contract status transitions are triggered.
+The Money chapter and WhatsApp are not implemented in this release.
+
+STEP 4: COMMIT UI CHANGES — ONLY AFTER YOUR TESTING
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git status
+# Stay on your existing UI review branch, or create one if currently on main:
+# git switch -c codex/commitment-card-editor
+git add src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx src/components/contracts/ContractWizard/experience/ServicesPage.tsx src/components/contracts/ContractWizard/experience/services.css src/components/contracts/ContractWizard/experience/CommitmentEditor.tsx src/components/contracts/ContractWizard/experience/CommitmentEditingContext.ts
+git commit -m "Add product-led commitment cards and staged editor"
+# Push the review branch when ready:
+git push -u origin HEAD
+cd ..
+
+STEPS 5–9: EDGE / API / FAMILYKNOWS / MOBILE / DOCUMENTATION
+Not affected. Do not commit or change these submodules for this release.
+
+STEP 10: UPDATE PARENT SUBMODULE REFERENCE AFTER UI COMMIT
+git add contractnest-ui
+git commit -m "Update UI for commitment cards and single editor"
+git push -u origin HEAD
+
+STEP 11: MERGE AFTER APPROVAL
+UI default branch is main. Merge your tested UI review branch via your normal
+review process, then update the parent's UI pointer to that merged commit.
+Verify the parent default branch with git remote show origin; do not assume
+master vs main or resolve submodule conflicts by replacing untested work.
+
+STEP 12: VERIFY
+git status
+git -C contractnest-ui status
+Unrelated local work may remain; this package does not remove or commit it.
+
+STEP 13: RESTART AND RETEST
+cd contractnest-ui
+npm run dev
+# Ctrl+F5 in browser. No API/Edge restart or migration needed.
+
+ROLLBACK
+The copy script prints LOCAL_BACKUP\<timestamp>. Restore the four prior files
+from that directory to their same UI paths. The two new editor files are inert
+once the previous ServiceBlocksStep/ServicesPage are restored. Keep the backup
+until you finish review. No data changes need rollback.

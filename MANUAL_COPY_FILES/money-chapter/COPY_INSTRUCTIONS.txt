@@ -1,0 +1,99 @@
+CONTRACTNEST - MONEY CHAPTER - PHASE 1: COPY AND TEST ONLY
+Branch: codex/money-chapter
+Source parent: C:\Users\kamal\Documents\New project\contractnest-combined
+Destination parent: D:\projects\core projects\ContractNest\contractnest-combined
+Affected submodules: contractnest-ui (8 files), contractnest-api (1 file).
+No database migration. No Edge, mobile, FamilyKnows or documentation-submodule changes.
+
+PULL AND COPY (Windows PowerShell)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/money-chapter
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\money-chapter\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not force overwrite." }
+
+The script checks every target before copying anything, backs up previous files
+under MANUAL_COPY_FILES\money-chapter\LOCAL_BACKUP\<timestamp>, and verifies hashes.
+Check without copying by adding -CheckOnly to the script invocation.
+Restart BOTH API and UI development servers, then Ctrl+F5 in the browser.
+Do not deploy only the UI or only the API: billing calculations must match.
+
+EXACT SOURCE -> DESTINATION PATHS
+All sources below are under MANUAL_COPY_FILES\money-chapter\.
+All destinations are relative to the destination parent above.
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+  Wires Services to Money, saves and resumes the Money chapter.
+contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx
+  Shows Continue to Money only after a valid Services save.
+contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+  Approved Money layout, read-only prices, discount, cycles, payment plan and preview.
+contractnest-ui\src\components\contracts\ContractWizard\experience\moneyModel.ts
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\moneyModel.ts
+  Tax/discount totals, catalogue cadence repricing, validation and shared-event preview.
+contractnest-ui\src\components\contracts\ContractWizard\experience\money.css
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\money.css
+  Theme-token styling, responsive cards and mobile layout.
+contractnest-ui\src\components\contracts\ContractWizard\steps\BillingViewStep.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\steps\BillingViewStep.tsx
+  Narrow correction: catalogue fee blocks participate in existing billing totals.
+contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts
+  -> contractnest-ui\src\components\contracts\ContractWizard\logic\mapper.ts
+  Preserves a genuine zero grand total instead of substituting gross value.
+contractnest-ui\src\utils\service-contracts\contractEvents.ts
+  -> contractnest-ui\src\utils\service-contracts\contractEvents.ts
+  Fees, paid unlimited billing, recurring start/end timing and cent rounding.
+contractnest-api\src\services\contractEventsDerivationService.ts
+  -> contractnest-api\src\services\contractEventsDerivationService.ts
+  Matching billing rules, full event identifiers and final-instalment rounding.
+
+TEST ENTRY
+http://localhost:5173/contracts/experience/create?relationship=partner
+Or use the Client Contract entry in the experience list.
+Continue through Agreement and Coverage; select valid commitments and mandatory T&C.
+Click Save services, then Continue to Money.
+Already-saved Money drafts reopen in Money through the existing draft entry.
+
+ACCEPTANCE CHECKLIST
+[ ] Service, spare, fee and FlyBy lines retain names, coverage, currency and prices.
+[ ] Mandatory T&C is retained, not charged as a service; missing T&C blocks completion.
+[ ] Inclusive/exclusive tax stays from the catalogue; edit prices through Services.
+[ ] Percentage and fixed discounts reduce the subtotal before tax.
+[ ] Invalid discounts (>100%, negative, above subtotal or blank value) cannot save Money.
+[ ] Each line can retain its own cycle. Shared cycle updates eligible priced lines only.
+[ ] Rate-card blocks offer only configured eligible cycles; switching reprices the term.
+[ ] A cadence final payment can be adjusted; a second EMI plan is not offered for it.
+[ ] Upfront is available only with shared prepaid lines.
+[ ] EMI is available only for supported terms/cycles; the final payment absorbs cents.
+[ ] Recurring payment timing at period start/end produces the expected dates.
+[ ] Paid unlimited commitments produce billing, but no invented service-visit events.
+[ ] Payment preview adds up exactly to the discounted, tax-inclusive contract total.
+[ ] Invalid or clipped schedules show a blocking error, not a silent replacement value.
+[ ] Save Money, close, reopen: discount, cycle, timing and instalments remain intact.
+[ ] Return to Services, edit a line, save and return: totals and preview update.
+[ ] Changing workspace, live/test or Revenue/Expense while open locks editing.
+[ ] Buyer and seller wording, current theme/dark mode and mobile layout remain correct.
+[ ] Saving stays Draft: no acceptance, notification, invoice or payment action occurs.
+[ ] Existing /contracts workflow, templates and the previous Services editor still work.
+
+OPTIONAL LOCAL FINANCIAL REGRESSION CHECK (after copying, UI dependencies installed)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+node "MANUAL_COPY_FILES\money-chapter\QA\money-model-check.cjs"
+This bundles the actual UI/API TypeScript in memory and performs read-only tests.
+It does not call the database, create contracts or write product data.
+
+IMPORTANT BOUNDARIES
+- Draft financial choices remain in wizard metadata, as in the existing draft flow.
+  Final Review will submit the full contract. Money does not activate a contract.
+- No existing contracts/events are migrated or regenerated by copying this release.
+- Existing term-to-day scheduling conventions are retained; this is not a calendar rewrite.
+- Delivery & acceptance, Events and final Review are the next incremental chapters.
+- The legacy API parity script contains an old copied UI algorithm; the included QA
+  checks the actual current UI and API implementations rather than that stale copy.
+- No GitHub push from this workspace. Parent release package is committed locally.
+- Commit/merge instructions come after you confirm local testing, not before.
+
+If preflight fails: do not use git reset, checkout --, or force Copy-Item. Share
+the exact file it reports, so the package can be reconciled with your current edits.

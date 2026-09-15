@@ -1,0 +1,108 @@
+AGREEMENT REFINEMENTS — REVIEW BEFORE MOVING TO COVERAGE
+Branch: codex/agreement-refinements (local; not pushed)
+Submodule affected: contractnest-ui only. No API/Edge/database changes.
+
+FILES (package paths exactly mirror destination paths):
+contractnest-ui/src/components/contracts/ContractWizard/experience/AgreementLabels.tsx — new ICP-prioritised card picker, search, Change/Clear.
+contractnest-ui/src/components/contracts/ContractWizard/experience/AgreementPage.tsx — required fields, visible draft status and edit/save controls.
+contractnest-ui/src/components/contracts/ContractWizard/experience/agreement.css — cards, validation and responsive draft editor.
+contractnest-ui/src/components/contracts/ContractWizard/index.tsx — tagged currency default only for new agreements; preserves saved values and updates same draft.
+contractnest-ui/src/pages/contracts/experience/index.tsx — reopen Agreement-created drafts in the new editor; other drafts retain original wizard.
+
+ICP: reads existing /api/onboarding/resource-ranking and resource templates.
+Equipment/facility/staff recommendations prioritise matching agreement-label groups.
+No label is auto-selected. All types remain searchable under Explore other types.
+Missing/failed/incomplete context is shown explicitly; it does not invent a category.
+INR comes from the existing shared currency list's isDefault flag, not tenant inference.
+Existing saved currency/term/label are never replaced with new-agreement defaults.
+Only drafts created by the Agreement flow (experience_chapter=agreement) reopen here.
+Issued contracts and other draft/template/VaNi paths are not redesigned.
+This release still ends at Agreement: no activation, acceptance request or invoice generation.
+
+STEP 1: Pull the Feature Branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/agreement-refinements
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/agreement-refinements
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/agreement-refinements instead.
+
+STEP 2: Verify Files Received
+ls MANUAL_COPY_FILES\agreement-refinements
+type MANUAL_COPY_FILES\agreement-refinements\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files (guarded; backs up existing files before copying)
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\agreement-refinements\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy stopped. Do not overwrite local differences.' }
+
+The script performs these exact equivalent copies after checking every target:
+Copy-Item "MANUAL_COPY_FILES\agreement-refinements\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-refinements\contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-refinements\contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementLabels.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\AgreementLabels.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-refinements\contractnest-ui\src\components\contracts\ContractWizard\experience\agreement.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\agreement.css" -Force
+Copy-Item "MANUAL_COPY_FILES\agreement-refinements\contractnest-ui\src\pages\contracts\experience\index.tsx" -Destination "contractnest-ui\src\pages\contracts\experience\index.tsx" -Force
+Write-Host 'Copied — RESTART UI, then Ctrl+F5' -ForegroundColor Green
+
+RUN STEP 13 AND TEST BEFORE COMMITTING OR MERGING.
+
+STEP 4: Commit UI Changes (after testing)
+cd contractnest-ui
+git status
+git switch -c codex/agreement-refinements
+git add src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/experience/AgreementPage.tsx src/components/contracts/ContractWizard/experience/AgreementLabels.tsx src/components/contracts/ContractWizard/experience/agreement.css src/pages/contracts/experience/index.tsx
+git commit -m "Refine Agreement labels defaults validation and draft editing"
+git push -u origin codex/agreement-refinements
+cd ..
+If the branch already exists, switch to it instead. Do not stage unrelated changes.
+
+STEP 5: Commit Edge Changes — not applicable.
+STEP 6: Commit API Changes — not applicable.
+STEP 7: Commit FamilyKnows Changes — not applicable.
+STEP 8: Commit Mobile Changes — not applicable.
+STEP 9: Commit Documentation Changes — submodule unchanged; not applicable.
+
+STEP 10: Update Parent Repo Submodule References (after approved UI merge)
+cd contractnest-ui
+git switch main
+git pull origin main
+git merge codex/agreement-refinements
+git push origin main
+cd ..
+git add contractnest-ui
+git commit -m "Update UI submodule with approved Agreement refinements"
+git push -u origin codex/agreement-refinements
+
+STEP 11: Merge to Master (after testing and approval only)
+git switch master
+git pull origin master
+git merge codex/agreement-refinements
+git push origin master
+Use main instead if that is your parent integration branch.
+If any merge conflicts occur, stop and inspect both revisions. Do not blindly discard a submodule pointer.
+
+STEP 12: Verify Everything is Clean
+git status
+git -C contractnest-ui status
+Leave unrelated work intact; do not delete it to obtain a clean status.
+
+STEP 13: Restart Dev Server & Test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5. Use TEST environment.
+New: http://localhost:5173/contracts/experience/create?relationship=partner
+Edit: /contracts/experience -> Pick up a draft -> Continue draft (a draft created by this Agreement flow).
+
+TEST CHECKLIST
+[ ] Relevant ICP label cards appear; Explore other types, search, select, Change and Clear work.
+[ ] Missing context is reported without a made-up recommended category; optional labels do not block work.
+[ ] New agreement shows INR tagged Default; duration is still unset.
+[ ] Required fields show asterisks and nearby validation errors.
+[ ] Draft status is visible before/after saving and on a failed save.
+[ ] Save a draft with a non-default currency and term. Close, reopen from the experience list; both remain intact.
+[ ] Change its name/currency/term/contact, save, reopen: values persist and no duplicate draft appears.
+[ ] Saved label outside ICP recommendations remains visible and changeable.
+[ ] Failed save retains edits; no activation, notification or invoice is triggered.
+[ ] Mobile and preferred themes remain readable, with no horizontal page overflow.
+[ ] Original /contracts and legacy/template/VaNi paths still work.
+
+QA uses mocked requests/mutations; live ICP data, contact search/quick-add and real API persistence
+require your TEST-tenant acceptance check. No real customer records were created by automated testing.

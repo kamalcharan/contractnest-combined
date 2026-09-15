@@ -1,0 +1,10 @@
+PASS: Actual Money model regression, including affected-item isolation and existing financial parity cases.
+PASS: Mocked-browser test: only the mismatched commitment is highlighted; expected,
+scheduled and missing amounts and occurrence count are correct; Save is blocked;
+correcting the cycle clears the item error and restores reconciliation.
+PASS: Desktop/mobile widths 1440/390/320; no horizontal page overflow.
+PASS: Production UI build (existing unrelated warnings remain).
+PASS: Creation-release TypeScript diagnostic check: zero added diagnostics.
+No live tenant or database writes. Existing failed draft contents were not inspected.
+This release diagnoses item schedule mismatches; it does not automatically change
+prices, quantities, payment cycles or the contract term.

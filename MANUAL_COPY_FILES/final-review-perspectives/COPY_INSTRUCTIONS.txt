@@ -1,0 +1,10 @@
+FINAL REVIEW UX AND DOCUMENT PERSPECTIVES
+
+- Removes the legacy acceptance-side panel from the product-led Final Review.
+- Keeps the approved chapter, lifecycle, edit, acknowledgement and final-action structure.
+- Adds an explicit Seller view and Customer view; Partner contracts show Partner view.
+- Both perspectives use the same canonical contract data and PDF-capable document renderer.
+- No API, database, status or submission-engine changes.
+
+Run:
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\final-review-perspectives\COPY_COMMANDS.ps1"
