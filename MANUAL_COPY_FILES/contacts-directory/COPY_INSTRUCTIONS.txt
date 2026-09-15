@@ -1,0 +1,90 @@
+═══════════════════════════════════════════════════
+BATCH: contacts-directory (2026-09-16)
+═══════════════════════════════════════════════════
+Owner requests (playground-approved design):
+ 1. /contacts tag filters actually filter (API bug fix)
+ 2. Tabs removed — single directory page in the /experience language
+ 3. BBB guest duplication root-caused and fixed at the source
+ 4. Sorting, advanced filters, pagination all preserved/working
+
+Submodules affected: contractnest-api, contractnest-ui.
+DB: migration 076 ALREADY APPLIED LIVE — the staged .sql is a
+source-of-record copy. DO NOT RE-RUN.
+
+─── ROOT CAUSES FIXED ───────────────────────────────
+
+A. TAG FILTER (and more): contactController.listContacts silently dropped
+   `tags`, `user_status`, `show_duplicates`, `sort_by` and `sort_order`
+   from req.query — the edge list route supported ALL of them all along.
+   Chip counts came from /stats (which forwards tags) so they looked right
+   while the list ignored every chip click. Sorting was equally a no-op.
+
+B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
+   checkDuplicates). gs_checkin_guest's reuse-lookup required an EXACT
+   string phone match (stored '+919059951359' vs typed '9059951359') AND
+   an existing Guest tag — so every repeat guest visit inserted a fresh
+   contact. Proof: the Tejaswinni pair (8 Aug + 5 Sep), identical
+   phone+email, created_by NULL at ~07:35 IST on meeting Saturdays.
+   Migration 076 (LIVE): last-10-digits normalized match, no Guest-tag
+   prerequisite, oldest match wins, stale 10-arg overload dropped.
+   Verified: bare '9059951359' now resolves to the 8 Aug original.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-api/src/controllers/contactController.ts
+    - listContacts now forwards tags / user_status / show_duplicates /
+      sort_by / sort_order (service + edge needed no change)
+
+ 2. contractnest-ui/src/pages/contacts/index.tsx  (FULL REWRITE)
+    - tabs gone; gradient heading band (YOUR NETWORK / Contacts + count)
+    - classification chips: fixed product colors + product icons
+    - tag chips (LOV colors) — now actually filter
+    - search + Filters button (Status / App user / Possible duplicates,
+      with count pip) + sort select; active filters as removable chips
+      with "Clear all"
+    - rows: classification-tinted icon avatar · name + corporate/individual
+      mark + CT number · phone-icon + number · mail-icon + email (icons
+      PREFIX the values — no action-button cluster, per owner) · tag dots ·
+      classification badges · status pill only when not active · Eye
+    - bulk select + delete dialog, Import + Add Contact, help modal,
+      VaNi loader, windowed pagination — all preserved
+    - grid/list toggle removed (list only, per approved playground)
+
+ 3. contractnest-edge/supabase/migrations/bbb-foundation/
+      076_guest_checkin_contact_dedupe.sql
+    - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# restart the API dev server after copying (controller change)
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] Tap the Guest tag chip → list shows exactly the guest-tagged contacts
+     (count and list agree at last)
+ [ ] Combine: Partners chip + Guest tag + a search term — active-filter
+     chips appear, each removable, "Clear all" resets
+ [ ] Filters button: Inactive status / Registered users / Possible
+     duplicates each change the list; pip shows the active count
+ [ ] Possible duplicates ON → the two Tejaswinni rows appear
+ [ ] Sort dropdown changes the order (was silently broken before)
+ [ ] Pagination: "Showing X to Y of N" + windowed pager, page 6 reachable
+ [ ] Rows: phone/email shown as icon + value (no button cluster);
+     classification colors match the old page (Client blue, Vendor purple,
+     Partner orange, Team indigo)
+ [ ] Add Contact drawer still checks duplicates; /contacts/import works
+ [ ] Bulk select + Delete dialog unchanged; row click opens /contacts/:id
+ [ ] GUEST DEDUPE (live already): a guest checking in again with the same
+     10-digit number reuses the existing contact — no new row appears in
+     /contacts afterwards
+
+─── STILL OPEN (deliberately not in this batch) ─────
+ - The two existing Tejaswinni rows still need a manual merge (owner call:
+   keep 8 Aug original, move Guest tag, deactivate 5 Sep row — I can run
+   this after reference-mapping when approved)
+ - stats by_tag "Substitute (0) vs 3 in DB" discrepancy — get_contact_stats
+   needs its own look
+ - Contact detail page (/contacts/:id) UX — separate discussion
