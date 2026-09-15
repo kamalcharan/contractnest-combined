@@ -82,9 +82,11 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      /contacts afterwards
 
 ─── STILL OPEN (deliberately not in this batch) ─────
- - The two existing Tejaswinni rows still need a manual merge (owner call:
-   keep 8 Aug original, move Guest tag, deactivate 5 Sep row — I can run
-   this after reference-mapping when approved)
+ - DONE (2026-09-16, live data fix on owner instruction): Tejaswinni merged.
+   5 Sep guest row's attendance + device recognition repointed to the 8 Aug
+   partner record (payment declaration was already there); guest row
+   archived with zero references remaining. Verified in one guarded
+   transaction.
  - stats by_tag "Substitute (0) vs 3 in DB" discrepancy — get_contact_stats
    needs its own look
  - Contact detail page (/contacts/:id) UX — separate discussion
