@@ -1,0 +1,19 @@
+CONFIRMATION SCREEN - EXISTING WIZARD VISUAL BENCHMARK
+Affected: contractnest-ui only. Requires preceding review-document-confirmations release.
+Run COPY_COMMANDS.ps1. All targets are checked before copying; existing files are backed up under LOCAL_BACKUP.
+
+Exact copy mapping (relative to parent repo):
+MANUAL_COPY_FILES/confirmation-benchmark/contractnest-ui/src/components/contracts/ContractWizard/experience/CompletionPage.tsx
+ -> contractnest-ui/src/components/contracts/ContractWizard/experience/CompletionPage.tsx
+MANUAL_COPY_FILES/confirmation-benchmark/contractnest-ui/src/components/contracts/ContractWizard/experience/completion.css
+ -> contractnest-ui/src/components/contracts/ContractWizard/experience/completion.css
+
+Changes: centered status emblem, compact surfaced identity card, prominent status badge and CNAK copy control, concise acceptance/payment panels, expandable notification detail, primary Open contract action. Mobile spacing and theme tokens preserved. Uses actual returned status/receipt, without inventing success. White review document and classic wizard unchanged.
+
+Test in Test environment:
+- Active submission: success emblem, actual number/status/CNAK, working Copy and Open contract.
+- Pending acceptance: waiting heading and status, not active success.
+- Draft/missing response: verification warning, no invented CNAK.
+- Receipt details when returned; no payment-success assertion without a receipt.
+- Narrow mobile width and light/dark themes; no horizontal scrolling.
+- Done behavior and existing original wizard unchanged.

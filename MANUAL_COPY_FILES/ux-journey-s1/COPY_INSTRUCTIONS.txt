@@ -1,0 +1,143 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Release: Sprint 1.1 + 1.2 — workspace experience
+Branch: codex/ux-journey-sprint-1 (LOCAL ONLY; no GitHub push performed)
+Submodules Affected: contractnest-ui ONLY
+Files Changed: 8 — see RELEASE_NOTES.md for each purpose.
+Entry: http://localhost:5173/experience AFTER normal successful login.
+Existing screen components and normal login destination are unchanged.
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: Pull the Manual-Copy Release from the Local Checkout
+─────────────────────────────────
+The parent release branch is committed in the local C: checkout, not on
+GitHub. Pull it directly into your D: checkout. No ZIP extraction is needed.
+Your feature branches were already created during the earlier Step 1.
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/ux-journey-sprint-1
+
+If Git reports existing untracked release files would be overwritten,
+stop and preserve that folder before pulling; do not delete local edits.
+
+STEP 2: Verify Files Received and Baseline
+─────────────────────────────────
+Get-ChildItem "MANUAL_COPY_FILES\ux-journey-s1"
+Get-Content "MANUAL_COPY_FILES\ux-journey-s1\COPY_INSTRUCTIONS.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\ux-journey-s1\CHECK_BEFORE_COPY.ps1"
+
+STOP if verification fails. Existing App.tsx/AuthContext.tsx must match
+the release's baseline or this exact release. Ask for a refreshed package
+instead of overwriting newer code. No dependency or database changes.
+
+STEP 3: Copy All Files, Then Test BEFORE Any Merge
+─────────────────────────────────
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\experience" | Out-Null
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\index.tsx" -Destination "contractnest-ui\src\pages\experience\index.tsx" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\experience.css" -Destination "contractnest-ui\src\pages\experience\experience.css" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\model.ts" -Destination "contractnest-ui\src\pages\experience\model.ts" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\useExperience.ts" -Destination "contractnest-ui\src\pages\experience\useExperience.ts" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\verify.mjs" -Destination "contractnest-ui\src\pages\experience\verify.mjs" -Force
+Copy-Item -LiteralPath "MANUAL_COPY_FILES\ux-journey-s1\contractnest-ui\src\pages\experience\README.md" -Destination "contractnest-ui\src\pages\experience\README.md" -Force
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+cd contractnest-ui
+git diff --check
+node src/pages/experience/verify.mjs
+npx vite build --mode production
+npm run dev
+
+Log in normally, then open http://localhost:5173/experience. Ctrl+F5.
+Complete TESTING_CHECKLIST.md. Stop the dev server with Ctrl+C when done.
+Do not run the commit/merge steps until local testing is satisfactory.
+If dependencies are not installed, use the project's usual installation
+workflow first (this release does not modify package.json or the lockfile).
+
+STEP 4: Commit and Merge UI Changes — AFTER Testing
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git status
+git add src/App.tsx src/context/AuthContext.tsx src/pages/experience/index.tsx src/pages/experience/experience.css src/pages/experience/model.ts src/pages/experience/useExperience.ts src/pages/experience/verify.mjs src/pages/experience/README.md
+git diff --cached --check
+git commit -m "feat(ux): add isolated persona-aware workspace experience sprint 1"
+git switch main
+git merge --ff-only codex/ux-journey-sprint-1
+git push origin main
+cd ..
+
+STEP 5: Edge Changes
+─────────────────────────────────
+Not applicable. contractnest-edge is unchanged.
+
+STEP 6: API Changes
+─────────────────────────────────
+Not applicable. contractnest-api is unchanged.
+
+STEP 7: FamilyKnows Changes
+─────────────────────────────────
+Not applicable. FamilyKnows is unchanged.
+
+STEP 8: Mobile Changes
+─────────────────────────────────
+Not applicable. ContractNest-Mobile is unchanged.
+
+STEP 9: Documentation Submodule Changes
+─────────────────────────────────
+Not applicable. ClaudeDocumentation is unchanged. Release documentation
+is in the parent MANUAL_COPY_FILES/ux-journey-s1 folder.
+
+STEP 10: Update Parent Repo Submodule Reference and Release Package
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git add contractnest-ui MANUAL_COPY_FILES/ux-journey-s1
+git diff --cached --stat
+git commit -m "chore: release workspace journey sprint 1 manual-copy package and UI reference"
+git push -u origin codex/ux-journey-sprint-1
+
+STEP 11: Merge to Master
+─────────────────────────────────
+git switch master
+git merge --ff-only codex/ux-journey-sprint-1
+git push origin master
+
+If fast-forward or push fails because main/master advanced, stop and
+reconcile/retest the updated baseline. Do not resolve submodule conflicts
+by blindly selecting a branch head; it must contain the tested UI commit.
+
+STEP 12: Verify Everything is Clean
+─────────────────────────────────
+git status
+git -C contractnest-ui status
+
+Expected: no tracked release changes remain. The downloaded ZIP may be
+listed as untracked; move it to your Downloads folder if you want a fully
+clean parent. Do not add the ZIP or unrelated files to the release commit.
+
+STEP 13: Restart Dev Server and Final Smoke Test
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+
+Hard refresh Ctrl+F5. Check /experience and the existing /ops/cockpit.
+No other app/server restart is required by this UI-only release.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Full checklist and verification evidence: TESTING_CHECKLIST.md
+
+- [ ] Buyer/Seller default and active Revenue/Expense display correctly.
+- [ ] Correct real contracts and server total for the selected context.
+- [ ] Live/Test switch reloads /experience; existing routes behave as before.
+- [ ] Empty, loading, profile-missing, and request-error states are distinct.
+- [ ] Existing wizard, Contracts, Catalogue, Requests, Money In/Out links work.
+- [ ] Multiple themes, dark/light, mobile widths, keyboard navigation.
+- [ ] Lite/incomplete onboarding and unauthenticated access remain restricted.
+- [ ] No hardcoded industry, equipment, service name, price, or dummy records.
+═══════════════════════════════════════════════════

@@ -1,0 +1,34 @@
+Verification — commitment-card-editor
+
+PASS: production-mode Vite build (existing unrelated warnings noted below).
+PASS: no new/added TypeScript diagnostics in the creation release comparison.
+PASS: mocked-browser tests using the real experience wizard/controller/editor:
+ - Selected cards; single editor; no nested Advanced disclosure.
+ - Cancel discards edits, Apply updates quantity and configured-tax totals.
+ - Page draft/save controls disabled until editor is applied or cancelled.
+ - Billing-only state updates and persists.
+ - FlyBy validation and intentional complimentary selection.
+ - Save Services and reopen retain edited values; mandatory T&C stays included.
+ - Cadence switches restore negotiated overrides; partial-period final payment.
+ - Group-session quantities without pricing controls.
+ - Per-unit FlyBy split requires applied changes and creates independent lines.
+ - 390px/320px layouts; available product themes in dark mode.
+ - Original wizard route does not render the new cards/editor.
+PASS: context browser/model regression tests:
+ - Resource-specific catalogue eligibility and dependency bridge.
+ - Currency, workspace, live/test isolation; mismatches rejected visibly.
+ - Mandatory T&C included once; missing T&C blocks Services completion.
+PASS: manual-copy source hashes match the UI files.
+PASS: baseline preflight, copying, already-applied preflight, and rejection of
+      differing local edits without copying.
+
+The shared ServiceBlocksStep change is only an import and the experience-branch
+editor renderer. Its original wizard, catalogue handlers and pricing calculation
+are not changed by this release. Existing ChecklistRow.tsx is not packaged.
+
+Limitations:
+Browser checks use deterministic mock data/mutations, not your authenticated live
+tenant. Please complete the actual-data acceptance checklist in COPY_INSTRUCTIONS.
+No database, invoices, appointments, notifications or WhatsApp actions were run.
+Unrelated existing build warnings: duplicate buyer_id in contract detail page,
+large chunks/mixed imports, lottie eval and outdated Browserslist data.

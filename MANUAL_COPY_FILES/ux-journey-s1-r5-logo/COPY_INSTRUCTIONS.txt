@@ -1,0 +1,43 @@
+SPRINT 1.5 - SIDEBAR LOGO FIX
+Branch: codex/ux-journey-sprint-1
+Affected: contractnest-ui only. Requires Sprint 1.5 navigation update.
+
+Selected existing assets (unchanged artwork):
+- Expanded: contractnest-logo-horizontal.svg (208 x 48 display box)
+- Expanded dark: contractnest-logo-horizontal-ondark.svg
+- Collapsed: contractnest-mark-primary.svg (48 x 32 display box)
+- Collapsed dark: contractnest-mark-ondark.svg
+Native-width marks avoid the extra padding of square/social variants.
+SVGs remain sharp and transparent; no logo regeneration or brand recolouring.
+Sidebar.tsx uses those variants with fixed sizing and readable text fallback.
+Mobile drawer uses the same expanded logo. Other product branding untouched.
+
+PULL AND COPY (Windows PowerShell)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/ux-journey-sprint-1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\CHECK_BEFORE_COPY.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Files differ. Stop and share the output." }
+$ErrorActionPreference = 'Stop'
+New-Item -ItemType Directory -Force -Path "contractnest-ui\public\assets\images\contractnest\svg" | Out-Null
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\contractnest-ui\public\assets\images\contractnest\svg\contractnest-logo-horizontal.svg" -Destination "contractnest-ui\public\assets\images\contractnest\svg\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\contractnest-ui\public\assets\images\contractnest\svg\contractnest-logo-horizontal-ondark.svg" -Destination "contractnest-ui\public\assets\images\contractnest\svg\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\contractnest-ui\public\assets\images\contractnest\svg\contractnest-mark-primary.svg" -Destination "contractnest-ui\public\assets\images\contractnest\svg\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r5-logo\contractnest-ui\public\assets\images\contractnest\svg\contractnest-mark-ondark.svg" -Destination "contractnest-ui\public\assets\images\contractnest\svg\" -Force
+Write-Host "Logo updated - Ctrl+F5. No API restart needed." -ForegroundColor Green
+
+TEST BEFORE MERGING
+[ ] Expanded menu: readable ContractNest logo, not a tiny centred speck.
+[ ] Collapsed menu: emblem visible and proportional, no broken image.
+[ ] Toggle light/dark: matching ink/white variant; orange Nest stays branded.
+[ ] Mobile drawer: expanded logo fits with no clipping or overflow.
+[ ] Menu navigation remains unchanged.
+
+The source icon folder on D: is not modified. This package includes the four
+assets, so they are also available in the combined checkout when copied.
+Other icons/PNGs/favicon files are not changed or removed.
+
+After testing, commit only Sidebar.tsx and these four SVGs in your UI branch
+using your usual reviewed merge/push and parent-reference workflow.
+Suggested commit message: fix(ui): use responsive ContractNest sidebar logos

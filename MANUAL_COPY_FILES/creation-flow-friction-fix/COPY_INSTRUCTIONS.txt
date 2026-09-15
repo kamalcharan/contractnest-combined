@@ -1,0 +1,11 @@
+CREATION FLOW FRICTION FIX
+
+The primary action on Agreement, Coverage, Services, Money, Delivery and Events now validates, saves and advances in one click.
+Save draft remains available only as an optional stop-and-return action.
+
+Holiday conflicts are advisory. They remain visible and can be adjusted during creation, but they do not prevent saving or continuing. Appointment dates can be finalized during operations.
+
+Run from the parent repository:
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\creation-flow-friction-fix\COPY_COMMANDS.ps1"
+
+No API, database or Edge changes are included.

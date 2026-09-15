@@ -1,0 +1,37 @@
+MONEY CHAPTER - RELEASE VERIFICATION
+
+PASS: Financial regression runner bundles the ACTUAL current UI event engine,
+      API event engine, Money model and final-submission mapper in memory.
+      86 financial scenarios, plus invalid-input and clipped-schedule guards:
+      services, spares, fees, paid unlimited commitments, inclusive/exclusive
+      taxes, percent/fixed/100% discounts, EMI rounding, cadence/final payment,
+      recurring start/end timing, custom cycles, days/years, complimentary,
+      FlyBy, fee/group service-event isolation and 60 multi-line rounding cases.
+      UI/API event objects and final computed_events payloads match.
+PASS: Actual controller + new Money UI with MOCKED catalogue/API mutations:
+      Services > save > Continue to Money; fee pricing; discount; payment timing;
+      EMI; save failure and retry; metadata persistence; reopen; back to Services;
+      live/test context-change editing lock; no status or notification calls.
+PASS: All 12 theme variants in light/dark; 1440, 1024, 390 and 320px widths;
+      no horizontal page overflow; desktop/mobile screenshots visually reviewed.
+PASS: Previous contained Services editor regression: independent card data,
+      apply/cancel, save/reopen, and responsive layouts remain intact.
+PASS: UI production build (existing unrelated warnings remain).
+PASS: Creation-release TypeScript diagnostic comparison: zero added diagnostics.
+PASS: Changed API service standalone TypeScript check using installed UI compiler.
+PASS: Release sources match package copies by SHA-256.
+PASS: Read-only preflight against the actual D: checkout for all 9 files.
+PASS: Isolated copy exercise: backups, hashes, idempotent repeat; an API-file
+      conflict prevents ANY copy, including otherwise eligible UI files.
+
+LIMITATIONS / LOCAL ACCEPTANCE STILL REQUIRED
+- Browser verification used mock data and mutations, not your live tenant.
+- No live contracts, invoices, notifications, payments or database rows created.
+- Full API project build was not run: this checkout has no API node_modules.
+  The changed service compiles independently and actual UI/API runtime parity passes.
+- The old API parity script embeds a historical UI copy. This release instead
+  supplies QA/money-model-check.cjs, which compares the actual source files.
+- Existing production-build warnings: duplicate buyer_id in contract detail,
+  large chunks, mixed static/dynamic imports, lottie eval and stale Browserslist.
+- Copying does not migrate or rebuild events on existing contracts.
+- Test in your tenant before merging. No submodule or GitHub push performed.

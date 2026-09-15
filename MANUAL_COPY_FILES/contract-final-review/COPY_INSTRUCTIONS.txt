@@ -1,0 +1,30 @@
+CONTRACTNEST PRODUCT-LED CONTRACT CREATION - FINAL REVIEW
+
+This package adds the sixth and final chapter to the approved manual creation experience.
+It does not replace the existing /contracts page or classic wizard.
+
+FILES
+1. contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   Connects Events Preview to Final review and reuses the existing create/status engine.
+2. contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx
+   Changes the completed Events action to Continue to Final review.
+3. contractnest-ui\src\components\contracts\ContractWizard\experience\ReviewPage.tsx
+   Final document review, edit shortcuts, acknowledgement and explicit lifecycle action.
+4. contractnest-ui\src\components\contracts\ContractWizard\experience\review.css
+   Theme-compatible responsive presentation.
+
+COPY
+Run from the parent repository:
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\contract-final-review\COPY_COMMANDS.ps1"
+
+BEHAVIOUR
+- Sign-off/payment acceptance creates a proposal awaiting acceptance.
+- Auto acceptance follows the existing confirmation/payment dialog.
+- No payment is treated as collected merely because a contract is created.
+- The user must explicitly acknowledge the final review.
+- Agreement, Services, Money, Acceptance and Events edit shortcuts return to the corresponding chapter.
+- Existing API payload mapping, status transition, notifications and success handling remain in use.
+
+BUILD VERIFICATION
+Production Vite build passed. The build reported existing warnings in unrelated files and bundle sizing; no new build failure was introduced.

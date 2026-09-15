@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════
+BATCH: home-contracts-menu (2026-09-16)
+═══════════════════════════════════════════════════
+Owner requests:
+ 1. Hide classic Contracts menu (routes stay registered)
+ 2. NContracts renamed to "Contracts" (path stays /ncontracts)
+ 3. Claim Contract promoted to main menu
+ 4. Workspace Account card on /experience shows numbers:
+    contracts used / open vs plan cap + WhatsApp credits available
+    + "Top up" link to the subscription page (existing pack-purchase flow)
+    (WhatsApp CONSUMED count deliberately deferred — needs get_tenant_context
+    change; to be discussed)
+ 5. "Speak to an expert" support card on /experience
+    WhatsApp wa.me/919949701175 · support@vikuna.io
+
+Submodules affected: contractnest-ui ONLY. No API, edge, DB or mobile changes.
+
+FILES (copy to the same relative path inside contractnest-ui):
+
+ 1. src/utils/constants/industryMenus.ts
+    - ncontracts entry relabelled "Contracts" (id unchanged)
+    - top-level Claim Contract entry added
+    - classic contracts group commented out (un-hide by uncommenting)
+
+ 2. src/pages/experience/index.tsx
+    - "Open contracts" (empty state) and "View all" links now /ncontracts
+    - SupportCard added to the right-hand column
+
+ 3. src/pages/experience/TenantAccountNotice.tsx
+    - numbers strip: contracts used/open vs cap, WhatsApp credits, Top up link
+    - all values from the existing useTenantContext payload; rows omitted
+      (not zeroed) when a field is absent
+
+ 4. src/pages/experience/SupportCard.tsx  (NEW)
+    - support contacts are two constants at the top of the file
+
+ 5. src/pages/experience/experience.css
+    - appended .xp-account-stats and .xp-support styles (end of file)
+
+POWERSHELL COPY (from contractnest-combined root):
+
+Copy-Item "MANUAL_COPY_FILES\home-contracts-menu\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING CHECKLIST:
+ [ ] Sidebar: no classic Contracts group; "Contracts" (→ /ncontracts) and
+     "Claim Contract" visible in both Revenue and Expense perspectives
+ [ ] /contracts and /contracts/:id still open via direct URL / row clicks
+ [ ] /experience: account card shows "Contracts: N used · M open of X"
+     and "WhatsApp credits: N available"; Top up opens subscription page
+ [ ] Numbers match /businessmodel/tenants/subscription for the same tenant
+ [ ] Support card: WhatsApp opens wa.me/919949701175 in new tab with preset
+     text; email opens mail client to support@vikuna.io
+ [ ] Home empty-state "Open contracts" and list "View all" land on /ncontracts
+ [ ] Lite tenant (CNAK/RFQ-lite) Home unchanged (LiteDashboard, no crash)

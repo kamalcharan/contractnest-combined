@@ -1,0 +1,91 @@
+DELIVERY & ACCEPTANCE — MANUAL COPY RELEASE
+Branch: codex/delivery-acceptance
+Prerequisite: latest money-item-errors release is installed.
+Submodule affected by this release: contractnest-ui only (5 files).
+No database, Edge, API, payment execution or notification changes.
+Existing dirty API/documentation work is not included or overwritten.
+
+WHAT CHANGED
+1. src/components/contracts/ContractWizard/index.tsx
+   Connects Money -> Delivery; saves and restores experience_step=delivery.
+   Classic wizard remains on its existing renderer. Draft saves remain metadata-only
+   for acceptance/evidence choices; they do not activate or send the contract.
+2. src/components/contracts/ContractWizard/experience/MoneyPage.tsx
+   Uses standard success/error toast and InlineLoader. Item errors remain visible.
+   Continue to Delivery appears after a valid, successful Money save.
+3. src/components/contracts/ContractWizard/experience/DeliveryPage.tsx (new)
+   Approved stacked proof/acceptance choices; workspace form selection and ordering;
+   selected recipient details; online/offline payment status; draft save/reopen.
+4. src/components/contracts/ContractWizard/experience/useDeliveryData.ts (new)
+   Context-keyed reads from existing Forms, Contacts and Integrations endpoints.
+   Failed/malformed responses are not treated as empty selections or offline status.
+5. src/components/contracts/ContractWizard/experience/delivery.css (new)
+   Theme-token styling, selected cards, mobile form ordering and save bar.
+
+PULL AND COPY (Windows PowerShell)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/delivery-acceptance
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+Get-ChildItem "MANUAL_COPY_FILES\delivery-acceptance"
+Get-Content "MANUAL_COPY_FILES\delivery-acceptance\COPY_INSTRUCTIONS.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\delivery-acceptance\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not overwrite local edits." }
+
+The source branch is LOCAL on this computer, not uploaded to GitHub.
+No ZIP/download/extraction is needed. The script checks ALL five targets before
+copying anything, backs up existing files, then verifies every copied file's hash.
+Repeated copies are safe. Divergent local edits stop the whole preflight.
+Backups: MANUAL_COPY_FILES\delivery-acceptance\LOCAL_BACKUP\<timestamp>\
+
+EXACT SOURCE -> DESTINATION PATHS
+All sources below are relative to:
+D:\projects\core projects\ContractNest\contractnest-combined\MANUAL_COPY_FILES\delivery-acceptance\
+All destinations below are relative to:
+D:\projects\core projects\ContractNest\contractnest-combined\
+Source and destination suffixes match exactly:
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\useDeliveryData.ts
+contractnest-ui\src\components\contracts\ContractWizard\experience\delivery.css
+
+The copy script performs these exact copies after preflight and backup:
+Copy-Item "MANUAL_COPY_FILES\delivery-acceptance\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\delivery-acceptance\contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\delivery-acceptance\contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\delivery-acceptance\contractnest-ui\src\components\contracts\ContractWizard\experience\useDeliveryData.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\useDeliveryData.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\delivery-acceptance\contractnest-ui\src\components\contracts\ContractWizard\experience\delivery.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\delivery.css" -Force
+
+RESTART AND TEST BEFORE COMMIT/MERGE
+Save existing work first. Stop the running UI dev server with Ctrl+C, then:
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh the browser (Ctrl+F5).
+Open /contracts/experience/create?relationship=partner or resume your experience draft.
+Money -> Save Money -> Continue to Delivery.
+If reopened on Money, save Money once to confirm the current payment plan.
+
+TEST CHECKLIST
+[ ] Money save displays the standard loader, then one success toast.
+[ ] Existing item-level schedule errors still identify the affected commitment.
+[ ] Continue to Delivery appears only after successful valid Money save.
+[ ] None / Photos or documents / Structured completion form choices select clearly.
+[ ] Structured forms are your workspace's active selections. Select two, reorder them.
+[ ] Switch proof policies and back: selected forms are retained, not silently deleted.
+[ ] Missing form/version stays marked and is never automatically replaced.
+[ ] Acceptance uses the recipient chosen in Agreement, including contact-person email.
+[ ] Signoff / payment / automatic acceptance choices save correctly.
+[ ] No connected gateway explains the existing offline-payment path.
+[ ] Failed lookups show Retry, not fake empty/offline results.
+[ ] Save Delivery, close and reopen: proof, ordered versions and acceptance are retained.
+[ ] Incomplete choices can be saved as a draft without claiming the chapter is complete.
+[ ] Changing workspace/live-test/perspective locks this open draft until reopened.
+[ ] Test your preferred themes and phone-size layout.
+[ ] Saving creates no notification, invoice, payment or activation.
+[ ] Original /contracts creation wizard still opens and works independently.
+
+NEXT AFTER YOUR ACCEPTANCE
+Events Preview (contract-contained service/payment timeline), then Final review.
+Those chapters are not implemented by this release. No simulated WhatsApp controls.
+Do not merge/push yet; test first. Commit only these five UI paths after approval,
+then update only contractnest-ui's parent reference. Do not stage unrelated changes.

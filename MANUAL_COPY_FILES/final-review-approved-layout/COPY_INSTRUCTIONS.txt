@@ -1,0 +1,38 @@
+FINAL REVIEW - APPROVED HTML LAYOUT
+Affected submodule: contractnest-ui only.
+
+Exact destination paths:
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\ReviewPage.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\review.css
+
+The new review renders the approved rail/document/summary/footer layout directly.
+Seller copy includes catalogue provenance. Recipient copy omits it; amounts stay identical.
+The saved Money calculation and Events calculation are reused.
+Print / Save as PDF prints the selected document copy.
+The current contract creation, CNAK, acceptance, receipt and success handlers remain in place.
+Resuming Final Review submits through the final handler even when legacy wizard_step points elsewhere.
+
+Run from parent repository:
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\final-review-approved-layout\COPY_COMMANDS.ps1"
+
+Review checks performed:
+- Actual React component rendered in an isolated local browser fixture.
+- Desktop rail, document, summary and fixed footer visually inspected.
+- Mobile width 390: no page horizontal overflow.
+- Recipient toggle changes copy and removes catalogue provenance.
+- Final action requires acknowledgement, then calls submit.
+- Production build checked separately.
+
+Local testing after copy:
+1. Resume a draft, reach Final Review and compare with approved HTML.
+2. Switch Seller and Buyer/Partner copies: same terms and totals.
+3. Check coverage, T&C, line amounts, term and events against prior chapters.
+4. Save, close and resume Final Review; create from a TEST draft.
+5. Verify CNAK/copy, returned status and success screen.
+6. Test auto-accept payment options and receipt flow in TEST environment.
+7. Smoke-test the original /contracts wizard.
+
+No live contract was activated or sent during browser verification.
+Only after local testing, commit these three exact UI paths to your chosen UI branch,
+then update the parent submodule reference using your normal reviewed merge workflow.

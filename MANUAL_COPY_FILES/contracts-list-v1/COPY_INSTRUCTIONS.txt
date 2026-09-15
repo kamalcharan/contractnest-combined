@@ -1,0 +1,158 @@
+CONTRACTS LIST V1 - ISOLATED PRODUCT REVIEW
+Branch: codex/contracts-list-v1 (LOCAL branch, not pushed to GitHub)
+Affected submodule: contractnest-ui only
+New route: /contracts/experience
+Existing /contracts, its index route, wizard, ContractView, menus, login/default
+navigation, shared contexts and API/Edge code are NOT changed by this release.
+Prerequisite: previously delivered Home/experience release is applied.
+
+FILES CHANGED / EXACT DESTINATIONS
+contractnest-ui\src\pages\contracts\experience\index.tsx
+  New real-data list, filters, pagination, theme/mobile UI and existing wizard handoffs.
+contractnest-ui\src\pages\contracts\experience\model.ts
+  Status labels, query scope, response validation, party/value/next-step display.
+contractnest-ui\src\pages\contracts\experience\useContractList.ts
+  Read-only tenant/environment/perspective-scoped list and draft queries.
+contractnest-ui\src\pages\contracts\experience\contracts-list.css
+  Namespaced responsive styles; no shared stylesheet modifications.
+contractnest-ui\src\App.tsx
+  ONLY one import + one protected, MainLayout-wrapped child route are added.
+  APP_ROUTE.patch is used instead of replacing the entire App.tsx.
+
+STEP 1: PULL THE LOCAL FEATURE BRANCH
+No remote pull is advertised: this release has NOT been pushed to GitHub.
+The local C: checkout is available on this computer, as in earlier releases.
+Keep your existing work committed or otherwise safely preserved before pulling.
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/contracts-list-v1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here; do not copy files during an unresolved merge." }
+
+STEP 2: VERIFY FILES RECEIVED
+Get-ChildItem "MANUAL_COPY_FILES\contracts-list-v1"
+Get-Content "MANUAL_COPY_FILES\contracts-list-v1\COPY_COMMANDS.ps1"
+
+STEP 3: COPY AND REGISTER THE ROUTE
+The script preflights every file and the route patch before copying anything.
+It refuses to overwrite differing existing new-page files, backs up App.tsx,
+copies the four exact paths above, then applies ONLY the two route additions.
+No database, API, Edge, menu or existing working screen is modified.
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\contracts-list-v1\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the output; do not bypass its checks." }
+
+The four exact Copy-Item commands are in COPY_COMMANDS.ps1. App.tsx is patched,
+not replaced, to preserve unrelated work. The patch is safe to re-run through
+the script: an already registered route is detected and left alone.
+
+REVIEW BEFORE COMMITTING / MERGING
+cd contractnest-ui
+npm run dev
+
+Open http://localhost:5173/contracts/experience (use your actual UI port).
+Hard refresh with Ctrl+F5. This route is intentionally NOT the login default
+and has NO new menu entry yet. Existing /contracts remains the fallback.
+Run the TESTING CHECKLIST below before proceeding to the commit workflow.
+
+STEP 4: COMMIT UI CHANGES AFTER TESTING
+# From the parent repo, work on your review branch, not directly on main.
+# If that branch already exists, use git switch codex/contracts-list-v1 instead.
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch -c codex/contracts-list-v1
+git status --short
+git diff -- src/App.tsx
+# App.tsx should contain only the intended route changes relative to YOUR last
+# commit. If other work is present, stage these two additions interactively:
+git add -p -- src/App.tsx
+git add -- src/pages/contracts/experience/index.tsx src/pages/contracts/experience/model.ts src/pages/contracts/experience/useContractList.ts src/pages/contracts/experience/contracts-list.css
+git diff --cached --stat
+git commit -m "Add isolated product-led contracts list at /contracts/experience"
+git push -u origin codex/contracts-list-v1
+cd ..
+
+STEPS 5-9: EDGE / API / FAMILYKNOWS / MOBILE / DOCUMENTATION
+Not affected. Do not stage, commit or push those submodules for this release.
+
+STEP 10: UPDATE THE PARENT SUBMODULE REFERENCE (AFTER UI APPROVAL)
+Merge the UI review branch to main using your normal reviewed workflow first.
+Then update the local UI main checkout and stage ONLY its parent reference:
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch main
+git pull --ff-only origin main
+cd ..
+git status --short
+git add -- contractnest-ui
+git commit -m "Update UI submodule with reviewed contracts list experience"
+# Push the parent branch you are actually testing; inspect it first:
+git branch --show-current
+# If it is codex/contracts-list-v1:
+git push -u origin codex/contracts-list-v1
+
+STEP 11: MERGE PARENT ONLY AFTER REVIEW
+Use your usual reviewed merge to the parent default branch. Do not blindly
+replace conflicting submodule references. If conflicts occur, stop and inspect
+the approved UI commit. The parent pointer must refer to the tested UI release.
+
+STEP 12: VERIFY
+git status
+git -C contractnest-ui status
+# Pre-existing unrelated changes may remain; do not reset or delete them.
+
+STEP 13: RESTART AND SMOKE TEST
+cd contractnest-ui
+npm run dev
+# Ctrl+F5, then visit /contracts/experience AND /contracts.
+
+TESTING CHECKLIST
+[ ] Direct /contracts/experience loads only after successful authentication.
+[ ] /contracts, login landing, Home and existing menus behave as before.
+[ ] Revenue includes client + partner contracts; relationship filters narrow it.
+[ ] Expense shows vendor contracts; New contract offers Vendor, not Client/Partner.
+[ ] Switch tenant and Live/Test: no other workspace's rows or draft remain visible.
+    Existing shell navigation may redirect after switching; reopen the new route.
+[ ] Compare exact Draft, Awaiting acceptance and Active counts with real records.
+    Counts follow relationship selection; intentionally not the text search.
+[ ] Search by contract name/number; filter every status including Cancelled.
+[ ] Clear filters recovers the full list; zero matches is distinct from load failure.
+[ ] Verify pagination beyond 20 records, last page and sort choices.
+[ ] Open an existing contract; browser Back restores search/filter/page.
+[ ] New contract > Client / Partner: existing wizard opens with correct contact filter.
+[ ] Continue a saved draft: exact saved contract loads into the existing wizard.
+[ ] Cancel, save draft, or complete: list and shortcut counts refresh.
+[ ] Template selection hands off to the current template flow on /contracts.
+[ ] Existing buyer/seller ContractView remains unchanged when opening a contract.
+[ ] Contract values respect the stored currency; zero value stays zero.
+[ ] Claimed/shared contract does not label your own buyer company as the supplier.
+    If seller identity isn't returned by the list API, it says to open the contract.
+[ ] Check light/dark themes and phone width; dropdown and filters work with keyboard.
+[ ] Simulate failed loading safely in Test: visible retry state, no fabricated zeros.
+
+VALIDATION PERFORMED HERE
+- New-page TypeScript diagnostics and additional App.tsx diagnostics: zero.
+- Production Vite compilation succeeded; existing warnings remain (large bundle,
+  stale Browserslist data, Lottie eval and duplicate buyer_id in existing detail code).
+- Mock-backend browser tests: filters, pagination, details/Back, draft hydration,
+  Client/Partner/Vendor wizard props, template handoff, error/retry, malformed
+  payload, delayed response, header mismatch, and workspace/environment isolation.
+- 72 layout checks: 12 registered themes x light/dark x 320/390/1280px.
+- These do NOT replace authenticated tests against your actual Supabase records.
+  Wizard internals and backend writes were not exercised by the mocked QA run.
+
+INTENTIONALLY NOT IN THIS RELEASE
+- Replacing /contracts, changing default navigation, or adding a menu item.
+- Rebuilding contract creation, ContractView, templates, bulk flows, or VaNi.
+- New finance totals, RFP records, synthetic references or demo contracts.
+- New grouped portfolio UI; the existing list still provides its current grouping.
+- WhatsApp integration, new schema, migration, business-model or entitlement changes.
+
+ROLLBACK (NON-DESTRUCTIVE)
+From contractnest-ui, reverse ONLY this route patch after checking it:
+git apply --reverse --check --ignore-space-change "..\MANUAL_COPY_FILES\contracts-list-v1\APP_ROUTE.patch"
+git apply --reverse --ignore-space-change "..\MANUAL_COPY_FILES\contracts-list-v1\APP_ROUTE.patch"
+The four new files can remain unused. Do not restore an old App.tsx over newer work.
+An original App.tsx snapshot is retained under this package's LOCAL_BACKUP folder.
+
+NEXT REVIEW
+Approve the list's clarity, data correctness and handoffs first. Then implement
+the agreed creation UX as a separate opt-in step, followed by ContractView.

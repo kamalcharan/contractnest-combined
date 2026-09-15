@@ -1,0 +1,80 @@
+CHANGES SUMMARY
+Branch: codex/coverage-attached-tags (local only; not pushed)
+Submodule: contractnest-ui only
+CoveragePage.tsx: selected state/checkmark for registered units; attached names as read-only tags.
+coverage.css: wrapping, theme-compatible name tags. No state/schema/API changes.
+Tags and selection derive from the saved equipment details, excluding placeholders.
+Identify-later permission is retained independently for partially attached coverage.
+
+Exact destination directory for both files:
+D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\components\contracts\ContractWizard\experience
+
+STEP 1: Pull feature branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/coverage-attached-tags
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/coverage-attached-tags
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/coverage-attached-tags instead.
+
+STEP 2: Verify package
+ls MANUAL_COPY_FILES\coverage-attached-tags
+type MANUAL_COPY_FILES\coverage-attached-tags\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy with checks and backups
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\coverage-attached-tags\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy failed. Share the output.' }
+The script checks both files before copying, backs up existing files and verifies hashes.
+These are the exact copies performed after those checks (do not bypass a failed guard):
+Copy-Item "MANUAL_COPY_FILES\coverage-attached-tags\contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\coverage-attached-tags\contractnest-ui\src\components\contracts\ContractWizard\experience\coverage.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\coverage.css" -Force
+
+TEST FIRST using STEP 13. Continue below only after your approval.
+Ensure prior Coverage/Agreement releases are committed before publishing this follow-up.
+
+STEP 4: Commit UI changes after testing
+cd contractnest-ui
+git status
+git add src/components/contracts/ContractWizard/experience/CoveragePage.tsx src/components/contracts/ContractWizard/experience/coverage.css
+git commit -m "Highlight attached coverage and show unit name tags"
+git push origin HEAD
+cd ..
+This pushes your current UI branch. Merge it to UI main only after review.
+
+STEP 5: Edge changes - none; skip.
+STEP 6: API changes - none; skip.
+STEP 7: FamilyKnows changes - none; skip.
+STEP 8: Mobile changes - none; skip.
+STEP 9: Documentation submodule changes - none; skip.
+
+STEP 10: Update only affected parent reference after UI review
+git add contractnest-ui
+git commit -m "Update UI reference for attached coverage tags"
+git push origin codex/coverage-attached-tags
+
+STEP 11: Merge parent after testing
+git switch master
+git pull --ff-only origin master
+git merge codex/coverage-attached-tags
+git push origin master
+Stop on conflicts. Do not overwrite competing submodule references blindly.
+
+STEP 12: Verify
+git status
+git -C contractnest-ui status
+Do not stage or discard unrelated changes.
+
+STEP 13: Restart and test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh Ctrl+F5. Reopen your Coverage draft from /contracts/experience.
+[ ] Attached units make Pick from registered units highlighted with a checkmark.
+[ ] Each attached equipment/facility name appears as a tag under the card.
+[ ] Detach one: only its tag disappears. Detach all: selected styling disappears.
+[ ] Save/reopen: tags and selected state remain consistent with attached counts.
+[ ] Mobile and preferred themes: tags wrap without horizontal overflow.
+
+VERIFICATION
+Mock Coverage regression passed, including tag add/remove, reopened drafts and
+24 mobile theme/mode variants. Zero new scoped TypeScript diagnostics.
+Copy preflight passed against current D: files without changing them.
+No real backend writes performed; this is a presentation-only update.

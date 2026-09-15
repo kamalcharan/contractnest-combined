@@ -1,0 +1,22 @@
+QA — SERVICE FREQUENCY HANDOFF
+
+Confirmed against the live ContractNest project and the affected saved draft:
+- Air Handling Unit Servicing is quantity 8, cycle monthly, with no independent
+  serviceCycleDays value.
+- Its live Catalog Studio block also has no separate serviceCycles configuration.
+- The previous correction incorrectly treated that valid legacy shape as incomplete.
+
+After correction:
+PASS: the exact saved shape (quantity 8 + monthly cycle + no independent service
+      interval) resolves to 30-day spacing and produces eight service events.
+PASS: an explicit independent service interval continues to take priority.
+PASS: prepaid/postpaid with quantity > 1 and no service interval still fails
+      explicitly instead of inventing a schedule.
+PASS: full Events Preview regression: filters, date changes, bulk shifts, holidays,
+      loaders/toasts, save/reopen, 12 themes light/dark, 1440/1024/390/320px.
+PASS: event-model and Money-model regression suites.
+PASS: TypeScript compile completed with no diagnostics.
+PASS: production Vite build (existing unrelated warnings remain).
+
+No live contract was modified. The browser tests use the real wizard/pages and
+isolated API/auth/persistence fixtures. Verify with your affected local draft.

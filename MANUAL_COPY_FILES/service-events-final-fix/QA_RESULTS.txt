@@ -1,0 +1,11 @@
+QA — SERVICE EVENTS FINAL FIX
+
+CONFIRMED LOCAL ROOT CAUSE
+- The current D: contractEvents.ts still checked serviceCycleDays only.
+- The earlier service-frequency package had not installed its new rules file.
+- Therefore the event engine continued to produce one service occurrence.
+
+PASS: package baseline is the exact current D: contractEvents.ts.
+PASS: exact saved shape quantity 8 + monthly cycle resolves to eight events.
+PASS: explicit independent service cadence remains authoritative.
+PASS: package changes one UI file only and performs a hash verification.
