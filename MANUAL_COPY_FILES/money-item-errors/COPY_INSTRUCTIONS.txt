@@ -1,0 +1,37 @@
+MONEY - ITEM-LEVEL PAYMENT SCHEDULE ERRORS
+Branch: codex/money-item-errors
+UI only; requires the money-save-feedback release. No API or database changes.
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/money-item-errors
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\money-item-errors\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output." }
+
+Restart UI and Ctrl+F5. Note any unsaved entries before refreshing.
+The script validates all targets before copying and backs up/verifies each file.
+
+EXACT FILE PATHS
+Each source is MANUAL_COPY_FILES\money-item-errors\ followed by the path below.
+Each destination is the same path relative to the parent repository.
+contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+  Affected-item panel, named footer error and scroll to the first affected item on Save.
+contractnest-ui\src\components\contracts\ContractWizard\experience\moneyModel.ts
+  Per-item expected/scheduled/difference/count diagnostics. No billing-engine changes.
+contractnest-ui\src\components\contracts\ContractWizard\experience\money.css
+  Item error border and mobile-friendly amount comparison.
+
+TEST
+1. Reopen the draft that produced the schedule-total error.
+2. Affected items have a highlighted payment card with expected amount after tax
+   and discount, scheduled amount, difference, and fitted/expected payment count.
+3. Unaffected items must not display an error.
+4. Save Money names the affected item and scrolls to its card, without saving.
+5. Review billing cycle there, or use Review commitment in Services for quantity
+   and delivery-frequency edits. Nothing is automatically repriced or rescheduled.
+6. Correct the choices: the item error clears and the preview reconciles.
+7. Check mobile and the selected theme; Save draft still retains unfinished choices.
+
+Scope: this patch localizes per-item schedule mismatches; agreement-wide upfront
+or EMI totals remain agreement-level errors, rather than being blamed on a line.
+Exact earlier draft data was not accessed. Test with your tenant before merging.
