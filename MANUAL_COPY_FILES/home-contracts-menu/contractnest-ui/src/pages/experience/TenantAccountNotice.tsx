@@ -35,10 +35,15 @@ export default function TenantAccountNotice() {
             <dd><strong>{fmt(contractsUsed)}</strong> used{contractsCap === Infinity ? ' · unlimited plan'
               : contractsCap !== null ? <> · <strong>{fmt(Math.max(0, contractsCap - contractsUsed))}</strong> open of {fmt(contractsCap)}</>
               : null}</dd>
+            {contractsCap !== null && contractsCap !== Infinity && contractsCap > 0 && <span
+              className={`xp-meter ${account?.flags?.over_limit || contractsUsed >= contractsCap ? 'xp-meter-bad' : account?.flags?.near_limit || contractsUsed / contractsCap >= 0.8 ? 'xp-meter-warn' : ''}`}
+              role="img" aria-label={`${fmt(contractsUsed)} of ${fmt(contractsCap)} contracts used`}>
+              <span style={{ width: `${Math.min(100, Math.round((contractsUsed / contractsCap) * 100))}%` }} />
+            </span>}
           </div>}
           {whatsappCredits !== null && <div>
             <dt>WhatsApp credits</dt>
-            <dd><strong>{fmt(whatsappCredits)}</strong> available</dd>
+            <dd className={account?.flags?.credits_low ? 'xp-value-warn' : ''}><strong>{fmt(whatsappCredits)}</strong> available</dd>
           </div>}
           <Link className="xp-text-link" to="/businessmodel/tenants/subscription">Top up<ArrowUpRight size={14} /></Link>
         </dl>}

@@ -35,7 +35,27 @@ FILES (copy to the same relative path inside contractnest-ui):
     - support contacts are two constants at the top of the file
 
  5. src/pages/experience/experience.css
-    - appended .xp-account-stats and .xp-support styles (end of file)
+    - appended .xp-account-stats and .xp-support styles
+    - appended the VIBRANCY PASS block (owner, 2026-09-16): heading gradient,
+      per-action Start-card accents, colored status pills, tinted icon chips,
+      shortcut dots, contracts-allowance meter. All colors are theme tokens
+      (brand/success/warning/info/error) via color-mix — dark mode + all
+      tenant themes stay correct automatically.
+
+ 6. src/pages/experience/StartChooser.tsx
+    - each action card gets an xp-choice-<action> class for its accent
+      (create=brand, record=green, request=amber, respond=blue, claim=blend)
+
+ 7. src/pages/experience/index.tsx (same file as #2, more changes)
+    - exposes --xp-warning/--xp-info/--xp-error from the theme
+    - status pills colored by meaning (active=green, draft=amber,
+      pending/sent=blue, expired/cancelled=red, unknown=neutral)
+    - foundation links get tinted icon chips
+
+ 8. src/pages/experience/TenantAccountNotice.tsx (same file as #3)
+    - contracts allowance meter bar (green -> amber near limit -> red over,
+      driven by the existing near_limit/over_limit flags; advisory only)
+    - WhatsApp credits value turns amber when credits_low
 
 POWERSHELL COPY (from contractnest-combined root):
 
@@ -52,3 +72,8 @@ TESTING CHECKLIST:
      text; email opens mail client to support@vikuna.io
  [ ] Home empty-state "Open contracts" and list "View all" land on /ncontracts
  [ ] Lite tenant (CNAK/RFQ-lite) Home unchanged (LiteDashboard, no crash)
+ [ ] VIBRANCY: heading band shows soft brand->blue gradient; Start cards
+     each have their own accent (top border + icon chip); status pills
+     colored by state; allowance meter renders under Contracts numbers
+ [ ] Toggle dark mode and at least one other tenant theme — all accents
+     recolor with the theme, text stays readable everywhere

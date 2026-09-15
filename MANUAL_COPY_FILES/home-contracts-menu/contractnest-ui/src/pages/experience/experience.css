@@ -21,7 +21,42 @@
 @media(max-width:1100px){.xp-start-compact .xp-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.xp-start-compact{padding:18px}.xp-start-compact .xp-choice-grid{grid-template-columns:1fr}.xp-start-compact .xp-choice{display:grid;grid-template-columns:38px minmax(0,1fr);align-items:center;gap:12px;padding:14px}.xp-start-compact .xp-choice-top{margin:0;width:38px}.xp-start-compact .xp-choice-hint,.xp-start-compact .xp-choice-arrow{display:none}.xp-start-compact .xp-choice strong{line-height:1.5}.xp-account{padding:22px}}
 .xp-workspace-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.xp-workspace-links .xp-foundation{padding:22px}.xp-workspace-links .xp-note{font-size:10px}
-.xp-account-stats{margin:18px 0 0;border:1px solid var(--xp-line);border-radius:14px;padding:4px 14px 12px;font-variant-numeric:tabular-nums}.xp-account-stats>div{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:11px 0;border-bottom:1px solid var(--xp-line)}.xp-account-stats dt{font-size:11px;color:var(--xp-muted);margin:0}.xp-account-stats dd{font-size:12px;margin:0;text-align:right}.xp-account-stats strong{font-size:14px;font-weight:600}.xp-account-stats>.xp-text-link{font-size:11px;min-height:36px;margin-top:2px}
+.xp-account-stats{margin:18px 0 0;border:1px solid var(--xp-line);border-radius:14px;padding:4px 14px 12px;font-variant-numeric:tabular-nums}.xp-account-stats>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;padding:11px 0;border-bottom:1px solid var(--xp-line)}.xp-account-stats dt{font-size:11px;color:var(--xp-muted);margin:0}.xp-account-stats dd{font-size:12px;margin:0;text-align:right}.xp-account-stats strong{font-size:14px;font-weight:600}.xp-account-stats>.xp-text-link{font-size:11px;min-height:36px;margin-top:2px}
 .xp-support{padding:24px}.xp-support>.xp-muted{font-size:12px;margin:12px 0 8px}.xp-support .xp-foundation-link{min-height:66px}
+
+/* ── Vibrancy pass (owner, 2026-09-16). Every accent is a theme token mixed
+   with the surface, so all tenant themes and dark mode stay correct. ── */
+.xp-heading{border:1px solid var(--xp-line);border-radius:22px;padding:30px 32px;background:linear-gradient(120deg,color-mix(in srgb,var(--xp-brand) 13%,var(--xp-surface)),var(--xp-surface) 46%,color-mix(in srgb,var(--xp-info) 11%,var(--xp-surface)))}
+.xp-heading .xp-eyebrow,.xp-start-topline .xp-eyebrow,.xp-section-heading .xp-eyebrow{color:var(--xp-brand)}
+.xp-start{background:linear-gradient(135deg,color-mix(in srgb,var(--xp-brand) 11%,var(--xp-surface)),var(--xp-surface) 42%,color-mix(in srgb,var(--xp-info) 9%,var(--xp-surface)))}
+/* Per-action identity on the Start cards */
+.xp-choice-create{--xp-accent:var(--xp-brand)}.xp-choice-record{--xp-accent:var(--xp-success)}.xp-choice-request{--xp-accent:var(--xp-warning)}.xp-choice-respond{--xp-accent:var(--xp-info)}.xp-choice-claim{--xp-accent:color-mix(in srgb,var(--xp-brand) 45%,var(--xp-info))}
+.xp-root .xp-choice{--xp-accent:var(--xp-brand);border-top:3px solid color-mix(in srgb,var(--xp-accent) 55%,var(--xp-line));background:linear-gradient(180deg,color-mix(in srgb,var(--xp-accent) 7%,var(--xp-surface)),var(--xp-surface) 58%)}
+.xp-root .xp-choice .xp-choice-icon{color:var(--xp-accent);background:color-mix(in srgb,var(--xp-accent) 13%,var(--xp-surface));border-color:color-mix(in srgb,var(--xp-accent) 32%,var(--xp-line))}
+.xp-root .xp-choice:hover{border-color:var(--xp-accent);border-top-color:var(--xp-accent)}
+.xp-root .xp-choice-featured{background:linear-gradient(180deg,color-mix(in srgb,var(--xp-accent) 13%,var(--xp-surface)),color-mix(in srgb,var(--xp-accent) 4%,var(--xp-surface)))}
+.xp-choice-cta{color:var(--xp-accent)}
+/* Status pills that mean something */
+.xp-status-good{color:var(--xp-success);border-color:color-mix(in srgb,var(--xp-success) 45%,var(--xp-line));background:color-mix(in srgb,var(--xp-success) 11%,var(--xp-surface))}
+.xp-status-warn{color:var(--xp-warning);border-color:color-mix(in srgb,var(--xp-warning) 45%,var(--xp-line));background:color-mix(in srgb,var(--xp-warning) 11%,var(--xp-surface))}
+.xp-status-info{color:var(--xp-info);border-color:color-mix(in srgb,var(--xp-info) 45%,var(--xp-line));background:color-mix(in srgb,var(--xp-info) 11%,var(--xp-surface))}
+.xp-status-bad{color:var(--xp-error);border-color:color-mix(in srgb,var(--xp-error) 40%,var(--xp-line));background:color-mix(in srgb,var(--xp-error) 9%,var(--xp-surface))}
+/* Tinted icon chips */
+.xp-chip{border:1px solid var(--xp-line);border-radius:12px;width:38px;height:38px;align-self:center}
+.xp-chip-brand{color:var(--xp-brand);background:color-mix(in srgb,var(--xp-brand) 12%,var(--xp-surface));border-color:color-mix(in srgb,var(--xp-brand) 30%,var(--xp-line))}
+.xp-chip-success{color:var(--xp-success);background:color-mix(in srgb,var(--xp-success) 12%,var(--xp-surface));border-color:color-mix(in srgb,var(--xp-success) 30%,var(--xp-line))}
+.xp-chip-warning{color:var(--xp-warning);background:color-mix(in srgb,var(--xp-warning) 12%,var(--xp-surface));border-color:color-mix(in srgb,var(--xp-warning) 30%,var(--xp-line))}
+.xp-chip-info{color:var(--xp-info);background:color-mix(in srgb,var(--xp-info) 12%,var(--xp-surface));border-color:color-mix(in srgb,var(--xp-info) 30%,var(--xp-line))}
+/* Colored markers on the Keep-going shortcuts */
+.xp-shortcut::before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--xp-brand)}
+.xp-foundation .xp-shortcut:nth-of-type(2)::before{background:var(--xp-success)}
+.xp-foundation .xp-shortcut:nth-of-type(3)::before{background:var(--xp-warning)}
+.xp-shortcut>span:first-of-type{flex:1}
+/* Contracts-allowance meter */
+.xp-meter{flex-basis:100%;height:6px;border-radius:6px;background:color-mix(in srgb,var(--xp-text) 9%,transparent);overflow:hidden;margin-top:4px}
+.xp-meter>span{display:block;height:100%;border-radius:6px;background:var(--xp-success);transition:width .3s}
+.xp-meter-warn>span{background:var(--xp-warning)}.xp-meter-bad>span{background:var(--xp-error)}
+.xp-value-warn,.xp-value-warn strong{color:var(--xp-warning)}
+@media(max-width:760px){.xp-heading{padding:22px 18px}}
 .xp-root{min-height:100%}.xp-root .xp-main{padding-top:32px}.xp-root .xp-release{padding-left:24px;padding-right:24px}
 @media(max-width:1050px){.xp-workspace-links{grid-template-columns:1fr}}
