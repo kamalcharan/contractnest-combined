@@ -24,12 +24,12 @@ export default function SupportCard() {
         target="_blank"
         rel="noopener noreferrer"
       >
-        <span className="xp-small-icon"><MessageCircle size={18} /></span>
+        <span className="xp-small-icon xp-chip xp-chip-success"><MessageCircle size={18} /></span>
         <span><strong>WhatsApp us</strong><small>Fastest — usually same day</small></span>
         <ArrowUpRight size={16} />
       </a>
       <a className="xp-foundation-link" href={`mailto:${SUPPORT_EMAIL}`}>
-        <span className="xp-small-icon"><Mail size={18} /></span>
+        <span className="xp-small-icon xp-chip xp-chip-info"><Mail size={18} /></span>
         <span><strong>Email support</strong><small>{SUPPORT_EMAIL}</small></span>
         <ArrowUpRight size={16} />
       </a>
