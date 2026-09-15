@@ -1,0 +1,34 @@
+EXPERIENCE DRAFT RESUME FIX
+Branch: codex/experience-draft-resume-fix
+Prerequisite: service-frequency-fix release installed.
+Affected submodule: contractnest-ui only. Two files. No API/Edge/DB changes.
+
+PULL AND COPY — WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/experience-draft-resume-fix
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\experience-draft-resume-fix\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not force overwrite." }
+
+Restart UI, then Ctrl+F5.
+
+WHAT IS FIXED
+- /contracts/experience always opens drafts in the product-led experience.
+- /contracts remains unchanged and continues to use the existing wizard.
+- Early experience drafts without an experience_chapter marker are no longer
+  misclassified as classic drafts.
+- Unmarked drafts resume from the latest chapter their saved data proves safe:
+  coverage, services, or delivery. A later completion is never guessed.
+
+FILES
+contractnest-ui\src\pages\contracts\experience\index.tsx
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+TEST
+1. Open /contracts/experience?status=draft.
+2. Click Continue draft for AMC for Lifts.
+3. Confirm the product-led experience opens, not the 12-step classic wizard.
+4. This draft has saved commitments and Money, so it should resume at Delivery.
+5. Continue to Events Preview and confirm Services · 8.
+6. Close and verify the URL/list remains /contracts/experience?status=draft.
+7. Open /contracts separately and confirm its existing behavior is unchanged.

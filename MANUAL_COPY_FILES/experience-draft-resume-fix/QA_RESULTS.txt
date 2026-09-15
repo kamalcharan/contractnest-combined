@@ -1,0 +1,20 @@
+QA — EXPERIENCE DRAFT RESUME
+
+ROOT CAUSE CONFIRMED AGAINST LIVE SAVED DRAFT
+- AMC for Lifts contains wizard_state, coverage, three selected blocks,
+  grandTotal 10500 and acceptance configuration.
+- It was created before experience_chapter / experience_step markers existed.
+- The experience list treated a missing marker as classic and mounted the old
+  12-step wizard.
+
+CORRECTION
+- The /contracts/experience route is now the authoritative presentation choice.
+- Missing markers use persisted-state inference only; no later step is guessed.
+- The old /contracts page and its wizard entry remain untouched.
+
+PASS: no TypeScript diagnostic points to the changed resume logic or experience
+      list page. The full repository check still reports its existing baseline
+      errors elsewhere, including older theme-property errors later in the
+      shared ContractWizard file.
+PASS: release preflight verifies both source/baseline files atomically.
+PASS: no API, Edge or database mutation is included.
