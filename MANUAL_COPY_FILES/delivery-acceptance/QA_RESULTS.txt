@@ -1,0 +1,51 @@
+DELIVERY & ACCEPTANCE — QA, 15 September 2026
+
+Verified using real experience pages, wizard controller, state serialization and
+standard InlineLoader. API/auth/tenant data and mutations were isolated fixtures;
+the toast hook recorded calls rather than displaying the application provider.
+No live contract, payment, invoice or notification was created by QA.
+
+PASS: creation-typecheck.cjs
+  Zero new/added diagnostics in the creation release against its recorded baseline.
+  This is not a claim that every pre-existing file in the repository is error-free.
+PASS: delivery-check.cjs
+  Services -> Money -> Delivery; successful Money save unlocks navigation.
+  Standard loader while pending; single success/error toast invocation.
+  Contact-person email rather than silent company-contact replacement.
+  Structured forms, ordered versions, switch-away/switch-back retention.
+  Failed gateway lookup stays an error; confirmed no-gateway allows offline flow.
+  Failed save, retry, save/reopen, exact draft metadata.
+  No status transition, notification or acceptance_method on draft update payload.
+  Tenant/environment header checks and changed-context editing lock.
+  Twelve themes, each light/dark; no overflow at 1440/1024/390/320px.
+PASS: delivery-edge-check.cjs
+  Empty, malformed and wrong-tenant form responses.
+  Unavailable selected version is marked; explicit removal/reselection updates it.
+  Missing contact person does not fall back to company email.
+  Recipient lookup retry; positive-total requirement for payment acceptance.
+  Connected gateway and incomplete draft saves; active chapter visible on mobile.
+PASS: money-model-check.cjs
+  Twenty financial cases; sixty multi-line discount/rounding cases.
+  Existing actual UI/API event and payload parity.
+  Complimentary, fees/groups, FlyBy, custom cycles, term/tax/date-override guards.
+PASS: money-item-errors-check.cjs
+  Only affected items highlighted; expected/scheduled/difference and count shown.
+  Invalid save blocked; correction clears errors; desktop/mobile.
+PASS: contained-editor-check.cjs
+  Existing service-card containment, independent values, apply/cancel, reopen.
+PASS: production Vite build (existing unrelated warnings remain).
+PASS: read-only copy preflight against the user's D: checkout, all five files.
+
+Visual inspection: desktop and phone captures of selected proof cards, ordered
+forms, acceptance choices, recipient, gateway note and fixed save controls.
+
+Release boundaries / user acceptance still needed:
+- Test with your own authenticated workspace and actual forms/gateway configuration.
+- Verify the standard toast's appearance in the full product provider.
+- This release stores draft choices; Events Preview and Final review are next.
+- Offline/online collection, activation and sending are NOT exercised by this QA.
+- Original classic contract wizard remains on its existing renderer.
+- No database migration, API or Edge modification is included.
+
+Build warnings already present: old Browserslist data, duplicate buyer_id key in
+the existing contract detail screen, lottie eval, large chunks, mixed imports.
