@@ -1,0 +1,9 @@
+FINAL REVIEW DOCUMENT HOTFIX
+
+Corrects the inverted documentOnly condition from the previous delivery:
+- restores the real contract document;
+- removes the legacy acceptance workflow panel;
+- restores the approved Final Review heading and Seller/Customer perspective context.
+
+Run:
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\final-review-document-hotfix\COPY_COMMANDS.ps1"
