@@ -1,0 +1,25 @@
+SERVICE EVENTS FINAL FIX
+Branch: codex/service-events-final-fix
+Affected submodule: contractnest-ui only. One file. No API/Edge/DB changes.
+
+PULL AND COPY — WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/service-events-final-fix
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\service-events-final-fix\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output." }
+
+Restart UI, then Ctrl+F5.
+
+FIX
+- Air Handling Unit Servicing has quantity 8 and cycle monthly.
+- When no separate serviceCycleDays exists, the explicit monthly cycle supplies
+  30-day service spacing, restoring eight service events.
+- A separate serviceCycleDays value still takes priority.
+- Prepaid/postpaid never imply a service schedule.
+
+TEST
+1. Reopen AMC for Lifts from /contracts/experience?status=draft.
+2. Continue from Delivery to Events Preview.
+3. Confirm Services · 8 and cards 1 of 8 through 8 of 8.
+4. Confirm the dates are monthly and Payments remains 9.

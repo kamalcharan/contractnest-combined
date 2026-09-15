@@ -1,0 +1,31 @@
+{
+  "release": "ux-journey-s1-r5-logo",
+  "prerequisite": "ux-journey-s1-r5",
+  "files": [
+    {
+      "path": "contractnest-ui/src/components/layout/Sidebar.tsx",
+      "releaseHash": "40ca296ce90ea3bdcd8875e6e852e9df41fa19f019ac6177699962fff08ff2cf",
+      "baseHash": "4ec6c4ebc9f308f98f3f60a3c289fac55c0331709b12d81d32e40abec02ba3a8"
+    },
+    {
+      "path": "contractnest-ui/public/assets/images/contractnest/svg/contractnest-logo-horizontal.svg",
+      "releaseHash": "46298ab93fbea6701ff9a337a5390faeaa48987fb39e9a2d905ec064d1abc3fc",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/public/assets/images/contractnest/svg/contractnest-logo-horizontal-ondark.svg",
+      "releaseHash": "ce88011972c0f51522b94ccaa8e29d8d75901f6ef53698f0377eff804a804526",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/public/assets/images/contractnest/svg/contractnest-mark-primary.svg",
+      "releaseHash": "897791ade0b180c62cb95d0a3892a8f49931619f7510bb4a437ed999b811f1c0",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/public/assets/images/contractnest/svg/contractnest-mark-ondark.svg",
+      "releaseHash": "f43c49c1d176bddb410ca7b4556a2f7f39b616cb1501d4967dff2d18affa2060",
+      "baseHash": null
+    }
+  ]
+}

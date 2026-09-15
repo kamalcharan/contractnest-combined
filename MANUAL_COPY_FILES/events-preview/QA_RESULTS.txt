@@ -1,0 +1,39 @@
+EVENTS PREVIEW QA — 15 September 2026
+
+PASS: creation-typecheck.cjs — zero new/added diagnostics in creation release.
+PASS: production Vite build — 3752 modules, existing warnings only.
+PASS: events-model-check.cjs
+  Uses real event engine and Money model; service/payment counts, parts,
+  shared sessions and ongoing service isolation, date bounds, obsolete/invalid
+  overrides, original time-of-day preservation, acknowledgement signature
+  invalidation and serialize/reopen, template receipt stripping, size guard.
+PASS: events-check.cjs (real controller/pages, mocked API/auth/tenant)
+  Delivery -> Events, filters and lane isolation, date edit/reset/invalid values,
+  billing-only bulk shift/reset, holiday keep, failed save/retry, loader and one
+  toast invocation, draft-only payload, save/reopen, agreement-change invalidation.
+  Twelve themes in light/dark; 1440/1024/390/320px without page overflow.
+PASS: events-edge-check.cjs
+  Holiday shift does not move the payment; out-of-window suggestions disabled.
+  All-week holidays cannot pretend a valid working day was found.
+  Malformed calendar remains an error; incomplete draft saving allowed.
+  Obsolete date adjustment requires explicit removal.
+  35-date pagination and mobile bulk controls.
+PASS: money-model-check.cjs — existing UI/API financial/event parity tests;
+  20 financial cases, 60 multi-line discount/rounding cases, FlyBy/custom cycles,
+  complimentary/fee/group isolation, terms/tax/date-override safeguards.
+PASS: money-item-errors-check.cjs — affected-item errors and correction still work.
+PASS: read-only copy preflight against the user's D: checkout, all seven files.
+PASS: release files match tested source hashes; existing event engine, holiday
+  resolver and bulk adjuster match the user's live checkout and are unchanged.
+
+Visual QA: inspected desktop and phone timeline screenshots against the approved
+two-lane / stacked-date-group HTML pattern. Standard theme tokens retained.
+
+Limits: API responses and mutations were fixtures; no live data was altered.
+Toast calls were recorded by a mock hook; verify appearance in the full product.
+Authenticated tenant calendar, actual draft API persistence, and original classic
+wizard should be included in user acceptance testing. No activation or execution
+workflow was tested or added. No API, Edge, or database files are released.
+
+Existing build warnings: old Browserslist data, duplicate buyer_id in the existing
+contract detail screen, lottie eval, mixed imports and large output chunks.

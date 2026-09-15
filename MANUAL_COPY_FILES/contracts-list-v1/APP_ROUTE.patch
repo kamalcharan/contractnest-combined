@@ -1,0 +1,18 @@
+diff --git a/src/App.tsx b/src/App.tsx
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -212,5 +212,6 @@
+ // Contracts Hub + Detail + Invoice View + Public Review
+ import ContractsHubPage from './pages/contracts/hub';
++import ContractsExperiencePage from './pages/contracts/experience';
+ import RfqBuilderPage from './pages/contracts/rfq/RfqBuilderPage';
+ import ContractDetailPage from './pages/contracts/detail';
+ import InvoiceViewPage from './pages/contracts/invoice';
+@@ -838,6 +839,7 @@
+             }
+           >
+             <Route index element={<ContractsHubPage />} />
++            <Route path="experience" element={<ContractsExperiencePage />} />
+             <Route path="rfq/new" element={<RfqBuilderPage />} />
+             <Route path=":id" element={<ContractDetailPage />} />
+             <Route path="claim" element={<ClaimContractPage />} />

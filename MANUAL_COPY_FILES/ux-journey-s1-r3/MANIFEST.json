@@ -1,0 +1,36 @@
+{
+  "release": "ux-journey-s1-r3",
+  "prerequisite": "ux-journey-s1",
+  "files": [
+    {
+      "path": "contractnest-ui/src/pages/experience/index.tsx",
+      "releaseHash": "02e4efc3a8b91b93b4258fa01b9f5f1988985d09ac232844cf90bb552d3c2e10",
+      "baseHash": "cf8ac74db5aabad26371a640a6c489545a9c312a8123113f260277b3a9a1b76d"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/experience.css",
+      "releaseHash": "ad9d4f675da294c4115e8ef6f4fa9055d7a4bbe3bfd7a64f3e6c88e9221af63d",
+      "baseHash": "a08776a88069fb91a5060e874075fb354ee1ad4d8db6a49458421819b27d20b3"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/model.ts",
+      "releaseHash": "4178c03ba4d2e1ca55390542646d6819b357000d5160fec36590db9cd73f3c4d",
+      "baseHash": "71e2ec83c14d484cecb6c974968f0f6133da6014bdc1ce5ddfa1e289c38d1758"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/verify.mjs",
+      "releaseHash": "8bc106ee0f4ef9f5031dc017ceaae26a96ed90526fc54eee73432be7de29e768",
+      "baseHash": "80a29108963fb3f77e9766aa1ae1cea15ce1741354d2daec4b520401246405d8"
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/StartChooser.tsx",
+      "releaseHash": "b4d785b92002039c80f17e4c61cbbea92dce876ff64cb8973f75a1358c929476",
+      "baseHash": null
+    },
+    {
+      "path": "contractnest-ui/src/pages/experience/measurement.ts",
+      "releaseHash": "49407a09b4a2da73714adc8b698a3d232b1f72a93c8972abc0aafbc81f518317",
+      "baseHash": null
+    }
+  ]
+}

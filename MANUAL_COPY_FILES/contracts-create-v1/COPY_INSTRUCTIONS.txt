@@ -1,0 +1,113 @@
+CONTRACTNEST - MANUAL CREATE EXPERIENCE V1
+Parent release branch: codex/contracts-create-v1 (LOCAL source checkout; not pushed to GitHub)
+Affected submodule: contractnest-ui ONLY
+Read RELEASE_NOTES.md before testing. Use TEST environment: this page creates real contracts.
+
+STEP 1: Pull the local release branch (no ZIP required)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/contracts-create-v1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop and share the output." }
+
+STEP 2: Verify files received
+Get-ChildItem "MANUAL_COPY_FILES\contracts-create-v1"
+Get-Content "MANUAL_COPY_FILES\contracts-create-v1\RELEASE_NOTES.md"
+
+STEP 3: Guarded copy (recommended; validates every file before writing, backs up existing files)
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\contracts-create-v1\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy stopped. Share the output; do not force-overwrite." }
+
+Exact source -> destination mappings, relative to the parent checkout:
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\App.tsx
+  -> contractnest-ui\src\App.tsx (adds the isolated creation route)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\index.tsx (opt-in presentation, isolated guards, missing shared import fix)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\chapters.ts
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\chapters.ts (presentation map; persisted step order unchanged)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\CreationShell.tsx
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\CreationShell.tsx (chapter navigation and live summary)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\creation.css
+  -> contractnest-ui\src\components\contracts\ContractWizard\experience\creation.css (scoped responsive theme styles)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\pages\contracts\experience\create.tsx
+  -> contractnest-ui\src\pages\contracts\experience\create.tsx (manual route and explicit relationship selection)
+MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\pages\contracts\experience\index.tsx
+  -> contractnest-ui\src\pages\contracts\experience\index.tsx (new-list Create entry only; existing draft resume retained)
+
+Exact Copy-Item operations performed by the guarded script (for inspection, not a reason to skip its preflight/backups):
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\chapters.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\chapters.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\CreationShell.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CreationShell.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\components\contracts\ContractWizard\experience\creation.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\creation.css" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\pages\contracts\experience\create.tsx" -Destination "contractnest-ui\src\pages\contracts\experience\create.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-create-v1\contractnest-ui\src\pages\contracts\experience\index.tsx" -Destination "contractnest-ui\src\pages\contracts\experience\index.tsx" -Force
+
+TEST BEFORE COMMITS/MERGES BELOW. Run STEP 13 now and follow RELEASE_NOTES.md checklist.
+Review only these seven files; unrelated existing changes are not part of this release.
+
+STEP 4: Commit UI changes AFTER testing, on a feature branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git status
+git show-ref --verify --quiet refs/heads/codex/contracts-create-v1
+if ($LASTEXITCODE -eq 0) { git switch codex/contracts-create-v1 } else { git switch -c codex/contracts-create-v1 }
+if ($LASTEXITCODE -ne 0) { throw "Branch switch failed. Stop here." }
+git add -- src/App.tsx src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/experience/chapters.ts src/components/contracts/ContractWizard/experience/CreationShell.tsx src/components/contracts/ContractWizard/experience/creation.css src/pages/contracts/experience/create.tsx src/pages/contracts/experience/index.tsx
+git diff --cached --stat
+git commit -m "Add isolated product-led manual contract creation experience"
+if ($LASTEXITCODE -ne 0) { throw "UI commit failed. Review status." }
+git push -u origin codex/contracts-create-v1
+if ($LASTEXITCODE -ne 0) { throw "UI push failed. Stop here." }
+cd ..
+
+STEP 5: Edge - not modified. No commit or deployment.
+STEP 6: API - not modified. No restart or deployment.
+STEP 7: FamilyKnows - not modified.
+STEP 8: Mobile - not modified.
+STEP 9: ClaudeDocumentation - not modified. Release notes are in the parent manual-copy folder.
+
+STEP 10: Commit parent submodule pointer AFTER UI branch is pushed
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git show-ref --verify --quiet refs/heads/codex/contracts-create-v1
+if ($LASTEXITCODE -eq 0) { git switch codex/contracts-create-v1 } else { git switch -c codex/contracts-create-v1 }
+if ($LASTEXITCODE -ne 0) { throw "Parent branch switch failed. Stop here." }
+git add -- contractnest-ui
+git diff --cached --stat
+git commit -m "Update UI submodule for manual contract creation experience"
+if ($LASTEXITCODE -ne 0) { throw "Parent commit failed. Review status." }
+git push -u origin codex/contracts-create-v1
+if ($LASTEXITCODE -ne 0) { throw "Parent push failed. Stop here." }
+
+STEP 11: Merge only after acceptance testing; UI default is main, parent default is master
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch main
+if ($LASTEXITCODE -ne 0) { throw "Stop: UI branch switch failed." }
+git pull --ff-only origin main
+if ($LASTEXITCODE -ne 0) { throw "Stop: UI pull failed." }
+git merge --ff-only codex/contracts-create-v1
+if ($LASTEXITCODE -ne 0) { throw "Branches diverged. Review or open a PR; do not force-reset." }
+git push origin main
+if ($LASTEXITCODE -ne 0) { throw "Stop: UI push failed." }
+cd ..
+git switch master
+if ($LASTEXITCODE -ne 0) { throw "Stop: parent branch switch failed." }
+git pull --ff-only origin master
+if ($LASTEXITCODE -ne 0) { throw "Stop: parent pull failed." }
+git merge --ff-only codex/contracts-create-v1
+if ($LASTEXITCODE -ne 0) { throw "Branches diverged. Review or open a PR; do not force-reset." }
+git push origin master
+if ($LASTEXITCODE -ne 0) { throw "Stop: parent push failed." }
+
+STEP 12: Verify status (pre-existing unrelated changes may still be present; preserve them)
+git status
+git -C contractnest-ui status
+
+STEP 13: Start UI if not already running, then test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+
+Do not start a second server if the existing one is running. Ctrl+F5 in browser.
+Select TEST using the existing environment switch before entering creation.
+Open http://localhost:5173/contracts/experience -> New contract -> Client or Partner.
+Or open http://localhost:5173/contracts/experience/create for explicit relationship selection.
+In Expense, select Vendor. Check the original /contracts page still works.
+
+No GitHub push was performed by the agent. STEP 1 pulls the locally committed package, not an unpublished remote branch. Backups stay under LOCAL_BACKUP and are ignored by Git.

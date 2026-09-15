@@ -1,0 +1,46 @@
+SERVICE FREQUENCY -> EVENTS CORRECTION
+Branch: codex/service-frequency-fix
+Prerequisite: events-preview release installed.
+Affected submodule: contractnest-ui only. Seven files. No API/Edge/DB changes.
+
+PULL AND COPY — WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/service-frequency-fix
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\service-frequency-fix\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not force overwrite." }
+
+Restart UI, then Ctrl+F5.
+
+WHAT IS FIXED
+- Restores the previous recurring-cycle compatibility used by existing drafts.
+- When a service has multiple visits and no independent service interval, an
+  explicit recurring commitment cycle (monthly/fortnightly/quarterly/custom)
+  supplies the visit spacing. A separate service interval still takes priority.
+- Air Handling Unit Servicing with quantity 8 and cycle monthly now produces
+  Services · 8 and cards 1 of 8 through 8 of 8.
+- Prepaid/postpaid never become an invented service schedule. If neither a
+  service interval nor a recurring cycle exists, the named validation remains.
+- The Services card states when the recurring commitment schedule is being used.
+
+FILES
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\CommitmentEditor.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx
+contractnest-ui\src\components\contracts\ContractWizard\experience\eventsModel.ts
+contractnest-ui\src\components\contracts\ContractWizard\experience\serviceScheduleRules.ts (new)
+contractnest-ui\src\utils\service-contracts\contractEvents.ts
+
+TEST
+1. Reopen the affected existing draft; do not recreate the service.
+2. Confirm Air Handling Unit Servicing still shows 8 visits and Monthly billing.
+3. Continue through Money and Delivery without adding a separate interval.
+4. Events Preview must show Services · 8 and cards 1 of 8 through 8 of 8.
+5. Dates must be monthly from the agreement start date.
+6. Confirm the existing 9 payment events and their amounts are unchanged.
+7. Change the commitment to prepaid with no service interval. Saving Services
+   must then show the named missing-schedule validation; no cadence is guessed.
+8. Test desktop/mobile and your active theme.
+
+Do not merge/push yet. Test first and report the result.

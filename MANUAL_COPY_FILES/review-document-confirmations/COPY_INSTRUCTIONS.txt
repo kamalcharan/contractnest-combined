@@ -1,0 +1,29 @@
+REVIEW DOCUMENT AND CONFIRMATIONS
+Submodule affected: contractnest-ui only.
+Run COPY_COMMANDS.ps1 from this package. It checks every target before copying and backs up existing files.
+BASELINE files were captured from the D: working UI. Line ending differences are ignored; other local changes stop the copy.
+
+Exact paths, relative to contractnest-combined:
+MANUAL_COPY_FILES/review-document-confirmations/contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+ -> contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+MANUAL_COPY_FILES/review-document-confirmations/contractnest-ui/src/components/contracts/ContractWizard/experience/ReviewPage.tsx
+ -> contractnest-ui/src/components/contracts/ContractWizard/experience/ReviewPage.tsx
+MANUAL_COPY_FILES/review-document-confirmations/contractnest-ui/src/components/contracts/ContractWizard/experience/review.css
+ -> contractnest-ui/src/components/contracts/ContractWizard/experience/review.css
+MANUAL_COPY_FILES/review-document-confirmations/contractnest-ui/src/components/contracts/ContractWizard/experience/CompletionPage.tsx
+ -> contractnest-ui/src/components/contracts/ContractWizard/experience/CompletionPage.tsx
+
+Changes:
+- Seller internal preparation and source details differ from Buyer acceptance and agreed-price summary.
+- Document uses white paper and dark serif text regardless of application theme.
+- Experience completion exposes actual returned status, CNAK and payment receipt; absent values are explicitly reported.
+- Classic wizard success screen and existing submission/payment handlers are preserved.
+
+Testing:
+1. Resume an experience draft and reach Final Review. Switch Seller/Buyer; terms and amounts stay equal, internal sections disappear for Buyer.
+2. Change application theme, including dark. Document remains white, surrounding application follows theme.
+3. In TEST environment submit with your normal acceptance method. Verify returned contract number, status and CNAK; Copy CNAK and Open contract.
+4. If recording payment, verify receipt and balance match the contract. Without a receipt, no payment success is claimed.
+5. Verify original wizard creation still uses its existing completion screen.
+
+Verification performed: actual review and completion components rendered with simulated data/responses in a local browser. Buyer/Seller sections, dark-theme white document, pending-acceptance CNAK confirmation, and missing-CNAK draft messages checked. No live contract was submitted by the agent. Live backend delivery/acceptance is a user test, not claimed as verified.

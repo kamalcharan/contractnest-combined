@@ -1,0 +1,143 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: codex/services-step-3 (local C: repository; not pushed to GitHub)
+Submodules Affected: contractnest-ui only
+Files Changed:
+contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+  Connects Coverage to Services; saves and reopens the same draft at Services.
+contractnest-ui/src/components/contracts/ContractWizard/experience/CoveragePage.tsx
+  Adds Continue to services after a successful Coverage save. Existing cards/tags retained.
+contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+  Uses the live selection, pricing, cadence, scheduling and splitting logic with the new view.
+contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx
+  Provides the existing full editor inside an expanded commitment. Classic header remains default.
+contractnest-ui/src/hooks/queries/useCatBlocksTest.ts
+  Adds strict, paginated, tenant/environment-keyed fetching only for this experience.
+contractnest-ui/src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx
+  Approved catalogue layout: scope tabs, search/filter, selected rows, FlyBy and validation.
+contractnest-ui/src/components/contracts/ContractWizard/experience/ServicesPage.tsx
+  Services chapter shell, agreement summary, draft/save feedback and continuation boundary.
+contractnest-ui/src/components/contracts/ContractWizard/experience/services.css
+  Theme-aware Services cards and mobile layout; scoped styles.
+
+Prerequisite: Agreement, Coverage and attached-unit tags releases are installed.
+This slice ends at SERVICES SAVED. Money/Delivery/Events/Review are not implemented here.
+No route, existing menu, API, Edge or database migration changes.
+Manual mode only. No VaNi calls, contract activation, invoices or appointments.
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: Pull the Feature Branch
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch -c codex/services-step-3
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/services-step-3
+if ($LASTEXITCODE -ne 0) { throw 'Pull failed. Stop before copying.' }
+If the branch already exists, use git switch codex/services-step-3 instead.
+This uses the local repository because this release has NOT been pushed to origin.
+
+STEP 2: Verify Files Received
+ls MANUAL_COPY_FILES\services-step-3
+type MANUAL_COPY_FILES\services-step-3\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\services-step-3\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw 'Copy failed. Stop and share the output.' }
+Write-Host 'Copied — restart UI, then Ctrl+F5' -ForegroundColor Green
+
+The script checks ALL files before replacing anything, backs up existing files,
+and verifies each copied file. If local changes differ, STOP rather than force-copy.
+The script creates directories and performs these exact copies after its checks:
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\CoveragePage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\serviceBlocksChecklist\ChecklistRow.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\hooks\queries\useCatBlocksTest.ts" -Destination "contractnest-ui\src\hooks\queries\useCatBlocksTest.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesCatalog.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\ServicesPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\services-step-3\contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\services.css" -Force
+
+STOP HERE TO TEST: run STEP 13 and the checklist before committing, pushing or merging.
+Steps 4-12 are for AFTER acceptance. Prior releases must be committed separately;
+do not stage unrelated work or silently combine unreviewed changes.
+
+STEP 4: Commit UI Changes (after testing)
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+git switch -c codex/services-step-3
+git status
+git add src/components/contracts/ContractWizard/index.tsx src/components/contracts/ContractWizard/experience/CoveragePage.tsx src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx src/hooks/queries/useCatBlocksTest.ts src/components/contracts/ContractWizard/experience/ServicesCatalog.tsx src/components/contracts/ContractWizard/experience/ServicesPage.tsx src/components/contracts/ContractWizard/experience/services.css
+git commit -m "Add product-led Services chapter with catalogue and FlyBy draft flow"
+git push origin codex/services-step-3
+
+After review and with a clean working tree:
+git switch main
+git pull --ff-only origin main
+git merge codex/services-step-3
+git push origin main
+cd ..
+Stop on conflicts or rejected pushes. Do not discard edits or force-push.
+
+STEP 5: Commit Edge Changes — not applicable.
+STEP 6: Commit API Changes — not applicable.
+STEP 7: Commit FamilyKnows Changes — not applicable.
+STEP 8: Commit Mobile Changes — not applicable.
+STEP 9: Commit Documentation Changes — no documentation submodule changes.
+
+STEP 10: Update Parent Repo Submodule References
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git switch codex/services-step-3
+git add contractnest-ui
+git commit -m "Update UI submodule for Services creation chapter"
+git push origin codex/services-step-3
+
+STEP 11: Merge to Master (parent default)
+git switch master
+git pull --ff-only origin master
+git merge codex/services-step-3
+git push origin master
+If a submodule conflict occurs, stop and inspect the competing UI commits.
+Do not resolve by blindly selecting a branch or altering unrelated submodules.
+
+STEP 12: Verify Everything is Clean
+git status
+git -C contractnest-ui status
+Unrelated pre-existing changes may remain. Do not stage or delete them.
+
+STEP 13: Restart Dev Server & Test
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5
+Open http://localhost:5173/contracts/experience/create?relationship=partner
+Save Agreement -> Continue to coverage -> Save coverage -> Continue to services.
+Use the existing experience list at /contracts/experience to reopen the saved draft.
+Also test Client Contract and Expense/vendor using the existing context controls.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+[ ] Agreement and Coverage look as approved, including attached-unit tags.
+[ ] Continue to services appears after saving Coverage.
+[ ] Your actual catalogue loads fully; search, Selected and category filters work.
+[ ] Select the same service for two coverage types; each keeps independent settings.
+[ ] Adjust quantity, price, tax, cadence and service repetition against known catalogue values.
+[ ] Fees show actual configured amounts, not No charge.
+[ ] Group sessions, terms/checklists and document/content settings retain live capabilities.
+[ ] Test existing per-unit splitting and weekday/anchor scheduling where applicable.
+[ ] FlyBy types: Service, Spare Part, Text Block, Document and Group Session.
+[ ] Blank FlyBy names/prices cannot complete Services. A free line requires explicit marking.
+[ ] Entering a positive custom price clears the complimentary flag.
+[ ] Save draft permits unfinished work; Save services validates completion.
+[ ] Close and reopen through experience list: same draft and all selections/settings preserved.
+[ ] Back to Coverage and return without losing services.
+[ ] Failure to load catalogue is visible with Retry; saved selections are retained.
+[ ] Check mobile width, your themes, Buyer/Seller context and Live/Test isolation.
+[ ] Confirm original working wizard remains unchanged.
+[ ] No contract is sent/confirmed, no invoice or appointment is created, no VaNi credit used.
+
+Use Test environment first. Actual API persistence and catalogue records must be
+verified in your local product; automated checks used mock API data.
+Full capabilities preserved by reusing the live editor are code-audited; not every
+real pricing/scheduling combination has been exercised.
+See TEST_RESULTS.md for verification details and remaining checks.

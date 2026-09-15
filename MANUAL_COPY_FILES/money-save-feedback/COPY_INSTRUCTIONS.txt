@@ -1,0 +1,36 @@
+MONEY SAVE FEEDBACK - UI ONLY
+Branch: codex/money-save-feedback
+Requires the previous money-chapter release.
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/money-save-feedback
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\money-save-feedback\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output." }
+
+Restart UI, then Ctrl+F5. No API change or migration.
+The script checks both files before copying, backs up previous versions and verifies hashes.
+
+EXACT PATHS (relative to the parent repository)
+MANUAL_COPY_FILES\money-save-feedback\contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+ -> contractnest-ui\src\components\contracts\ContractWizard\experience\MoneyPage.tsx
+ Persistent Save Money/Save draft outcomes; pending lock; validation and failure messages.
+MANUAL_COPY_FILES\money-save-feedback\contractnest-ui\src\components\contracts\ContractWizard\experience\money.css
+ -> contractnest-ui\src\components\contracts\ContractWizard\experience\money.css
+ Visible, responsive save-message area above the footer buttons.
+
+TEST
+1. Open Money and click Save Money with missing choices: the footer says Not saved
+   and names the first detail to correct. No save request should be sent.
+2. Enter an invalid discount and click Save: a reason appears, not a silent disabled button.
+3. Complete Money and save: the footer confirms Money saved to your draft.
+4. Save draft: a persistent Draft saved confirmation appears.
+5. Change a value after saving: Changes not saved yet replaces the old confirmation.
+6. During a slow save, Saving is visible and another save cannot be started.
+7. If a save fails, Save was not confirmed appears and entered values remain for retry.
+8. Close/reopen a successfully saved draft and verify retained values.
+9. Check the footer on mobile and in your chosen theme.
+
+This fixes feedback, not the result of any earlier attempt: the prior save cannot
+be confirmed from the source code alone. No live data was accessed or changed.
+Copy/test only; merge after acceptance.

@@ -1,0 +1,64 @@
+SPRINT 1.3 — OUTCOME CHOOSER
+Branch: codex/ux-journey-sprint-1 (pull from local C: checkout)
+Affected: contractnest-ui only. Requires Sprint 1 already applied.
+Entry: /experience after normal login. Existing screen files are untouched.
+
+PULL, VERIFY, COPY
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:/Users/kamal/Documents/New project/contractnest-combined" codex/ux-journey-sprint-1
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop here." }
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\ux-journey-s1-r3\CHECK_BEFORE_COPY.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Baseline differs. Do not overwrite newer work; share the output." }
+
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\index.tsx" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\experience.css" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\model.ts" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\verify.mjs" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\StartChooser.tsx" -Destination "contractnest-ui\src\pages\experience\" -Force
+Copy-Item "MANUAL_COPY_FILES\ux-journey-s1-r3\contractnest-ui\src\pages\experience\measurement.ts" -Destination "contractnest-ui\src\pages\experience\" -Force
+
+Write-Host "Copied - open /experience and Ctrl+F5. No API restart needed." -ForegroundColor Green
+
+VERIFY LOCALLY
+
+cd contractnest-ui
+node src/pages/experience/verify.mjs
+npx vite build --mode production
+npm run dev
+
+Log in, then open http://localhost:5173/experience (use your actual UI port).
+Test the checklist in TESTING_CHECKLIST.md before committing or merging.
+Stop the dev server with Ctrl+C after testing if needed.
+
+WHAT TO EXPECT
+- Active workspace: agreements first; Start something new opens the chooser.
+- Empty perspective/environment: chooser already open.
+- Seller first action: create agreement. Buyer first action: request quotations.
+- Create agreement: opens the unchanged ContractWizard directly, in the current
+  client/vendor context; close/save returns to /experience and refreshes records.
+- Record existing agreement: explicit manual-entry explanation, then wizard.
+  No document upload or extraction is advertised. No signed status inferred.
+- Claim: existing claim route. Respond: existing Requests route.
+- Profile/industry/catalogue values are not hardcoded. No Lift-only labels.
+- Existing Header, themes, Live/Test, perspective, and lite gates remain.
+
+FILES
+MOD index.tsx: adaptive chooser and in-place existing wizard handoff.
+MOD experience.css: theme-based desktop/mobile layout and focus/hover states.
+MOD model.ts: Buyer/Seller action ordering.
+MOD verify.mjs: action-order and side-boundary regression checks.
+NEW StartChooser.tsx: outcome cards and manual-entry disclosure.
+NEW measurement.ts: consent-gated entry-click events through existing analytics.
+
+AFTER YOUR TESTING
+Commit only this release's six files on your current UI feature branch:
+
+git add src/pages/experience/index.tsx src/pages/experience/experience.css src/pages/experience/model.ts src/pages/experience/verify.mjs src/pages/experience/StartChooser.tsx src/pages/experience/measurement.ts
+git commit -m "feat(ux): add persona-aware outcome chooser to workspace"
+
+Use your normal reviewed UI merge/push and parent submodule update workflow.
+If Sprint 1 itself is still uncommitted, include its previously delivered
+App.tsx, AuthContext.tsx, useExperience.ts, and README.md in that tested commit.
+No API, Edge, DB, mobile, or other submodule changes in this release.
