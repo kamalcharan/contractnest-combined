@@ -77,3 +77,33 @@ TESTING CHECKLIST:
      colored by state; allowance meter renders under Contracts numbers
  [ ] Toggle dark mode and at least one other tenant theme — all accents
      recolor with the theme, text stays readable everywhere
+
+═══════════════════════════════════════════════════
+ADDENDUM (2026-09-16): theme fixes in the NEW contracts UX
+═══════════════════════════════════════════════════
+Four more files (same copy command covers them):
+
+  9. src/components/contracts/ContractWizard/experience/creation.css
+     - primary footer button text now var(--cc-brand-text) (was #fff);
+       readable on light-brand tenant themes
+ 10. src/components/contracts/ContractWizard/experience/review.css
+     - [role=alert] error text now var(--fr-error) (was #bd2626);
+       readable in dark mode
+ 11. src/components/contracts/ContractWizard/experience/ReviewPage.tsx
+     - maps --fr-error from the theme's semantic.error
+ 12. src/components/contracts/ContractWizard/experience/CommitmentEditor.tsx
+     - discount green + cadence final-payment amber block now use
+       semantic.success / semantic.warning (were #0d9464, #B45309, #F59E0B60)
+
+NOT changed (deliberate): the Review page's contract document keeps its
+forced white-paper look (it is the printable document); the Client/Partner/
+Vendor badge colors in agreement.css stay as fixed identity colors pending
+an owner call.
+
+Extra test items:
+ [ ] Experience wizard footer "Continue/Create" button text readable on the
+     current theme (and any light-brand theme if available)
+ [ ] Review chapter: trigger the acceptance alert in dark mode - error text
+     clearly visible
+ [ ] Commitment editor: cadence with leftover months shows the amber
+     final-payment block in the theme's warning color (check dark mode)
