@@ -1,0 +1,87 @@
+EVENTS PREVIEW — PHASE 1 LOCAL TESTING
+Branch: codex/events-preview
+Prerequisite: delivery-acceptance release installed.
+Affected submodule: contractnest-ui only. Seven UI files. No API/Edge/DB changes.
+This feature branch is in the LOCAL C: repository, not uploaded to GitHub.
+
+PULL AND COPY — WINDOWS POWERSHELL
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull --no-rebase "C:\Users\kamal\Documents\New project\contractnest-combined" codex/events-preview
+if ($LASTEXITCODE -ne 0) { throw "Pull failed. Stop before copying." }
+Get-ChildItem "MANUAL_COPY_FILES\events-preview"
+Get-Content "MANUAL_COPY_FILES\events-preview\COPY_INSTRUCTIONS.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File "MANUAL_COPY_FILES\events-preview\COPY_COMMANDS.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Copy failed. Share the output; do not force overwrite." }
+
+No ZIP extraction needed. The script checks every target first, stops if any
+local file differs from its baseline, backs up existing files and verifies hashes.
+Backups: MANUAL_COPY_FILES\events-preview\LOCAL_BACKUP\<timestamp>\
+
+FILES AND PURPOSES
+contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+  Experience-only navigation and save/resume for the events chapter.
+contractnest-ui\src\components\contracts\ContractWizard\logic\state.ts
+  Optional review receipt in draft metadata; removed when sanitizing a template.
+contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx
+  Continue to Events Preview after a successful valid Delivery save.
+contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx
+  Approved two-lane timeline, filters, local date controls, holiday decisions,
+  existing bulk adjuster, reviewed checkbox, standard toast/loader and saving.
+contractnest-ui\src\components\contracts\ContractWizard\experience\eventsModel.ts
+  Reuses production derivation; validates dates, old overrides and review receipt.
+contractnest-ui\src\components\contracts\ContractWizard\experience\useEventCalendar.ts
+  Existing calendar endpoint, tenant/environment-keyed; no silent fallback.
+contractnest-ui\src\components\contracts\ContractWizard\experience\events.css
+  Theme tokens, desktop lanes and mobile date-grouped cards.
+
+EXACT COPY PATHS (performed by the script AFTER preflight/backup)
+Working directory: D:\projects\core projects\ContractNest\contractnest-combined
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\logic\state.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\logic\state.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\DeliveryPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\EventsPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\experience\eventsModel.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\eventsModel.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\experience\useEventCalendar.ts" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\useEventCalendar.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\events-preview\contractnest-ui\src\components\contracts\ContractWizard\experience\events.css" -Destination "contractnest-ui\src\components\contracts\ContractWizard\experience\events.css" -Force
+
+RESTART AND TEST
+Save existing browser work first. Stop the UI dev server with Ctrl+C, then:
+cd "D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui"
+npm run dev
+Hard refresh: Ctrl+F5.
+Open your experience draft (or /contracts/experience/create?relationship=partner).
+Save Delivery & acceptance -> Continue to Events Preview.
+On later reopen, a draft saved here resumes directly at Events Preview.
+
+TEST CHECKLIST
+[ ] Delivery save unlocks Continue to Events Preview.
+[ ] Desktop: services left, payments right, grouped by date.
+[ ] Phone: each date groups self-contained service/payment cards.
+[ ] All / Services / Payments filters show correct counts.
+[ ] Edit one date; other items keep their dates and amounts. Reset restores it.
+[ ] Invalid/out-of-window dates show an error on the affected card.
+[ ] Adjust several dates retains existing bulk controls; verify billing-only shift.
+[ ] Holiday conflicts offer earlier/later/keep, constrained to valid working dates.
+[ ] A failed calendar lookup offers Retry, not assumed holiday settings.
+[ ] Check dates reviewed; modifying a date clears the confirmation.
+[ ] Save/reopen retains adjustments, holiday choices and review confirmation.
+[ ] Standard loader during save; one success/error toast afterwards.
+[ ] No execution, notification, invoice, payment or activation happens on save.
+[ ] Check theme, live/test context lock, and original wizard navigation.
+
+IMPORTANT BOUNDARIES
+The existing scheduling engine is unchanged. It uses fixed day-count term rules
+(months = 30 days; years = 365 days). The UI labels the result a schedule window
+and explains it in 'How are these dates calculated?'; it does not substitute the
+HTML demo's calendar-month assumptions. Money reconciliation is retained.
+Group Sessions stay on their shared occurrence schedule, not duplicated here.
+Ongoing services have no fixed service occurrences; applicable payments remain.
+Large timelines show 25 date groups initially, then Show more dates.
+Extremely large/damaged drafts above the interactive preview bound (50,000
+estimated quantity-plus-term days) report an error rather than freeze the page.
+Saving Events Preview remains a draft operation. Final review is the NEXT release.
+The review receipt is a UI acknowledgement, NOT a legal or security signature.
+Future final review must revalidate the plan/receipt and live context before send.
+
+No merge/commit/push commands yet. Test locally and confirm first. Unrelated
+working changes and other submodules must remain untouched.
