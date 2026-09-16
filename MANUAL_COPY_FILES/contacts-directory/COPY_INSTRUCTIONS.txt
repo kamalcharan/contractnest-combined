@@ -67,7 +67,27 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
     - ALL machinery preserved: cockpit hook, five tab components,
       ActionIsland, ProfileDrawer, Explainer, archive dialog, warnings
 
- 4. contractnest-edge/supabase/migrations/bbb-foundation/
+ 4. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+    (RESTYLE — owner feedback 2026-09-16 "Profile tab content and island
+    look old"; ALL inline-edit machinery untouched)
+    - section headers get tinted icon chips (per-section accents, same
+      language as /experience): Identity brand · Channels blue · Tags &
+      roles amber · Linked contacts violet · Addresses green · Compliance
+      indigo · Notes brand
+    - "People & alternates" renamed "Linked contacts"
+    - classification chips (view + edit modes) now use the FIXED product
+      colors and labels (Client blue, Vendor purple, Partner orange…)
+      instead of everything-brand-orange
+    - channel row icons tinted; card radius 16; bottom padding reduced
+      (no floating island to clear anymore)
+
+ 5. contractnest-ui/src/pages/contacts/view.tsx (updated again)
+    - floating ActionIsland RETIRED: Profile→hero Edit button,
+      Contract→hero New contract, Email/WhatsApp→the hero reach line is
+      now actionable (phone = tel:, new WhatsApp link = wa.me, email =
+      mailto:) — stored channel values already carry the dial code
+
+ 6. contractnest-edge/supabase/migrations/bbb-foundation/
       076_guest_checkin_contact_dedupe.sql
       077_tag_filter_child_contacts.sql (incl. 077b)
     - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
@@ -103,9 +123,15 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      for contacts with activity (Open dues amber when outstanding); Edit
      opens the profile drawer; New contract opens the wizard prefilled;
      all five tabs render as before; status change + archive still work
- [ ] BUILD SANITY (done here, 2026-09-16): vite production build passes
-     with both pages; tsc shows only the pre-existing error patterns
-     (11, down from the originals' 14; zero new)
+ [ ] PROFILE TAB: section cards show tinted icon chips; classification
+     chips inside Tags & roles use product colors; "Linked contacts" title;
+     every section's inline Edit/Save still works (identity, channels,
+     tags, address, compliance, notes)
+ [ ] NO FLOATING ISLAND: bottom pill gone; hero phone dials, WhatsApp link
+     opens wa.me chat, email opens mail client
+ [ ] BUILD SANITY (re-run 2026-09-16 after island/profile-tab pass): vite
+     production build passes with all three files; tsc still shows only
+     the 11 pre-existing error patterns, zero new
 
 ─── STILL OPEN (deliberately not in this batch) ─────
  - DONE (2026-09-16, live data fix on owner instruction): Tejaswinni merged.
