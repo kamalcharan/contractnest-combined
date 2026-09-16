@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════
+BATCH: money-in-gst-card (2026-09-16)
+═══════════════════════════════════════════════════
+Owner report: "/money-in is not showing GST — we have already built the
+GST screen which can be navigated from here."
+
+Submodules affected: contractnest-ui ONLY. No API/edge/RPC/DB change.
+
+─── WHAT WAS ACTUALLY HAPPENING ─────────────────────
+
+The GST card (GstMonthCard) has been on Money In (and To Pay) all along and
+opens /taxes. It deliberately rendered NOTHING when the tenant's Tax
+Settings display_mode is 'no_tax' — and BBB is 'no_tax' (t_tax_settings,
+set 14 Aug; all 53 invoices carry ₹0 GST; no GSTIN on file). The data side
+is healthy: get_tenant_tax_summary_v2 returns cleanly for BBB. So the card
+was hidden by design, and that design left users wondering where GST went.
+
+Also found: the "Tax settings" button on /taxes navigated to '/tax-settings',
+which is not a route. The only route is '/settings/tax-settings' (nested
+under /settings). Dead link — fixed in the same pass.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-ui/src/components/finance/GstMonthCard.tsx
+    - display_mode === 'no_tax' now renders the card in a muted state:
+        eyebrow  "GST · Tax not configured"
+        body     "Tax Settings are set to “No tax”. Set up GST to start
+                  tracking it here."
+        action   "Tax settings →"  → /settings/tax-settings
+      Same card shape/position as the configured card, icon and text in the
+      secondary colour so it does not read as a zero-balance alarm.
+    - The tax-summary fetch stays disabled in no-tax mode (no wasted call).
+    - Loading / error states unchanged (still render nothing).
+    - Shared by Money In (side='receivable') and To Pay (side='payable'),
+      so both pages pick this up.
+
+ 2. contractnest-ui/src/pages/taxes/index.tsx
+    - one line: navigate('/tax-settings') → navigate('/settings/tax-settings').
+
+ Verified: tsc error count identical to pristine main (1170 pre-existing on main @ a2e8576,
+ none in the two touched files), vite build succeeds.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\money-in-gst-card\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ BBB (no-tax tenant):
+ [ ] /money-in shows the "GST · Tax not configured" card under the signals,
+     above the buyer list; tapping it opens /settings/tax-settings.
+ [ ] /to-pay shows the same card (payable side).
+ [ ] /taxes → "Tax settings" button now opens /settings/tax-settings
+     (previously a dead route).
+ [ ] /taxes still shows the existing "Your Tax Settings are set to 'No tax'"
+     explanation in the table area (unchanged, just confirming).
+ A tax-registered tenant (display_mode including/excluding tax), if you
+ have one handy:
+ [ ] /money-in GST card unchanged — month label, amounts, "Tax records →"
+     opening /taxes.
+ Optional:
+ [ ] Flip BBB test env to including_tax in Tax Settings, reload /money-in:
+     the configured card appears with ₹0 figures; flip back to No tax: the
+     "Tax not configured" card returns. (Test env only — do not change
+     BBB live tax mode.)
