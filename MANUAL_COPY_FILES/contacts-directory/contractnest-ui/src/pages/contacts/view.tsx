@@ -1,7 +1,9 @@
 // src/pages/contacts/view.tsx - Contact Dashboard
 // Redesigned shell (owner-approved playground, 2026-09-16): identity hero +
 // summary strip + pill tabs. All existing machinery preserved — cockpit hook,
-// tab components, ActionIsland, drawers, status flow, explainer.
+// tab components, drawers, status flow, explainer. The floating ActionIsland
+// is retired (2026-09-16): Edit/New contract live in the hero, and the reach
+// line is actionable (tel / wa.me / mailto).
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -22,6 +24,7 @@ import {
   Phone,
   Mail,
   MapPin,
+  MessageCircle,
   Plus,
   Pencil,
   ShoppingCart,
@@ -41,7 +44,7 @@ import { useContactCockpit } from '@/hooks/queries/useContactCockpit';
 
 // Components
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import { ActionIsland, ProfileDrawer } from '@/components/contacts/cockpit';
+import { ProfileDrawer } from '@/components/contacts/cockpit';
 
 // Dashboard Tab Components
 import OverviewTab from '@/components/contacts/dashboard/OverviewTab';
@@ -476,18 +479,33 @@ const ContactViewPage: React.FC = () => {
             </div>
 
             {/* Reach: icon + value, per the approved directory pattern */}
+            {/* Actionable reach line — replaces the retired floating ActionIsland:
+                call / WhatsApp / email open the device's own apps directly. */}
             <div className="flex items-center gap-4 flex-wrap mt-2 text-[13px]" style={{ color: colors.utility.secondaryText }}>
               {primaryPhone && (
-                <span className="inline-flex items-center gap-1.5">
+                <a href={`tel:${primaryPhone.value}`} className="inline-flex items-center gap-1.5 hover:underline" title={`Call ${primaryPhone.value}`}>
                   <Phone className="h-3.5 w-3.5 flex-shrink-0" />
                   {primaryPhone.value}
-                </span>
+                </a>
+              )}
+              {primaryPhone && (
+                <a
+                  href={`https://wa.me/${primaryPhone.value.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 hover:underline"
+                  style={{ color: colors.semantic.success }}
+                  title="Open WhatsApp chat"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  WhatsApp
+                </a>
               )}
               {primaryEmail && (
-                <span className="inline-flex items-center gap-1.5 min-w-0">
+                <a href={`mailto:${primaryEmail.value}`} className="inline-flex items-center gap-1.5 min-w-0 hover:underline" title={`Email ${primaryEmail.value}`}>
                   <Mail className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="truncate max-w-[240px]" title={primaryEmail.value}>{primaryEmail.value}</span>
-                </span>
+                  <span className="truncate max-w-[240px]">{primaryEmail.value}</span>
+                </a>
               )}
               {primaryCity && (
                 <span className="inline-flex items-center gap-1.5">
@@ -703,20 +721,6 @@ const ContactViewPage: React.FC = () => {
           />
         )}
       </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* ACTION ISLAND */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <ActionIsland
-        contactId={contact.id}
-        contactName={getContactDisplayName()}
-        classifications={classifications}
-        contactStatus={contact.status}
-        primaryEmail={primaryEmail?.value}
-        primaryPhone={primaryPhone?.value}
-        phoneCountryCode={primaryPhone?.country_code}
-        onProfileClick={() => setIsProfileDrawerOpen(true)}
-      />
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* PROFILE DRAWER */}
