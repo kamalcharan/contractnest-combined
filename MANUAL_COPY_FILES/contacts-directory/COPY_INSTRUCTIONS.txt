@@ -83,12 +83,24 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
     - partial-save semantics unchanged (update RPC untouched)
 
  5. contractnest-ui/src/components/contacts/dashboard/AssetsTab.tsx
-    - Assets tab now renders the Equipment Registry's EquipmentCard
-      (component reuse, owner call 2026-09-16). It already accepts
-      ClientAsset, so contact assets get the full registry card: SN /
-      location / make-model line, condition + criticality meta, warranty
-      status line, last-serviced footer, Edit + Deactivate actions.
-      Search / stats / grid-list toggle / add-edit dialogs unchanged.
+    (REWORKED 2026-09-16 evening — owner: "if reused, why full details
+    not visible?") First pass reused EquipmentCard, but the registry
+    itself no longer renders that card — its grid uses MachineCard
+    (EquipmentCard survives only as the wizard picker card), and the
+    rich details come from the with_contracts=true fetch. Now:
+    - renders MachineCard with the registry's exact detail/state
+      mapping: category name (resources + templates lookup), make/
+      model/SN/location, condition + criticality, contract chips
+      (click → contract), visits/proven/overdue service state,
+      "Open logbook", status pill, Inactive dimming + Reactivate
+    - fetch switched to useAssetRegistryManager({ with_contracts:
+      true, contact_id, include_inactive: true }) — same backend
+      endpoint, now enriched; mutations moved to the registry hooks
+      so the enriched list cache invalidates on add/edit/deactivate
+    - deactivate uses the registry's ConfirmationDialog flow (blocked
+      with an info dialog while the asset is attached to a contract)
+    - ClientAssetFormDialog kept for contact-scoped create/edit;
+      grid/list toggle dropped (registry is grid-only, cards match)
 
  6. contractnest-ui/src/pages/contacts/view.tsx (updated again)
     - floating ActionIsland RETIRED: Profile→hero Edit button,
@@ -136,8 +148,11 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      chips inside Tags & roles use product colors; "Linked contacts" title;
      every section's inline Edit/Save still works (identity, channels,
      tags, address, compliance, notes)
- [ ] ASSETS TAB: cards now match the Equipment Registry look (SN/meta/
-     warranty/last-serviced, Edit + Deactivate) — add/edit/search still work
+ [ ] ASSETS TAB: cards are now IDENTICAL to the Equipment Registry grid
+     (MachineCard): category line, make/model/SN/location, contract chips
+     that open the contract, visits/proven/overdue state or "Not in any
+     contract yet", Edit + Deactivate (blocked while in a contract),
+     inactive assets dimmed with Reactivate — add/edit/search still work
  [ ] NO FLOATING ISLAND: bottom pill gone; hero phone dials, WhatsApp link
      opens wa.me chat, email opens mail client
  [ ] BUILD SANITY (re-run 2026-09-16 after island/profile-tab pass): vite
