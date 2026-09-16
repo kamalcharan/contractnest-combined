@@ -2,8 +2,9 @@
 // Redesigned shell (owner-approved playground, 2026-09-16): identity hero +
 // summary strip + pill tabs. All existing machinery preserved — cockpit hook,
 // tab components, drawers, status flow, explainer. The floating ActionIsland
-// is retired (2026-09-16): Edit/New contract live in the hero, and the reach
-// line is actionable (tel / wa.me / mailto).
+// is retired (2026-09-16): New contract lives in the hero, the reach line is
+// actionable (tel / wa.me / mailto), and editing is inline in the Profile tab
+// (no Edit button / ProfileDrawer — owner call, same day).
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -26,7 +27,6 @@ import {
   MapPin,
   MessageCircle,
   Plus,
-  Pencil,
   ShoppingCart,
   Package,
   Handshake,
@@ -44,7 +44,6 @@ import { useContactCockpit } from '@/hooks/queries/useContactCockpit';
 
 // Components
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
-import { ProfileDrawer } from '@/components/contacts/cockpit';
 
 // Dashboard Tab Components
 import OverviewTab from '@/components/contacts/dashboard/OverviewTab';
@@ -149,7 +148,6 @@ const ContactViewPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('profile');
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
   const [daysAhead, setDaysAhead] = useState(7);
   const [isExplainerOpen, setIsExplainerOpen] = useState(false);
 
@@ -516,16 +514,9 @@ const ContactViewPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions — no Edit button: every field is inline-editable in the
+              Profile tab (owner call 2026-09-16, ProfileDrawer retired here) */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setIsProfileDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-sm font-semibold transition-colors hover:opacity-80"
-              style={{ borderColor: line, color: colors.utility.primaryText, backgroundColor: colors.utility.primaryBackground }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </button>
             {contact.status === 'active' && (
               <button
                 onClick={handleNewContract}
@@ -721,16 +712,6 @@ const ContactViewPage: React.FC = () => {
           />
         )}
       </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* PROFILE DRAWER */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <ProfileDrawer
-        isOpen={isProfileDrawerOpen}
-        onClose={() => setIsProfileDrawerOpen(false)}
-        contact={contact}
-        onRefresh={refetch}
-      />
 
       {/* Explainer Drawer */}
       <ExplainerDrawer

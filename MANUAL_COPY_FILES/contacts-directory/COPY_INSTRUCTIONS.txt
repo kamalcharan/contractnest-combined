@@ -113,6 +113,57 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       077_tag_filter_child_contacts.sql (incl. 077b)
     - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
 
+ 8. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
+    - hero Edit button REMOVED (owner call: "we have inline edit") —
+      every field is editable inline in the Profile tab, so the
+      ProfileDrawer import/state/render went with it. New contract stays.
+
+ 9. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
+    2026-09-16: "cleanup unused code / files")
+    - removes the dead `import EntityRegistryPage from
+      './pages/entity-registry'` (the /entity-registry route was long ago
+      switched to `EquipmentPage registryMode="entity"`; the import was
+      never rendered but kept ~2,000 lines of dead code in the bundle)
+    - NO other change — diff is 5 insertions / 7 deletions, all around
+      that import and its two stale comments
+
+10. contractnest-ui/src/components/contacts/cockpit/index.ts
+    - barrel now exports only ContactCockpitStatsBar (still used by the
+      unwired OverviewTab). ActionIsland / ProfileDrawer /
+      ContactCockpitPanel exports removed — their files are deleted below.
+
+─── DELETIONS (run AFTER the Copy-Item lines) ───────
+Audit result (2026-09-16): the Equipment Registry folder itself is clean —
+EquipmentCard (wizard picker + contract EquipmentTab), EquipmentFormDialog
+and EmptyState are all in use. The dead code sits NEXT to it:
+
+Dead today (zero importers, or import never rendered):
+  Remove-Item -Recurse -Force "contractnest-ui\src\pages\entity-registry"
+  Remove-Item -Force "contractnest-ui\src\constants\entityTypeConfig.ts"
+  Remove-Item -Force "contractnest-ui\src\pages\contacts\2create.tsx"
+  Remove-Item -Force "contractnest-ui\src\pages\contacts\view copy.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ContactCockpitPanel.tsx"
+
+Dead once THIS batch is copied in (their only importers are replaced
+by files in this batch — delete in the same sitting as the copy):
+  Remove-Item -Force "contractnest-ui\src\components\assets\ClientAssetCard.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ActionIsland.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ProfileDrawer.tsx"
+
+(~5,600 lines removed in total. 2create.tsx + "view copy.tsx" alone
+carried ~28 of the long-standing baseline tsc errors.)
+
+KEPT deliberately (used, so NOT deleted):
+  - EquipmentCard.tsx — the contract wizard's picker card + EquipmentTab
+  - useClientAssetRegistry / clientAssetRegistryService / types —
+    still consumed by ClientAssetFormDialog, AssetSelectionStep,
+    CoveragePage, LiteRegistryIntel. This stack DOES duplicate the
+    assetRegistry stack (same backend endpoints) — consolidating them
+    is a real refactor across the contract wizard, flagged for a
+    separate deliberate pass, not bundled into a cleanup.
+  - OverviewTab + ContactCockpitStatsBar — unwired but owner-pending
+    (see CLAUDE.md "Overview tab staged to be hidden")
+
 ─── POWERSHELL COPY (from contractnest-combined root) ───
 
 Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
@@ -155,6 +206,12 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      inactive assets dimmed with Reactivate — add/edit/search still work
  [ ] NO FLOATING ISLAND: bottom pill gone; hero phone dials, WhatsApp link
      opens wa.me chat, email opens mail client
+ [ ] NO HERO EDIT BUTTON: only "New contract" remains in the hero; all
+     editing happens inline in the Profile tab sections
+ [ ] CLEANUP SANITY: /entity-registry (Facility Registry) still loads and
+     lists seeded facilities (it never used the deleted page); contract
+     wizard asset picker + contract Equipment tab still render their cards;
+     app builds and no route 404s
  [ ] BUILD SANITY (re-run 2026-09-16 after island/profile-tab pass): vite
      production build passes with all three files; tsc still shows only
      the 11 pre-existing error patterns, zero new
