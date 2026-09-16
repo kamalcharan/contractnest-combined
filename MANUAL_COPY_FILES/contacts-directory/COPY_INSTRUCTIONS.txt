@@ -50,8 +50,26 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       VaNi loader, windowed pagination — all preserved
     - grid/list toggle removed (list only, per approved playground)
 
- 3. contractnest-edge/supabase/migrations/bbb-foundation/
+ 3. contractnest-ui/src/pages/contacts/view.tsx  (SHELL REWRITE — approved
+    contact-profile playground, 2026-09-16)
+    - identity hero: classification-tinted gradient band, product-color
+      avatar + icon, name + CT number + status pill (same flow), badges
+      with FIXED product colors (old header had wrong ones: client green /
+      vendor blue / partner purple), tag chips, "Since <month year>",
+      icon-prefixed phone / email / city
+    - Edit button (opens ProfileDrawer) + New contract (active contacts;
+      same navigate target as ActionIsland)
+    - summary strip when the contact has activity: Active contracts ·
+      Open dues (amber when >0) · Next event · Lifetime value — all from
+      the existing cockpit payload, zero new backend
+    - tabs become pills (Contracts pill shows count); Overview stays
+      retired; insight tabs still appear only with activity
+    - ALL machinery preserved: cockpit hook, five tab components,
+      ActionIsland, ProfileDrawer, Explainer, archive dialog, warnings
+
+ 4. contractnest-edge/supabase/migrations/bbb-foundation/
       076_guest_checkin_contact_dedupe.sql
+      077_tag_filter_child_contacts.sql (incl. 077b)
     - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
 
 ─── POWERSHELL COPY (from contractnest-combined root) ───
@@ -80,11 +98,21 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
  [ ] GUEST DEDUPE (live already): a guest checking in again with the same
      10-digit number reuses the existing contact — no new row appears in
      /contacts afterwards
+ [ ] DETAIL PAGE /contacts/:id: hero shows correct product classification
+     colors, tags, icon-prefixed phone/email/city; summary strip appears
+     for contacts with activity (Open dues amber when outstanding); Edit
+     opens the profile drawer; New contract opens the wizard prefilled;
+     all five tabs render as before; status change + archive still work
+ [ ] BUILD SANITY (done here, 2026-09-16): vite production build passes
+     with both pages; tsc shows only the pre-existing error patterns
+     (11, down from the originals' 14; zero new)
 
 ─── STILL OPEN (deliberately not in this batch) ─────
- - The two existing Tejaswinni rows still need a manual merge (owner call:
-   keep 8 Aug original, move Guest tag, deactivate 5 Sep row — I can run
-   this after reference-mapping when approved)
+ - DONE (2026-09-16, live data fix on owner instruction): Tejaswinni merged.
+   5 Sep guest row's attendance + device recognition repointed to the 8 Aug
+   partner record (payment declaration was already there); guest row
+   archived with zero references remaining. Verified in one guarded
+   transaction.
  - stats by_tag "Substitute (0) vs 3 in DB" discrepancy — get_contact_stats
    needs its own look
  - Contact detail page (/contacts/:id) UX — separate discussion
