@@ -1,0 +1,102 @@
+═══════════════════════════════════════════════════
+BATCH: vani-automation-rules (2026-09-16) — stitch 2: Automation Rules page
+═══════════════════════════════════════════════════
+Follows vani-tenant-flag (step 1). Owner: "tenant-context API is the starting
+point, from there enhance automation rules, then stitch the rest on."
+
+Decisions taken (left open in the review; say if you want them different):
+  · The payment ladder FOLDS INTO the existing "Payment reminders" card —
+    one card = the whole payment schedule (before-due email + after-due rungs).
+  · Rungs are stored as THREE integer arrays — email / WhatsApp / call-task
+    days after due. Presets (0/3/7 · Monthly · None) are UI sugar over them.
+  · Group-session rule text + defaults corrected to what the engine really
+    does (3d + 1d; absentee 3d out; no-show +2h) and say plainly that only
+    the on/off switch is honoured today.
+  · Rules stay EDITABLE whether VaNi is on or off (they are the tenant's own
+    instructions; the API never gated editing). The runtime gate comes with
+    the engine stitch.
+
+Submodules affected: contractnest-ui, contractnest-api, contractnest-edge
+(migration ALREADY APPLIED LIVE — source of record, do not re-run).
+
+─── DB (LIVE, applied 2026-09-16) ─────────────────
+ contractnest-edge/supabase/migrations/vani-agent/004_automation_rules_ladder_templates.sql
+   payment_reminder template → name "Payment reminders", defaults
+     {lead_days:3, email_days_after_due:[0,3,7], whatsapp_days_after_due:[7],
+      call_days_after_due:[14]}, bounded 0–365 / 0–12 entries.
+     lead_days UNCHANGED (default 3) → run_contract_event_scanner behaves
+     exactly as before (verified: vani_rule_int(...,'lead_days') = 3 for BBB).
+   group-session templates → truthful descriptions/defaults; constraint keys
+     fixed (were minLength/maxLength, RPC checks min_items/max_items — array
+     length bounds had never been enforced).
+   t_vani_rules rows that were verbatim copies of the OLD defaults collapsed
+     to {} (= use defaults): 136 payment_reminder, 20 × 3 group-session rows.
+     Genuinely customized rows untouched (one: tenant 'setup', [3,2,1]).
+   No RPC change: update_vani_rule already validates integer arrays
+   (exercised live: save of [0,3,7,14] accepted, [0,999] rejected
+   OUT_OF_BOUNDS); vani_rule_int_array reads them back ([0,3,7] for BBB).
+
+─── FILES ───────────────────────────────────────────
+ 1. contractnest-ui/src/pages/settings/automation-rules/index.tsx  (rewritten)
+    - Tacit VaNi status from useTenantContext().flags.vani_enabled:
+        on  → green line "VaNi is on · until <date if trial>", "VaNi →" link
+        off → card "VaNi is off for this workspace … Open VaNi" → /vani/landing
+      No toggle here. useVaniEntitlement no longer used on this page.
+    - Field kinds: number → input; integer ARRAY → chip editor (add/remove,
+      bounded by constraints, Enter adds); string → read-only "platform
+      setting" (never sent to the RPC, which would reject it).
+    - Payment reminders card: view = one line of rungs ("3 days before due:
+      email · Due day: email · Day 3: email · Day 7: email + WhatsApp ·
+      Day 14: Call task"); edit = presets row + before-due days + three rung
+      editors + live PREVIEW. Client-side bounds validation disables Save.
+    - Notifications grouped: Group sessions · Payments · Services ·
+      Appointments · Contracts · RFQs; Contracts domain gets its own icon.
+    - Save/Reset send only editable fields; expected_version unchanged
+      (409 → toast + refetch, as before). Toasts via vaniToast in the hook,
+      LoadingSpinner / Loader2 as before.
+ 2. contractnest-ui/src/hooks/queries/useVaniDeskQueries.ts
+    - VaniRuleValue = number | string | number[]; VaniRuleConstraint gains
+      min_items/max_items; VaniRule.config/defaults typed accordingly.
+ 3. contractnest-ui/src/hooks/queries/useTenantContext.ts
+    - IDENTICAL to vani-tenant-flag's copy (flags.vani_enabled + vani).
+      Included so this batch copies standalone.
+ 4. contractnest-api/src/services/vaniDeskService.ts
+    - updateRule config type widened to Record<string, unknown> (RPC validates).
+ 5. contractnest-api/src/controllers/vaniDeskController.ts
+    - validation message no longer says "numeric fields". No logic change.
+
+ Verified: UI tsc error count 1170 = pristine main @ a2e8576 (0 in touched
+ files), vite build passes; API tsc clean (exit 0).
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\vani-automation-rules\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-automation-rules\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-automation-rules\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+ [ ] BBB (VaNi on): /settings/configure/automation-rules shows the green
+     "VaNi is on" line; "VaNi →" opens /vani/landing.
+ [ ] bbb2025 or any other tenant (VaNi off): the "VaNi is off" card with
+     "Open VaNi"; rules still editable.
+ [ ] Finance → Payment reminders: view shows the rung line; Edit → presets
+     change all three rung editors and the PREVIEW; add "21" to Email, remove
+     "7" from WhatsApp, Save → toast, card shows the new line, "customized".
+ [ ] Try 999 in a rung → inline "Values up to 365", Save disabled.
+ [ ] Reset to default on Payment reminders → back to 0/3/7 · 7 · 14, "default".
+ [ ] Notifications → Group sessions: looking-forward shows "3 days before ·
+     1 day before"; Edit → chips remove/add work; Save persists.
+ [ ] Notifications → Services → "Service report ready": Link base URL shows
+     read-only (lock) in Edit; toggling Active still saves.
+ [ ] Group sessions live behaviour unchanged (only descriptions/defaults moved).
+ [ ] Money In / check-in / notifications untouched.
+
+─── NEXT STITCHES ───────────────────────────────────
+ 3. VaNi landing: read flags.vani_enabled for its status (trial CTA already
+    writes the flag via start_vani_trial).
+ 4. vaniEntitlementService → vani_is_enabled(); remove VANI_ENTITLEMENT_MODE.
+ 5. Plan writers set t_tenants.vani_enabled where they set addon_vani_ai.
+ 6. Engines: vani_rule_enabled() AND vani_is_enabled(); group-session cron;
+    jtd-worker blocks system-originated only. Decide the other 8 automated
+    tenants first. Then the collections tools read the ladder from
+    payment_reminder via vani_rule_int_array (spec §3.2 updated).

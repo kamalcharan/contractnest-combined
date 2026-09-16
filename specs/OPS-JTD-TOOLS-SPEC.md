@@ -66,7 +66,7 @@
 
 Statuses reuse the existing `reminder` and `task` lifecycles in `n_jtd_statuses` (add `open → done / cancelled` for task if absent).
 
-**Per-tenant ladder config:** persisted in `n_jtd_tenant_source_config` for `source_type_code = 'payment_scheduled'`, in a `rules jsonb` column (added) using the **Process Rules shape** the hidden `/vani/rules` page already defines (`src/vani/pages/ProcessRulesPage.tsx`, `ProcessRule`): steps with type · channels · template · delay, timing as `beforeDays / onDay / afterDays`, escalation with `noResponseDays / escalateTo`. Presets: **0/3/7**, **monthly**, **custom** (owner: "0/3/7/custom/month"). The page is wired to the real get/set tool and stops using mock data. No global default; a tenant with no ladder has no rungs computed.
+**Per-tenant ladder config — DECIDED 2026-09-16, live (migration `vani-agent/004`):** the ladder lives in the existing automation-rules store, **`t_vani_rules` / `m_vani_rule_templates`, rule `payment_reminder`**, edited on `/settings/configure/automation-rules` — NOT in `n_jtd_tenant_source_config` and NOT in the mock `/vani/rules` ProcessRule shape (that page stays reference-only). Fields: `lead_days` (before-due email; the scanner's existing input, unchanged) + three integer arrays of **days after due** — `email_days_after_due` (default `[0,3,7]`), `whatsapp_days_after_due` (`[7]`), `call_days_after_due` (`[14]`), each bounded 0–365 and ≤12 entries. `update_vani_rule` validates them; tools read them with `vani_rule_int_array(tenant, 'payment_reminder', '<field>', '{}')` and honour `vani_rule_enabled(tenant, 'payment_reminder')`. Presets **0/3/7 · Monthly · None** are UI sugar over the arrays; an empty array = no rungs on that channel. The `jtd_get/set_dunning_ladder` tools in §4 are therefore **not needed** — the rules page is the setter and the helper is the getter. Default applies to every tenant (a tenant who wants no ladder chooses *None*).
 
 **Idempotency:** partial unique index on `(source_id, dunning_step, source_type_code)` for the nudge/escalation rows — a rung can never fire twice for the same job, whoever invokes it.
 
@@ -86,7 +86,7 @@ All tools: `SECURITY DEFINER`, tenant-scoped by `p_tenant_id`, take `p_actor_typ
 | `jtd_log_payment_call` | `p_job_id, p_called_at, p_outcome ('reached'\|'no_answer'\|'promised'\|'disputed'\|'other'), p_notes, p_promise_date?` | Inserts a completed `payment_call_logged` task; closes any open `payment_call_due` for the job; `promised` sets `promise_date` and pauses (`promise`) until that date; `disputed` pauses (`dispute`). | Job not found in tenant. |
 | `jtd_escalate_payment_call` | `p_job_id, p_assign_to uuid` | Creates the open `payment_call_due` task assigned to a user (the *call* rung), advances the step. Invoked by a human today; the rung-due card offers it. | Duplicate rung. |
 | `jtd_pause_dunning` / `jtd_resume_dunning` | `p_job_id, p_reason` | Manual holds; resume recomputes `next_dunning_at`. Read-time rule: a job with a **pending declaration** is shown paused (`declaration_pending`) without a write. | |
-| `jtd_get_dunning_ladder` / `jtd_set_dunning_ladder` | `p_preset ('0_3_7'\|'monthly'\|'custom'), p_rules jsonb?` | Reads/writes the tenant's rules; on write, recomputes `next_dunning_at` for every open job of the tenant. | Invalid shape (validated against the ProcessRule schema). |
+| ~~`jtd_get_dunning_ladder` / `jtd_set_dunning_ladder`~~ | — | **Dropped 2026-09-16.** The ladder is the `payment_reminder` automation rule (§3.2); `update_vani_rule` is the setter, `vani_rule_int_array` the getter. When a tenant saves the rule, `next_dunning_at` for their open jobs is recomputed by the ladder engine on its next pass — no dedicated write tool. | — |
 | `jtd_collections_worklist` | `p_horizon_days int default 30` | **The cockpit reader.** Returns: `needs_you` (rung-due jobs with step, days overdue, nudge count, last nudge, next rung, pause reason; pending declarations; contracts awaiting acceptance whose `payment_mode` is pay-before-activate; failed sends), `coming_up` (payment jobs due today / within horizon; armed reminders), `happened` (last N nudges, calls, escalations with actor), all as flat rows with `contract_id`, `buyer_id`, `invoice_id` for drill-down. Uses IST. Never returns totals. | |
 
 **Actor rule:** a human call passes the user's id; VaNi passes its well-known id. Autonomy is *not* enforced inside the tools today (everything is manual); when VaNi arrives, the autonomy check lives in VaNi's dispatcher, in front of the same tools.
@@ -132,7 +132,7 @@ Auto-triggers and crons that act on money · RBAC · WhatsApp template registrat
 1. Migration (§3.2) — additive; source-of-record SQL staged under `MANUAL_COPY_FILES/<batch>/contractnest-edge/supabase/migrations/…`, applied live only after review.
 2. RPCs (§4) — each verified live with the **guarded-transaction pattern** (create probe rows → assert → `RAISE` to roll back → confirm zero residue), including the duplicate-rung and paid-job refusals.
 3. API routes + edge forwarding.
-4. Cockpit Collections lane (Needs you / What happened / Coming up) + *Log a call* sheet; Process Rules page wired to `jtd_get/set_dunning_ladder`.
+4. Cockpit Collections lane (Needs you / What happened / Coming up) + *Log a call* sheet. (Ladder editing already ships on `/settings/configure/automation-rules` — batch `vani-automation-rules`.)
 5. WhatsApp nudge template once approved.
 Every UI batch: `tsc` count identical to pristine main, `vite build` passes, submodules left pristine, Phase 1 copy instructions, owner tests, then Phase 2.
 
@@ -142,6 +142,6 @@ Same recipe per lane: (a) identify the job rows (`event_type_code`), (b) define 
 
 ## 12. Open questions
 
-- Process Rules shape vs simple rungs: keep the full `ProcessRule` (before/on/after days + escalation) or simplify to rungs with a channel each? (Owner reviewing `/vani/rules`.)
+- ~~Process Rules shape vs simple rungs~~ **Resolved 2026-09-16: simple rungs** — three per-channel day arrays on the `payment_reminder` rule (§3.2). The mock `/vani/rules` page stays reference-only. Escalation ("no response after N days → escalate to X") is not modelled yet; add it as further fields on the same rule when the call-task rung needs it.
 - Recipient resolution for nudges: contact's WhatsApp/email vs contract-level channel preference — reuse `gs_member_whatsapp_phone()` and the contact channel tables; define precedence.
 - Whether `payment_call_due` should also notify the assignee (in-app/email) — probably a `task` notification job, once in-app exists.
