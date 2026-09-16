@@ -1,29 +1,38 @@
 ═══════════════════════════════════════════════════
 BATCH: vani-process-rules-menu (2026-09-16)
 ═══════════════════════════════════════════════════
-Owner request: make the hidden VaNi "Process Rules" page reachable from the
-menu for review. It is the existing ladder/escalation config design
-(src/vani/pages/ProcessRulesPage.tsx — MOCK DATA today, not wired to any
-API) whose shape item 1 of the collections work will persist per tenant.
+Owner request: un-hide the WHOLE old VaNi menu group for review while the
+JTD tools / collections-ladder spec is finalised. These are the reference
+pages (MOCK DATA — none is wired to a real API) whose designs the spec
+borrows from, most importantly Process Rules (src/vani/pages/
+ProcessRulesPage.tsx), the ladder/escalation config shape that item 1 of
+the collections work will persist per tenant.
 
-Submodules affected: contractnest-ui ONLY. One menu entry. No routes
-change — /vani/rules already exists in App.tsx (nested under /vani).
+Spec: specs/OPS-JTD-TOOLS-SPEC.md (parent repo root). CLAUDE.md points to it.
+
+Submodules affected: contractnest-ui ONLY. One menu block. No routes
+change — every path below already exists in App.tsx under /vani.
 
 ─── FILES ───────────────────────────────────────────
 
  1. contractnest-ui/src/utils/constants/industryMenus.ts
-    - adds { id: 'vani-rules', label: 'Process Rules', icon: 'ListChecks',
-      path: '/vani/rules' } to the LIVE VaNi submenu (Overview · Briefing ·
-      Process Rules), marked VISIBLE FOR REVIEW.
+    - the "VaNi (old)" group (hidden since 2026-08-14) is un-commented,
+      preceded by a VISIBLE FOR REVIEW comment. defaultOpen stays false.
+      12 entries: Dashboard · Jobs · Business Events · Templates · Channels
+      · BBB Chat · Analytics · Webhooks · Accounts Receivable · Service
+      Schedule · Process Rules (/vani/rules) · Chat.
+    - The LIVE VaNi group (Overview · Briefing) is unchanged. An earlier
+      draft of this batch put a single "Process Rules" entry there; that is
+      reverted — Process Rules lives inside "VaNi (old)" with the rest.
     - This copy is based on the ops-commitments-phase1 version of the file,
       so it ALSO contains that batch's "Ops (preview)" entry. It supersedes
-      batch ops-commitments-phase1's industryMenus.ts — copying this one
-      keeps both entries. Do not copy batch 1's copy of this file afterwards
-      or the Process Rules entry disappears again.
-    - The old "VaNi (old)" group stays hidden; only this one page is
-      surfaced.
+      ops-commitments-phase1's industryMenus.ts — copying this one keeps
+      both. Do not copy batch 1's copy of this file afterwards or the group
+      hides again.
+    - To re-hide after the review: comment the block out again (or restore
+      main's copy of the file).
 
- Verified: tsc error count identical to pristine main.
+ Verified: tsc error count identical to pristine main (1170 @ a2e8576).
 
 ─── POWERSHELL COPY (from contractnest-combined root) ───
 
@@ -31,11 +40,17 @@ Copy-Item "MANUAL_COPY_FILES\vani-process-rules-menu\contractnest-ui\*" -Destina
 
 ─── TESTING CHECKLIST ───────────────────────────────
 
- [ ] VaNi menu shows Overview · Briefing · Process Rules; Process Rules
-     opens /vani/rules (the mock ladder/escalation rules page).
+ [ ] Sidebar shows a collapsed "VaNi (old)" group below VaNi; expanding it
+     lists the 12 pages above and each opens.
+ [ ] /vani/rules opens the mock Process Rules page (ladder steps, timing,
+     escalation) — this is the shape to review against spec §3.2 / §12.
+ [ ] Live VaNi group still shows only Overview · Briefing.
  [ ] Operations menu still shows "Ops (preview)" under Ops Cockpit.
  [ ] Nothing else in the menu moved.
 
-Note: "Create Rule" / "Edit Rule" on that page route to "Coming Soon"
-placeholders (App.tsx /vani/rules/create, /vani/rules/:id/edit) — expected;
-item 1 replaces the mock with real per-tenant persistence.
+Notes:
+ - "Create Rule" / "Edit Rule" on Process Rules route to "Coming Soon"
+   placeholders (App.tsx /vani/rules/create, /vani/rules/:id/edit) —
+   expected; item 1 replaces the mock with real per-tenant persistence.
+ - Accounts Receivable (/vani/finance/receivables) is 100% mock and is
+   still slated for retirement in the cleanup pass — review only.
