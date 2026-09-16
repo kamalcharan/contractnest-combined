@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════
+BATCH: vani-tenant-flag (2026-09-16) — step 1 of "VaNi is part of subscriptions"
+═══════════════════════════════════════════════════
+Owner decisions:
+  · VaNi enabled-or-not is a TENANT-TABLE fact (t_tenants), exposed by the
+    tenant-context API. This is the starting point; Automation Rules and the
+    engines are stitched on afterwards.
+  · admin tenant (vikuna, is_admin=true, vikunatech@gmail.com) is ALWAYS on —
+    computed, cannot lapse.
+  · BBB and signia enabled now (open-ended, source 'admin').
+  · Nothing is gated yet. No behaviour changes for any tenant in this batch.
+
+Submodules affected: contractnest-api, contractnest-ui (types only) +
+contractnest-edge (migration file, ALREADY APPLIED LIVE — do not re-run;
+it is idempotent if you do, but there is no need).
+
+─── DB (LIVE, applied 2026-09-16) ─────────────────
+ contractnest-edge/supabase/migrations/vani-agent/003_tenant_vani_enabled.sql
+   t_tenants.vani_enabled boolean NOT NULL DEFAULT false
+   t_tenants.vani_enabled_until timestamptz NULL   (trial expiry; NULL = open)
+   t_tenants.vani_enabled_source text NULL         ('trial' | 'plan' | 'admin')
+   vani_is_enabled(tenant_id) → boolean            ← THE truth. Read this,
+                                                     never the column directly.
+   get_tenant_context(...)  now emits
+       flags.vani_enabled : boolean
+       vani : { enabled, until, source }           (source 'admin_tenant' for
+                                                    the admin tenant)
+   start_vani_trial(...)    now also sets the tenant flag on until trial_ends
+                            (never downgrades an open-ended enablement)
+   Data: BBB + signia ON. bbb2025 (test tenant) NOT enabled.
+
+ Verified live: BBB / signia / vikuna → flags.vani_enabled = true;
+ bbb2025 → false. Post-checks inside the migration RAISE on any mismatch.
+
+─── FILES ───────────────────────────────────────────
+ 1. contractnest-api/src/services/tenantContextService.ts
+    - TenantContextFlags gains vani_enabled; new TenantContextVani type;
+      TenantContext gains optional `vani`; error fallback carries
+      vani_enabled:false. The API proxies the edge function's JSON through
+      unchanged, so the new fields already flow — this is the contract.
+ 2. contractnest-ui/src/hooks/queries/useTenantContext.ts
+    - flags.vani_enabled?: boolean (undefined on older API builds = false)
+      and optional `vani` detail. Types only; no component reads it yet.
+
+ Edge function `tenant-context` needs NO change — it returns the RPC's JSON
+ as-is (index.ts:69-71).
+
+ Verified: API tsc clean (exit 0, 0 errors, same as pristine main);
+ UI tsc error count 1170 = pristine main @ a2e8576.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\vani-tenant-flag\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-tenant-flag\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-tenant-flag\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+ [ ] Logged in as BBB: GET /api/tenant-context (x-tenant-id header) →
+     flags.vani_enabled = true, vani = {enabled:true, until:null, source:'admin'}
+ [ ] Logged in as vikuna (admin): flags.vani_enabled = true,
+     vani.source = 'admin_tenant'
+ [ ] Any other tenant: flags.vani_enabled = false, vani.enabled = false
+ [ ] Nothing visible changes in the UI yet (types only) — Automation Rules,
+     VaNi landing, check-in, notifications all behave exactly as before.
+
+ To enable / disable a tenant by hand until the admin UI exists:
+   update t_tenants set vani_enabled=true,  vani_enabled_until=null, vani_enabled_source='admin' where id='<tenant>';
+   update t_tenants set vani_enabled=false, vani_enabled_until=null, vani_enabled_source=null    where id='<tenant>';
+ To simulate a trial: vani_enabled=true, vani_enabled_until = now() + interval '7 days', source='trial'.
+
+─── NEXT STITCHES (each its own batch, per owner) ─────
+ 2. Automation Rules page: tacit status line from flags.vani_enabled
+    (running / off → link to /vani/landing) + the ladder editor review items.
+ 3. VaNi landing: read flags.vani_enabled for its status; trial CTA already
+    writes the flag via start_vani_trial.
+ 4. vaniEntitlementService reads vani_is_enabled() (drop VANI_ENTITLEMENT_MODE).
+ 5. Plan writers (fn_apply_contract_entitlements, subscribe_tenant_to_plan_v2,
+    fn_apply_topup_grants) set the column where they set addon_vani_ai.
+ 6. Engines: vani_rule_enabled() AND vani_is_enabled(); group-session cron;
+    jtd-worker blocks system-originated jobs only. Retire
+    n_jtd_tenant_config.vani_enabled.
