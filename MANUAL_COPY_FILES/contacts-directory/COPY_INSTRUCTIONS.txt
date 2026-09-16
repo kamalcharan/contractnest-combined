@@ -141,12 +141,30 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       fan-out is needed (an earlier version of this file did that as a
       workaround; removed once the RPC was fixed).
 
- 9. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
+ 9. contractnest-ui/src/components/contacts/forms/ContactPersonsSection.tsx
+    (owner: "still a mess" after the width fix — the real cause wasn't
+    width) + ContactProfileTab.tsx (passes the new prop)
+    - Root cause: this component renders its OWN complete card — glass-
+      blur background, its own "Alternative Contact Person"/"Stand-in"
+      header, its own "Add Person" button, tip/summary/max-limit boxes —
+      so embedding it produced a card nested inside the new section card:
+      two headers, two backgrounds, an older visual language clashing with
+      the redesigned tab. Widening the container just made the clash more
+      visible, it never touched the actual problem.
+    - Added a new `embedded?: boolean` prop (default false — every
+      existing caller, incl. the create-contact page, is 100% unaffected).
+      When true: no outer glass card, no title/badge row (the parent's
+      "Linked contacts" title already covers it), no description/summary/
+      tip/max-limit boxes — just the "Add Person" button + the person grid
+      + the add/edit modals, in the space the parent card provides.
+      ContactProfileTab now passes `embedded` when rendering it.
+
+10. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
     - hero Edit button REMOVED (owner call: "we have inline edit") —
       every field is editable inline in the Profile tab, so the
       ProfileDrawer import/state/render went with it. New contract stays.
 
-10. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
+11. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
     2026-09-16: "cleanup unused code / files")
     - removes the dead `import EntityRegistryPage from
       './pages/entity-registry'` (the /entity-registry route was long ago
@@ -155,7 +173,7 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
     - NO other change — diff is 5 insertions / 7 deletions, all around
       that import and its two stale comments
 
-11. contractnest-ui/src/components/contacts/cockpit/index.ts
+12. contractnest-ui/src/components/contacts/cockpit/index.ts
     - barrel now exports only ContactCockpitStatsBar (still used by the
       unwired OverviewTab). ActionIsland / ProfileDrawer /
       ContactCockpitPanel exports removed — their files are deleted below.
@@ -247,14 +265,20 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      opens wa.me chat, email opens mail client
  [ ] NO HERO EDIT BUTTON: only "New contract" remains in the hero; all
      editing happens inline in the Profile tab sections
- [ ] LINKED CONTACTS: card shows Add (empty) / Edit; opens the familiar
-     Alternative Contact Person section AT FULL CARD WIDTH (not cramped);
-     Add Person + Save → person appears on the card immediately (no page
-     reload needed) AND as a real contact (team_member, hidden from the
-     main list as a child); edit a person's name/phone → persists after
-     reload (this NEVER worked from the old drawer — verify against
-     reload!); remove a person → disappears here but their contact record
-     survives, just unlinked
+ [ ] LINKED CONTACTS: card shows Add (empty) / Edit; opens the Alternative
+     Contact Person section AT FULL CARD WIDTH, EMBEDDED (no second glass
+     card, no duplicate "Alternative Contact Person"/"Stand-in" header, no
+     tip/summary boxes — just the Add Person button + person grid inside
+     your one "Linked contacts" card); Add Person + Save → person appears
+     on the card immediately (no page reload needed) AND as a real contact
+     (team_member, hidden from the main list as a child); edit a person's
+     name/phone → persists after reload (this NEVER worked from the old
+     drawer — verify against reload!); remove a person → disappears here
+     but their contact record survives, just unlinked
+ [ ] REGRESSION — /contacts/create (and the Contacts import corporate flow)
+     still shows the FULL "Contact Persons" card exactly as before (own
+     header, badge, tip boxes) — the embedded mode only applies where the
+     detail page explicitly asks for it
  [ ] CLEANUP SANITY: /entity-registry (Facility Registry) still loads and
      lists seeded facilities (it never used the deleted page); contract
      wizard asset picker + contract Equipment tab still render their cards;
