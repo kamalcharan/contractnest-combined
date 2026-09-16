@@ -1,0 +1,103 @@
+═══════════════════════════════════════════════════
+BATCH: ops-commitments-phase1 (2026-09-16)
+═══════════════════════════════════════════════════
+Steady transition of Operations to ONE commitments list. Owner decisions:
+  · the final home is /ops/cockpit ONLY — everything here is staging
+  · billing first: this batch ships the Collections lane; Sessions,
+    Services and Appointments lanes follow one at a time, each retiring an
+    old page (Event Schedule, Appointments board) only when its lane is in
+  · To Pay stays its own page (no payments lane)
+  · every row is confirmed or still to be confirmed; horizons give forward
+    visibility (today → next few days → coming weeks)
+
+Submodules affected: contractnest-ui ONLY. No API/edge/RPC/DB change, no
+new dependency. Nothing existing changes: Ops Cockpit, Event Schedule,
+Appointments and Group Sessions are untouched.
+
+─── WHAT YOU GET ────────────────────────────────────
+
+ Route  /ops/cockpit/next   (TEMPORARY — nested under the cockpit path so
+        the eventual swap is: /ops/cockpit renders this component, /next
+        and the "Ops (preview)" menu entry are removed)
+ Menu   Operations → "Ops (preview)" directly under Ops Cockpit (TEMPORARY)
+
+ The page (Money In idiom — situation sentence, lens signals, story rows):
+   Sentence  "₹6,000 to confirm — 2 declared payments — ₹1,17,000 overdue
+             across 34 buyers. ₹1,66,500 falls due in the next 30 days."
+             Every figure is a lens; overdue/upcoming totals come from the
+             same get_tenant_receivables summary Money In shows, so the two
+             pages cannot disagree.
+   Signals   to confirm (amber) · overdue (red) · next 30 days (brand)
+   Rows, grouped by WHEN — overdue · today · next 3 days · coming weeks · later:
+     • Overdue: ONE row per buyer (all their late instalments, oldest days)
+       → Open → the contract page
+     • Not yet due, group-session fees: aggregated per due date + cycle
+       ("Monthly instalment × 18 members · ₹1,500 each") → Dues →
+       /group-sessions.  Other contracts: one row per instalment → Open →
+       the contract page
+     • Declared payments waiting for the chair (check-in declarations,
+       gs_pending_declarations) → Confirm → the existing
+       useConfirmDeclaration mutation (gs_confirm_declaration), then
+       receivables refetch. Guest fees without an adhoc invoice show
+       "needs an invoice before it can be confirmed" and Open instead
+       (confirm is a silent no-op for those — see CLAUDE.md guest item).
+     • Declared payments against invoices (/api/payments/declarations)
+       → Confirm → the existing useConfirmPaymentDeclaration mutation
+   Search   name · contract · reference.  "showing: … ✕" chip clears a lens.
+   States   Overdue / Due / To confirm.  One in-flight Confirm at a time;
+            the button shows a spinner and the others disable meanwhile.
+   Not yet  Lane toggle (arrives with the second lane) and Who — Team /
+            Mine / Unassigned (arrives with Services; billing has no owner).
+   Expense  On the expense perspective the page explains and links To Pay,
+            exactly like Money In.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-ui/src/pages/ops/cockpit/Commitments.tsx   (NEW)
+    - the whole page; lives in the cockpit folder because it is the future
+      cockpit body. Reuses useReceivables, usePendingDeclarations +
+      useConfirmDeclaration, usePaymentDeclarations +
+      useConfirmPaymentDeclaration, useInvoiceTheme, fmtMoney/fmtDate/
+      daysUntil, LoadingSpinner, react-hot-toast.
+ 2. contractnest-ui/src/App.tsx
+    - one import + one route block (/ops/cockpit/next), marked TEMPORARY.
+      Whole file included so the copy is exact; the diff is those two spots.
+ 3. contractnest-ui/src/utils/constants/industryMenus.ts
+    - one submenu entry "Ops (preview)", marked TEMPORARY. Whole file
+      included; the diff is that one entry.
+
+ Verified: tsc error count identical to pristine main (1170 pre-existing on
+ main @ a2e8576, none in the three touched files), vite build succeeds.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\ops-commitments-phase1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] Operations menu shows "Ops (preview)" under Ops Cockpit; it opens
+     /ops/cockpit/next. Ops Cockpit itself is unchanged.
+ [ ] Sentence figures match Money In: overdue total = Money In's "late"
+     figure; "falls due in the next 30 days" = Money In's 30-day upcoming.
+ [ ] Overdue section: one row per late buyer, amount = their late total,
+     "oldest N days"; Open → that buyer's contract.
+ [ ] Coming weeks: BBB's monthly (× 18) and quarterly (× 31) fees appear as
+     ONE aggregated row each, amount = sum; Dues → Group Sessions.
+ [ ] Today: any pending check-in declaration appears as "To confirm" with
+     Confirm; confirming it moves it out, toasts, and the member's instalment
+     updates (row disappears / amount drops) without a reload.
+ [ ] A guest-fee declaration (if any) shows the "needs an invoice" copy and
+     Open, not Confirm.
+ [ ] Tap a headline number / a signal → list filters; "showing: … ✕" clears.
+ [ ] Search by member name, CN-number, UPI reference.
+ [ ] Switch to the expense perspective → the To Pay note; switch back → list.
+ [ ] Refresh button refetches all three sources.
+ [ ] Nothing else changed: Money In, Group Sessions, Event Schedule as before.
+
+─── NEXT LANES (each its own batch) ─────────────────
+ 2. Sessions  — occurrences + reminder runs; lane toggle appears
+ 3. Services  — service events + tickets; Who toggle + Assign; retire
+                Event Schedule
+ 4. Appointments — Accept/Reschedule on the row; retire the board
+ 5. Swap: /ops/cockpit renders Commitments; remove /next + preview entry.
+    Then the contract visit card + Visit screen as their own batch.
