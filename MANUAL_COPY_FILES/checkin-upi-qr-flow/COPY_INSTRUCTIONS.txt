@@ -1,20 +1,17 @@
 ═══════════════════════════════════════════════════
 BATCH: checkin-upi-qr-flow (2026-09-16)
 ═══════════════════════════════════════════════════
-Closes the "check-in UPI pay link fails on real GPay" item that has been
-open since 2026-07-25. Root cause finally isolated live this session, with
-real ₹1 payments — see ROOT CAUSE below. Supersedes the *mechanism* of the
-earlier checkin-upi-merchant-qr batch; that batch's payload fix (org_id/mcc
-in the link) was correct and is still required — it is what makes the QR
-built here valid.
+Closes the "check-in UPI pay link fails on real GPay" item open since
+2026-07-25. Root cause isolated live this session with real ₹1 payments —
+see ROOT CAUSE. The earlier checkin-upi-merchant-qr batch's payload fix
+(org_id/mcc in the link) was correct and stays; it is not the problem.
 
 Submodules affected: contractnest-ui ONLY.
-No API, edge, RPC or DB change. No new dependency (uses the in-repo
-src/utils/qrcodegen.ts already used by the group-session QRCard).
+No API, edge, RPC or DB change. No new dependency.
 
 ─── ROOT CAUSE ──────────────────────────────────────
 
-The payload was never the problem after the org_id/mcc fix. What GPay
+The payload was never the problem once org_id/mcc were added. What GPay
 refuses for BBB's merchant-registered VPA (9849502193@kbl, U S R Travels,
 mc=4722) is the DELIVERY MECHANISM:
 
@@ -22,59 +19,60 @@ mc=4722) is the DELIVERY MECHANISM:
       → GPay opens, shows the amount, then FAILS at payment
         ("Payments to this receiver are not allowed by UPI network")
 
-  Identical string read by GPay's OWN SCANNER as a QR
+  Identical string scanned by the member INSIDE GPay as a QR
       → pays.
 
 Proved live, same phone, same account, same minute:
-  - physical bank sticker scanned inside GPay      → ₹1 PAID
-  - same sticker via a QR-reader app → link → GPay  → fails at payment
-  - our exact generated payload (amount + our reference + org_id/mcc)
-    rendered as a QR, scanned inside GPay          → ₹1 PAID
-  - same payload as a tap link from the check-in page → fails
+  - physical bank sticker scanned inside GPay        → ₹1 PAID
+  - same sticker via a QR-reader app → link → GPay    → fails at payment
+  - our exact generated payload (amount + reference + org_id/mcc) rendered
+    as a QR and scanned inside GPay                   → ₹1 PAID
+  - same payload as the check-in page's tap link      → fails
 
-Personal VPAs behave differently: the intent path DOES work for
-kamalcharan@okicici (GPay opened and accepted it; a separate GPay-side
-₹1,000-per-transaction cap applied, which is the payer app's rule and
-nothing our page causes). So the intent button stays for personal-VPA
-tenants and is removed only where it is a guaranteed failure.
+Personal VPAs are different: the intent path DOES work for
+kamalcharan@okicici (GPay accepted the link; a separate GPay-side ₹1,000
+per-transaction cap applied — the payer app's rule, not ours). So the
+intent button stays for personal-VPA tenants.
 
 The check-in page does `window.location.href = 'upi://…'` — the blocked
-path. No link we can build will ever work for a merchant VPA; a QR does.
+path. No link we can build works for a merchant VPA. A member cannot scan
+their own screen, and "save the QR → open GPay → pick from gallery" was
+rejected by the owner as friction. The chapter's printed bank QR at the
+desk is the natural gesture, so the page points at it.
 
 ─── WHAT CHANGES (SessionCheckinPage.tsx, renderPayBlock) ───
 
  When the tenant's payment config carries merchant fields (org_id AND mcc):
-   - The "Open UPI app" intent button is NOT rendered.
-   - In its place: a QR of the exact buildUpiPaymentIntent() output for
-     this member's due (amount + our CN… reference + org_id/mcc), rendered
-     as a PNG so it can be press-and-hold saved, with the amount and payee
-     under it and 4 numbered steps:
-       Save QR → UPI app → Scan QR → gallery icon → pick it → approve →
-       note reference → come back and enter it.
-     Plus the line "Or scan the printed chapter QR at the desk…".
-   - "Save QR · Pay ₹X" button: Web Share API with the PNG file where
-     supported (Android Chrome / iOS Safari share sheet → Save image), else
-     an <a download target=_blank> fallback; failure surfaces a hint to
-     press-and-hold the image. Never navigates the page away.
-   - "I've paid — enter my UPI reference" button → the EXISTING reference
-     entry + duplicate checks + declaration flow, unchanged. paymentAttempted
-     is only set by this explicit tap (never by saving the QR), consistent
-     with the 2026-08-06 fix that stopped fabricated declarations.
-   - One payment reference per page load (useRef), so the QR does not
-     change under the member on re-render.
+   - The "Open UPI app" intent button and its come-back alert are NOT
+     rendered (they can only fail).
+   - In their place, one card: "Scan the chapter QR at the desk", the
+     amount large, and one line — open GPay/PhonePe/Paytm, scan the
+     printed payment QR, check it shows <payee>, enter <amount>, pay.
+   - Primary button "I've paid — enter my UPI reference" → the EXISTING
+     reference entry, duplicate checks and declaration flow, unchanged.
+     paymentAttempted is set only by that explicit tap (consistent with
+     the 2026-08-06 fix that stopped fabricated declarations).
+   - Footer line tells the member check-in is recorded once the
+     reference is entered, and that this account takes QR payments only.
+   - The "App link failed, or already paid?" disclosure reads
+     "No QR nearby, or already paid?" on this path.
  When there are NO merchant fields (personal VPA, e.g. BBB's test config):
-   - Zero behaviour change. Same intent button, same come-back alert.
- Also: the "App link failed, or already paid?" disclosure reads
- "Could not scan, or already paid?" on the QR path. Copy-UPI-ID box,
- already-declared-today warning, paid gate, dup alerts: untouched.
+   - Zero behaviour change.
+ Untouched everywhere: Copy-UPI-ID box, already-declared-today warning,
+ paid gate, duplicate alerts, guest-service step wiring (same function).
+
+ TRANSACTION CAPTURE IS PRESERVED: member → amount → UPI reference →
+ declaration for the chair, exactly as before. What is lost, for this VPA
+ only, is the one-tap amount-pre-filled launch — which never worked here.
+ The link code stays correct, so if the bank enables intent payments on
+ the merchant VPA the button can simply be re-enabled.
 
 ─── FILES ───────────────────────────────────────────
 
  1. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
-    - based on contractnest-ui origin/main @ a2e8576 (which already
-      contains the Part 1 org_id/mcc changes to upiPayment.ts and
-      useSessionCheckin.ts — those two files are NOT in this batch and
-      must already be present, which they are on main).
+    - based on contractnest-ui origin/main @ a2e8576 (already contains the
+      Part 1 org_id/mcc changes to upiPayment.ts / useSessionCheckin.ts —
+      not in this batch, already on main).
 
  Verified: tsc error count identical to pristine main (1193 pre-existing,
  none in src/pages/checkin), vite build succeeds.
@@ -85,38 +83,29 @@ Copy-Item "MANUAL_COPY_FILES\checkin-upi-qr-flow\contractnest-ui\*" -Destination
 
 ─── TESTING CHECKLIST ───────────────────────────────
 
- LIVE (merchant VPA) — the real test, on a real phone:
- [ ] Open the live check-in link, identify as a member with a due.
-     The pay step must show a QR + amount + 4 steps and a "Save QR" button,
-     and must NOT show "Open UPI app".
- [ ] Tap "Save QR" → share sheet / download. Open GPay → Scan → gallery →
-     pick it → GPay shows U S R Travels with the exact due pre-filled →
-     complete a real payment (goes to BBB's own account).
- [ ] Press-and-hold the QR image → "Download/Save image" works (the
-     fallback path for phones where the button only opens the image).
- [ ] Back on the page: "I've paid — enter my UPI reference" → enter ref →
-     Confirm → check-in completes → declaration appears for the chair with
-     the right amount (same flow as before, nothing new here).
- [ ] Scan the printed sticker at the desk instead, pay the shown amount
-     by hand — also works (that path was always fine).
- [ ] Try PhonePe or Paytm's scanner with the saved QR if available.
-
+ LIVE (merchant VPA), real phone, private tab:
+ [ ] Pay step shows the "Scan the chapter QR at the desk" card with the
+     member's exact due and payee name; NO "Open UPI app" button.
+ [ ] Scan the printed sticker inside GPay, pay the shown amount →
+     "I've paid — enter my UPI reference" → enter ref → Confirm → check-in
+     completes → declaration appears for the chair with the right amount.
+ [ ] "No QR nearby, or already paid?" disclosure opens; Copy UPI ID works.
  TEST env (personal VPA kamalcharan@okicici):
- [ ] Pay step still shows the ORIGINAL "Open UPI app" button and come-back
-     alert — no QR block. Behaviour identical to before this batch.
-
+ [ ] Pay step unchanged — original "Open UPI app" button + come-back alert.
  Regression:
- [ ] Guest-service payment step (same renderPayBlock) shows the QR path on
-     live and the button path on test, same as members.
- [ ] "Skip for now" / paid-gate / duplicate-reference alerts unchanged.
+ [ ] Guest-service payment step: card on live, button on test.
+ [ ] "Skip for now" / paid gate / duplicate-reference alerts unchanged.
 
 ─── STILL OPEN AFTER THIS BATCH ─────────────────────
+ - One-tap payment for the merchant VPA needs Karnataka Bank to enable
+   intent/dynamic-QR payments on that merchant account (or a different
+   collection VPA). Code is ready; nothing to build when that happens.
  - Pay-to-UPI-ID (typing 9849502193@kbl inside GPay) was never tested for
-   the merchant VPA, so the "Copy UPI ID" box is left as-is. If it turns
-   out to be refused too, that box should be hidden on the merchant path.
- - Uploading a QR image on /settings/integrations (Offline UPI) wiped
+   the merchant VPA; "Copy UPI ID" box left as-is. Hide it on the merchant
+   path if it proves refused too.
+ - Uploading a QR on /settings/integrations (Offline UPI) wiped
    upi_id/payee_name/org_id/mcc down to just qr_image_url — twice today
    (test row, then live row). Both repaired by hand; root cause NOT yet
    found (the v66 edge merge is deployed and correct, so the loss is
-   upstream of it — likely the frontend submitting only the changed field
-   on the upload path). Do not re-upload the live QR until diagnosed.
+   upstream — likely the frontend submitting only the changed field on the
+   upload path). Do not re-upload the live QR until diagnosed.

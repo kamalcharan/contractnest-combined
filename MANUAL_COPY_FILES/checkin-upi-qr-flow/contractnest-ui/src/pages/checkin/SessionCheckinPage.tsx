@@ -15,7 +15,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {buildUpiPaymentIntent,copyUpiId} from './upiPayment';
-import { QrCode } from '@/utils/qrcodegen';
 import {
   sessionCheckinApi, getOrCreateDeviceToken, forgetDeviceToken,
   type CheckinResolve, type CheckinMember, type CheckinHistory, type BillingRow,
@@ -39,34 +38,6 @@ const BRAND = {
   ok: '#059669',
   err: '#B91C1C',
 };
-
-// PNG rather than inline SVG so the member can press-and-hold to save it and
-// pick it from the gallery inside their UPI app. Cached per payload — the same
-// QR is re-rendered on every keystroke of the reference field otherwise.
-const upiQrPngCache = new Map<string, string>();
-function upiQrPng(text: string): string | null {
-  const hit = upiQrPngCache.get(text);
-  if (hit) return hit;
-  if (typeof document === 'undefined') return null;
-  try {
-    const qr = QrCode.encodeText(text, 'MEDIUM');
-    const border = 4, scale = 10, dim = (qr.size + border * 2) * scale;
-    const canvas = document.createElement('canvas');
-    canvas.width = dim; canvas.height = dim;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dim, dim);
-    ctx.fillStyle = '#000000';
-    for (let y = 0; y < qr.size; y++) {
-      for (let x = 0; x < qr.size; x++) {
-        if (qr.getModule(x, y)) ctx.fillRect((x + border) * scale, (y + border) * scale, scale, scale);
-      }
-    }
-    const png = canvas.toDataURL('image/png');
-    upiQrPngCache.set(text, png);
-    return png;
-  } catch { return null; }
-}
 
 const fmtDate = (iso?: string) => {
   if (!iso) return '';
@@ -331,9 +302,6 @@ const SessionCheckinPage: React.FC = () => {
   // ever return, so the contract is made explicit up front: pay, note the
   // UPI reference, come back and confirm — check-in isn't done until then.
   const [showLeaveAlert, setShowLeaveAlert] = useState(false);
-  // One payment reference per page load: the QR must not change under the
-  // member between renders (it is regenerated on every keystroke otherwise).
-  const payRefRef = useRef<string | null>(null);
   const [copiedVpa, setCopiedVpa] = useState(false);
   // "Did you pay?" gate. Tapping "Open UPI app" tells us the member LEFT for
   // their UPI app; it tells us nothing about whether money moved. Before they
@@ -892,42 +860,14 @@ const SessionCheckinPage: React.FC = () => {
   //
   // Merchant-registered VPAs (org_id + mcc configured) refuse a upi:// intent
   // handed over by a browser — GPay opens, shows the amount, then fails at
-  // payment — yet accept the identical payload when its own scanner reads it
-  // as a QR (verified live, Sep 2026, ₹1 paid). So for those configs the QR
-  // is the payment path and the intent button is not shown at all. Personal
-  // VPAs keep the intent button unchanged.
+  // payment — yet pay the identical payload when the member scans it as a QR
+  // inside their app (verified live, Sep 2026, ₹1 paid). A member cannot
+  // scan their own screen, so for those configs the page does not launch an
+  // app at all: it shows the amount and points at the chapter's printed QR
+  // at the desk. Personal VPAs keep the intent button unchanged.
   const renderPayBlock = (amount: number, currency: string | undefined) => {
     const canPay = !!payCfg?.configured && !!payCfg.upi_id;
     const merchantVpa = !!(payCfg?.org_id && payCfg?.mcc);
-    let qrPay: { uri: string; png: string } | null = null;
-    if (canPay && merchantVpa) {
-      try {
-        if (!payRefRef.current) payRefRef.current = 'CN' + crypto.randomUUID().replace(/-/g, '');
-        const uri = buildUpiPaymentIntent({ upiId: payCfg!.upi_id, payeeName: payCfg!.payee_name || '', amount,
-          currency: currency || '', reference: payRefRef.current, orgId: payCfg!.org_id, mcc: payCfg!.mcc });
-        const png = upiQrPng(uri);
-        if (png) qrPay = { uri, png };
-      } catch { qrPay = null; }
-    }
-    const saveQr = async () => {
-      if (!qrPay) return;
-      const fileName = `upi-pay-${Math.round(amount)}.png`;
-      try {
-        const blob = await (await fetch(qrPay.png)).blob();
-        const file = new File([blob], fileName, { type: 'image/png' });
-        const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
-        if (typeof nav.share === 'function' && nav.canShare?.({ files: [file] })) {
-          await nav.share({ files: [file], title: 'UPI payment QR' } as ShareData);
-          return;
-        }
-        const a = document.createElement('a');
-        a.href = qrPay.png; a.download = fileName; a.target = '_blank'; a.rel = 'noopener';
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch (e) {
-        if ((e as { name?: string })?.name === 'AbortError') return;
-        setUpiHelp('Could not save the QR automatically. Press and hold the QR image to save it, then scan it from your UPI app.');
-      }
-    };
     const copyVpa = async () => {
       if (!payCfg?.upi_id) return;
       const copied=await copyUpiId(payCfg.upi_id,navigator.clipboard);
@@ -1000,7 +940,7 @@ const SessionCheckinPage: React.FC = () => {
 
         {upiHelp && <p role="alert" style={{fontSize:13,color:'#92400E',lineHeight:1.5}}>{upiHelp}</p>}
         <details style={{marginTop:12,fontSize:12.5,color:BRAND.sub,lineHeight:1.6}}>
-          <summary style={{cursor:'pointer',fontWeight:700}}>{qrPay ? 'Could not scan, or already paid?' : 'App link failed, or already paid?'}</summary>
+          <summary style={{cursor:'pointer',fontWeight:700}}>{merchantVpa ? 'No QR nearby, or already paid?' : 'App link failed, or already paid?'}</summary>
           <p>First check your UPI app’s transaction history to avoid paying twice. If no payment succeeded, copy the UPI ID above, open your app yourself and choose “Pay to UPI ID”, or use the organiser’s bank-issued QR. Confirm the recipient and amount before paying.</p>
           <p>If your app says the receiver is blocked or not allowed, contact the organiser to check with their bank. A website cannot override that restriction.</p>
           <button type="button" onClick={()=>{setPaymentAttempted(true);setShowLeaveAlert(false);}}
@@ -1010,37 +950,23 @@ const SessionCheckinPage: React.FC = () => {
         </details>
 
         {!paymentAttempted ? (
-          qrPay ? (
+          merchantVpa ? (
           <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
-              background: '#fff', border: `1px solid ${BRAND.line}`, borderRadius: 14, padding: 14 }}>
-              <img src={qrPay.png} alt={`UPI QR to pay ${money(amount, currency)} to ${payCfg!.payee_name || payCfg!.upi_id}`}
-                style={{ width: 208, height: 208, imageRendering: 'pixelated' }} />
-              <div style={{ marginTop: 8, fontSize: 16, fontWeight: 800, color: BRAND.ink }}>{money(amount, currency)}</div>
-              <div style={{ fontSize: 12, color: BRAND.sub }}>{payCfg!.payee_name || payCfg!.upi_id} · amount is filled in for you</div>
+            <div style={{ background: BRAND.accentSoft, border: `1px solid ${BRAND.accent}44`, borderRadius: 14, padding: 14, textAlign: 'center' }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.accentInk }}>Scan the chapter QR at the desk</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: BRAND.ink, marginTop: 2, letterSpacing: -0.5 }}>{money(amount, currency)}</div>
+              <div style={{ fontSize: 12.5, color: BRAND.sub, marginTop: 6, lineHeight: 1.55 }}>
+                Open GPay, PhonePe or Paytm and scan the printed payment QR. Check it shows{' '}
+                <b style={{ color: BRAND.ink }}>{payCfg!.payee_name || payCfg!.upi_id}</b>, enter {money(amount, currency)} and pay.
+              </div>
             </div>
-            <ol style={{ margin: '12px 0 0', paddingLeft: 18, color: BRAND.sub, fontSize: 13, lineHeight: 1.7 }}>
-              <li><b style={{ color: BRAND.ink }}>Save this QR</b> to your phone — button below, or press and hold the image</li>
-              <li>Open <b style={{ color: BRAND.ink }}>GPay / PhonePe / Paytm → Scan QR</b>, tap the <b style={{ color: BRAND.ink }}>gallery / photo</b> icon and choose the saved QR</li>
-              <li>Approve {money(amount, currency)} and <b style={{ color: BRAND.ink }}>note the UPI reference</b></li>
-              <li><b style={{ color: BRAND.ink }}>Come back here</b> and enter it — your check-in is not recorded until you do</li>
-            </ol>
-            <p style={{ fontSize: 12.5, color: BRAND.sub, margin: '8px 0 0', lineHeight: 1.6 }}>
-              Or scan the printed chapter QR at the desk with your UPI app and pay {money(amount, currency)}.
-            </p>
-            <button type="button" onClick={saveQr}
+            <button type="button" onClick={() => { setUpiHelp(null); setPaymentAttempted(true); }}
               style={{ width: '100%', marginTop: 12, padding: 13, border: 'none', borderRadius: 12,
                 background: BRAND.accent, color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-              Save QR · Pay {money(amount, currency)}
-            </button>
-            <button type="button" onClick={() => { setUpiHelp(null); setPaymentAttempted(true); }}
-              style={{ width: '100%', marginTop: 8, padding: 11, borderRadius: 12,
-                border: `1.5px solid ${BRAND.accent}`, background: '#fff',
-                color: BRAND.accentInk, fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
               I've paid — enter my UPI reference
             </button>
             <p style={{ fontSize: 12, color: BRAND.sub, textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
-              This account accepts payments by QR scan only — opening the app with a link does not work for it.
+              Your check-in is recorded once you enter the reference. This account takes QR payments only — app links don't work for it.
             </p>
           </div>
           ) : (
