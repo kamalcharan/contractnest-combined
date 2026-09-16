@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════
+BATCH: vani-landing-tenant-flag (2026-09-16) — stitches 3 + 4:
+       VaNi landing + entitlement service read the tenant truth
+═══════════════════════════════════════════════════
+Follows vani-tenant-flag (step 1) and vani-automation-rules (step 2).
+
+What changes for a user:
+  · /vani/landing: the badge and both CTAs now come from
+    flags.vani_enabled (tenant-context API). "VaNi is on" / "VaNi is on ·
+    trial, N days left" / "VaNi is off · 1-week free trial" / "VaNi is off ·
+    trial ended". Starting the trial still calls start_vani_trial, which
+    sets t_tenants.vani_enabled (step 1) — and now the landing, Automation
+    Rules and Briefing all refetch immediately.
+  · /vani/briefing: gated on flags.vani_enabled.
+  · API: vaniEntitlementService reads vani_is_enabled() — the SAME function
+    get_tenant_context emits — so /api/vani/entitlement, the Briefing 403
+    gate and the VaNi COMPOSER gate (/api/vani/composer/*) all follow the
+    tenant flag. VANI_ENTITLEMENT_MODE is REMOVED (it was the second switch).
+
+⚠️ BEHAVIOUR CHANGE ON DEPLOY (this is the business model, stated so it is
+   not a surprise): production ran in VANI_ENTITLEMENT_MODE=open — every
+   tenant was "entitled". After this API deploys, only tenants with the
+   tenant flag are: today BBB, signia and vikuna (admin). For everyone else
+   the Briefing shows its locked panel, and the LLM composer entry points
+   (contracts hub, create-contract, catalog templates — they call
+   /api/vani/composer/entitlement) hide. No automation behaviour changes —
+   engines are still ungated (stitch 6).
+   To enable another tenant by hand:
+     update t_tenants set vani_enabled=true, vani_enabled_until=null,
+            vani_enabled_source='admin' where id='<tenant>';
+
+Submodules affected: contractnest-ui, contractnest-api. No DB change.
+
+─── FILES ───────────────────────────────────────────
+ UI
+ 1. src/vani/pages/VaNiLandingPage.tsx
+    - status from useTenantContext(); subscribed = on & open-ended,
+      trialActive = on & time-boxed, trialUsed = off & a trial row exists.
+      CTA/badge/section copy follow. Nothing else on the page touched.
+ 2. src/pages/VaNi/BriefingPage.tsx
+    - entitled = flags.vani_enabled; entitlement query kept only for the
+      locked panel's "trial ended" copy; loading waits on both.
+ 3. src/hooks/queries/useVaniDeskQueries.ts   (SUPERSET — see note)
+    - VaniEntitlement.mode adds 'tenant', optional until/source;
+      useStartVaniTrial also invalidates tenantContextKeys.all.
+    - ALSO contains vani-automation-rules' VaniRuleValue / VaniRuleConstraint
+      types. This same superset file has been written back into that batch,
+      so the two batches can be copied in either order.
+ 4. src/services/vaniComposerService.ts
+    - VaniEntitlement.mode adds 'tenant'. Type only.
+ 5. src/hooks/queries/useTenantContext.ts
+    - identical to step 1's copy (flags.vani_enabled + vani). Included so
+      this batch copies standalone.
+ API
+ 6. src/services/vaniEntitlementService.ts   (rewritten)
+    - reads vani_is_enabled() + t_tenants detail + the 'vani' subscription
+      row (detail only). Cache 60s, cleared on trial start, failures not
+      cached and resolve to "off" (premium surfaces fail closed).
+      getMode() returns 'tenant'. No env read.
+ 7. src/services/vaniDeskService.ts             (SUPERSET — see note)
+    - startTrial also invalidates the tenant-context 30s cache.
+    - ALSO contains vani-automation-rules' widened config type; written
+      back into that batch too.
+
+ Verified: UI tsc 1170 = pristine main @ a2e8576 (0 in touched files) with
+ the Automation Rules page present; vite build passes; API tsc clean.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\vani-landing-tenant-flag\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-landing-tenant-flag\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+ Railway: remove VANI_ENTITLEMENT_MODE from the API service's variables if it
+ is set (it is now ignored either way).
+
+─── TESTING CHECKLIST ───────────────────────────────
+ [ ] BBB: /vani/landing badge "VaNi is on", CTA "Open your Briefing →";
+     /vani/briefing loads; GET /api/vani/entitlement → entitled:true,
+     mode:'tenant', source:'admin'.
+ [ ] vikuna (admin): same, source:'admin_tenant'.
+ [ ] bbb2025 (or any other tenant): badge "VaNi is off · 1-week free trial";
+     Briefing shows the locked panel; composer entry points hidden;
+     /api/vani/composer/entitlement → entitled:false.
+ [ ] On a throwaway tenant: click "Start your 1-week free trial" → toast,
+     badge flips to "VaNi is on · trial, 7 days left" WITHOUT a reload;
+     /settings/configure/automation-rules shows the green line
+     "VaNi is on · until <date>"; t_tenants row: vani_enabled=true,
+     vani_enabled_until ≈ now+7d, source 'trial'.
+ [ ] Automation Rules page (step 2) unchanged.
+
+─── NEXT STITCHES ───────────────────────────────────
+ 5. Plan writers (fn_apply_contract_entitlements, subscribe_tenant_to_plan_v2,
+    fn_apply_topup_grants) set t_tenants.vani_enabled where they set
+    addon_vani_ai — so a paid VaNi add-on switches it on open-ended.
+ 6. Engines: vani_rule_enabled() AND vani_is_enabled(); group-session cron;
+    jtd-worker blocks system-originated only. Decide the other 8 automated
+    tenants first (Hygene Services, Trinity Tecnitions, Freedom Services,
+    Value Elevators, hubb, flow1, stw, vikuna-already-on).
