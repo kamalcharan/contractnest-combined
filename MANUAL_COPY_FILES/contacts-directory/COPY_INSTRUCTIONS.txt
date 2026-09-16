@@ -112,7 +112,10 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       076_guest_checkin_contact_dedupe.sql
       077_tag_filter_child_contacts.sql (incl. 077b)
       078_update_contact_idempotent_v2_persons.sql
-    - SOURCE OF RECORD ONLY — all three already applied live. Do not re-run.
+      079_duplicate_detection_live.sql
+      080_list_contacts_show_duplicates_fix.sql
+      081_contact_stats_live_duplicates.sql
+    - SOURCE OF RECORD ONLY — all six already applied live. Do not re-run.
     - 078 (2026-09-16 late, owner call: "RPC should be good option") fixes
       the root cause behind item 8 below: update_contact_idempotent_v2
       accepted p_contact_persons since it was written but its body never
@@ -126,6 +129,55 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       array is unlinked (never deleted). Verified live in a self-contained
       rollback transaction (throwaway parent+child, create/edit/unlink all
       asserted, RAISE EXCEPTION at the end — zero rows persisted).
+    - 079/080/081 (2026-09-16 late, owner: "merge duplicates — what is your
+      proposal" → agreed to fix detection first, as its own increment
+      ahead of a future merge action). Found the whole duplicates feature
+      was silently non-functional: t_contacts.potential_duplicate (what
+      the stats count AND the already-shipped "Possible duplicates"
+      checkbox depend on) was 0/460 populated — the function meant to
+      compute it, update_duplicate_flags(), is called from nowhere in the
+      app or a cron. On top of that, list_contacts_with_channels_v2's
+      p_show_duplicates parameter was ALSO dead (same "accepted, never
+      read" bug as 078, just a different RPC) — the older RPC it replaced
+      implemented it correctly, so this was a silent regression.
+      079 adds get_tenant_duplicate_contact_ids(): computes duplicates
+      LIVE at query time (mobile normalized to last-10-digits — same
+      convention as 076, since an exact-string compare misses
+      '+919059951359' vs '9059951359', the exact bug class behind the
+      Tejaswinni duplicate — or email case-insensitive), scoped to one
+      tenant + one environment, excluding archived AND child contacts
+      (children are hidden from this population by 077 anyway). 080 wires
+      the list RPC to it. 081 swaps get_contact_stats's duplicate count
+      from the dead column to the same live set, so the stat and the
+      filter always agree.
+      Verified live: a real check against BBB found 4 pairs a naive exact-
+      match would flag (e.g. two "CHARAN KAMAL" rows) — all traced to be a
+      LIVE contact and its TEST-environment counterpart from BBB's pre-go-
+      live setup, correctly excluded since detection is scoped per
+      environment (merging across live/test would mix test data into
+      production). A guarded rollback transaction then created two
+      throwaway contacts with the same number in different formats and
+      confirmed both were flagged, then rolled back with zero residue.
+      Current true count: 0 real duplicates in BBB right now (Tejaswinni,
+      the one known case, was already merged manually earlier this
+      session) — the feature was simply blind before, not that nothing
+      was ever wrong.
+      NOT DONE (deliberately, separate follow-up): the actual "Merge"
+      action — a merge_contacts() RPC that would repoint every table that
+      can reference a contact (mapped live against the schema: t_contracts
+      buyer_id/seller_id, t_invoices.contact_id, t_contract_access
+      .accessor_contact_id, t_checkin_devices.contact_id/last_member_id,
+      t_session_attendance.member_contact_id/referred_by_contact_id,
+      t_session_payment_declarations.member_contact_id, t_client_asset
+      _registry/t_tenant_asset_registry.owner_contact_id, t_contacts
+      .parent_contact_id/parent_contact_ids, n_jtd.recipient_id) to a
+      chosen survivor, union channels/tags/addresses, and archive the
+      loser — never delete — with a preview step and an audit-log table.
+      Agreed to build this as its own batch once detection has been live
+      for a while. UI placement agreed: inline on /contacts under the
+      existing "Possible duplicates" filter + the bulk-select already
+      built, a "Merge" action appearing when exactly two are selected —
+      not a separate dedicated page.
 
  8. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
     (updated again 2026-09-16 late — "no way to add linked contacts",
@@ -229,7 +281,14 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      chips appear, each removable, "Clear all" resets
  [ ] Filters button: Inactive status / Registered users / Possible
      duplicates each change the list; pip shows the active count
- [ ] Possible duplicates ON → the two Tejaswinni rows appear
+ [ ] Possible duplicates ON → expect ZERO rows today, NOT the Tejaswinni
+     pair (that was already merged earlier this session, before this
+     checkbox was ever wired up). This checkbox was completely
+     non-functional until migrations 079/080/081 (see item 7) — it's
+     working correctly if it shows nothing right now, not broken. To
+     prove it actually filters, add a test contact sharing a phone number
+     with an existing one (any format — with/without +91) and confirm it
+     shows up, then delete the test contact
  [ ] Sort dropdown changes the order (was silently broken before)
  [ ] Pagination: "Showing X to Y of N" + windowed pager, page 6 reachable
  [ ] Rows: phone/email shown as icon + value (no button cluster);
