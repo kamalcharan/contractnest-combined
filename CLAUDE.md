@@ -503,6 +503,10 @@ Use these prefixes for clear commit history:
 
 ---
 
+## 📐 Specs that govern new work
+
+- **`specs/OPS-JTD-TOOLS-SPEC.md`** — Operations on JTD: the tools-with-actors framework, the collections ladder (item 1), the cockpit (Needs you / What happened / Coming up), the VaNi integration contract and the per-lane extension pattern. **Any agent or human building Operations, VaNi actions, collections/reminders, or anything that touches `n_jtd` must read it first and build to it.** Owner decisions are recorded there; update the spec when a decision changes, not just the code.
+
 ## 🔮 Future Review Items
 
 ### Service KT (Knowledge Tree) — Stream 1 architectural decision
