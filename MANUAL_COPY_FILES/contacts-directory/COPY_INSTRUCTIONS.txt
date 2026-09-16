@@ -115,7 +115,30 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       079_duplicate_detection_live.sql
       080_list_contacts_show_duplicates_fix.sql
       081_contact_stats_live_duplicates.sql
-    - SOURCE OF RECORD ONLY — all six already applied live. Do not re-run.
+      082_check_contact_duplicates_fix.sql
+    - SOURCE OF RECORD ONLY — all seven already applied live. Do not re-run.
+    - 082 (2026-09-16 late, owner live-tested: created "mr cherry" with an
+      identical phone to two existing contacts and got no warning, even
+      after item 13's frontend property-name fix). Root cause was
+      server-side, not frontend: check_contact_duplicates (the RPC the
+      create-time check actually calls) threw "column tenant_id does not
+      exist" on EVERY call — a dead COALESCE fallback referenced
+      t_user_profiles.tenant_id, a column that table has never had.
+      Postgres validates column references at PARSE time regardless of
+      whether that branch would ever run, so the call failed even with a
+      valid p_tenant_id passed explicitly. The error was swallowed by the
+      RPC's own exception handler into {success:false}, which the caller
+      silently treats as "no duplicates" — so phone/email duplicate
+      detection at create time has been unconditionally broken this whole
+      time, independent of item 13's property-name fix (both bugs had to
+      be fixed together for the alert to actually appear). Removed the
+      dead branch. Also dropped a stale 3-arg overload of the same
+      function with NO tenant filtering at all (confirmed zero live
+      callers) — a real cross-tenant leak risk, same "stale overload
+      beside the current one" pattern as migration 076's guest dedupe fix.
+      Verified live: re-ran the exact call that previously errored and it
+      now correctly returns hasDuplicates:true with all three matching
+      contacts.
     - 078 (2026-09-16 late, owner call: "RPC should be good option") fixes
       the root cause behind item 8 below: update_contact_idempotent_v2
       accepted p_contact_persons since it was written but its body never
@@ -265,6 +288,19 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       exactly as it did before — byte-identical key, zero behavior change
       there).
 
+15. NOT FIXED — flagged only (owner asked what the bulk "Delete" button
+    under Possible duplicates does; it is NOT a merge action — the merge
+    feature does not exist yet, it's still the separate follow-up batch
+    agreed earlier). pages/contacts/index.tsx's handleBulkDelete is a
+    stub: it shows "Deleting contacts..." then immediately "N contacts
+    deleted successfully" WITHOUT calling any delete API — clicking it
+    does nothing to the database, contacts stay exactly as they were, but
+    the user sees a false success toast. Pre-existing, unrelated to this
+    batch's changes. Worth a real fix (either wire it to the existing
+    single-contact delete/archive endpoint in a loop, or remove the
+    button until it's wired) — not done here since it wasn't asked for;
+    flagging so it isn't mistaken for a working bulk action.
+
 ─── DELETIONS (run AFTER the Copy-Item lines) ───────
 Audit result (2026-09-16): the Equipment Registry folder itself is clean —
 EquipmentCard (wizard picker + contract EquipmentTab), EquipmentFormDialog
@@ -328,12 +364,16 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      cache-key fix is what makes toggling the checkbox actually re-query
      instead of replaying whatever was already on screen) — then delete
      the test contact
- [ ] QUICK ADD DUPLICATE WARNING (item 13): in the fast "Add Contact"
-     drawer specifically (not the full /contacts/create page — that one
-     was never affected), add a contact whose phone matches an existing
-     one exactly → the duplicate warning modal must appear before it lets
-     you save. Confirmed live this session that it silently let a real
-     duplicate through with zero warning before this fix
+ [ ] QUICK ADD DUPLICATE WARNING (items 13 + 082): in the fast "Add
+     Contact" drawer specifically (not the full /contacts/create page —
+     that one was never affected), add a contact whose phone matches an
+     existing one exactly → the duplicate warning modal must appear before
+     it lets you save. This needed BOTH fixes together — item 13's
+     frontend property-name fix alone was not enough, because 082's
+     server-side RPC bug independently made every create-time check
+     report "no duplicates" regardless. Confirmed live this session (the
+     owner's own "mr cherry" test) that a real duplicate sailed through
+     with zero warning even after item 13 alone was applied
  [ ] Sort dropdown changes the order (was silently broken before)
  [ ] Pagination: "Showing X to Y of N" + windowed pager, page 6 reachable
  [ ] Rows: phone/email shown as icon + value (no button cluster);
