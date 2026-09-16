@@ -113,12 +113,29 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       077_tag_filter_child_contacts.sql (incl. 077b)
     - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
 
- 8. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
+ 8. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+    (updated again 2026-09-16 late — "no way to add linked contacts")
+    - Linked contacts card is now editable: Add/Edit opens the product's
+      EXISTING "Alternative Contact Person" section (ContactPersonsSection,
+      the exact UI from the create page) inline in the card.
+    - ⚠️ WHY IT SAVES DIFFERENTLY: update_contact_idempotent_v2 accepts
+      p_contact_persons but its body never reads it (verified against the
+      live DB) — the old ProfileDrawer's persons edit was a silent no-op.
+      Persons only ever persisted at contact CREATE time. Save here
+      therefore diffs the draft and applies each change through paths
+      that work: added → create child contact (individual, team_member,
+      parent_contact_ids=[this contact], force_create so a stand-in may
+      share the member's phone); edited → update that child contact;
+      removed → unlink by clearing the child's parent_contact_ids (the
+      person remains a normal contact, nothing is deleted).
+    - Per-person failures are collected and toasted; page refetches after.
+
+ 9. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
     - hero Edit button REMOVED (owner call: "we have inline edit") —
       every field is editable inline in the Profile tab, so the
       ProfileDrawer import/state/render went with it. New contract stays.
 
- 9. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
+10. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
     2026-09-16: "cleanup unused code / files")
     - removes the dead `import EntityRegistryPage from
       './pages/entity-registry'` (the /entity-registry route was long ago
@@ -127,7 +144,7 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
     - NO other change — diff is 5 insertions / 7 deletions, all around
       that import and its two stale comments
 
-10. contractnest-ui/src/components/contacts/cockpit/index.ts
+11. contractnest-ui/src/components/contacts/cockpit/index.ts
     - barrel now exports only ContactCockpitStatsBar (still used by the
       unwired OverviewTab). ActionIsland / ProfileDrawer /
       ContactCockpitPanel exports removed — their files are deleted below.
@@ -208,6 +225,12 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      opens wa.me chat, email opens mail client
  [ ] NO HERO EDIT BUTTON: only "New contract" remains in the hero; all
      editing happens inline in the Profile tab sections
+ [ ] LINKED CONTACTS: card shows Add (empty) / Edit; opens the familiar
+     Alternative Contact Person section; Add Person + Save → person appears
+     on the card AND as a real contact (team_member, hidden from the main
+     list as a child); edit a person's name/phone → persists after reload
+     (this NEVER worked from the old drawer — verify against reload!);
+     remove a person → disappears here but their contact record survives
  [ ] CLEANUP SANITY: /entity-registry (Facility Registry) still loads and
      lists seeded facilities (it never used the deleted page); contract
      wizard asset picker + contract Equipment tab still render their cards;
