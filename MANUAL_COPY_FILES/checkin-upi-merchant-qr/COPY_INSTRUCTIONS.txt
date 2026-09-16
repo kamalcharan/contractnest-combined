@@ -97,3 +97,109 @@ context the link is opened from (in-app browser vs. default browser).
 But this fix addresses the one concrete, provable difference found
 between our link and the bank's own working payload, so it should be
 tried first.
+
+═══════════════════════════════════════════════════
+PART 2 (added same day): self-service for ALL tenants, not just BBB
+═══════════════════════════════════════════════════
+Owner question after Part 1: "will it work for all tenants?" — no. Part 1
+was a one-off manual database patch for BBB's specific org_id/mcc values.
+Investigated /settings/integrations ("we have a placeholder... needs to
+be tackled from there") and found it's a fully schema-driven settings
+page — Offline UPI's form fields (upi_id, payee_name, qr_image_url) come
+from a config_schema on the provider row, not hardcoded React. The
+qr_image_url field already lets a tenant upload their bank's QR — it was
+just never decoded, only ever displayed as a picture.
+
+Part 2 makes that upload do double duty: decode the QR server-side the
+moment it's uploaded, and if it's a genuine UPI merchant QR, silently
+extract org_id/mcc and carry them into the same credentials the tenant is
+already saving — without ever asking what a "merchant category code" is,
+and without adding a single new visible field to the form.
+
+─── ROOT CAUSE OF A SECOND BUG FOUND ALONG THE WAY ───
+While tracing exactly how a saved value could later be lost, found that
+the edge function's save path did a FULL REPLACE of the credentials
+JSON on every save (`credentialsJsonb.public = requestData.credentials`),
+confirmed at the SQL layer too (save_tenant_integration does a hard
+`credentials = p_credentials::jsonb`, no merge). Since org_id/mcc are
+deliberately UNDECLARED fields (never loaded into the edit form's state),
+any later edit to something else entirely (e.g. just changing the payee
+name) would have silently wiped them the very next time the tenant saved
+anything. Fixed by making the edge function fetch and merge the existing
+public credentials before writing, instead of replacing them outright —
+scoped narrowly to the plaintext `public` blob only (non-secret display
+values); the separate `encrypted` blob (API keys for Razorpay/Stripe/etc.)
+was deliberately left untouched — that's a bigger, unrelated risk
+surface flagged separately, not fixed here.
+
+─── FILES (in addition to Part 1's) ──────────────────
+
+ 5. contractnest-api/package.json
+    - adds jimp (^0.22.12, image decode) and jsqr (^1.4.0, QR decode) —
+      both pure-JS, no native build step. Confirmed via npm install +
+      tsc + build that both work cleanly with this project's CommonJS
+      setup.
+
+ 6. contractnest-api/src/utils/upiQrDecode.ts (NEW)
+    - detectUpiMerchantFields(buffer): decodes the uploaded image, scans
+      for a QR code, and — only if it's a upi:// payload — extracts
+      orgid/mc. Never throws; a non-UPI QR, an undecodable image, or a
+      personal VPA's QR (no orgid/mc at all) are normal outcomes that
+      just skip enrichment, not errors. Must never block the upload.
+
+ 7. contractnest-api/src/controllers/integrationController.ts
+    - uploadQrImage() now also calls the decoder on the same uploaded
+      buffer and includes org_id/mcc in its response when detected —
+      the existing upload/storage behavior is completely unchanged.
+
+ 8. contractnest-ui/src/components/integrations/DynamicFormField.tsx
+    - new optional onDetectedFields prop, fired only for 'image' fields
+      whose upload response carries extra derived values. Shows a
+      distinct success toast ("Merchant QR detected...") when detected,
+      the existing generic "QR code uploaded" toast otherwise.
+
+ 9. contractnest-ui/src/components/integrations/IntegrationSetupModal.tsx
+    - one line: wires onDetectedFields into the same handleFieldChange
+      the modal already uses for every declared field, so org_id/mcc
+      land in formData and get submitted alongside everything else.
+
+10. contractnest-edge/supabase/functions/integrations/index.ts
+    - ALREADY DEPLOYED LIVE (version 66) via Supabase MCP — this file is
+      a source-of-record copy, not something to redeploy from here.
+    - The full-replace → merge fix described above, scoped to the
+      config-only-provider `public` credentials block only.
+
+Note: no config_schema change — org_id/mcc are deliberately NOT declared
+form fields, so nothing new appears in the Offline UPI settings UI. They
+are pure background enrichment triggered by the QR upload the tenant
+already performs today.
+
+─── ADDITIONAL POWERSHELL COPY (Part 2) ──────────────
+
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+# then from contractnest-api:
+npm install
+# restart the API dev server (new dependencies + controller change)
+
+─── ADDITIONAL TESTING CHECKLIST (Part 2) ────────────
+
+ [ ] Go to /settings/integrations → Offline UPI → upload BBB's own
+     Karnataka Bank QR image (the one already used for Part 1) → confirm
+     the "Merchant QR detected" toast appears (not the plain "QR code
+     uploaded" one)
+ [ ] Upload a QR that is a PERSONAL UPI QR (or any non-merchant QR) →
+     confirm the plain "QR code uploaded" toast appears instead — no
+     error, no false detection
+ [ ] Upload a non-QR image (any random photo) → confirm it still uploads
+     successfully with the plain toast — decode failure must never block
+     the upload
+ [ ] THE REGRESSION TEST for the merge fix: after uploading a merchant
+     QR and saving, reopen the integration's edit modal and change ONLY
+     the payee name (don't touch the QR field), save again, then check
+     the database (or just retest a check-in payment) to confirm the
+     merchant classification still works — this is the exact scenario
+     that would have silently broken before the edge-function fix
+ [ ] Confirm existing integrations for OTHER providers (Razorpay,
+     SendGrid, etc. — anything using the `encrypted` blob) still save and
+     load correctly — this fix touches only the `public`, config-only-
+     provider path, but worth a sanity check since it's a shared function
