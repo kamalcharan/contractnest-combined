@@ -230,6 +230,41 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       unwired OverviewTab). ActionIsland / ProfileDrawer /
       ContactCockpitPanel exports removed — their files are deleted below.
 
+13. contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+    (owner live-tested duplicate detection: created "mr kamal" with the
+    SAME mobile number as an existing "mr charan kamal" and it was
+    accepted with no warning at all)
+    - PRE-EXISTING bug, unrelated to anything else in this batch: the
+      duplicate-check result was read as `duplicateResult?.has_duplicates`
+      (snake_case), but the API/edge/RPC chain returns `hasDuplicates`
+      (camelCase) — confirmed by tracing the full response shape from
+      check_contact_duplicates through the edge route to the frontend
+      hook. That `if` was therefore ALWAYS false, so the warning modal
+      never fired for ANY create through this drawer, no matter what the
+      check found. The full /contacts/create page reads the same result
+      correctly as `.hasDuplicates` and was never affected — this was
+      isolated to Quick Add. One-line fix: `has_duplicates` → `hasDuplicates`.
+
+14. contractnest-ui/src/hooks/useContacts.ts
+    (owner live-tested: toggled "Possible duplicates" and it showed ALL
+    4 contacts, not just the real pair)
+    - NOT a bug in migrations 079/080/081 — verified the deployed
+      get_tenant_duplicate_contact_ids() directly against the owner's
+      test tenant and it correctly returned only the 2 real duplicate
+      ids, never the other two. The bug is generateCacheKey(): its
+      filterKey whitelist (page/limit/status/type/search/classifications/
+      sort_by/sort_order) never included show_duplicates, tags, or
+      user_status — three filters this very batch made real. Toggling
+      any of them produced the SAME cache key as before, so the hook
+      served the stale prior response instead of ever calling the API
+      again. Added all three to the key. Also fixes the same latent risk
+      for the tag chips and "App user" filter under certain navigation
+      sequences — same root cause, same fix. No other call site of
+      generateCacheKey is affected (prefetchContacts's fixed filters
+      object never sets these three keys, so JSON.stringify drops them
+      exactly as it did before — byte-identical key, zero behavior change
+      there).
+
 ─── DELETIONS (run AFTER the Copy-Item lines) ───────
 Audit result (2026-09-16): the Equipment Registry folder itself is clean —
 EquipmentCard (wizard picker + contract EquipmentTab), EquipmentFormDialog
@@ -288,7 +323,17 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      working correctly if it shows nothing right now, not broken. To
      prove it actually filters, add a test contact sharing a phone number
      with an existing one (any format — with/without +91) and confirm it
-     shows up, then delete the test contact
+     shows up ALONGSIDE the one it matches, and ONLY those two — not the
+     whole list (this exact false-positive was caught live: item 14's
+     cache-key fix is what makes toggling the checkbox actually re-query
+     instead of replaying whatever was already on screen) — then delete
+     the test contact
+ [ ] QUICK ADD DUPLICATE WARNING (item 13): in the fast "Add Contact"
+     drawer specifically (not the full /contacts/create page — that one
+     was never affected), add a contact whose phone matches an existing
+     one exactly → the duplicate warning modal must appear before it lets
+     you save. Confirmed live this session that it silently let a real
+     duplicate through with zero warning before this fix
  [ ] Sort dropdown changes the order (was silently broken before)
  [ ] Pagination: "Showing X to Y of N" + windowed pager, page 6 reachable
  [ ] Rows: phone/email shown as icon + value (no button cluster);
