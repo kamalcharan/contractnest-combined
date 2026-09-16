@@ -7,34 +7,35 @@ working the moment Meta approves each template.
 **Settings identical for all five:**
 - Template **name**: EXACTLY as given (must match the platform's template_key)
 - Category: **Utility** · Language: **English (en)** · Parameters: **POSITIONAL** ({{1}}, {{2}}…)
+- No variable may be the FIRST or LAST thing in the body (Meta rule — copy below already complies)
 - ⚠️ Do NOT use named parameters — the account's post-Aug-2026 registrations are positional, and a style mismatch fails silently on delivery.
 
 ---
 
 ### 1. `service_visit_scheduled`
 ```
-Hi {{1}}, your service visit for {{2}} has been scheduled on {{3}}. Our team will see you then. - {{4}}
+Hi {{1}}, your service visit for {{2}} has been scheduled on {{3}} by {{4}}. Our team will see you then. Thank you.
 ```
 {{1}} customer name · {{2}} service name · {{3}} visit date · {{4}} business name
 Samples: Charan Kamal · Air Handling Unit Servicing · 17 Sep 2026 · signia
 
 ### 2. `service_visit_started`
 ```
-Hi {{1}}, {{2}} has started the service visit for {{3}}. We will update you when it is complete. - {{4}}
+Hi {{1}}, {{2}} has started your service visit for {{3}}. {{4}} will update you once it is complete. Thank you.
 ```
 {{1}} customer name · {{2}} technician name · {{3}} service name · {{4}} business name
 Samples: Charan Kamal · Ramesh Kumar · Air Handling Unit Servicing · signia
 
 ### 3. `service_visit_completed`
 ```
-Hi {{1}}, your service visit ({{2}}) is complete - {{3}} asset(s) serviced and verified. Thank you for choosing {{4}}.
+Hi {{1}}, your service visit ({{2}}) is complete - {{3}} asset(s) serviced and verified. Thank you for choosing {{4}} for your service needs.
 ```
 {{1}} customer name · {{2}} ticket number · {{3}} asset count · {{4}} business name
 Samples: Charan Kamal · TKT-10002 · 3 · signia
 
 ### 4. `service_report_ready`
 ```
-Hi {{1}}, the service report for {{2}} is ready. View and save it here: {{3}} - {{4}}
+Hi {{1}}, the service report for {{2}} is ready. View and save it here: {{3}}. Thank you for choosing {{4}} for your service needs.
 ```
 {{1}} customer name · {{2}} ticket number · {{3}} report link · {{4}} business name
 Samples: Charan Kamal · TKT-10002 · https://contractnest.com/report/service/abc123 · signia
@@ -43,7 +44,7 @@ on the "Service report ready" rule at /settings/configure/automation-rules.)
 
 ### 5. `beyond_scope_invoice`
 ```
-Hi {{1}}, during your service visit some additional work was required. Invoice {{2}} for {{3}} has been raised, due {{4}}. - {{5}}
+Hi {{1}}, during your service visit some additional work was required. Invoice {{2}} for {{3}} has been raised, due {{4}}. Thank you for choosing {{5}} for your service needs.
 ```
 {{1}} customer name · {{2}} invoice number · {{3}} amount · {{4}} due date · {{5}} business name
 Samples: Charan Kamal · INV-10052 · Rs 2,180 · 27 Sep 2026 · signia

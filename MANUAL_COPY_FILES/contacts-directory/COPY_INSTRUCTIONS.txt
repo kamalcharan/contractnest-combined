@@ -1,0 +1,442 @@
+═══════════════════════════════════════════════════
+BATCH: contacts-directory (2026-09-16)
+═══════════════════════════════════════════════════
+Owner requests (playground-approved design):
+ 1. /contacts tag filters actually filter (API bug fix)
+ 2. Tabs removed — single directory page in the /experience language
+ 3. BBB guest duplication root-caused and fixed at the source
+ 4. Sorting, advanced filters, pagination all preserved/working
+
+Submodules affected: contractnest-api, contractnest-ui.
+DB: migration 076 ALREADY APPLIED LIVE — the staged .sql is a
+source-of-record copy. DO NOT RE-RUN.
+
+─── ROOT CAUSES FIXED ───────────────────────────────
+
+A. TAG FILTER (and more): contactController.listContacts silently dropped
+   `tags`, `user_status`, `show_duplicates`, `sort_by` and `sort_order`
+   from req.query — the edge list route supported ALL of them all along.
+   Chip counts came from /stats (which forwards tags) so they looked right
+   while the list ignored every chip click. Sorting was equally a no-op.
+
+B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
+   checkDuplicates). gs_checkin_guest's reuse-lookup required an EXACT
+   string phone match (stored '+919059951359' vs typed '9059951359') AND
+   an existing Guest tag — so every repeat guest visit inserted a fresh
+   contact. Proof: the Tejaswinni pair (8 Aug + 5 Sep), identical
+   phone+email, created_by NULL at ~07:35 IST on meeting Saturdays.
+   Migration 076 (LIVE): last-10-digits normalized match, no Guest-tag
+   prerequisite, oldest match wins, stale 10-arg overload dropped.
+   Verified: bare '9059951359' now resolves to the 8 Aug original.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-api/src/controllers/contactController.ts
+    - listContacts now forwards tags / user_status / show_duplicates /
+      sort_by / sort_order (service + edge needed no change)
+
+ 2. contractnest-ui/src/pages/contacts/index.tsx  (FULL REWRITE)
+    - tabs gone; gradient heading band (YOUR NETWORK / Contacts + count)
+    - classification chips: fixed product colors + product icons
+    - tag chips (LOV colors) — now actually filter
+    - search + Filters button (Status / App user / Possible duplicates,
+      with count pip) + sort select; active filters as removable chips
+      with "Clear all"
+    - rows: classification-tinted icon avatar · name + corporate/individual
+      mark + CT number · phone-icon + number · mail-icon + email (icons
+      PREFIX the values — no action-button cluster, per owner) · tag dots ·
+      classification badges · status pill only when not active · Eye
+    - bulk select + delete dialog, Import + Add Contact, help modal,
+      VaNi loader, windowed pagination — all preserved
+    - grid/list toggle removed (list only, per approved playground)
+
+ 3. contractnest-ui/src/pages/contacts/view.tsx  (SHELL REWRITE — approved
+    contact-profile playground, 2026-09-16)
+    - identity hero: classification-tinted gradient band, product-color
+      avatar + icon, name + CT number + status pill (same flow), badges
+      with FIXED product colors (old header had wrong ones: client green /
+      vendor blue / partner purple), tag chips, "Since <month year>",
+      icon-prefixed phone / email / city
+    - Edit button (opens ProfileDrawer) + New contract (active contacts;
+      same navigate target as ActionIsland)
+    - summary strip when the contact has activity: Active contracts ·
+      Open dues (amber when >0) · Next event · Lifetime value — all from
+      the existing cockpit payload, zero new backend
+    - tabs become pills (Contracts pill shows count); Overview stays
+      retired; insight tabs still appear only with activity
+    - ALL machinery preserved: cockpit hook, five tab components,
+      ActionIsland, ProfileDrawer, Explainer, archive dialog, warnings
+
+ 4. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+    (REBUILT to the playground grouping — owner feedback 2026-09-16;
+    EVERYTHING stays inline-edit per owner)
+    - cards now: IDENTITY (salutation + name / company; kept per owner) ·
+      CONTACT DETAILS (channels + address merged, ONE edit+save) ·
+      LINKED CONTACTS (read-only, mini avatars, role chip) ·
+      BUSINESS (designation + GSTIN/PAN merged, one edit+save) ·
+      TAGS & ROLES · NOTES — 3-across grid, playground row style
+      (icon · label · value) in Contact details
+    - no field editable from two cards: Identity owns name/company,
+      Business owns designation+compliance
+    - tinted icon chips per section; classification chips use FIXED
+      product colors/labels in view + edit modes
+    - partial-save semantics unchanged (update RPC untouched)
+
+ 5. contractnest-ui/src/components/contacts/dashboard/AssetsTab.tsx
+    (REWORKED 2026-09-16 evening — owner: "if reused, why full details
+    not visible?") First pass reused EquipmentCard, but the registry
+    itself no longer renders that card — its grid uses MachineCard
+    (EquipmentCard survives only as the wizard picker card), and the
+    rich details come from the with_contracts=true fetch. Now:
+    - renders MachineCard with the registry's exact detail/state
+      mapping: category name (resources + templates lookup), make/
+      model/SN/location, condition + criticality, contract chips
+      (click → contract), visits/proven/overdue service state,
+      "Open logbook", status pill, Inactive dimming + Reactivate
+    - fetch switched to useAssetRegistryManager({ with_contracts:
+      true, contact_id, include_inactive: true }) — same backend
+      endpoint, now enriched; mutations moved to the registry hooks
+      so the enriched list cache invalidates on add/edit/deactivate
+    - deactivate uses the registry's ConfirmationDialog flow (blocked
+      with an info dialog while the asset is attached to a contract)
+    - ClientAssetFormDialog kept for contact-scoped create/edit;
+      grid/list toggle dropped (registry is grid-only, cards match)
+
+ 6. contractnest-ui/src/pages/contacts/view.tsx (updated again)
+    - floating ActionIsland RETIRED: Profile→hero Edit button,
+      Contract→hero New contract, Email/WhatsApp→the hero reach line is
+      now actionable (phone = tel:, new WhatsApp link = wa.me, email =
+      mailto:) — stored channel values already carry the dial code
+
+ 7. contractnest-edge/supabase/migrations/bbb-foundation/
+      076_guest_checkin_contact_dedupe.sql
+      077_tag_filter_child_contacts.sql (incl. 077b)
+      078_update_contact_idempotent_v2_persons.sql
+      079_duplicate_detection_live.sql
+      080_list_contacts_show_duplicates_fix.sql
+      081_contact_stats_live_duplicates.sql
+      082_check_contact_duplicates_fix.sql
+    - SOURCE OF RECORD ONLY — all seven already applied live. Do not re-run.
+    - 082 (2026-09-16 late, owner live-tested: created "mr cherry" with an
+      identical phone to two existing contacts and got no warning, even
+      after item 13's frontend property-name fix). Root cause was
+      server-side, not frontend: check_contact_duplicates (the RPC the
+      create-time check actually calls) threw "column tenant_id does not
+      exist" on EVERY call — a dead COALESCE fallback referenced
+      t_user_profiles.tenant_id, a column that table has never had.
+      Postgres validates column references at PARSE time regardless of
+      whether that branch would ever run, so the call failed even with a
+      valid p_tenant_id passed explicitly. The error was swallowed by the
+      RPC's own exception handler into {success:false}, which the caller
+      silently treats as "no duplicates" — so phone/email duplicate
+      detection at create time has been unconditionally broken this whole
+      time, independent of item 13's property-name fix (both bugs had to
+      be fixed together for the alert to actually appear). Removed the
+      dead branch. Also dropped a stale 3-arg overload of the same
+      function with NO tenant filtering at all (confirmed zero live
+      callers) — a real cross-tenant leak risk, same "stale overload
+      beside the current one" pattern as migration 076's guest dedupe fix.
+      Verified live: re-ran the exact call that previously errored and it
+      now correctly returns hasDuplicates:true with all three matching
+      contacts.
+    - 078 (2026-09-16 late, owner call: "RPC should be good option") fixes
+      the root cause behind item 8 below: update_contact_idempotent_v2
+      accepted p_contact_persons since it was written but its body never
+      read it — every attempt to save linked/alternate contacts on an
+      EXISTING contact (incl. the old ProfileDrawer) was a silent no-op;
+      persons only ever persisted at contact CREATE time. Now handles it
+      with the same full-replace convention the RPC already uses for
+      channels/addresses: a person with an id is updated, one without an
+      id becomes a new child contact (individual · team_member ·
+      parent_contact_ids=[parent]), and any existing child left out of the
+      array is unlinked (never deleted). Verified live in a self-contained
+      rollback transaction (throwaway parent+child, create/edit/unlink all
+      asserted, RAISE EXCEPTION at the end — zero rows persisted).
+    - 079/080/081 (2026-09-16 late, owner: "merge duplicates — what is your
+      proposal" → agreed to fix detection first, as its own increment
+      ahead of a future merge action). Found the whole duplicates feature
+      was silently non-functional: t_contacts.potential_duplicate (what
+      the stats count AND the already-shipped "Possible duplicates"
+      checkbox depend on) was 0/460 populated — the function meant to
+      compute it, update_duplicate_flags(), is called from nowhere in the
+      app or a cron. On top of that, list_contacts_with_channels_v2's
+      p_show_duplicates parameter was ALSO dead (same "accepted, never
+      read" bug as 078, just a different RPC) — the older RPC it replaced
+      implemented it correctly, so this was a silent regression.
+      079 adds get_tenant_duplicate_contact_ids(): computes duplicates
+      LIVE at query time (mobile normalized to last-10-digits — same
+      convention as 076, since an exact-string compare misses
+      '+919059951359' vs '9059951359', the exact bug class behind the
+      Tejaswinni duplicate — or email case-insensitive), scoped to one
+      tenant + one environment, excluding archived AND child contacts
+      (children are hidden from this population by 077 anyway). 080 wires
+      the list RPC to it. 081 swaps get_contact_stats's duplicate count
+      from the dead column to the same live set, so the stat and the
+      filter always agree.
+      Verified live: a real check against BBB found 4 pairs a naive exact-
+      match would flag (e.g. two "CHARAN KAMAL" rows) — all traced to be a
+      LIVE contact and its TEST-environment counterpart from BBB's pre-go-
+      live setup, correctly excluded since detection is scoped per
+      environment (merging across live/test would mix test data into
+      production). A guarded rollback transaction then created two
+      throwaway contacts with the same number in different formats and
+      confirmed both were flagged, then rolled back with zero residue.
+      Current true count: 0 real duplicates in BBB right now (Tejaswinni,
+      the one known case, was already merged manually earlier this
+      session) — the feature was simply blind before, not that nothing
+      was ever wrong.
+      NOT DONE (deliberately, separate follow-up): the actual "Merge"
+      action — a merge_contacts() RPC that would repoint every table that
+      can reference a contact (mapped live against the schema: t_contracts
+      buyer_id/seller_id, t_invoices.contact_id, t_contract_access
+      .accessor_contact_id, t_checkin_devices.contact_id/last_member_id,
+      t_session_attendance.member_contact_id/referred_by_contact_id,
+      t_session_payment_declarations.member_contact_id, t_client_asset
+      _registry/t_tenant_asset_registry.owner_contact_id, t_contacts
+      .parent_contact_id/parent_contact_ids, n_jtd.recipient_id) to a
+      chosen survivor, union channels/tags/addresses, and archive the
+      loser — never delete — with a preview step and an audit-log table.
+      Agreed to build this as its own batch once detection has been live
+      for a while. UI placement agreed: inline on /contacts under the
+      existing "Possible duplicates" filter + the bulk-select already
+      built, a "Merge" action appearing when exactly two are selected —
+      not a separate dedicated page.
+
+ 8. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+    (updated again 2026-09-16 late — "no way to add linked contacts",
+    then simplified once 078 landed)
+    - Linked contacts card is now editable: Add/Edit opens the product's
+      EXISTING "Alternative Contact Person" section (ContactPersonsSection,
+      the exact UI from the create page) inline in the card, and expands
+      to full card width while editing (owner: "UI is cramped" — the
+      section is built for a wide surface, not the normal span-4 tile).
+    - Save sends the WHOLE current list in one PUT to the parent contact's
+      update (contact_persons: [...]) — now that 078 makes the RPC do the
+      create/update/unlink itself, no client-side diffing or per-person
+      fan-out is needed (an earlier version of this file did that as a
+      workaround; removed once the RPC was fixed).
+
+ 9. contractnest-ui/src/components/contacts/forms/ContactPersonsSection.tsx
+    (owner: "still a mess" after the width fix — the real cause wasn't
+    width) + ContactProfileTab.tsx (passes the new prop)
+    - Root cause: this component renders its OWN complete card — glass-
+      blur background, its own "Alternative Contact Person"/"Stand-in"
+      header, its own "Add Person" button, tip/summary/max-limit boxes —
+      so embedding it produced a card nested inside the new section card:
+      two headers, two backgrounds, an older visual language clashing with
+      the redesigned tab. Widening the container just made the clash more
+      visible, it never touched the actual problem.
+    - Added a new `embedded?: boolean` prop (default false — every
+      existing caller, incl. the create-contact page, is 100% unaffected).
+      When true: no outer glass card, no title/badge row (the parent's
+      "Linked contacts" title already covers it), no description/summary/
+      tip/max-limit boxes — just the "Add Person" button + the person grid
+      + the add/edit modals, in the space the parent card provides.
+      ContactProfileTab now passes `embedded` when rendering it.
+
+10. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
+    - hero Edit button REMOVED (owner call: "we have inline edit") —
+      every field is editable inline in the Profile tab, so the
+      ProfileDrawer import/state/render went with it. New contract stays.
+
+11. contractnest-ui/src/App.tsx  (unused-code cleanup, owner call
+    2026-09-16: "cleanup unused code / files")
+    - removes the dead `import EntityRegistryPage from
+      './pages/entity-registry'` (the /entity-registry route was long ago
+      switched to `EquipmentPage registryMode="entity"`; the import was
+      never rendered but kept ~2,000 lines of dead code in the bundle)
+    - NO other change — diff is 5 insertions / 7 deletions, all around
+      that import and its two stale comments
+
+12. contractnest-ui/src/components/contacts/cockpit/index.ts
+    - barrel now exports only ContactCockpitStatsBar (still used by the
+      unwired OverviewTab). ActionIsland / ProfileDrawer /
+      ContactCockpitPanel exports removed — their files are deleted below.
+
+13. contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+    (owner live-tested duplicate detection: created "mr kamal" with the
+    SAME mobile number as an existing "mr charan kamal" and it was
+    accepted with no warning at all)
+    - PRE-EXISTING bug, unrelated to anything else in this batch: the
+      duplicate-check result was read as `duplicateResult?.has_duplicates`
+      (snake_case), but the API/edge/RPC chain returns `hasDuplicates`
+      (camelCase) — confirmed by tracing the full response shape from
+      check_contact_duplicates through the edge route to the frontend
+      hook. That `if` was therefore ALWAYS false, so the warning modal
+      never fired for ANY create through this drawer, no matter what the
+      check found. The full /contacts/create page reads the same result
+      correctly as `.hasDuplicates` and was never affected — this was
+      isolated to Quick Add. One-line fix: `has_duplicates` → `hasDuplicates`.
+
+14. contractnest-ui/src/hooks/useContacts.ts
+    (owner live-tested: toggled "Possible duplicates" and it showed ALL
+    4 contacts, not just the real pair)
+    - NOT a bug in migrations 079/080/081 — verified the deployed
+      get_tenant_duplicate_contact_ids() directly against the owner's
+      test tenant and it correctly returned only the 2 real duplicate
+      ids, never the other two. The bug is generateCacheKey(): its
+      filterKey whitelist (page/limit/status/type/search/classifications/
+      sort_by/sort_order) never included show_duplicates, tags, or
+      user_status — three filters this very batch made real. Toggling
+      any of them produced the SAME cache key as before, so the hook
+      served the stale prior response instead of ever calling the API
+      again. Added all three to the key. Also fixes the same latent risk
+      for the tag chips and "App user" filter under certain navigation
+      sequences — same root cause, same fix. No other call site of
+      generateCacheKey is affected (prefetchContacts's fixed filters
+      object never sets these three keys, so JSON.stringify drops them
+      exactly as it did before — byte-identical key, zero behavior change
+      there).
+
+15. NOT FIXED — flagged only (owner asked what the bulk "Delete" button
+    under Possible duplicates does; it is NOT a merge action — the merge
+    feature does not exist yet, it's still the separate follow-up batch
+    agreed earlier). pages/contacts/index.tsx's handleBulkDelete is a
+    stub: it shows "Deleting contacts..." then immediately "N contacts
+    deleted successfully" WITHOUT calling any delete API — clicking it
+    does nothing to the database, contacts stay exactly as they were, but
+    the user sees a false success toast. Pre-existing, unrelated to this
+    batch's changes. Worth a real fix (either wire it to the existing
+    single-contact delete/archive endpoint in a loop, or remove the
+    button until it's wired) — not done here since it wasn't asked for;
+    flagging so it isn't mistaken for a working bulk action.
+
+─── DELETIONS (run AFTER the Copy-Item lines) ───────
+Audit result (2026-09-16): the Equipment Registry folder itself is clean —
+EquipmentCard (wizard picker + contract EquipmentTab), EquipmentFormDialog
+and EmptyState are all in use. The dead code sits NEXT to it:
+
+Dead today (zero importers, or import never rendered):
+  Remove-Item -Recurse -Force "contractnest-ui\src\pages\entity-registry"
+  Remove-Item -Force "contractnest-ui\src\constants\entityTypeConfig.ts"
+  Remove-Item -Force "contractnest-ui\src\pages\contacts\2create.tsx"
+  Remove-Item -Force "contractnest-ui\src\pages\contacts\view copy.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ContactCockpitPanel.tsx"
+  Remove-Item -Force "contractnest-edge\supabase\functions\_shared\contacts\contactService copy.ts"
+  # (contactService copy.ts — a stale earlier draft of contactService.ts,
+  # same "junk copy" pattern as view copy.tsx; diffed to confirm superseded,
+  # zero importers anywhere in the edge functions folder)
+
+Dead once THIS batch is copied in (their only importers are replaced
+by files in this batch — delete in the same sitting as the copy):
+  Remove-Item -Force "contractnest-ui\src\components\assets\ClientAssetCard.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ActionIsland.tsx"
+  Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ProfileDrawer.tsx"
+
+(~5,600 lines removed in total. 2create.tsx + "view copy.tsx" alone
+carried ~28 of the long-standing baseline tsc errors.)
+
+KEPT deliberately (used, so NOT deleted):
+  - EquipmentCard.tsx — the contract wizard's picker card + EquipmentTab
+  - useClientAssetRegistry / clientAssetRegistryService / types —
+    still consumed by ClientAssetFormDialog, AssetSelectionStep,
+    CoveragePage, LiteRegistryIntel. This stack DOES duplicate the
+    assetRegistry stack (same backend endpoints) — consolidating them
+    is a real refactor across the contract wizard, flagged for a
+    separate deliberate pass, not bundled into a cleanup.
+  - OverviewTab + ContactCockpitStatsBar — unwired but owner-pending
+    (see CLAUDE.md "Overview tab staged to be hidden")
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# restart the API dev server after copying (controller change)
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] Tap the Guest tag chip → list shows exactly the guest-tagged contacts
+     (count and list agree at last)
+ [ ] Combine: Partners chip + Guest tag + a search term — active-filter
+     chips appear, each removable, "Clear all" resets
+ [ ] Filters button: Inactive status / Registered users / Possible
+     duplicates each change the list; pip shows the active count
+ [ ] Possible duplicates ON → expect ZERO rows today, NOT the Tejaswinni
+     pair (that was already merged earlier this session, before this
+     checkbox was ever wired up). This checkbox was completely
+     non-functional until migrations 079/080/081 (see item 7) — it's
+     working correctly if it shows nothing right now, not broken. To
+     prove it actually filters, add a test contact sharing a phone number
+     with an existing one (any format — with/without +91) and confirm it
+     shows up ALONGSIDE the one it matches, and ONLY those two — not the
+     whole list (this exact false-positive was caught live: item 14's
+     cache-key fix is what makes toggling the checkbox actually re-query
+     instead of replaying whatever was already on screen) — then delete
+     the test contact
+ [ ] QUICK ADD DUPLICATE WARNING (items 13 + 082): in the fast "Add
+     Contact" drawer specifically (not the full /contacts/create page —
+     that one was never affected), add a contact whose phone matches an
+     existing one exactly → the duplicate warning modal must appear before
+     it lets you save. This needed BOTH fixes together — item 13's
+     frontend property-name fix alone was not enough, because 082's
+     server-side RPC bug independently made every create-time check
+     report "no duplicates" regardless. Confirmed live this session (the
+     owner's own "mr cherry" test) that a real duplicate sailed through
+     with zero warning even after item 13 alone was applied
+ [ ] Sort dropdown changes the order (was silently broken before)
+ [ ] Pagination: "Showing X to Y of N" + windowed pager, page 6 reachable
+ [ ] Rows: phone/email shown as icon + value (no button cluster);
+     classification colors match the old page (Client blue, Vendor purple,
+     Partner orange, Team indigo)
+ [ ] Add Contact drawer still checks duplicates; /contacts/import works
+ [ ] Bulk select + Delete dialog unchanged; row click opens /contacts/:id
+ [ ] GUEST DEDUPE (live already): a guest checking in again with the same
+     10-digit number reuses the existing contact — no new row appears in
+     /contacts afterwards
+ [ ] DETAIL PAGE /contacts/:id: hero shows correct product classification
+     colors, tags, icon-prefixed phone/email/city; summary strip appears
+     for contacts with activity (Open dues amber when outstanding); Edit
+     opens the profile drawer; New contract opens the wizard prefilled;
+     all five tabs render as before; status change + archive still work
+ [ ] PROFILE TAB: section cards show tinted icon chips; classification
+     chips inside Tags & roles use product colors; "Linked contacts" title;
+     every section's inline Edit/Save still works (identity, channels,
+     tags, address, compliance, notes)
+ [ ] SAVE REFLECTS IMMEDIATELY (no page reload): edit ANY Profile tab
+     section (not just Linked contacts — this was a page-wide bug) and
+     confirm the new value shows right after Save, without a manual
+     refresh. Root cause: onSaved was wired to refetch() (serves the
+     10-minute contact cache) instead of hardRefresh() (invalidates first,
+     same fix the status-change handler already used) — one-line fix,
+     but it silently affected every section's save until now
+ [ ] ASSETS TAB: cards are now IDENTICAL to the Equipment Registry grid
+     (MachineCard): category line, make/model/SN/location, contract chips
+     that open the contract, visits/proven/overdue state or "Not in any
+     contract yet", Edit + Deactivate (blocked while in a contract),
+     inactive assets dimmed with Reactivate — add/edit/search still work
+ [ ] NO FLOATING ISLAND: bottom pill gone; hero phone dials, WhatsApp link
+     opens wa.me chat, email opens mail client
+ [ ] NO HERO EDIT BUTTON: only "New contract" remains in the hero; all
+     editing happens inline in the Profile tab sections
+ [ ] LINKED CONTACTS: card shows Add (empty) / Edit; opens the Alternative
+     Contact Person section AT FULL CARD WIDTH, EMBEDDED (no second glass
+     card, no duplicate "Alternative Contact Person"/"Stand-in" header, no
+     tip/summary boxes — just the Add Person button + person grid inside
+     your one "Linked contacts" card); Add Person + Save → person appears
+     on the card immediately (no page reload needed) AND as a real contact
+     (team_member, hidden from the main list as a child); edit a person's
+     name/phone → persists after reload (this NEVER worked from the old
+     drawer — verify against reload!); remove a person → disappears here
+     but their contact record survives, just unlinked
+ [ ] REGRESSION — /contacts/create (and the Contacts import corporate flow)
+     still shows the FULL "Contact Persons" card exactly as before (own
+     header, badge, tip boxes) — the embedded mode only applies where the
+     detail page explicitly asks for it
+ [ ] CLEANUP SANITY: /entity-registry (Facility Registry) still loads and
+     lists seeded facilities (it never used the deleted page); contract
+     wizard asset picker + contract Equipment tab still render their cards;
+     app builds and no route 404s
+ [ ] BUILD SANITY (re-run 2026-09-16 after island/profile-tab pass): vite
+     production build passes with all three files; tsc still shows only
+     the 11 pre-existing error patterns, zero new
+
+─── STILL OPEN (deliberately not in this batch) ─────
+ - DONE (2026-09-16, live data fix on owner instruction): Tejaswinni merged.
+   5 Sep guest row's attendance + device recognition repointed to the 8 Aug
+   partner record (payment declaration was already there); guest row
+   archived with zero references remaining. Verified in one guarded
+   transaction.
+ - stats by_tag "Substitute (0) vs 3 in DB" discrepancy — get_contact_stats
+   needs its own look
+ - Contact detail page (/contacts/:id) UX — separate discussion

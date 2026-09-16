@@ -1,0 +1,205 @@
+═══════════════════════════════════════════════════
+BATCH: checkin-upi-merchant-qr (2026-09-16)
+═══════════════════════════════════════════════════
+Owner request: resolve the long-open "check-in UPI pay link fails on real
+GPay" item (CLAUDE.md, raised 2026-07-25) — the mc=0000 fix from that
+session didn't work. Owner scanned the physical Karnataka Bank QR sticker
+for U S R Travels with a plain QR reader and shared the raw decoded
+payload, which cracked it.
+
+Submodules affected: contractnest-ui, contractnest-edge (DB — see below).
+
+─── ROOT CAUSE ──────────────────────────────────────
+
+The hand-built upi:// intent declared the transaction as PERSONAL (P2P)
+while the receiving VPA (9849502193@kbl) is actually registered on the
+UPI network as a MERCHANT account. Decoded real QR:
+
+  upi://pay?ver=01&orgid=159052&mode=01&pa=9849502193@kbl&pn=U%20S%20R%20TRAVELS&mc=4722&cu=INR
+
+vs. what our code built (after the earlier mc=0000 attempt):
+
+  upi://pay?pa=...&pn=...&tr=...&tn=...&am=...&cu=INR   (no mc at all — a
+  later session had removed mc=0000 rather than fix it, per its own code
+  comment "do not fabricate merchant category... not supplied by a PSP")
+
+THREE fields were missing entirely: ver, orgid, mode. And the merchant
+category code was wrong in the opposite direction from the earlier fix
+attempt — mc=0000 means "not a merchant" (personal transfer); the real
+value is 4722 (Travel Agencies and Tour Operators, the correct ISO 18245
+code for "U S R Travels"). Declaring the wrong transaction type against a
+merchant-registered VPA is exactly the kind of mismatch that produces
+"Payments to this receiver are not allowed by UPI network".
+
+Per-tenant/per-environment scoping matters here: BBB also has a TEST-
+environment offline_upi config using a personal VPA
+(kamalcharan@okicici) — genuinely P2P, correctly has neither org_id nor
+mcc, and must keep building a plain intent with none of these fields.
+This is why org_id/mcc live in the tenant's own config (JSONB, no schema
+change) rather than being hardcoded anywhere in the app.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-edge/supabase/migrations/bbb-foundation/
+      083_checkin_payment_config_merchant_fields.sql
+    - SOURCE OF RECORD ONLY — already applied live (RPC change AND the
+      one-time data update setting BBB's live config's org_id/mcc). Do
+      not re-run the RPC function definition again is harmless either
+      way (CREATE OR REPLACE), but there is nothing to re-run — it is
+      already the live definition.
+    - gs_checkin_payment_config now additively returns org_id/mcc from
+      credentials->'public' when the tenant/environment has them set;
+      null otherwise (backward compatible for every other tenant).
+
+ 2. contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+    - CheckinPaymentConfig gains optional org_id?: string; mcc?: string.
+
+ 3. contractnest-ui/src/pages/checkin/upiPayment.ts
+    - buildUpiPaymentIntent() accepts optional orgId/mcc. When BOTH are
+      present, the built link adds ver=01, orgid=<orgId>, mode=01 and
+      mc=<mcc> — otherwise it builds exactly the same plain P2P-style
+      link as before (zero behavior change for any VPA without these
+      fields configured, e.g. BBB's own test VPA). orgId/mcc are never
+      invented client-side — they only ever flow through from the
+      tenant's own configured PSP credentials.
+
+ 4. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+    - one-line change: passes payCfg?.org_id / payCfg?.mcc into the
+      buildUpiPaymentIntent() call.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] THE REAL TEST: open the actual check-in page on a real phone for a
+     BBB member with a due, tap "Pay now", confirm GPay opens showing
+     U S R Travels as the receiver and does NOT reject with "Payments to
+     this receiver are not allowed by UPI network" — complete an actual
+     small payment if possible to fully confirm
+ [ ] Try at least one other UPI app if available (PhonePe/Paytm) — the
+     same intent string should work identically across apps since it's
+     now byte-compatible with the bank's own QR encoding
+ [ ] Confirm the TEST-environment flow (if it's ever exercised) still
+     builds a plain link with no ver/orgid/mode/mc for the personal
+     kamalcharan@okicici VPA — unaffected by this change
+ [ ] Confirm the existing "copy UPI ID + pay manually, enter reference"
+     fallback still works exactly as before (untouched by this fix)
+
+─── STILL OPEN AFTER THIS FIX (if GPay still rejects) ───
+If this does NOT resolve it, the next things to check per the original
+CLAUDE.md item: whether GPay treats a browser-triggered deep link
+differently from a camera-scanned QR regardless of payload content (a
+known real-world Android/GPay inconsistency), and the exact hosting
+context the link is opened from (in-app browser vs. default browser).
+But this fix addresses the one concrete, provable difference found
+between our link and the bank's own working payload, so it should be
+tried first.
+
+═══════════════════════════════════════════════════
+PART 2 (added same day): self-service for ALL tenants, not just BBB
+═══════════════════════════════════════════════════
+Owner question after Part 1: "will it work for all tenants?" — no. Part 1
+was a one-off manual database patch for BBB's specific org_id/mcc values.
+Investigated /settings/integrations ("we have a placeholder... needs to
+be tackled from there") and found it's a fully schema-driven settings
+page — Offline UPI's form fields (upi_id, payee_name, qr_image_url) come
+from a config_schema on the provider row, not hardcoded React. The
+qr_image_url field already lets a tenant upload their bank's QR — it was
+just never decoded, only ever displayed as a picture.
+
+Part 2 makes that upload do double duty: decode the QR server-side the
+moment it's uploaded, and if it's a genuine UPI merchant QR, silently
+extract org_id/mcc and carry them into the same credentials the tenant is
+already saving — without ever asking what a "merchant category code" is,
+and without adding a single new visible field to the form.
+
+─── ROOT CAUSE OF A SECOND BUG FOUND ALONG THE WAY ───
+While tracing exactly how a saved value could later be lost, found that
+the edge function's save path did a FULL REPLACE of the credentials
+JSON on every save (`credentialsJsonb.public = requestData.credentials`),
+confirmed at the SQL layer too (save_tenant_integration does a hard
+`credentials = p_credentials::jsonb`, no merge). Since org_id/mcc are
+deliberately UNDECLARED fields (never loaded into the edit form's state),
+any later edit to something else entirely (e.g. just changing the payee
+name) would have silently wiped them the very next time the tenant saved
+anything. Fixed by making the edge function fetch and merge the existing
+public credentials before writing, instead of replacing them outright —
+scoped narrowly to the plaintext `public` blob only (non-secret display
+values); the separate `encrypted` blob (API keys for Razorpay/Stripe/etc.)
+was deliberately left untouched — that's a bigger, unrelated risk
+surface flagged separately, not fixed here.
+
+─── FILES (in addition to Part 1's) ──────────────────
+
+ 5. contractnest-api/package.json
+    - adds jimp (^0.22.12, image decode) and jsqr (^1.4.0, QR decode) —
+      both pure-JS, no native build step. Confirmed via npm install +
+      tsc + build that both work cleanly with this project's CommonJS
+      setup.
+
+ 6. contractnest-api/src/utils/upiQrDecode.ts (NEW)
+    - detectUpiMerchantFields(buffer): decodes the uploaded image, scans
+      for a QR code, and — only if it's a upi:// payload — extracts
+      orgid/mc. Never throws; a non-UPI QR, an undecodable image, or a
+      personal VPA's QR (no orgid/mc at all) are normal outcomes that
+      just skip enrichment, not errors. Must never block the upload.
+
+ 7. contractnest-api/src/controllers/integrationController.ts
+    - uploadQrImage() now also calls the decoder on the same uploaded
+      buffer and includes org_id/mcc in its response when detected —
+      the existing upload/storage behavior is completely unchanged.
+
+ 8. contractnest-ui/src/components/integrations/DynamicFormField.tsx
+    - new optional onDetectedFields prop, fired only for 'image' fields
+      whose upload response carries extra derived values. Shows a
+      distinct success toast ("Merchant QR detected...") when detected,
+      the existing generic "QR code uploaded" toast otherwise.
+
+ 9. contractnest-ui/src/components/integrations/IntegrationSetupModal.tsx
+    - one line: wires onDetectedFields into the same handleFieldChange
+      the modal already uses for every declared field, so org_id/mcc
+      land in formData and get submitted alongside everything else.
+
+10. contractnest-edge/supabase/functions/integrations/index.ts
+    - ALREADY DEPLOYED LIVE (version 66) via Supabase MCP — this file is
+      a source-of-record copy, not something to redeploy from here.
+    - The full-replace → merge fix described above, scoped to the
+      config-only-provider `public` credentials block only.
+
+Note: no config_schema change — org_id/mcc are deliberately NOT declared
+form fields, so nothing new appears in the Offline UPI settings UI. They
+are pure background enrichment triggered by the QR upload the tenant
+already performs today.
+
+─── ADDITIONAL POWERSHELL COPY (Part 2) ──────────────
+
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+# then from contractnest-api:
+npm install
+# restart the API dev server (new dependencies + controller change)
+
+─── ADDITIONAL TESTING CHECKLIST (Part 2) ────────────
+
+ [ ] Go to /settings/integrations → Offline UPI → upload BBB's own
+     Karnataka Bank QR image (the one already used for Part 1) → confirm
+     the "Merchant QR detected" toast appears (not the plain "QR code
+     uploaded" one)
+ [ ] Upload a QR that is a PERSONAL UPI QR (or any non-merchant QR) →
+     confirm the plain "QR code uploaded" toast appears instead — no
+     error, no false detection
+ [ ] Upload a non-QR image (any random photo) → confirm it still uploads
+     successfully with the plain toast — decode failure must never block
+     the upload
+ [ ] THE REGRESSION TEST for the merge fix: after uploading a merchant
+     QR and saving, reopen the integration's edit modal and change ONLY
+     the payee name (don't touch the QR field), save again, then check
+     the database (or just retest a check-in payment) to confirm the
+     merchant classification still works — this is the exact scenario
+     that would have silently broken before the edge-function fix
+ [ ] Confirm existing integrations for OTHER providers (Razorpay,
+     SendGrid, etc. — anything using the `encrypted` blob) still save and
+     load correctly — this fix touches only the `public`, config-only-
+     provider path, but worth a sanity check since it's a shared function
