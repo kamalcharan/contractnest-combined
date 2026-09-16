@@ -111,24 +111,35 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
  7. contractnest-edge/supabase/migrations/bbb-foundation/
       076_guest_checkin_contact_dedupe.sql
       077_tag_filter_child_contacts.sql (incl. 077b)
-    - SOURCE OF RECORD ONLY — already applied live. Do not re-run.
+      078_update_contact_idempotent_v2_persons.sql
+    - SOURCE OF RECORD ONLY — all three already applied live. Do not re-run.
+    - 078 (2026-09-16 late, owner call: "RPC should be good option") fixes
+      the root cause behind item 8 below: update_contact_idempotent_v2
+      accepted p_contact_persons since it was written but its body never
+      read it — every attempt to save linked/alternate contacts on an
+      EXISTING contact (incl. the old ProfileDrawer) was a silent no-op;
+      persons only ever persisted at contact CREATE time. Now handles it
+      with the same full-replace convention the RPC already uses for
+      channels/addresses: a person with an id is updated, one without an
+      id becomes a new child contact (individual · team_member ·
+      parent_contact_ids=[parent]), and any existing child left out of the
+      array is unlinked (never deleted). Verified live in a self-contained
+      rollback transaction (throwaway parent+child, create/edit/unlink all
+      asserted, RAISE EXCEPTION at the end — zero rows persisted).
 
  8. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
-    (updated again 2026-09-16 late — "no way to add linked contacts")
+    (updated again 2026-09-16 late — "no way to add linked contacts",
+    then simplified once 078 landed)
     - Linked contacts card is now editable: Add/Edit opens the product's
       EXISTING "Alternative Contact Person" section (ContactPersonsSection,
-      the exact UI from the create page) inline in the card.
-    - ⚠️ WHY IT SAVES DIFFERENTLY: update_contact_idempotent_v2 accepts
-      p_contact_persons but its body never reads it (verified against the
-      live DB) — the old ProfileDrawer's persons edit was a silent no-op.
-      Persons only ever persisted at contact CREATE time. Save here
-      therefore diffs the draft and applies each change through paths
-      that work: added → create child contact (individual, team_member,
-      parent_contact_ids=[this contact], force_create so a stand-in may
-      share the member's phone); edited → update that child contact;
-      removed → unlink by clearing the child's parent_contact_ids (the
-      person remains a normal contact, nothing is deleted).
-    - Per-person failures are collected and toasted; page refetches after.
+      the exact UI from the create page) inline in the card, and expands
+      to full card width while editing (owner: "UI is cramped" — the
+      section is built for a wide surface, not the normal span-4 tile).
+    - Save sends the WHOLE current list in one PUT to the parent contact's
+      update (contact_persons: [...]) — now that 078 makes the RPC do the
+      create/update/unlink itself, no client-side diffing or per-person
+      fan-out is needed (an earlier version of this file did that as a
+      workaround; removed once the RPC was fixed).
 
  9. contractnest-ui/src/pages/contacts/view.tsx (updated 2026-09-16 late)
     - hero Edit button REMOVED (owner call: "we have inline edit") —
@@ -160,6 +171,10 @@ Dead today (zero importers, or import never rendered):
   Remove-Item -Force "contractnest-ui\src\pages\contacts\2create.tsx"
   Remove-Item -Force "contractnest-ui\src\pages\contacts\view copy.tsx"
   Remove-Item -Force "contractnest-ui\src\components\contacts\cockpit\ContactCockpitPanel.tsx"
+  Remove-Item -Force "contractnest-edge\supabase\functions\_shared\contacts\contactService copy.ts"
+  # (contactService copy.ts — a stale earlier draft of contactService.ts,
+  # same "junk copy" pattern as view copy.tsx; diffed to confirm superseded,
+  # zero importers anywhere in the edge functions folder)
 
 Dead once THIS batch is copied in (their only importers are replaced
 by files in this batch — delete in the same sitting as the copy):
@@ -216,6 +231,13 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
      chips inside Tags & roles use product colors; "Linked contacts" title;
      every section's inline Edit/Save still works (identity, channels,
      tags, address, compliance, notes)
+ [ ] SAVE REFLECTS IMMEDIATELY (no page reload): edit ANY Profile tab
+     section (not just Linked contacts — this was a page-wide bug) and
+     confirm the new value shows right after Save, without a manual
+     refresh. Root cause: onSaved was wired to refetch() (serves the
+     10-minute contact cache) instead of hardRefresh() (invalidates first,
+     same fix the status-change handler already used) — one-line fix,
+     but it silently affected every section's save until now
  [ ] ASSETS TAB: cards are now IDENTICAL to the Equipment Registry grid
      (MachineCard): category line, make/model/SN/location, contract chips
      that open the contract, visits/proven/overdue state or "Not in any
@@ -226,11 +248,13 @@ Copy-Item "MANUAL_COPY_FILES\contacts-directory\contractnest-edge\*" -Destinatio
  [ ] NO HERO EDIT BUTTON: only "New contract" remains in the hero; all
      editing happens inline in the Profile tab sections
  [ ] LINKED CONTACTS: card shows Add (empty) / Edit; opens the familiar
-     Alternative Contact Person section; Add Person + Save → person appears
-     on the card AND as a real contact (team_member, hidden from the main
-     list as a child); edit a person's name/phone → persists after reload
-     (this NEVER worked from the old drawer — verify against reload!);
-     remove a person → disappears here but their contact record survives
+     Alternative Contact Person section AT FULL CARD WIDTH (not cramped);
+     Add Person + Save → person appears on the card immediately (no page
+     reload needed) AND as a real contact (team_member, hidden from the
+     main list as a child); edit a person's name/phone → persists after
+     reload (this NEVER worked from the old drawer — verify against
+     reload!); remove a person → disappears here but their contact record
+     survives, just unlinked
  [ ] CLEANUP SANITY: /entity-registry (Facility Registry) still loads and
      lists seeded facilities (it never used the deleted page); contract
      wizard asset picker + contract Equipment tab still render their cards;

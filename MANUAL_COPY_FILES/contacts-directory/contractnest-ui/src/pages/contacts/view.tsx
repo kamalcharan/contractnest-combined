@@ -641,7 +641,11 @@ const ContactViewPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {/* Profile Tab — identity-first, inline section edit (no cockpit needed) */}
         {activeTab === 'profile' && (
-          <ContactProfileTab contact={contact as any} colors={colors} onSaved={refetch} readOnly={contact.status === 'archived'} />
+          // hardRefresh (not refetch) — refetch() serves the 10-minute single-
+          // contact cache, which still holds pre-save data (same reason the
+          // status-update handler above uses hardRefresh). Without it, a
+          // saved field only appears after a full page reload.
+          <ContactProfileTab contact={contact as any} colors={colors} onSaved={hardRefresh} readOnly={contact.status === 'archived'} />
         )}
 
         {/* Cockpit loading skeleton (analytics tabs only) */}

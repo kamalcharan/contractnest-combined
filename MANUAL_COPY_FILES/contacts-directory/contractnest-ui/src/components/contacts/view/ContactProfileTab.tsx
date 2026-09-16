@@ -21,7 +21,7 @@
 
 import React, { useState } from 'react';
 import { Pencil, Check, X, Plus, Trash2, Phone, Mail, MapPin, Users, StickyNote, Tag, Hash, Briefcase, MessageCircle, UserRound } from 'lucide-react';
-import { useUpdateContact, useCreateContact, type Contact } from '@/hooks/useContacts';
+import { useUpdateContact, type Contact } from '@/hooks/useContacts';
 import ContactPersonsSection from '@/components/contacts/forms/ContactPersonsSection';
 import { useMasterDataOptions } from '@/hooks/useMasterData';
 import { vaniToast } from '@/components/common/toast';
@@ -140,10 +140,6 @@ const humanizeKey = (key: string): string =>
 
 const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly = false }) => {
   const { mutate, loading } = useUpdateContact();
-  const { mutate: createChild } = useCreateContact();
-  // Linked-person saves fan out into several create/update calls, so they
-  // carry their own loading flag instead of the single-update hook's.
-  const [personsSaving, setPersonsSaving] = useState(false);
   const { options: tagLov } = useMasterDataOptions('Tags', {});
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [draft, setDraft] = useState<any>(null);
@@ -196,18 +192,15 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
 
   // ── Linked contacts (Alternative Contact Person) ──────────────────────
   // Reuses the product's existing ContactPersonsSection (same UI as the
-  // create-contact page). IMPORTANT: it can NOT be saved through the parent
-  // update — update_contact_idempotent_v2 accepts p_contact_persons but its
-  // body never reads it (verified live), which is why the old ProfileDrawer's
-  // persons edit silently did nothing. Persons only persist at CREATE time
-  // (create RPC inserts children: individual · team_member ·
-  // parent_contact_ids=[parent]). So Save here diffs the draft and applies
-  // each change through the paths that DO work:
-  //   added   → POST /api/contacts (child with parent_contact_ids=[this])
-  //   edited  → PUT  /api/contacts/:childId (fields + channels)
-  //   removed → PUT  /api/contacts/:childId with parent_contact_ids: []
-  //             (unlink, never delete — children are created with exactly
-  //             one parent everywhere in the product, incl. check-in subs)
+  // create-contact page). update_contact_idempotent_v2 accepted
+  // p_contact_persons long before this feature but its body never read it
+  // (fixed live, migration 078_update_contact_idempotent_v2_persons — full-
+  // replace semantics, same convention the RPC already uses for channels/
+  // addresses): a person with an id is updated, one without an id is
+  // inserted as a new child (individual · team_member ·
+  // parent_contact_ids=[this contact]), and any existing child left out of
+  // the array is unlinked, never deleted. Save sends the whole current list
+  // in one PUT — no client-side diffing needed now that the RPC does it.
   const personsInitial = () => ({
     list: persons.map((p: any) => ({
       id: p.id,
@@ -236,70 +229,27 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
         is_verified: !!ch.is_verified,
       }));
 
-  // Normalized fingerprint — decides whether an existing person needs a PUT
-  const personFingerprint = (p: any) => JSON.stringify({
-    n: p.name || '', s: p.salutation || '', d: p.designation || '',
-    dep: p.department || '', ch: cleanPersonChannels(p.contact_channels),
-  });
-
   const savePersons = async () => {
+    const list: any[] = (draft?.list || []).filter((p: any) => p.name);
     const isNew = (p: any) => !p.id || String(p.id).startsWith('temp_');
-    const before = personsInitial().list;
-    const after: any[] = (draft?.list || []).filter((p: any) => p.name);
-
-    const added = after.filter(isNew);
-    const kept = after.filter((p: any) => !isNew(p));
-    const beforeById = new Map(before.map((p: any) => [p.id, p]));
-    const edited = kept.filter((p: any) => beforeById.has(p.id) && personFingerprint(p) !== personFingerprint(beforeById.get(p.id)));
-    const removed = before.filter((p: any) => !kept.some((k: any) => k.id === p.id));
-
-    if (!added.length && !edited.length && !removed.length) { cancel(); return; }
-
-    setPersonsSaving(true);
-    const failures: string[] = [];
-    for (const p of added) {
-      try {
-        // Same child shape the create RPC produces for create-time persons
-        await createChild({
-          type: 'individual',
+    try {
+      await mutate({ contactId: contact.id, updates: {
+        contact_persons: list.map((p: any) => ({
+          ...(isNew(p) ? {} : { id: p.id }),
           name: p.name,
           salutation: p.salutation,
           designation: p.designation,
           department: p.department,
-          classifications: ['team_member'],
-          tags: [],
-          contact_channels: cleanPersonChannels(p.contact_channels) as any,
           notes: p.notes,
-          parent_contact_ids: [contact.id],
-          // Linked persons intentionally skip the duplicate gate — a stand-in
-          // may legitimately share a phone with the member (family member)
-          force_create: true,
-        } as any);
-      } catch (e: any) { failures.push(`${p.name}: ${e?.response?.data?.error || e?.message || 'create failed'}`); }
-    }
-    for (const p of edited) {
-      try {
-        await mutate({ contactId: p.id, updates: {
-          name: p.name, salutation: p.salutation, designation: p.designation,
-          department: p.department,
-          contact_channels: cleanPersonChannels(p.contact_channels) as any,
-        } });
-      } catch (e: any) { failures.push(`${p.name}: ${e?.response?.data?.error || e?.message || 'update failed'}`); }
-    }
-    for (const p of removed) {
-      try {
-        await mutate({ contactId: p.id, updates: { parent_contact_ids: [] } as any });
-      } catch (e: any) { failures.push(`${p.name}: ${e?.response?.data?.error || e?.message || 'unlink failed'}`); }
-    }
-    setPersonsSaving(false);
-
-    if (failures.length) {
-      vaniToast.error(`Some linked contacts failed: ${failures.join(' · ')}`);
-    } else {
+          contact_channels: cleanPersonChannels(p.contact_channels),
+        })),
+      } as any });
       vaniToast.success('Linked contacts saved');
+      setEditing(null); setDraft(null);
+      onSaved();
+    } catch (e: any) {
+      vaniToast.error(e?.response?.data?.error || e?.message || 'Could not save linked contacts');
     }
-    setEditing(null); setDraft(null);
-    onSaved();
   };
 
   return (
@@ -433,7 +383,11 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
         {/* ── LINKED CONTACTS — alternates/stand-ins. Edit embeds the product's
             existing Alternative Contact Person section (ContactPersonsSection,
             same UI as the create page); persistence notes on savePersons(). ── */}
-        <div style={{ gridColumn: 'span 4' }} className="cn-col">
+        {/* Full width while editing — ContactPersonsSection (avatars, per-
+            channel rows, action buttons) is built for a wide surface (the
+            create page, the old full-drawer) and reads as cramped at the
+            card's normal span-4 (owner feedback: "UI is cramped"). */}
+        <div style={{ gridColumn: editing === 'persons' ? 'span 12' : 'span 4' }} className={editing === 'persons' ? 'cn-col-12' : 'cn-col'}>
           <SectionCard colors={colors} icon={Users} title="Linked contacts" accent="#7C5AC2" active={editing === 'persons'}
             onEdit={editHandler('persons', personsInitial())}
             editLabel={persons.length === 0 ? 'Add' : 'Edit'}>
@@ -443,9 +397,9 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
                   value={draft.list}
                   onChange={(list: any) => setDraft({ list })}
                   contactType={contact.type}
-                  disabled={personsSaving}
+                  disabled={loading}
                 />
-                <EditBar colors={colors} loading={personsSaving} onSave={savePersons} onCancel={cancel} />
+                <EditBar colors={colors} loading={loading} onSave={savePersons} onCancel={cancel} />
               </div>
             ) : persons.length === 0 ? (
               <div style={{ color: colors.utility.secondaryText, fontSize: 13 }}>No alternate contacts yet. Add someone who can stand in for this person — substitutes captured at check-in also appear here.</div>
