@@ -68,18 +68,19 @@ B. GUEST DUPLICATION: NOT the contacts UI (both create paths already run
       ActionIsland, ProfileDrawer, Explainer, archive dialog, warnings
 
  4. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
-    (RESTYLE — owner feedback 2026-09-16 "Profile tab content and island
-    look old"; ALL inline-edit machinery untouched)
-    - section headers get tinted icon chips (per-section accents, same
-      language as /experience): Identity brand · Channels blue · Tags &
-      roles amber · Linked contacts violet · Addresses green · Compliance
-      indigo · Notes brand
-    - "People & alternates" renamed "Linked contacts"
-    - classification chips (view + edit modes) now use the FIXED product
-      colors and labels (Client blue, Vendor purple, Partner orange…)
-      instead of everything-brand-orange
-    - channel row icons tinted; card radius 16; bottom padding reduced
-      (no floating island to clear anymore)
+    (REBUILT to the playground grouping — owner feedback 2026-09-16;
+    EVERYTHING stays inline-edit per owner)
+    - cards now: IDENTITY (salutation + name / company; kept per owner) ·
+      CONTACT DETAILS (channels + address merged, ONE edit+save) ·
+      LINKED CONTACTS (read-only, mini avatars, role chip) ·
+      BUSINESS (designation + GSTIN/PAN merged, one edit+save) ·
+      TAGS & ROLES · NOTES — 3-across grid, playground row style
+      (icon · label · value) in Contact details
+    - no field editable from two cards: Identity owns name/company,
+      Business owns designation+compliance
+    - tinted icon chips per section; classification chips use FIXED
+      product colors/labels in view + edit modes
+    - partial-save semantics unchanged (update RPC untouched)
 
  5. contractnest-ui/src/pages/contacts/view.tsx (updated again)
     - floating ActionIsland RETIRED: Profile→hero Edit button,
