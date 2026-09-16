@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════
+BATCH: vani-process-rules-menu (2026-09-16)
+═══════════════════════════════════════════════════
+Owner request: make the hidden VaNi "Process Rules" page reachable from the
+menu for review. It is the existing ladder/escalation config design
+(src/vani/pages/ProcessRulesPage.tsx — MOCK DATA today, not wired to any
+API) whose shape item 1 of the collections work will persist per tenant.
+
+Submodules affected: contractnest-ui ONLY. One menu entry. No routes
+change — /vani/rules already exists in App.tsx (nested under /vani).
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-ui/src/utils/constants/industryMenus.ts
+    - adds { id: 'vani-rules', label: 'Process Rules', icon: 'ListChecks',
+      path: '/vani/rules' } to the LIVE VaNi submenu (Overview · Briefing ·
+      Process Rules), marked VISIBLE FOR REVIEW.
+    - This copy is based on the ops-commitments-phase1 version of the file,
+      so it ALSO contains that batch's "Ops (preview)" entry. It supersedes
+      batch ops-commitments-phase1's industryMenus.ts — copying this one
+      keeps both entries. Do not copy batch 1's copy of this file afterwards
+      or the Process Rules entry disappears again.
+    - The old "VaNi (old)" group stays hidden; only this one page is
+      surfaced.
+
+ Verified: tsc error count identical to pristine main.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\vani-process-rules-menu\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] VaNi menu shows Overview · Briefing · Process Rules; Process Rules
+     opens /vani/rules (the mock ladder/escalation rules page).
+ [ ] Operations menu still shows "Ops (preview)" under Ops Cockpit.
+ [ ] Nothing else in the menu moved.
+
+Note: "Create Rule" / "Edit Rule" on that page route to "Coming Soon"
+placeholders (App.tsx /vani/rules/create, /vani/rules/:id/edit) — expected;
+item 1 replaces the mock with real per-tenant persistence.
