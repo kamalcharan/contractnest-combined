@@ -381,12 +381,16 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
         </div>
 
         {/* ── LINKED CONTACTS — alternates/stand-ins. Edit embeds the product's
-            existing Alternative Contact Person section (ContactPersonsSection,
-            same UI as the create page); persistence notes on savePersons(). ── */}
-        {/* Full width while editing — ContactPersonsSection (avatars, per-
-            channel rows, action buttons) is built for a wide surface (the
-            create page, the old full-drawer) and reads as cramped at the
-            card's normal span-4 (owner feedback: "UI is cramped"). */}
+            existing Alternative Contact Person section (ContactPersonsSection)
+            in `embedded` mode — it renders its own full card (glass background,
+            its own title/badge/Add button, tip boxes) when used standalone on
+            the create page; embedded=true drops all of that so it reads as
+            plain rows inside THIS card instead of a card nested in a card
+            (owner feedback: "still a mess" persisted even after widening).
+            Persistence notes on savePersons(). ── */}
+        {/* Full width while editing — the person grid (avatars, channels,
+            actions) still benefits from room even without the outer card
+            (owner feedback: "UI is cramped" at the normal span-4). ── */}
         <div style={{ gridColumn: editing === 'persons' ? 'span 12' : 'span 4' }} className={editing === 'persons' ? 'cn-col-12' : 'cn-col'}>
           <SectionCard colors={colors} icon={Users} title="Linked contacts" accent="#7C5AC2" active={editing === 'persons'}
             onEdit={editHandler('persons', personsInitial())}
@@ -397,6 +401,7 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved, readOnly
                   value={draft.list}
                   onChange={(list: any) => setDraft({ list })}
                   contactType={contact.type}
+                  embedded
                   disabled={loading}
                 />
                 <EditBar colors={colors} loading={loading} onSave={savePersons} onCancel={cancel} />
