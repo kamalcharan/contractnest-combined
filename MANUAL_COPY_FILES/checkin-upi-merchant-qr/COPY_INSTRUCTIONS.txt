@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════
+BATCH: checkin-upi-merchant-qr (2026-09-16)
+═══════════════════════════════════════════════════
+Owner request: resolve the long-open "check-in UPI pay link fails on real
+GPay" item (CLAUDE.md, raised 2026-07-25) — the mc=0000 fix from that
+session didn't work. Owner scanned the physical Karnataka Bank QR sticker
+for U S R Travels with a plain QR reader and shared the raw decoded
+payload, which cracked it.
+
+Submodules affected: contractnest-ui, contractnest-edge (DB — see below).
+
+─── ROOT CAUSE ──────────────────────────────────────
+
+The hand-built upi:// intent declared the transaction as PERSONAL (P2P)
+while the receiving VPA (9849502193@kbl) is actually registered on the
+UPI network as a MERCHANT account. Decoded real QR:
+
+  upi://pay?ver=01&orgid=159052&mode=01&pa=9849502193@kbl&pn=U%20S%20R%20TRAVELS&mc=4722&cu=INR
+
+vs. what our code built (after the earlier mc=0000 attempt):
+
+  upi://pay?pa=...&pn=...&tr=...&tn=...&am=...&cu=INR   (no mc at all — a
+  later session had removed mc=0000 rather than fix it, per its own code
+  comment "do not fabricate merchant category... not supplied by a PSP")
+
+THREE fields were missing entirely: ver, orgid, mode. And the merchant
+category code was wrong in the opposite direction from the earlier fix
+attempt — mc=0000 means "not a merchant" (personal transfer); the real
+value is 4722 (Travel Agencies and Tour Operators, the correct ISO 18245
+code for "U S R Travels"). Declaring the wrong transaction type against a
+merchant-registered VPA is exactly the kind of mismatch that produces
+"Payments to this receiver are not allowed by UPI network".
+
+Per-tenant/per-environment scoping matters here: BBB also has a TEST-
+environment offline_upi config using a personal VPA
+(kamalcharan@okicici) — genuinely P2P, correctly has neither org_id nor
+mcc, and must keep building a plain intent with none of these fields.
+This is why org_id/mcc live in the tenant's own config (JSONB, no schema
+change) rather than being hardcoded anywhere in the app.
+
+─── FILES ───────────────────────────────────────────
+
+ 1. contractnest-edge/supabase/migrations/bbb-foundation/
+      083_checkin_payment_config_merchant_fields.sql
+    - SOURCE OF RECORD ONLY — already applied live (RPC change AND the
+      one-time data update setting BBB's live config's org_id/mcc). Do
+      not re-run the RPC function definition again is harmless either
+      way (CREATE OR REPLACE), but there is nothing to re-run — it is
+      already the live definition.
+    - gs_checkin_payment_config now additively returns org_id/mcc from
+      credentials->'public' when the tenant/environment has them set;
+      null otherwise (backward compatible for every other tenant).
+
+ 2. contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+    - CheckinPaymentConfig gains optional org_id?: string; mcc?: string.
+
+ 3. contractnest-ui/src/pages/checkin/upiPayment.ts
+    - buildUpiPaymentIntent() accepts optional orgId/mcc. When BOTH are
+      present, the built link adds ver=01, orgid=<orgId>, mode=01 and
+      mc=<mcc> — otherwise it builds exactly the same plain P2P-style
+      link as before (zero behavior change for any VPA without these
+      fields configured, e.g. BBB's own test VPA). orgId/mcc are never
+      invented client-side — they only ever flow through from the
+      tenant's own configured PSP credentials.
+
+ 4. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+    - one-line change: passes payCfg?.org_id / payCfg?.mcc into the
+      buildUpiPaymentIntent() call.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-upi-merchant-qr\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+─── TESTING CHECKLIST ───────────────────────────────
+
+ [ ] THE REAL TEST: open the actual check-in page on a real phone for a
+     BBB member with a due, tap "Pay now", confirm GPay opens showing
+     U S R Travels as the receiver and does NOT reject with "Payments to
+     this receiver are not allowed by UPI network" — complete an actual
+     small payment if possible to fully confirm
+ [ ] Try at least one other UPI app if available (PhonePe/Paytm) — the
+     same intent string should work identically across apps since it's
+     now byte-compatible with the bank's own QR encoding
+ [ ] Confirm the TEST-environment flow (if it's ever exercised) still
+     builds a plain link with no ver/orgid/mode/mc for the personal
+     kamalcharan@okicici VPA — unaffected by this change
+ [ ] Confirm the existing "copy UPI ID + pay manually, enter reference"
+     fallback still works exactly as before (untouched by this fix)
+
+─── STILL OPEN AFTER THIS FIX (if GPay still rejects) ───
+If this does NOT resolve it, the next things to check per the original
+CLAUDE.md item: whether GPay treats a browser-triggered deep link
+differently from a camera-scanned QR regardless of payload content (a
+known real-world Android/GPay inconsistency), and the exact hosting
+context the link is opened from (in-app browser vs. default browser).
+But this fix addresses the one concrete, provable difference found
+between our link and the bank's own working payload, so it should be
+tried first.
