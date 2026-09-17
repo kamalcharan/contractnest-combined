@@ -1,0 +1,133 @@
+═══════════════════════════════════════════════════
+BATCH: ops-expense-board (2026-09-17) — the Ops board for the BUYER: what
+       needs you on the expense side — pay · receive · accept — with the
+       buyer's verbs; the same board, card and page as the seller's
+═══════════════════════════════════════════════════
+Owner: "now the buyer side — go ahead and update — for any migrations you
+can go ahead and apply no need to wait for my confirmation".
+
+Submodules affected: contractnest-edge (migration 021 — ALREADY APPLIED
+LIVE, plus its 021b guard fix, folded into the staged file; source of
+record, do not re-run), contractnest-api (3 files), contractnest-ui (7
+files, 1 new). Restart the API after copying.
+
+─── WHAT THE BUYER HAD ──────────────────────────────
+ /ops/cockpit on Expense showed the old cockpit with an empty events feed;
+ the register was empty on every lane; every reader (board, activity,
+ tasks, appointments) was scoped to the OWNER tenant, so CN-1010's two
+ overdue services, its requested appointment and its ₹37,000 bill reached
+ no expense surface but To Pay (payables was already accessor-aware).
+ The buyer's contract page offered "Record payment" — the seller's ledger.
+
+─── WHAT CHANGED ────────────────────────────────────
+ contractnest-edge/.../jtd-nucleus/021_ops_board_expense.sql  (LIVE)
+ · jtd_ops_board_expense(tenant, is_live, filters, user) — SAME output shape
+   as jtd_ops_board (buckets · facets · counts · window · team · ladder ·
+   happened · ask_channels) over the contracts this tenant CLAIMED (or is
+   being asked to accept). Lanes · kinds (needs-you *):
+     payables    bill_overdue* · bill_due · bill_declared (I declared, the
+                 seller has not confirmed)
+     services    slot_offered* (the seller proposed a time — answer it) ·
+                 service_in_progress · service_awaited (planned day passed,
+                 the seller has not come) · service_today* · service_scheduled
+     acceptance  to_accept* (a contract addressed to me — matched by accessor
+                 tenant, accessor email, or the seller-side contact's
+                 email / mobile against MY users — waiting for my acceptance)
+   Rows carry cnak + seller_name (also placed in buyer_name so the card's
+   title reads the same); to_accept rows carry review_link_suffix. Whole
+   invoices follow 020's rule (no open job on the contract). Filters:
+   window · kinds · lanes · age · slot · q · per-bucket limits.
+ · jtd_buyer_respond_slot(tenant, appointment, accept|propose|decline,
+   proposed_at, note): the in-app twin of /slot/:token — verifies the
+   appointment belongs to a contract this tenant claimed (and the seller is
+   never the buyer of its own contract), mints the slot token if missing,
+   delegates to visit_slot_respond. Probed live and rolled back: seller
+   tenant → not_your_contract · buyer accept with no timed slot → no_slot ·
+   buyer propose → proposed_by_you · unknown id → not_your_contract.
+   (021b: the first cut tested a flag SELECT INTO had nulled — `IF NOT NULL`
+   never fires; replaced by FOUND.)
+ contractnest-api
+ · GET /api/jtd/collections/board?perspective=expense → the expense reader;
+   lanes payables/acceptance accepted. POST /api/jtd/collections/slots/
+   :appointmentId/respond {action, proposed_at, note} → the buyer tool.
+ contractnest-ui
+ · hooks/queries/useCollectionsQueries.ts — kinds/lanes/card fields for the
+   expense side; BoardFilters.perspective; useRespondSlot.
+ · components/ops/PaySheet.tsx (NEW) — Pay online / declare offline from
+   inside the app. Nothing new for money: it resolves the contract's CNAK
+   (given, or from the contract) and the claimed grant's secret
+   (/api/contracts/my-access/:cnak) and hands over to the review page's
+   PublicPaymentSection (Razorpay through the seller's gateway when they
+   have one; offline UPI declaration otherwise — the seller confirms).
+   Used by the board, the contract page and To Pay.
+ · components/ops/JobCard.tsx — the buyer kinds, evidence lines and verbs:
+   Pay now / Pay · declare (bills) · Confirm slot / Suggest another time /
+   Not needed (slot_offered; Suggest a time on any service with an open
+   appointment) · Review & accept (to_accept → /contract-review in-app).
+   History link hidden on the expense side (the drawer reads the owner's
+   timeline). Revenue cards unchanged.
+ · pages/ops/cockpit/Commitments.tsx — perspective-aware: focus strip All ·
+   To pay · Services · To accept with "N need you"; headline in the buyer's
+   words ("2 need you — 1 bill overdue, 1 slot to answer …"; "1 bill and 2
+   services fall due …"); chips per lane; no VaNi chip / Who / channel /
+   cycle on expense; no feed; footer points at To Pay and Claim a contract;
+   the old "you're on the expense side" guard is gone. Lane focus persists
+   per side (ops.board.lane.expense).
+ · pages/ops/cockpit/Home.tsx — the board for both sides (the original
+   cockpit index.tsx is no longer routed; delete it in a later pass).
+ · pages/contracts/detail/index.tsx — buyer view's Financial Health card:
+   "Record payment" is gone for the buyer (it wrote the SELLER's ledger);
+   "Pay / declare" opens the PaySheet instead.
+ · pages/to-pay/index.tsx — "Pay / declare" per vendor (first open bill).
+
+ Verified here: migration probed live on the buyer tenant — board: 1 bill
+ overdue (₹37,000, INV-10053, signia), 2 services awaited, 1 scheduled,
+ needs_by_lane {payables 1, services 0, acceptance 0}; signia's revenue
+ board unchanged (17 · 27). API tsc 0 · UI tsc 1170 = pristine · vite
+ build passes · submodules restored.
+
+ Known limits (next batches): the register's lanes and Activity are still
+ owner-scoped on expense (empty for a buyer); to_accept needs the buyer's
+ user email/mobile to match what the seller has on file (CN-1010's
+ "buyer b" carries kamalcharan@gmail.com / +919949701175, the buyer login
+ is buyer@b.com — add the mobile to the buyer user's profile or the email
+ to the contact to see it); Sign-off of a completed service by the buyer
+ does not exist yet as a tool.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-expense-board\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-expense-board\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-expense-board\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only
+Write-Host "✅ ops-expense-board copied" -ForegroundColor Green
+cd contractnest-api ; npm run dev      # restart — new route + perspective
+cd ..\contractnest-ui ; npm run dev    # Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — buyer@b.com, Live, Expense
+═══════════════════════════════════════════════════
+- [ ] /ops/cockpit: focus strip To pay "1 need you" · Services "nothing" ·
+      To accept "nothing"; headline "1 need you — 1 bill overdue. 1 service
+      falls due in the next 30 days." (90 d shows the scheduled service).
+- [ ] Overdue: card "signia · CN-1010 · ₹37,000 · Overdue · INV-10053 · due
+      8 Sep · 9 days overdue" with "Pay now" primary; INV-10053 opens the
+      invoice; Open opens the contract (buyer view).
+- [ ] Pay now → sheet "Pay or declare a payment": signia has no gateway, so
+      the offline-UPI declaration shows; declare with a reference → the
+      card becomes "Declared · awaiting confirmation" (amber) and signia's
+      board shows "To confirm" for it.
+- [ ] Services: two "Service awaited" cards (8 Sep) with "Suggest a time"
+      on the one that has an appointment; suggest → "you suggested … ·
+      awaiting signia"; on signia's board the same service reads
+      "Customer proposed a slot" with Confirm slot.
+- [ ] From signia, Schedule (propose) a slot on a CN-1010 service → on the
+      buyer's board it becomes "Slot proposed to you" under Services (needs
+      you) with Confirm slot / Suggest another time / Not needed; Confirm →
+      signia's card reads Slot confirmed.
+- [ ] Contract CN-1010 (buyer view) → Payments: no "Record payment";
+      "Pay / declare" opens the same sheet.
+- [ ] /to-pay: "Pay / declare" on the signia row opens the sheet.
+- [ ] Revenue side (signia): board, cards and actions exactly as before.
+═══════════════════════════════════════════════════
