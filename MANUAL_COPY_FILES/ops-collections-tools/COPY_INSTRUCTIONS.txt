@@ -1,0 +1,122 @@
+═══════════════════════════════════════════════════
+BATCH: ops-collections-tools (2026-09-16) — Ops on JTD, item 1:
+       collections ladder tools + the cockpit (Collections lane)
+═══════════════════════════════════════════════════
+Spec: specs/OPS-JTD-TOOLS-SPEC.md §3.2 · §4 · §5 · §6 · §8 · §10.
+Owner: "existing JTD items … most of it will only require enhancement and
+proper bookkeeping." Nothing new was piped: a nudge is an ordinary n_jtd
+reminder row → the existing insert trigger queues it → the existing
+jtd-worker sends it with template rows that point at ALREADY-APPROVED
+provider templates. The rest is bookkeeping and reading.
+
+THIS BATCH SUPERSEDES ops-commitments-phase1 (same route /ops/cockpit/next,
+same file Commitments.tsx, rebuilt on n_jtd — it no longer repeats Money In).
+
+Submodules affected: contractnest-edge (migration, ALREADY APPLIED LIVE —
+source of record, do not re-run), contractnest-api, contractnest-ui.
+
+─── DB (LIVE, applied 2026-09-16 as three parts 009a/b/c) ─────
+ contractnest-edge/supabase/migrations/jtd-nucleus/009_collections_ladder_tools.sql
+   n_jtd + dunning_step, next_dunning_at, nudge_count, last_nudge_at,
+         dunning_paused_reason, promise_date
+   n_jtd_source_types + payment_nudge_email · payment_nudge_whatsapp ·
+         payment_call_due (open task, assigned) · payment_call_logged
+   n_jtd_templates (global) payment_nudge_email → provider payment_due_email_v1
+                            payment_nudge_whatsapp → provider payment_request_v2
+   indexes incl. ux_n_jtd_dunning_rung (a rung can never fire twice)
+   helpers jtd_ladder_rungs · jtd_rung_due_at (10:00 IST) · jtd_recompute_dunning
+   tools   jtd_nudge_payment · jtd_log_payment_call · jtd_escalate_payment_call
+           jtd_pause_dunning · jtd_resume_dunning
+   reader  jtd_collections_worklist(tenant, is_live, horizon)
+
+ Ladder = the tenant's payment_reminder rule arrays (Automation Rules page),
+ computed REGARDLESS of that rule's on/off (the switch governs automation;
+ a human tool must always work). BBB has the rule OFF and that is fine.
+
+ Guarded probe (BEGIN…ROLLBACK) against real BBB jobs, all green:
+   worklist: 52 rung_due · 2 declaration_pending · 49 due in 30 d · team 5
+   nudge email → reminder row status 'pending', queue +1, vars correct
+     (INV-10054, Rs 4,500, 01 Apr 2026, BBB Bhagyanagar), job step 1, nudges 1
+   nudge again → already_sent_just_now · whatsapp → rung 2, +91 number
+   call promised → paused (promise) · nudge → paused · resume → next rung
+   escalate → task assigned · again → call_already_open · call reached →
+     closes the task (closed_call_tasks 1) · pause dispute · VaNi actor OK
+   paid job → job_not_open · sms → unsupported_channel · promised without
+     date → refused · bad assignee → refused · duplicate rung → index blocks
+   nothing persisted (rolled back).
+
+─── FILES ───────────────────────────────────────────
+ API (contractnest-api)
+ 1. src/services/collectionsService.ts     (NEW) thin RPC pass-through
+ 2. src/controllers/collectionsController.ts (NEW) actor from req.user, body
+    validation, refusal reason → HTTP (404/409/422/400). Nudge resolves the
+    tenant's offline UPI (get_tenant_payment_config) for the pay line; a
+    failed lookup never blocks the nudge. No gateway link minting for reminders.
+ 3. src/routes/collectionsRoutes.ts        (NEW) authenticate → tenant → rate
+    limit; GET /worklist · POST /payments/:jobId/{nudge,call,escalate,pause,resume}
+ 4. src/index.ts   mounts it at /api/jtd/collections (before the legacy
+    /api/jtd router; no path overlap). Whole file included — diff is the
+    import + the mount.
+ UI (contractnest-ui)
+ 5. src/hooks/queries/useCollectionsQueries.ts (NEW) worklist query + five
+    tool mutations; refusal codes → human copy; react-hot-toast.
+ 6. src/pages/ops/cockpit/Commitments.tsx  (REWRITTEN on n_jtd)
+    Needs you · What happened · Coming up. Cards: rung due (Email / WhatsApp
+    / Log a call / Assign call / Pause), declared payment (Confirm via the
+    existing hooks / Review), call assigned (Log a call closes it), paused
+    (Resume), awaiting activation payment (Open), send failed (Retry).
+    Log-a-call sheet (when, outcome, promised-by date, notes). Lenses on the
+    sentence; search; one action in flight at a time. NO balances/totals.
+ 7. src/App.tsx + src/utils/constants/industryMenus.ts — same as the earlier
+    batches (route /ops/cockpit/next, "Ops (preview)" entry, VaNi (old)
+    group visible). Included so this batch copies standalone.
+ 8. src/hooks/queries/useTenantContext.ts — identical to step 1's copy.
+
+ Verified: API tsc clean (exit 0); UI tsc 1170 = pristine main @ a2e8576
+ (0 in touched files); vite build passes.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\ops-collections-tools\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-collections-tools\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-collections-tools\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+─── TESTING CHECKLIST (BBB, live) ──────────────────
+ [ ] Operations → Ops (preview): sentence reads "N need you — 52 reminders
+     due, 2 declared payments to confirm … 49 payments fall due in the next
+     30 days." No rupee totals anywhere in the headline.
+ [ ] A rung-due card shows "Quarterly 1/4 · due 1 Apr 2026 · 168 days
+     overdue · never reminded · email rung since 1 Apr"; Email is the
+     primary button.
+ [ ] Email on one card → toast "Reminder queued by email to <address> ·
+     rung 1"; card now reads "reminded 1× · last email today · rung 2";
+     "What happened" shows the row; the member receives the payment_due
+     email within a minute (worker). Check n_jtd row status moves
+     pending → sent.
+ [ ] WhatsApp on a card → queued; watch delivery on a handset. This is the
+     FIRST live use of provider template payment_request_v2 — if WhatsApp
+     rejects it, the row goes 'failed' and appears under "Send failed"
+     with Retry; register a dedicated template then (owner action).
+ [ ] Log a call → Promised to pay, pick a date → card moves to "Promised",
+     Email/WhatsApp gone, Resume shown; Resume → back to rung due.
+ [ ] Assign call → pick a teammate → card "Call assigned · with <name>";
+     Log a call from it → task closed, feed shows both.
+ [ ] Pause → Amount is disputed → "Disputed"; Resume.
+ [ ] A declared payment card → Confirm → works exactly as the chair's
+     confirm on Group Sessions (same hook), card disappears.
+ [ ] Search by name / CN- / UPI reference; lenses on the numbers; ✕ clears.
+ [ ] Coming up: 28 Sep quarterly instalments listed once each; next rungs
+     ("email rung 2 for X · day 3 after …") listed with times at 10:00.
+ [ ] Money In, Group Sessions, Automation Rules unchanged.
+
+─── KNOWN / NEXT ─────────────────────────────────────
+ · Who (Team · Mine · Unassigned) filter deliberately not yet on — arrives
+   with the Services lane; call tasks already carry assigned_to.
+ · Ladder rungs are relative to the due date, so a long-overdue job shows
+   rung after rung as "due now" — the human sets the pace. Fine for v1.
+ · WhatsApp nudge = payment_request_v2 wording ("payment request"); a
+   dedicated reminder template is an owner action in MSG91 (positional).
+ · Pay line uses the tenant's offline UPI id when configured; no gateway
+   short link for reminders yet.
+ · Engines still ungated by vani_is_enabled (stitch 6) — human tools are
+   the manual product and stay allowed regardless.
