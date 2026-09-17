@@ -1,0 +1,114 @@
+═══════════════════════════════════════════════════
+BATCH: ops-cockpit-board (2026-09-17) — Ops cockpit steps 1–4 as ONE BOARD:
+       lanes for everything · real filters · one card, same actions everywhere
+═══════════════════════════════════════════════════
+Owner direction after step 1: "make swimlanes apply to all · give filters ·
+the normal and swimlane cards should be the same code with 100% component
+reuse — the coming-up cards had no action items."
+
+SUPERSEDES ops-cockpit-views. REQUIRES ops-collections-tools to be copied
+first (the tools, the API mount at /api/jtd/collections, the route
+/ops/cockpit/next and the "Ops (preview)" menu entry come from there).
+
+Submodules affected: contractnest-edge (migration, ALREADY APPLIED LIVE —
+source of record, do not re-run), contractnest-api, contractnest-ui.
+
+─── WHAT CHANGED ────────────────────────────────────
+ ONE ROW MODEL. The reader now returns every open payment job as exactly one
+ card with
+   kind    its state — declaration_pending · send_failed · call_open · paused ·
+           rung_due · payment_ahead · rung_ahead · ladder_exhausted ·
+           overdue_no_ladder (+ awaiting_activation for contracts)
+   anchor  WHEN it wants attention (declared at · failed at · call assigned ·
+           promised date · rung due time · due date)
+   bucket  anchor − today: overdue · today · next few days · next weeks ·
+           later · parked (paused with no date)
+ ONE CARD. components/ops/JobCard.tsx renders every row in BOTH views; the
+ `compact` flag changes density only. actionsFor(kind) is the single place
+ buttons come from — a coming-due payment gets Email · WhatsApp · Log a call ·
+ Assign call · Pause · Open like a reminder-due one. Nudging before the due
+ date is recorded by the tool as an off-ladder heads-up (rung 0); the ladder
+ still fires on schedule.
+ FILTERS + PAGING run in the reader so counts always agree: kind chips ·
+ next-rung channel · overdue age (0–7 / 8–30 / 31–90 / 90+) · billing cycle ·
+ Team / Mine / Unassigned (call tasks) · search · horizon 7 / 14 / 30 / 90 or
+ a custom from–to. Every chip/option shows how many rows picking it yields
+ (facet counts ignore their own dimension). Each bucket returns its total and
+ the first 20; "Show 20 more" grows that bucket only.
+ CONTROLS moved to the top (visible on load): VaNi chip · horizon · List/Lanes
+ · search · filter row. The "collections · ladder 0e · 3e … automation off"
+ line is gone: the ladder is the tooltip on the rung pill, and the VaNi chip
+ says the truth — rule on → "VaNi · payment reminders on"; VaNi on + rule
+ off → "VaNi could send these N reminders · turn on Payment reminders";
+ VaNi off → "Let VaNi send these N reminders" → /vani/landing.
+ HEADLINE now names both: "29 need you — 29 reminders due. 49 payments and
+ N reminders fall due in the next 30 days."
+
+─── DB (LIVE, applied 2026-09-17) ───────────────────
+ contractnest-edge/supabase/migrations/jtd-nucleus/010_collections_board_reader.sql
+   jtd_collections_board(p_tenant, p_is_live, p_filters jsonb, p_user)
+   STABLE, read-only. Garbage in p_filters falls back to defaults, never
+   raises. jtd_collections_worklist stays (unused by the cockpit).
+ Probed on BBB: 78 rows in 30 d (29 rung_due, 49 payment_ahead — agrees with
+ the old reader), kinds+age → 4, search CN-1024 → 3, custom range 20 Sep–10
+ Oct → 49, horizon 90 → 134, per-bucket limits honoured, garbage → defaults.
+
+─── FILES ───────────────────────────────────────────
+ API (contractnest-api)
+ 1. src/services/collectionsService.ts     + board() and BoardFilters
+ 2. src/controllers/collectionsController.ts + GET /board query parsing
+    (types, enums, clamps; limits=overdue:40,b2:60; who=mine uses req.user.id)
+ 3. src/routes/collectionsRoutes.ts        + router.get('/board')
+ UI (contractnest-ui)
+ 4. src/hooks/queries/useCollectionsQueries.ts  (REWRITTEN) BoardCard /
+    BoardBucket / BoardFilters / CollectionsBoard types, useCollectionsBoard
+    (keepPreviousData), the five tool mutations unchanged
+ 5. src/components/ops/JobCard.tsx          (NEW) the one card
+ 6. src/components/ops/LogCallSheet.tsx     (NEW) moved out of the page
+ 7. src/pages/ops/cockpit/Commitments.tsx   (REWRITTEN) the board
+
+ Verified: API tsc exit 0; UI tsc 1170 = pristine main @ a2e8576 (0 in the
+ touched files); vite build passes with the /ops/cockpit/next route wired.
+
+─── POWERSHELL COPY (from contractnest-combined root) ───
+
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-board\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-board\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-board\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Restart the API (new route) and hard-refresh the UI (Ctrl+F5).
+
+─── TESTING CHECKLIST (BBB, live) ──────────────────
+ [ ] Top of the page shows: VaNi chip · 7 d 14 d 30 d 90 d Dates · List Lanes
+     · search, then the filter row (Reminders due 29 · Coming due 49 · Any
+     channel · Any age · Any cycle · Team/Mine/Unassigned).
+ [ ] BBB: VaNi is on, Payment reminders rule is off → chip reads "VaNi could
+     send these 29 reminders · turn on Payment reminders" → Automation Rules.
+ [ ] List: "OVERDUE 20 of 29" with full cards, "TODAY —", "NEXT 2 WEEKS 20 of
+     49" (the 28 Sep quarterly instalments, kind "Coming due", with Email ·
+     WhatsApp · Log a call · Assign call · Pause · Open). "Show 20 more" adds
+     20 to that bucket only; the others stay put.
+ [ ] Lanes: same buckets side by side, compact cards, SAME buttons on every
+     card; Pause and Assign open inline inside the compact card too.
+ [ ] Hover the "Rung 1 due" pill → tooltip with the ladder.
+ [ ] Email on a "Coming due" card → toast "… · heads-up"; card now reads
+     "reminded 1× · last email today"; What happened shows "… · heads-up".
+     Rung 1 still shows as the first reminder on day 0.
+ [ ] 7 d: sentence says "in the next 7 days", columns become tomorrow / next 3
+     days / 4–7 days; 90 d: "7–30 days" and "31–90 days" fill.
+ [ ] Dates → From 20 Sep To 10 Oct → Apply: 49 rows, all in the last band
+     (labelled "15–23 days" — relative to today; see KNOWN).
+ [ ] Filters: Reminders due chip → only overdue cards; Any age → "Overdue 90+
+     days · 4" → 4 cards; search "CN-1024" → 3 cards across buckets; Clear.
+ [ ] Assign call to a teammate → Mine/Unassigned counts change; Mine shows it.
+ [ ] Reload: view and horizon remembered; filters reset (deliberate).
+ [ ] Money In, Group Sessions, Automation Rules unchanged.
+
+─── KNOWN / NEXT ─────────────────────────────────────
+ · Bands are relative to TODAY even with custom dates, so a future range
+   lands mostly in the last band. The label is honest; a date-labelled band
+   set for custom ranges is the obvious follow-up.
+ · Who=Mine/Unassigned is about call tasks only (payments have no owner yet).
+ · Steps 5 (Follow up = self-assigned task) and 6 (contract Audit timeline
+   with JTD rows; per-card History) are next.
+ · Engines still ungated by vani_is_enabled (stitch 6).

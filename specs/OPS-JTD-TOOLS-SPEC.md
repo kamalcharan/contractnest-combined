@@ -93,7 +93,15 @@ All tools: `SECURITY DEFINER`, tenant-scoped by `p_tenant_id`, take `p_actor_typ
 
 ## 5. Cockpit (`/ops/cockpit`, staged at `/ops/cockpit/next`)
 
-Three sections, in this order, all read from `jtd_collections_worklist` (and its siblings per lane later):
+**BUILT 2026-09-17 as ONE BOARD (batch `ops-cockpit-board`, migration `jtd-nucleus/010`) — this supersedes the three-section layout below, which is kept for the record.** Owner decisions: lanes apply to everything, not only Coming up; filters are real; list and lane cards are the same component with the same actions.
+
+- **One row model.** The reader `jtd_collections_board(tenant, is_live, filters, user)` returns every open payment job as exactly one card with a `kind` (state, precedence: declaration_pending › send_failed › call_open › paused › rung_due › payment_ahead › rung_ahead › ladder_exhausted › overdue_no_ladder; plus awaiting_activation for contracts), an `anchor_at` (WHEN it wants attention: declared_at · failed at · task created · promise_date · rung due_at · due date) and a `bucket` by anchor − today (IST): `overdue · today · b1 · b2 · b3 · parked`. Band edges (`bands [b1,b2]`) come from the caller so they follow the horizon (7 d → 1/3, 14 → 3/7, 30 → 3/14, 90 → 7/30). `parked` = paused with no date.
+- **One card.** `components/ops/JobCard.tsx` renders every row in both views; `compact` changes density only. `actionsFor(kind)` is the single source of which buttons a kind gets: declared → Confirm · Review; failed → Retry (+ other channel, call, pause); call open → Log a call (closes it) · Email · WhatsApp · Pause; paused → Resume · Log a call; rung due / rung ahead / overdue / payment ahead → Email · WhatsApp · Log a call · Assign call · Pause; awaiting → Open only. A not-yet-due payment nudged early is recorded by the tool as an off-ladder heads-up (rung 0) — the ladder still fires on schedule. Assign and Pause panels live inside the card; Log a call is the page's one modal.
+- **Filters run in the reader** (kinds · next-rung channel · overdue age 0–7/8–30/31–90/90+ · billing cycle · who team/mine/unassigned (call tasks) · search · window = horizon days OR from–to dates), with **facet counts computed with every filter except the facet's own**, so a chip says how many rows choosing it yields. **Paging per bucket**: `limits {bucket: n}`, default 20, each bucket returns its full `count`; the UI's "Show 20 more" grows one bucket's limit and `keepPreviousData` keeps the board on screen.
+- **Views**: List stacks the buckets with full cards; Lanes puts them side by side with compact cards. Both persist per browser. Controls sit at the top: VaNi chip (rule on → "payment reminders on"; VaNi on + rule off → "VaNi could send these N reminders"; VaNi off → "Let VaNi send these N reminders" → landing) · horizon 7/14/30/90 or dates · List/Lanes · search · kind chips · channel/age/cycle selects · Team/Mine/Unassigned. The ladder line became the rung pill's tooltip. **Still never shows balances, totals or ageing sums.**
+- API: `GET /api/jtd/collections/board?horizon&from&to&bands&kinds&channel&age&cycle&who&q&limit&limits` (the old `/worklist` and `jtd_collections_worklist` remain, unused by the cockpit).
+
+Three sections, in this order, all read from `jtd_collections_worklist` (and its siblings per lane later) — *original design, superseded above*:
 
 1. **Needs you** — one card per decision. Card anatomy (from `ux/01-cockpit.html` and `04-ar-ap-collections.html`): title (who · what · amount), evidence line (days overdue · rung · reminded N× · last reminder channel/date · link clicks when known), badge for who prepared it (a person now, "VaNi" later), buttons for the tools: **Nudge on WhatsApp** · **Nudge by email** · **Log a call** · **Assign call** · **Pause**. Other card types in the Collections lane: **Confirm** a declaration; **Awaiting payment to activate** (contract); **Retry** a failed send.
 2. **What happened** — the feed of tool invocations (nudges, calls, confirmations) with actor and time. Later this is "What VaNi did".
@@ -121,7 +129,7 @@ Drill targets: contract page; Money In (buyer); Group Sessions (session/declarat
 
 ## 8. API surface (contractnest-api → edge → RPC)
 
-Under the existing `/api/jtd` router: `POST /jtd/payments/:jobId/nudge` · `POST /jtd/payments/:jobId/call` · `POST /jtd/payments/:jobId/escalate` · `POST /jtd/payments/:jobId/pause` · `POST /jtd/payments/:jobId/resume` · `GET/PUT /jtd/collections/ladder` · `GET /jtd/collections/worklist?horizon=30`. Actor derived from the authenticated user (or VaNi's service identity later). Edge function forwards with the same names.
+Under the existing `/api/jtd` router: `POST /jtd/payments/:jobId/nudge` · `POST /jtd/payments/:jobId/call` · `POST /jtd/payments/:jobId/escalate` · `POST /jtd/payments/:jobId/pause` · `POST /jtd/payments/:jobId/resume` · `GET/PUT /jtd/collections/ladder` · `GET /jtd/collections/worklist?horizon=30` · **`GET /jtd/collections/board?…` (the cockpit's reader since 2026-09-17, §5)**. Actor derived from the authenticated user (or VaNi's service identity later). Edge function forwards with the same names.
 
 ## 9. Out of scope (now)
 
