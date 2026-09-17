@@ -391,9 +391,7 @@ const OpsCommitmentsPage: React.FC = () => {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...sub, ...mono }}>{b.count ? (shown < b.count ? `${shown} of ${b.count}` : String(b.count)) : '—'}</p>
         </div>
         {b.cards.length === 0 ? (
-          <p className={`text-[12px] text-center rounded-xl border border-dashed ${lanes ? 'py-6' : 'py-6'}`} style={{ ...sub, borderColor: hairline }}>
-            {b.key === 'overdue' ? 'Nothing overdue.' : b.key === 'today' ? 'Nothing lands today.' : 'Nothing here.'}
-          </p>
+          <EmptyBucket bucket={b} compact={lanes} lane={lane} filtered={anyFilter} onClear={clearFilters} today={data.today} />
         ) : (
           <div className={lanes ? 'space-y-2' : 'space-y-2.5'}>
             {b.cards.map((c) => (
@@ -656,6 +654,99 @@ const OpsCommitmentsPage: React.FC = () => {
           })}
         />
       )}
+    </div>
+  );
+};
+
+// ── empty column ────────────────────────────────────────────────────────────
+// An empty Overdue or Today column is GOOD news and should read like it: a small
+// theme-aware illustration, a title and one sentence that says what would sit
+// here, worded for the focus (All · Collections · Services). With filters on it
+// says "nothing matches" instead and offers the clear button — an empty column
+// behind a filter is not the same as a clear one.
+const EmptyBucket: React.FC<{ bucket: BoardBucket; compact: boolean; lane: BoardLane | null; filtered: boolean; onClear: () => void; today: string }> =
+  ({ bucket, compact, lane, filtered, onClear, today }) => {
+  const { colors, ink, sub } = useInvoiceTheme();
+  const brand = colors.brand.primary;
+  const green = colors.semantic.success;
+  const hairline = `${colors.utility.primaryText}14`;
+  const things = lane === 'collections' ? 'payments' : lane === 'services' ? 'visits' : 'payments or visits';
+  const dayNum = new Date(`${today}T00:00:00`).getDate() || new Date().getDate();
+
+  let title: string; let body: string; let art: 'clear' | 'today' | 'window';
+  if (filtered) {
+    title = 'Nothing matches here';
+    body = `No ${things} in this column match the filters you picked.`;
+    art = 'window';
+  } else if (bucket.key === 'overdue') {
+    title = 'All clear';
+    body = lane === 'services' ? 'No visit is behind schedule. A visit whose planned day has passed without being started or marked done would sit here.'
+      : lane === 'collections' ? 'No payment is past its due date. An overdue instalment would sit here with its next reminder rung.'
+      : 'Nothing is past due — no late payment, no visit behind schedule.';
+    art = 'clear';
+  } else if (bucket.key === 'today') {
+    title = 'A quiet today';
+    body = lane === 'services' ? 'No visit is planned for today. What is coming next is just below.'
+      : lane === 'collections' ? 'No payment falls due today. What is coming next is just below.'
+      : 'No payment falls due and no visit is planned for today. What is coming next is just below.';
+    art = 'today';
+  } else if (bucket.key === 'parked') {
+    title = 'Nothing parked';
+    body = 'A payment paused without a date would wait here until you resume it.';
+    art = 'window';
+  } else {
+    title = 'Nothing in this stretch';
+    body = `No ${things} fall due ${bucketLabel(bucket)}. Widen the horizon or pick dates to look further ahead.`;
+    art = 'window';
+  }
+
+  const size = compact ? 56 : 88;
+  const Art = () => (
+    <svg width={size} height={size} viewBox="0 0 88 88" role="img" aria-label={title} style={{ flexShrink: 0 }}>
+      <circle cx="44" cy="44" r="40" fill={`${art === 'clear' ? green : brand}12`} />
+      {art === 'clear' && (
+        <>
+          <rect x="24" y="22" width="40" height="46" rx="8" fill={colors.utility.primaryBackground} stroke={`${green}66`} strokeWidth="2" />
+          <path d="M33 45 l8 8 l15 -17" fill="none" stroke={green} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="20" cy="24" r="2.5" fill={`${green}99`} /><circle cx="70" cy="20" r="2" fill={`${green}66`} /><circle cx="68" cy="66" r="2.5" fill={`${green}80`} />
+        </>
+      )}
+      {art === 'today' && (
+        <>
+          <rect x="22" y="26" width="44" height="40" rx="8" fill={colors.utility.primaryBackground} stroke={`${brand}66`} strokeWidth="2" />
+          <rect x="22" y="26" width="44" height="12" rx="6" fill={`${brand}33`} />
+          <rect x="22" y="34" width="44" height="4" fill={`${brand}33`} />
+          <line x1="33" y1="20" x2="33" y2="30" stroke={brand} strokeWidth="3" strokeLinecap="round" />
+          <line x1="55" y1="20" x2="55" y2="30" stroke={brand} strokeWidth="3" strokeLinecap="round" />
+          <text x="44" y="60" textAnchor="middle" fontSize="20" fontWeight="800" fill={colors.utility.primaryText} fontFamily="ui-sans-serif, system-ui">{dayNum}</text>
+          <circle cx="68" cy="24" r="6" fill={`${colors.semantic.warning}55`} />
+        </>
+      )}
+      {art === 'window' && (
+        <>
+          <rect x="18" y="30" width="52" height="34" rx="8" fill={colors.utility.primaryBackground} stroke={`${brand}55`} strokeWidth="2" strokeDasharray="4 3" />
+          <circle cx="32" cy="47" r="3" fill={`${brand}55`} /><circle cx="44" cy="47" r="3" fill={`${brand}88`} /><circle cx="56" cy="47" r="3" fill={`${brand}bb`} />
+          <path d="M62 22 l6 6 l-6 6" fill="none" stroke={brand} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+
+  return (
+    <div className={`rounded-2xl border border-dashed ${compact ? 'px-3 py-4 text-center' : 'px-6 py-6'}`}
+      style={{ borderColor: hairline, backgroundColor: compact ? 'transparent' : colors.utility.primaryBackground }}>
+      <div className={compact ? 'flex flex-col items-center gap-2' : 'flex items-center gap-5'}>
+        <Art />
+        <div className="min-w-0">
+          <p className={`font-extrabold ${compact ? 'text-[12.5px]' : 'text-[15px]'}`} style={ink}>{title}</p>
+          <p className={`mt-0.5 leading-snug ${compact ? 'text-[11px]' : 'text-[12.5px] max-w-md'}`} style={sub}>{body}</p>
+          {filtered && (
+            <button onClick={onClear} className={`mt-2 inline-flex items-center gap-1 font-bold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{ color: brand }}>
+              Clear filters <X size={12} />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

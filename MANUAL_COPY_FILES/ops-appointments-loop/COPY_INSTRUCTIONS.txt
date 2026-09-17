@@ -58,6 +58,14 @@ contractnest-api, contractnest-ui.
    with the Services focus; menu entry removed; the two page files are deleted
    (see STEP 2b). The hook useAppointmentQueries stays (EventCard, Event
    Schedule, VaNi desk still import it).
+ EMPTY COLUMNS (owner ask, same day)
+ · An empty Overdue / Today / later column now shows a small theme-aware
+   illustration, a title and one sentence worded for the focus — "All clear
+   · No visit is behind schedule…", "A quiet today · No payment falls due
+   and no visit is planned for today…", "Nothing in this stretch · widen the
+   horizon…". With filters on it says "Nothing matches here" and offers
+   Clear filters, because an empty column behind a filter is not a clear
+   one. Compact version in Lanes view.
  LOADER (owner ask)
  · The board keeps the last answer on screen while a new one loads (focus,
    filter, action, refresh) and now SHOWS it: a thin pulsing bar under the
