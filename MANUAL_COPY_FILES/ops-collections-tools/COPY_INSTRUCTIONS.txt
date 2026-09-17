@@ -120,3 +120,13 @@ Copy-Item "MANUAL_COPY_FILES\ops-collections-tools\contractnest-edge\*" -Destina
    short link for reminders yet.
  · Engines still ungated by vani_is_enabled (stitch 6) — human tools are
    the manual product and stay allowed regardless.
+
+─── UPDATED 2026-09-17 (kept in sync with ops-cockpit-board) ─────────────
+ This folder is a SUPERSET: the cockpit files here are the BOARD versions
+ (jtd-nucleus/010 reader, GET /board, JobCard + LogCallSheet components,
+ Commitments.tsx on the board). Copying this batch or ops-cockpit-board gives
+ the same page; see ops-cockpit-board/COPY_INSTRUCTIONS.txt for the testing
+ checklist. New files vs. the original list above:
+   contractnest-ui/src/components/ops/JobCard.tsx
+   contractnest-ui/src/components/ops/LogCallSheet.tsx
+   contractnest-edge/supabase/migrations/jtd-nucleus/010_collections_board_reader.sql (LIVE)
