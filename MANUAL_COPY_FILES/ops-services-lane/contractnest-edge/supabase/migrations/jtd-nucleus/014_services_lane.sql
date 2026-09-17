@@ -447,12 +447,13 @@ BEGIN
     SELECT e.id, e.contract_id, e.block_name, e.sequence_number, e.total_occurrences, e.scheduled_date, e.status, e.assigned_to, e.assigned_to_name, e.currency, e.notes,
            (e.scheduled_date AT TIME ZONE 'Asia/Kolkata')::date AS sd,
            c.contract_number, c.buyer_id, c.buyer_name,
-           a.id AS appt_id, a.status AS appt_status, a.scheduled_at AS appt_at,
+           a.id AS appt_id, a.status AS appt_status, a.scheduled_at AS appt_at, a.asked_at AS appt_asked_at, a.ask_count AS appt_ask_count, a.customer_response AS appt_response, d.customer_response AS declined_response,
            st.id AS ticket_id, st.ticket_number, st.status AS ticket_status
       FROM public.t_contract_events e
       JOIN public.t_contracts c ON c.id = e.contract_id
-      LEFT JOIN LATERAL (SELECT x.id, x.status, x.scheduled_at FROM public.t_appointments x
+      LEFT JOIN LATERAL (SELECT x.id, x.status, x.scheduled_at, x.asked_at, x.ask_count, x.customer_response FROM public.t_appointments x
                           WHERE x.event_id = e.id AND x.is_active AND x.status NOT IN ('cancelled','declined','completed') ORDER BY x.updated_at DESC LIMIT 1) a ON true
+      LEFT JOIN LATERAL (SELECT x.customer_response FROM public.t_appointments x WHERE x.event_id = e.id AND x.status = 'declined' AND x.customer_response IS NOT NULL ORDER BY x.updated_at DESC LIMIT 1) d ON true
       LEFT JOIN LATERAL (SELECT t.id, t.ticket_number, t.status FROM public.t_service_ticket_events te JOIN public.t_service_tickets t ON t.id = te.ticket_id
                           WHERE te.event_id = e.id AND t.is_active AND t.status IN ('created','assigned','in_progress') ORDER BY t.created_at DESC LIMIT 1) st ON true
      WHERE e.tenant_id = p_tenant AND e.event_type = 'service' AND COALESCE(e.is_live, true) = p_is_live AND COALESCE(e.is_active, true)
@@ -461,6 +462,7 @@ BEGIN
   visit_rows AS (
     SELECT v.id::text, 'services',
            CASE WHEN v.status = 'in_progress' OR v.ticket_status = 'in_progress' THEN 'visit_in_progress'
+                WHEN v.appt_status = 'rescheduled' AND v.appt_response->>'action' = 'propose' THEN 'slot_to_confirm'
                 WHEN v.sd < v_today THEN 'visit_overdue' WHEN v.sd = v_today THEN 'visit_today' ELSE 'visit_scheduled' END,
            v.id, v.contract_id, v.contract_number::text, v.buyer_id, v.buyer_name::text,
            NULL::uuid, NULL::text, v.block_name, NULL::text, v.sequence_number, v.total_occurrences,
@@ -478,6 +480,8 @@ BEGIN
              'block_name', v.block_name, 'sequence', v.sequence_number, 'of', v.total_occurrences, 'scheduled_at', v.scheduled_date, 'notes', v.notes,
              'assigned_to', v.assigned_to, 'assigned_to_name', v.assigned_to_name,
              'slot', CASE WHEN v.appt_id IS NULL THEN NULL ELSE jsonb_build_object('id', v.appt_id, 'status', v.appt_status, 'at', v.appt_at, 'confirmed', v.appt_status = 'accepted') END,
+             'ask', CASE WHEN v.appt_asked_at IS NULL AND v.appt_response IS NULL AND v.declined_response IS NULL THEN NULL
+                          ELSE jsonb_strip_nulls(jsonb_build_object('asked_at', v.appt_asked_at, 'count', v.appt_ask_count, 'response', v.appt_response, 'declined', v.declined_response)) END,
              'ticket', CASE WHEN v.ticket_id IS NULL THEN NULL ELSE jsonb_build_object('id', v.ticket_id, 'number', v.ticket_number, 'status', v.ticket_status) END)),
            v.scheduled_date
       FROM visits v
@@ -490,7 +494,7 @@ BEGIN
     SELECT p.*,
            CASE WHEN p.anchor_at IS NULL THEN 'parked' WHEN p.days < 0 THEN 'overdue' WHEN p.days = 0 THEN 'today'
                 WHEN p.days <= v_b1 THEN 'b1' WHEN p.days <= v_b2 THEN 'b2' ELSE 'b3' END AS bucket,
-           CASE p.kind WHEN 'declaration_pending' THEN 0 WHEN 'send_failed' THEN 1 WHEN 'visit_in_progress' THEN 2 WHEN 'rung_due' THEN 3
+           CASE p.kind WHEN 'declaration_pending' THEN 0 WHEN 'send_failed' THEN 1 WHEN 'visit_in_progress' THEN 2 WHEN 'slot_to_confirm' THEN 2 WHEN 'rung_due' THEN 3
                        WHEN 'visit_overdue' THEN 4 WHEN 'visit_today' THEN 5 WHEN 'call_open' THEN 6 WHEN 'overdue_no_ladder' THEN 7
                        WHEN 'ladder_exhausted' THEN 8 WHEN 'awaiting_activation' THEN 9 WHEN 'visit_scheduled' THEN 10
                        WHEN 'payment_ahead' THEN 11 WHEN 'rung_ahead' THEN 12 ELSE 13 END AS kind_rank,
@@ -560,7 +564,7 @@ BEGIN
        || jsonb_build_object('unassigned_visits', (SELECT count(*) FROM bucketed b WHERE b.f_window AND b.lane = 'services' AND b.owner_id IS NULL AND b.f_channel AND b.f_age AND b.f_cycle AND b.f_slot AND b.f_q)) AS who,
       -- needs_by_lane: the focus strip's "N need you" per lane — window only, no other filter, so the strip is a stable map while the user drills
       (SELECT jsonb_build_object('collections', count(*) FILTER (WHERE b.lane = 'collections'), 'services', count(*) FILTER (WHERE b.lane = 'services'))
-         FROM bucketed b WHERE b.f_window AND b.kind IN ('declaration_pending','send_failed','call_open','rung_due','overdue_no_ladder','ladder_exhausted','awaiting_activation','visit_overdue','visit_today','visit_in_progress')) AS needs_by_lane,
+         FROM bucketed b WHERE b.f_window AND b.kind IN ('declaration_pending','send_failed','call_open','rung_due','overdue_no_ladder','ladder_exhausted','awaiting_activation','visit_overdue','visit_today','visit_in_progress','slot_to_confirm')) AS needs_by_lane,
       (SELECT count(*) FROM bucketed b WHERE b.f_window) AS in_window,
       (SELECT count(*) FROM matched) AS matched
   )
@@ -604,7 +608,12 @@ BEGIN
     'window', jsonb_build_object('from', v_from, 'to', v_to, 'horizon_days', CASE WHEN p_filters->>'to' IS NULL OR p_filters->>'to' = '' THEN v_horizon ELSE NULL END, 'bands', jsonb_build_array(v_b1, v_b2)),
     'filters', jsonb_strip_nulls(jsonb_build_object('kinds', to_jsonb(v_kinds), 'lanes', to_jsonb(v_lanes), 'channel', v_channel, 'age', v_age, 'cycle', v_cycle, 'slot', v_slot, 'who', v_who, 'q', v_q, 'limit', v_limit)),
     'buckets', v_board->'buckets', 'facets', v_board->'facets', 'counts', v_board->'counts',
-    'happened', v_happened, 'team', v_team, 'ladder', v_ladder, 'generated_at', now());
+    'happened', v_happened, 'team', v_team, 'ladder', v_ladder,
+    -- 015: channels with a REGISTERED provider template for slot requests (Share always works)
+    'ask_channels', COALESCE((SELECT jsonb_agg(DISTINCT t.channel_code) FROM public.n_jtd_templates t
+                               WHERE t.source_type_code = 'visit_slot_request' AND COALESCE(t.is_active, true) AND t.provider_template_id IS NOT NULL
+                                 AND (t.tenant_id = p_tenant OR t.tenant_id IS NULL)), '[]'::jsonb),
+    'generated_at', now());
 END;
 $$;
 
