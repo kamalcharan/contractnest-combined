@@ -1,0 +1,153 @@
+═══════════════════════════════════════════════════
+BATCH: collections-invoice-aware (2026-09-17) — a Collections row is A PAYMENT
+       DUE in any shape (instalment under an invoice · invoice = one instalment
+       · whole invoice with no schedule), every row shows and opens its
+       invoice; the register gains Appointments + Follow-ups lanes; "service",
+       not "visit", everywhere; Activity chips always visible, 90-day default
+═══════════════════════════════════════════════════
+Owner: "collection might not be an installment — it might be an installment
+under an invoice or the whole invoice completely"; "billing lanes → show
+invoice number and ability to view invoice … follow-up / appointments are not
+factored"; "everything is not a visit — service is a service"; "we already
+have /invoices functionality — reuse"; "go ahead, build this".
+
+REQUIRES ops-services-lane → ops-appointments-loop → ops-cockpit-swap →
+commitments-register copied first, in that order (this batch's hook, JobCard,
+Commitments.tsx, register page, API controller/service/routes are seeded FROM
+them and supersede those copies).
+
+Submodules affected: contractnest-edge (migration 017 — ALREADY APPLIED LIVE,
+source of record, do not re-run; 014's staged text updated to match the live
+board body), contractnest-api, contractnest-ui.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ Both Ops and the register read billing events / payment jobs, never
+ t_invoices. An invoice with no billing schedule under it never appeared on
+ either page while Money In showed it. Live: renown-wspace ₹6.3 L, stw
+ ₹4.42 L, signia ₹2.67 L (4 invoices), vikuna ₹18 k — ₹13.6 L nobody could
+ chase from Ops, six of the eight with no payment job at all.
+
+─── WHAT CHANGED ────────────────────────────────────
+ BOARD (/ops/cockpit)
+ · jtd_ops_board (017) unions INVOICE ROWS using Money In's own rule for a
+   whole-invoice due (open receivable invoice, balance > 0, contract with no
+   live billing event; skipped when an open payment job already points at the
+   invoice). Kinds invoice_overdue (needs you) / invoice_ahead (coming due),
+   anchored on the due date, amount = balance. No ladder (no payment job):
+   the tools are Send invoice · email / WhatsApp — the EXISTING per-invoice
+   send behind the /invoices viewer (POST /api/invoices/:id/send →
+   fn_enqueue_invoice_notification) — and View invoice. "sent 2× · last email
+   3 Sep" on the evidence line counts those sends. The feed shows them.
+ · Every collections card that carries an invoice now shows its number next
+   to History / Open, and the number opens the invoice (contract route when
+   there is a contract, /invoices/:id otherwise — one viewer serves both).
+ · Vocabulary: Service overdue / today / in progress / scheduled, "service 2
+   of 18", Start service, "3 services fall due", "2 services have no
+   technician yet". Empty states reworded. New group chip "Invoices overdue";
+   "Coming due" includes invoice_ahead; headline gains "N invoices overdue".
+ · A refused send (rule_disabled) toasts with a link to Automation Rules,
+   as the invoice viewer does.
+ REGISTER (/ops/services)
+ · Lanes: All · Collections · Services · Appointments · Follow-ups — the
+   board's words plus the two records only this page keeps.
+   Collections rows carry the invoice number (from the receivables payload
+   Money In and /invoices already read — no new backend) in the last column,
+   opening the invoice; OPEN whole-invoice dues appear as rows ("Invoice
+   INV-10052 · whole invoice · ₹2,29,500 open") with the invoice status pill;
+   an instalment with no invoice yet says so.
+   Appointments = get_appointments_list (the old kanban's data as a record):
+   Contract · Service · Slot · Status (Asked / Confirmed / Customer proposed /
+   No response / Not needed / Completed / Cancelled) · Who · "On the board".
+   Follow-ups = jtd_tasks (017): every call task open or closed — Follow-up
+   (set for yourself) vs Call assigned, due date, Overdue / Due today / Open /
+   Done · outcome, Who, invoice or "set by", Kind select.
+   When / Who / search / Show closed / By customer apply to every lane.
+ · "Custom Cycle 1/13 1/13" fixed (label already carried the count).
+ · Activity: every kind chip stays visible at zero (a missing chip read as
+   "no appointments"); default window is the last 90 days; group "Visits"
+   relabelled "Services".
+ · Tab renamed Events → Commitments.
+
+─── FILES ───────────────────────────────────────────
+ contractnest-edge/supabase/migrations/jtd-nucleus/017_collections_invoice_aware.sql  LIVE — board invoice rows (anchor rewrite) + jtd_tasks
+ (ops-services-lane/…/014_services_lane.sql — text patched to match live; nothing to run)
+ contractnest-api/src/services/collectionsService.ts        tasks()
+ contractnest-api/src/controllers/collectionsController.ts  tasks handler
+ contractnest-api/src/routes/collectionsRoutes.ts           GET /api/jtd/collections/tasks
+ contractnest-ui/src/hooks/queries/useCollectionsQueries.ts kinds invoice_overdue/invoice_ahead · useOpsTasks + types
+ contractnest-ui/src/components/ops/JobCard.tsx             invoice kinds, Send invoice, invoice link, service wording
+ contractnest-ui/src/pages/ops/cockpit/Commitments.tsx      groups/headline/feed/empty states, onViewInvoice/onSendInvoice
+ contractnest-ui/src/pages/ops/register/index.tsx           lanes, invoice column, whole-invoice rows, appointments, follow-ups, activity fixes
+
+Production checklist
+  Transactions: no new write path — Send invoice is the existing RPC
+                (fn_enqueue_invoice_notification, one insert); status
+                changes still go through update_contract_event.
+  Races:        the board keeps one action in flight per card; sends are
+                idempotent at the provider by request id as before.
+  Errors:       refusals from the send endpoint are read and toasted
+                (rule_disabled → link to Automation Rules); lane queries
+                have Retry.
+  Toasts:       existing useSendInvoice success toast; react-hot-toast on
+                the board as before.
+  Loaders:      the register's pulsing bar now also covers the receivables
+                fetch; LoadingSpinner on first load.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+# after ops-services-lane → ops-appointments-loop → ops-cockpit-swap → commitments-register:
+Copy-Item "MANUAL_COPY_FILES\collections-invoice-aware\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\collections-invoice-aware\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\collections-invoice-aware\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only
+Copy-Item "MANUAL_COPY_FILES\ops-services-lane\contractnest-edge\*"         -Destination "contractnest-edge\" -Recurse -Force   # 014 text refresh, nothing to run
+Write-Host "✅ collections-invoice-aware copied" -ForegroundColor Green
+
+cd contractnest-api ; npm run dev      # restart — new route /tasks
+cd ..\contractnest-ui ; npm run dev    # Ctrl+F5
+
+Verified here (all five batches in order, retired pages deleted):
+API tsc exit 0 · UI tsc = pristine main count (1170), 0 in touched files ·
+vite build passes · submodules restored. Migration 017 probed live on signia
+and BBB in a DO block ending in RAISE, then applied.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — on SIGNIA
+═══════════════════════════════════════════════════
+- [ ] /ops/cockpit → Collections: four "Invoice overdue" cards (INV-10024
+      ₹6,000 · INV-10025 ₹20,600 · INV-10051 ₹10,500 · INV-10052 ₹2,29,500)
+      in the Overdue column; the focus strip's Collections count went up by
+      four; chip "Invoices overdue 4"; headline "… 4 invoices overdue".
+- [ ] On one of them: the INV-… link opens the invoice page; "Send invoice ·
+      email" queues a send (toast "INV-… sent to …") and the feed shows
+      "… sent the invoice to … by email"; the card now reads "sent 1× · last
+      email today". If Payment reminders are off under Automation Rules the
+      toast says so and links there.
+- [ ] Any instalment card: the INV-… link next to History opens its invoice;
+      the right column reads "INV-10012 · 3/4".
+- [ ] Services wording: pills say Service overdue / Service today / Service
+      scheduled; buttons Start service; headline "N services overdue".
+- [ ] /ops/services → Collections: instalment rows show their invoice number
+      in the last column (opens the invoice); the four whole invoices appear
+      as "Invoice INV-… · whole invoice · ₹… open" with a red/amber status
+      pill and no status menu. Search "INV-10052" finds it.
+- [ ] Lane Appointments: the historic requests appear grouped by customer
+      with Asked / Confirmed / … pills; "On the board" opens Ops with the
+      contract searched. Status select lists the appointment statuses.
+- [ ] Lane Follow-ups: empty until you use "Follow up" or "Assign call" on a
+      payment card; then the task appears (Open / Due today / Overdue), and
+      after "Log a call" it reads Done · outcome. Untick Show closed → only
+      open ones.
+- [ ] Register instalment rows never read "Custom Cycle 1/13 1/13".
+- [ ] Activity: all seven chips visible (zeros included); default window is
+      the last 90 days; Appointments chip has a count.
+- [ ] BBB: board unchanged (78 rows in 30 d, no invoice cards — every BBB
+      invoice sits over a schedule).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
