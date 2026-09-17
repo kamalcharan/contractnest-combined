@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════
+BATCH: contacts-type-and-links (2026-09-17) — the contacts list says
+       Company / Individual, and a person linked under a company says
+       "Linked to <company>"
+═══════════════════════════════════════════════════
+Owner: "in contacts — denote if the user is individual or corporate ..
+buyer-test is actually linked contact of corporate denote that as well";
+"go ahead and apply migration".
+
+Submodules affected: contractnest-edge (migration 084 — ALREADY APPLIED
+LIVE, source of record, do not re-run), contractnest-ui (two files).
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ The row showed the type only as a tiny grey icon after the name. The link
+ to the parent company could not be shown at all: the list RPC emitted the
+ dead legacy column parent_contact_id (NULL everywhere) and not the
+ parent_contact_ids array the product actually uses, and no parent names.
+
+─── WHAT CHANGED ────────────────────────────────────
+ contractnest-edge/.../bbb-foundation/084_list_contacts_parent_links.sql  LIVE
+ · list_contacts_with_channels_v2 emits `parent_links` per row: [{id, name}]
+   of the companies in parent_contact_ids (same tenant + environment, not
+   archived; name = company_name, else name). Additive; verified live on
+   signia: buytest → [{buyer b}], buyer b → [].
+ contractnest-ui/src/hooks/useContacts.ts     Contact.parent_links?: {id,name}[]
+ contractnest-ui/src/pages/contacts/index.tsx
+ · After the name: a labelled chip "Company" / "Individual" (building /
+   person icon) replaces the bare icon.
+ · Under the channels line, for a linked person: "Linked to buyer b" — the
+   company name is a button that opens that contact (stopPropagation so the
+   row's own click does not fire).
+ · Nothing else on the row changed (status pill, tag dots, classification
+   chips, eye button).
+
+ Noted, data not code: "buytest" carries classification Team Member (that
+ is how the person was created), which is why that chip shows. Change it
+ on the contact if it should read Client like its company.
+
+Production checklist
+  Transactions / Races: read-only change; the RPC is unchanged apart from
+                the extra field.
+  Errors:       list error/retry path unchanged.
+  Toasts / Loaders: unchanged (VaNiLoader on the list).
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\contacts-type-and-links\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contacts-type-and-links\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only
+Write-Host "✅ contacts-type-and-links copied" -ForegroundColor Green
+# UI dev server picks it up; Ctrl+F5 (migration is already live)
+
+Verified here: UI tsc 1168 errors vs pristine 1170 — no new error, two
+pre-existing ones gone (the removed bare icons carried an invalid `title`
+prop) · vite production build passes · submodule restored.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — SIGNIA (Live) /contacts
+═══════════════════════════════════════════════════
+- [ ] "buyer b" row: chip "Company"; no linked line.
+- [ ] "sri buytest" row: chip "Individual"; line "Linked to buyer b";
+      clicking "buyer b" opens the company's page, not buytest's.
+- [ ] "mr cherry": chip "Individual", no linked line.
+- [ ] Row click elsewhere still opens the contact; checkbox still selects.
+- [ ] Search / filters / pagination unchanged; Possible duplicates filter
+      still works (same RPC).
+- [ ] Test environment list: unchanged apart from the chips.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
