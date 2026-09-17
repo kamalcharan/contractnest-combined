@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════
+BATCH: ops-menu-flatten (2026-09-17) — the "Operations" menu group is gone;
+       its entries are main menus
+═══════════════════════════════════════════════════
+Owner: "remove menu 'Operations' and make all 'submenus' as main menus".
+
+REQUIRES commitments-register copied first (this file is seeded from its
+copy of industryMenus.ts and supersedes it).
+
+Submodule affected: contractnest-ui only. One file. No route, page, API or
+DB change.
+
+─── WHAT CHANGED ────────────────────────────────────
+ Before                          After (same place, same order, same ids)
+ Operations ▾                    Ops Cockpit          /ops/cockpit
+   Ops Cockpit                   Commitments Register /ops/services
+   Commitments Register          Group Sessions       /group-sessions
+   Group Sessions                Contacts             /contacts
+   Contacts                      Equipment Registry   /equipment-registry
+   Equipment Registry            Facility Registry    /facility-registry
+   Facility Registry
+ The hidden entries (Finance AR/AP, Appointments, Activity Feed, Reports)
+ stay as comments where they were. Ids are unchanged, so industry overrides
+ and anything keyed on them are untouched. The lite flavours (Grow /
+ Workspace in liteAccess.ts) never had an Operations group — unchanged.
+ Sidebar.tsx renders top-level items generically; nothing keyed on the
+ group id.
+
+─── FILES ───────────────────────────────────────────
+ contractnest-ui/src/utils/constants/industryMenus.ts
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-menu-flatten\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ ops-menu-flatten copied" -ForegroundColor Green
+# UI dev server picks it up; Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Sidebar: no "Operations" group; Ops Cockpit, Commitments Register,
+      Group Sessions, Contacts, Equipment Registry, Facility Registry sit
+      as main entries between Getting Started and Contracts, in that order.
+- [ ] Each opens its page; the active highlight lands on the right entry.
+- [ ] Healthcare / finance / education industry logins: same six entries
+      (no override renames them).
+- [ ] Lite user (Grow / Workspace): menu unchanged.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
