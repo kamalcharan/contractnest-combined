@@ -1,0 +1,167 @@
+═══════════════════════════════════════════════════
+BATCH: ops-services-lane (2026-09-17) — the SERVICES lane on the same Ops board:
+       every open service visit as a card · Assign · Schedule · Confirm slot ·
+       Start visit · Mark done · lane chips All / Collections / Services
+═══════════════════════════════════════════════════
+Owner: "ops we have covered only billing — we still have services /
+appointments right" → "signia is fine … go ahead — with schedule".
+
+REQUIRES the merged main of 2026-09-17 (ops-collections-tools +
+ops-cockpit-board already in api 968ac34 / ui 7ed13cb / edge 1e43573).
+Every file here was seeded FROM that main and edited — copying is safe.
+
+Submodules affected: contractnest-edge (migration 014, ALREADY APPLIED LIVE as
+014a + 014b + a one-line rewrite for `unassigned_visits` — source of record,
+do not re-run), contractnest-api, contractnest-ui.
+
+─── WHAT CHANGED ────────────────────────────────────
+ ONE BOARD, TWO LANES. The reader is now jtd_ops_board (014): the same row
+ model as the collections board plus every open service visit from
+ t_contract_events (event_type='service', status scheduled/due/overdue/
+ in_progress — the truth; the JTD mirror is incomplete: 299 open live visits
+ have no n_jtd row, so the lane reads events directly). Each row carries
+   lane        collections | services
+   kind        visit_in_progress · visit_overdue · visit_today · visit_scheduled
+   anchor      the visit's scheduled date → the same WHEN buckets
+   owner_id    the technician (services) / the call assignee (collections)
+   slot_state  confirmed (appointment accepted) · proposed (requested /
+               rescheduled, awaiting the customer) · none
+   visit {}    block, n/m, technician, slot {id,status,at,confirmed},
+               open ticket {id,number,status}
+ APPOINTMENT = the visit's agreed slot with the customer (t_appointments,
+ one active per event). No separate lane; "Confirmed"/"Proposed" is the
+ slot filter.
+ FIVE TOOLS (each takes an actor, loads + locks the event, refuses with a
+ machine-readable reason, mirrors to n_jtd + n_jtd_history when a job exists):
+   jtd_assign_visit        technician on the event (+ open ticket)
+   jtd_schedule_visit      slot (proposed or agreed) — retires a closed
+                           appointment, create_appointment, update_appointment
+                           accepted|rescheduled|requested; a proposed slot
+                           also moves the event date so the card sits in the
+                           right column; agreed = customer notified by the
+                           existing appointment flow
+   jtd_confirm_visit_slot  the customer agreed to the proposed slot
+   jtd_start_visit         ticket in_progress (created with p_start_now if
+                           none) + event in_progress
+   jtd_complete_visit      ticket completed (created first if none), event
+                           completed, appointment completed
+   Refusals: actor_required · visit_not_found · visit_closed ·
+   visit_in_progress · assignee_not_in_tenant · already_assigned ·
+   scheduled_at_required · slot_in_past · no_slot_to_confirm ·
+   already_confirmed · visit_already_started · downstream_refused (the
+   wrapped RPC said no — its message is passed through).
+ ONE CARD, STILL. JobCard renders visit rows with the same code:
+   in progress            → Mark done · Assign
+   overdue/today/scheduled→ Start visit · Schedule/Reschedule · (Confirm slot
+                            when proposed) · Assign · Mark done
+   primary = Confirm slot › Start visit › Schedule. Panels: Assign (team
+   picker), Schedule (date-time + "Agreed with the customer"), Mark done
+   (notes). Evidence line: Visit n/m · block · technician or "no technician"
+   · slot state. History link opens the contract timeline (event-audit rows
+   of service events now read "Service visit …", not "Billing event").
+ PAGE: lane chips All · Collections · Services (counts ignore the lane
+ filter); kind chips gain Visits overdue · Visits today · In progress ·
+ Visits scheduled and hide the other lane's chips when a lane is picked;
+ a Slot select (confirmed / proposed / none) on Services; channel + cycle
+ selects hide on Services; Who now means call assignee OR technician.
+ Headline gains "N visits overdue, N visits today, N visits in progress" in
+ the needs-you clause and "3 visits, 2 payments and 1 reminder fall due …"
+ forward (one verb — "falls" only when the whole subject is 1; fixes
+ "1 payment fall due"). Under it, a signal line — never in the headline —
+ "N visits have no technician yet →" (facets.who.unassigned_visits, which
+ ignores the lane and kind filters) jumps to Services · Unassigned.
+ "What happened" merges visit activity (visit_assigned · visit_scheduled ·
+ visit_slot_confirmed · visit_started · visit_completed) with the payment
+ feed, newest first.
+
+─── FILES ───────────────────────────────────────────
+ contractnest-edge/supabase/migrations/jtd-nucleus/014_services_lane.sql
+   LIVE. jtd__visit_refusal, jtd__visit_note, the five tools, jtd_ops_board,
+   and the jtd_contract_activity title splice ("Service visit").
+ contractnest-api/src/services/collectionsService.ts
+   board() → jtd_ops_board; BoardFilters lanes/slot; assignVisit ·
+   scheduleVisit · confirmVisitSlot · startVisit · completeVisit.
+ contractnest-api/src/controllers/collectionsController.ts
+   board parses lanes + slot; five visit handlers (scheduled_at: a date →
+   10:00 IST; a local date-time → +05:30; ISO passes through); REFUSAL_STATUS
+   for the visit reasons (404 / 409 / 400).
+ contractnest-api/src/routes/collectionsRoutes.ts
+   POST /api/jtd/collections/visits/:eventId/{assign,schedule,confirm-slot,
+   start,complete}.
+ contractnest-ui/src/hooks/queries/useCollectionsQueries.ts
+   visit kinds, BoardLane, SlotState, VisitInfo, card lane/owner/slot/visit,
+   filters lanes/slot, facets lanes/slots/who.unassigned_visits, refusal
+   copy, the five mutations (toast on success, refetch the board).
+ contractnest-ui/src/components/ops/JobCard.tsx
+   visit kinds in kindLabel/colours/evidence; actionsFor() for visits; the
+   assign_visit / schedule / complete panels; five new JobCardActions.
+ contractnest-ui/src/pages/ops/cockpit/Commitments.tsx
+   lane chips, visit kind groups, slot select, headline clauses + grammar,
+   the unassigned-visits signal, visit feed rows, History subtitle for
+   visits, the five mutations wired.
+
+Production checklist
+  Transactions: every tool is one PL/pgSQL transaction; a downstream
+                refusal (RAISE 'TOOL:…') rolls back everything.
+  Races:        FOR UPDATE on the event; update_contract_event stays
+                version-checked; one action in flight per card in the UI.
+  Errors:       machine-readable reasons → HTTP codes → REASON_COPY toasts.
+  Toasts:       react-hot-toast via useToolMutation (existing).
+  Loaders:      LoadingSpinner + per-card busy/locked (existing).
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-services-lane\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-services-lane\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-services-lane\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source-of-record SQL only
+Write-Host "✅ ops-services-lane copied" -ForegroundColor Green
+
+cd contractnest-api ; npm run dev      # restart — new routes
+cd ..\contractnest-ui ; npm run dev    # Ctrl+F5
+
+Verified here: API tsc exit 0 · UI tsc 1170 = pristine main, 0 in touched
+files · vite build passes · submodules restored pristine.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — on SIGNIA (live: 41 visits + 28 payments in 90 d,
+   25 visits overdue, 16 scheduled, all 41 without a technician)
+═══════════════════════════════════════════════════
+- [ ] /ops/cockpit/next → lane chips All 69 · Collections 28 · Services 41
+      (90 d); headline reads "… 25 visits overdue …" and "16 visits, N
+      payments and M reminders fall due in the next 90 days."
+- [ ] Signal line "41 visits have no technician yet →" jumps to Services +
+      Unassigned; pick Collections → channel/cycle selects back, slot gone.
+- [ ] A visit card (List and Lanes look identical bar density): Visit n/m ·
+      block · "no technician" · "no slot". Assign → pick a teammate → toast
+      "Visit assigned to …" → card shows the technician; Who=Mine finds it.
+- [ ] Schedule → tomorrow 11:00, leave "Agreed with the customer" OFF →
+      toast "Slot proposed …" → card says "Slot proposed", moves to the
+      right column, kind chip "Visits scheduled"; Confirm slot → "Slot
+      confirmed … customer is notified" → slot filter Confirmed finds it.
+- [ ] Schedule again with the box ON → "Slot confirmed" directly.
+- [ ] Schedule with a past time → refused "That slot is in the past".
+- [ ] Start visit → toast "Visit started · TKT-…" → card "Visit in progress"
+      (kind chip In progress) with only Mark done · Assign; Start again on
+      the same card is not offered.
+- [ ] Mark done (notes) → toast "Visit marked done · TKT-…" → card leaves
+      the board; History on another card of the same contract shows
+      "Service visit … changed" + the visit_* rows; the contract's Audit
+      tab → Billing events shows the same.
+- [ ] What happened lists the visit rows between the payment rows, newest
+      first.
+- [ ] Collections cards unchanged: Email · WhatsApp · Log a call · Assign
+      call · Follow up · Pause · History all still work.
+- [ ] Search matches a technician's name and a block name.
+
+⚠️ signia is LIVE data: the tools write real assignments, appointments
+   (customer notification on an agreed slot) and tickets. Test on a visit
+   you would act on anyway, or on the test environment.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
