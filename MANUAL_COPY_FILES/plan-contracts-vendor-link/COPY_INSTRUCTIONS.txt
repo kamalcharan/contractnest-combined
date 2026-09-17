@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════
+BATCH: plan-contracts-vendor-link (2026-09-17) — the plan contract every
+       tenant gets at signup now links to ContractNest as a vendor, like a
+       claimed contract links to its seller ("Contact link missing" gone)
+═══════════════════════════════════════════════════
+Owner (buyer@b.com contract list, CN-1049 "Free" from Vikuna Technologies
+llp reading "Contact link missing"): "this is the 'contact link missing'
+for buyer@b.com -- signup things".
+
+Submodules affected: contractnest-edge ONLY — migration
+contracts/081_platform_contracts_vendor_link.sql, ALREADY APPLIED LIVE
+(source of record, do not re-run). No API or UI change.
+
+─── WHAT WAS WRONG ─────────────────────────────────
+ subscribe_tenant_to_plan (the live signup path), its unused v2 and
+ purchase_topup_template raise the plan / pack contract in the PLATFORM
+ tenant's book with the subscriber as buyer — but never do the buyer-side
+ half that claim_contract_by_cnak does: no vendor contact for the platform
+ in the subscriber's own book, the CNAK grant never accepted or claimed.
+ get_contracts_list's seller_contact_id (079) therefore found nothing →
+ "Contact link missing" on every tenant's own plan row. Live: 37 platform
+ contracts (34 plans, 2 packs, 1 pending) with a subscriber, NONE linked,
+ every grant still 'pending'.
+
+─── WHAT CHANGED (live) ────────────────────────────
+ fn_link_platform_contract_to_subscriber(contract) — idempotent:
+   1. a vendor contact for the platform in the subscriber's book: corporate,
+      company_name = the platform's Business Profile name ("Vikuna
+      Technologies llp"), classification Vendor, source
+      'platform_subscription', source_tenant_id = platform, source_cnak =
+      the contract's CNAK — the exact shape claim_contract_by_cnak creates,
+      so the list (079), the contacts page and the badge treat it the same;
+      contact_number from the existing trg_auto_contact_number.
+   2. t_contracts.buyer_tenant_id = subscriber (older rows lacked it).
+   3. the grant: accessor_tenant_id / accessor_contact_id (the vendor
+      contact, as claim does) / claimed_at / claimed_by; pending →
+      accepted with responded_at — subscribing IS the acceptance; payment
+      on a priced plan stays the invoice's own gate. A side effect worth
+      knowing: a priced plan awaiting payment can no longer surface as
+      "To accept" on the subscriber's expense Ops board.
+ Called from all three writers right after the contract exists (anchor
+ rewrite, post-checked); back-filled over every platform contract with an
+ existing subscriber tenant, with a post-check that RAISEs if any is left.
+
+ Verified live: writers all carry the call; 37/37 contracts linked, 37/37
+ grants accepted, 0 without accessor tenant; 26 vendor contacts created
+ across 26 tenants (tenants with several plan rows share one); buyer list
+ = CN-1010 → signia (CT-1001), CN-1049 → Vikuna Technologies llp
+ (CT-1002, Vendor); buyer expense board unchanged (1 need you · 4 rows);
+ signia revenue board unaffected. Probed first on CN-1049 and rolled back
+ (idempotent on re-run; refuses a non-platform contract).
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\plan-contracts-vendor-link\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only
+Write-Host "✅ plan-contracts-vendor-link copied" -ForegroundColor Green
+# nothing to restart — DB only; Ctrl+F5 the UI
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — buyer@b.com, Live
+═══════════════════════════════════════════════════
+- [ ] /contracts: CN-1049 "Free" row shows "Vikuna Technologies llp" with a
+      Vendor badge — no "Contact link missing".
+- [ ] /contacts: a new corporate contact "Vikuna Technologies llp"
+      (CT-1002, Vendor) next to "signia".
+- [ ] /ops/cockpit (Expense): unchanged — 1 need you (₹37,000 signia bill).
+- [ ] Sign up a fresh tenant → its Free plan row is linked from the start.
+═══════════════════════════════════════════════════
