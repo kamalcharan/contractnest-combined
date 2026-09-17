@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════
+BATCH: ops-board-invoice-double-count (2026-09-17) — the same money is
+       never on the Ops board twice
+═══════════════════════════════════════════════════
+Owner: "i still dont see 37000 in signia" → it was there (Reminders due,
+Overdue, hidden by the active "Invoices overdue" chip) — but the same list
+showed three contracts twice. "go ahead and fix it".
+
+Submodule affected: contractnest-edge only — one migration, ALREADY
+APPLIED LIVE (source of record; do not re-run). No UI/API change.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ Live CN-1006 / CN-1008 / CN-1009 (and CN-1005's balance) appeared as a
+ whole-invoice row AND as instalment rows for the same rupees. They were
+ activated through the V2 path (jobs, no legacy events); invoice
+ generation links only legacy events, so the jobs carry invoice_id NULL
+ and 017's guard ("skip the invoice row when a job points at this
+ invoice") never fired. The headline "21 need you" was inflated to 21
+ from 17 and ₹2,29,500 showed twice. Money In was never affected.
+
+─── WHAT CHANGED (LIVE) ─────────────────────────────
+ contractnest-edge/.../jtd-nucleus/020_board_invoice_rows_no_double_count.sql
+ · jtd_ops_board invoice_rows: an invoice row appears only when the
+   contract has NO open payment job at all (channel NULL, same
+   environment, status scheduled/due/overdue/partial_payment). Since 018
+   every billing schedule has jobs, "whole invoice with no schedule" is
+   now exactly that.
+ Verified live: signia Collections need-you 21 → 17, kinds rung_due 17 ·
+ payment_ahead 4 · invoice_overdue 0; CN-1010 ₹37,000 in Overdue; BBB
+ unchanged (78). Every invoice the rule now hides has balance == sum of
+ the contract's open instalments (INV-10024 6,000 · INV-10025 20,600 ·
+ INV-10051 10,500 · INV-10052 2,29,500 · vikuna INV-10042 17,997) — no
+ money left the board.
+
+ Follow-ups (not here): (a) generate_contract_invoices should stamp
+ invoice_id on payment jobs so V2-path instalment cards show their
+ invoice number (they show "no invoice yet" today); (b) the chip label
+ "Invoices overdue" means whole invoices with no schedule — rename to
+ "Whole invoices" so a scheduled instalment isn't looked for there.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY (source-of-record only, nothing to run)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-board-invoice-double-count\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — signia /ops/cockpit
+═══════════════════════════════════════════════════
+- [ ] Focus strip Collections reads "17 need you"; headline "17 reminders
+      due"; no "Invoices overdue" chip (0).
+- [ ] Clear filters → Overdue has CN-1010 "buyer b" ₹37,000 Rung due with
+      the INV-10053 link, and CN-1008 ₹2,29,500 appears ONCE.
+- [ ] Coming due: CN-1005's ₹600 instalments listed, no ₹6,000 invoice card.
+- [ ] BBB board unchanged.
