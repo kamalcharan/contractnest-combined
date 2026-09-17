@@ -1,0 +1,130 @@
+═══════════════════════════════════════════════════
+BATCH: commitments-register (2026-09-17) — Event Schedule becomes the
+       COMMITMENTS REGISTER: every event in every status (Events tab) + the
+       tenant-wide Activity timeline (appointments · follow-ups · calls ·
+       reminders · visits · payments), Who filter, dead statuses removed,
+       appointment actions pointing at the board
+═══════════════════════════════════════════════════
+Owner: "Event Schedule should answer 'what appointments / follow-ups did we
+have' … OPS does not need status … commitments register — go ahead."
+
+REQUIRES ops-services-lane, ops-appointments-loop and ops-cockpit-swap copied
+first, in that order (this batch's App.tsx, menus, hook, controller and
+Commitments.tsx are seeded FROM them and supersede those copies).
+
+Submodules affected: contractnest-edge (migration 016 — ALREADY APPLIED LIVE,
+source of record, do not re-run), contractnest-api, contractnest-ui.
+
+─── THE MODEL ───────────────────────────────────────
+ Ops (/ops/cockpit)        WHAT NEEDS YOU NOW — open commitments, no raw status
+ Commitments Register      EVERYTHING THAT WAS AND IS COMMITTED — the record
+ (/ops/services, same route so lite menus and the Briefing link keep working)
+
+─── WHAT CHANGED ────────────────────────────────────
+ EVENTS tab (the old table, in the board's idiom)
+ · Kinds All · Visits · Instalments; When Any / Past / Today / Next 7 / Next
+   30 / Dates; status select (only real statuses — assigned, on_hold and
+   reopened are gone: the backend refused them); Who (technician, via the
+   events API's assigned_to); "Show closed" ON by default (a register shows
+   closed items); By customer / Flat; search.
+ · Seven columns instead of ten: Contract · What (block + "visit 2 of 18" or
+   "quarterly 3/4 · ₹4,500") · When · Status · Who · Slot · open. Phone and
+   email left the row (one click away on the contact).
+ · Status pill opens the allowed transitions — the register's one action.
+   Service transitions are the RPC's machine (scheduled/due → in progress or
+   cancelled; in progress → completed or cancelled; overdue → in progress,
+   completed or cancelled); billing transitions come from the tenant config
+   as before.
+ · Slot column is read-only: "Slot confirmed · date" / "Slot proposed" /
+   "No slot"; clicking opens the board with Services focused and the contract
+   searched (the board's deep link now accepts ?q=). The Book button is gone —
+   Ask customer on the board does this properly. Group-session rows link to
+   Group Sessions.
+ ACTIVITY tab (new)
+ · Reader jtd_activity (016): the contract timeline made tenant-wide — the
+   audit log (appointments, tickets, events), event audit, every JTD
+   communication / task / visit history row / declaration — grouped
+   Appointments · Follow-ups · Calls · Reminders · Visits · Payments · Other,
+   with Who (actor or assignee), a date range (default last 30 days, IST
+   days), search, and "Show 50 more". Group chip counts ignore the group
+   filter. Each row links to its contract; communication rows show the
+   message as sent (the History drawer's toggle, reused).
+ · Probed live: signia 90 d = 306 rows (160 visit changes, 89 appointment
+   events, 57 payment events); BBB 30 d = 77; garbage filters ignored.
+ ELSEWHERE
+ · Menu label "Event Schedule" → "Commitments Register" (Operations and both
+   lite flavours); the Briefing's action reads "Open Commitments Register".
+ · pages/operations/services/index.tsx is deleted (STEP 2b).
+
+─── FILES ───────────────────────────────────────────
+ contractnest-edge/supabase/migrations/jtd-nucleus/016_activity_register.sql  LIVE — jtd_activity
+ contractnest-api/src/services/collectionsService.ts        activity()
+ contractnest-api/src/controllers/collectionsController.ts  activity handler (from/to/groups/who/q/contract_id/limit/offset)
+ contractnest-api/src/routes/collectionsRoutes.ts           GET /api/jtd/collections/activity
+ contractnest-ui/src/pages/ops/register/index.tsx           NEW — the register (Events + Activity)
+ contractnest-ui/src/hooks/queries/useCollectionsQueries.ts useActivityRegister + types
+ contractnest-ui/src/pages/ops/cockpit/Commitments.tsx      deep link accepts ?q= (search) alongside ?focus=
+ contractnest-ui/src/App.tsx                                /ops/services → CommitmentsRegisterPage
+ contractnest-ui/src/utils/constants/industryMenus.ts       label
+ contractnest-ui/src/utils/constants/liteAccess.ts          labels
+ contractnest-ui/src/pages/VaNi/BriefingPage.tsx            action label
+
+Production checklist
+  Transactions: the register's one write goes through the existing
+                update_contract_event RPC (version-checked, audited).
+  Races:        optimistic version on every status change (409 → toast).
+  Errors:       the events hook toasts 409/422; the Activity tab has Retry.
+  Toasts:       existing useToast in the events hook.
+  Loaders:      LoadingSpinner on first load; pulsing bar + dim on refetch,
+                same as the board.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+# after ops-services-lane → ops-appointments-loop → ops-cockpit-swap:
+Copy-Item "MANUAL_COPY_FILES\commitments-register\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\commitments-register\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\commitments-register\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only
+
+STEP 2b — delete the retired page (App.tsx no longer imports it)
+Remove-Item "contractnest-ui\src\pages\operations\services" -Recurse -Force
+Write-Host "✅ commitments-register copied" -ForegroundColor Green
+
+cd contractnest-api ; npm run dev      # restart — new route
+cd ..\contractnest-ui ; npm run dev    # Ctrl+F5
+
+Verified here (all four batches in order, three retired pages deleted):
+API tsc exit 0 · UI tsc = pristine main count, 0 in touched files · vite
+build passes · submodules restored.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — on SIGNIA
+═══════════════════════════════════════════════════
+- [ ] Operations → Commitments Register opens /ops/services: Events tab,
+      grouped by customer, closed items visible, seven columns, no phone /
+      email columns.
+- [ ] Kinds → Visits: status select lists scheduled · due · overdue · in
+      progress · completed · cancelled only. Kinds → Instalments: the
+      billing statuses. Kinds → All: status select disabled.
+- [ ] When → Past shows completed visits newest first; untick "Show closed"
+      → they disappear with the hint to tick it back.
+- [ ] Status pill on an overdue visit → In progress / Completed / Cancelled
+      → pick one → row updates (or a version-conflict toast if someone else
+      moved it). A completed visit's pill has no menu.
+- [ ] Slot pill on a visit → lands on the board, Services focused, that
+      contract in the search box. Group-session row → Group Sessions.
+- [ ] Activity tab: chips All 306-ish (90 d) / Appointments / Visits /
+      Payments with counts; Appointments shows the "Stuck appointment request
+      cancelled — Sprint 5 sweep" rows and any Ask/confirm from today; a
+      reminder row has "Show message". Who = you narrows to your actions.
+      Dates default to the last 30 days; widen to 90.
+- [ ] Lite user: the Grow/Workspace entry reads "Commitments Register" and
+      opens the same page. Briefing → "Open Commitments Register".
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
