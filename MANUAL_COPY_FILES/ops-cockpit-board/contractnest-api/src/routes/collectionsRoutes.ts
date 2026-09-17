@@ -8,7 +8,7 @@
 //                                        jtd_collections_board — the cockpit reads THIS
 //   POST /payments/:jobId/nudge          jtd_nudge_payment      {channel, note}
 //   POST /payments/:jobId/call           jtd_log_payment_call   {called_at, outcome, notes, promise_date}
-//   POST /payments/:jobId/escalate       jtd_escalate_payment_call {assign_to, note}
+//   POST /payments/:jobId/escalate       jtd_escalate_payment_call {assign_to, note, due_at}  (self + due_at = Follow up)
 //   POST /payments/:jobId/pause          jtd_pause_dunning      {reason, until, note}
 //   POST /payments/:jobId/resume         jtd_resume_dunning     {note}
 // ============================================================================

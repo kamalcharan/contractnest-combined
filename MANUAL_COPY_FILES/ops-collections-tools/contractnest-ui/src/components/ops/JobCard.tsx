@@ -14,7 +14,7 @@
 // too; the Log-a-call sheet is a modal the page owns (one at a time).
 
 import React, { useState } from 'react';
-import { ArrowUpRight, Check, Mail, MessageCircle, PhoneCall, UserPlus, PauseCircle, PlayCircle, RefreshCw, X, IndianRupee } from 'lucide-react';
+import { ArrowUpRight, Check, Mail, MessageCircle, PhoneCall, UserPlus, PauseCircle, PlayCircle, RefreshCw, X, IndianRupee, CalendarClock } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useInvoiceTheme } from '@/pages/invoices/ui';
 import { fmtMoney, fmtDate } from '@/utils/format';
@@ -25,7 +25,8 @@ export type PauseReason = 'promise' | 'dispute' | 'manual';
 export interface JobCardActions {
   onNudge: (card: BoardCard, channel: 'email' | 'whatsapp') => void;
   onCall: (card: BoardCard) => void;
-  onAssign: (card: BoardCard, userId: string) => Promise<unknown> | void;
+  /** Assign a call to `userId`; with `dueAt` (YYYY-MM-DD) it is dated. Self + date = Follow up. */
+  onAssign: (card: BoardCard, userId: string, dueAt?: string | null) => Promise<unknown> | void;
   onPause: (card: BoardCard, reason: PauseReason, until: string | null) => Promise<unknown> | void;
   onResume: (card: BoardCard) => void;
   onConfirm: (card: BoardCard) => void;
@@ -62,12 +63,14 @@ export const fmtTime = (iso: string | null | undefined) => {
   return `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
 };
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const tomorrowISO = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
+const isFollowUp = (c: BoardCard, meId?: string) => c.kind === 'call_open' && (c.call_task?.kind === 'follow_up' || (!!meId && c.call_task?.assigned_to === meId));
 
-export const kindLabel = (c: BoardCard): string => {
+export const kindLabel = (c: BoardCard, meId?: string): string => {
   switch (c.kind) {
     case 'declaration_pending': return 'To confirm';
     case 'send_failed': return 'Send failed';
-    case 'call_open': return 'Call assigned';
+    case 'call_open': return isFollowUp(c, meId) ? (c.call_task?.assigned_to === meId ? 'Your follow-up' : 'Follow-up') : 'Call assigned';
     case 'paused': return c.paused_reason === 'promise' ? 'Promised' : c.paused_reason === 'dispute' ? 'Disputed' : 'Paused';
     case 'rung_due': return `Rung ${c.rung?.step ?? ''} due`;
     case 'payment_ahead': return c.days === 0 ? 'Due today' : 'Coming due';
@@ -86,7 +89,7 @@ export const ladderText = (ladder?: LadderInfo): string => {
 };
 
 /** What the row wants you to know, as one line. Same text in both views. */
-export const evidence = (c: BoardCard, ladder?: LadderInfo): string => {
+export const evidence = (c: BoardCard, ladder?: LadderInfo, meId?: string): string => {
   const bits: string[] = [];
   if (c.kind === 'awaiting_activation') {
     bits.push(`awaiting the activation payment · sent ${fmtDate(c.awaiting?.since)}`);
@@ -117,9 +120,12 @@ export const evidence = (c: BoardCard, ladder?: LadderInfo): string => {
     case 'paused':
       if (c.paused_reason === 'promise' && c.promise_date) bits.push(`promised for ${fmtDate(c.promise_date)}`);
       break;
-    case 'call_open':
-      bits.push(`with ${c.call_task?.assigned_to_name || 'a teammate'}`);
+    case 'call_open': {
+      const who = c.call_task?.assigned_to === meId ? 'you' : (c.call_task?.assigned_to_name || 'a teammate');
+      const when = c.call_task?.due_at ? ` · ${c.days != null && c.days < 0 ? 'was due' : 'due'} ${fmtDate(c.call_task.due_at)}` : '';
+      bits.push(`${isFollowUp(c, meId) ? 'follow-up by' : 'call with'} ${who}${when}`);
       break;
+    }
     case 'declaration_pending':
       if (c.declaration) bits.push(`declared ${fmtMoney(c.declaration.amount, c.currency)}${c.declaration.reference ? ` · ref ${c.declaration.reference}` : ' · no reference'} · ${fmtDate(c.declaration.at)}`);
       break;
@@ -136,22 +142,27 @@ export const evidence = (c: BoardCard, ladder?: LadderInfo): string => {
   return bits.join(' · ');
 };
 
-type ActionKey = 'confirm' | 'review' | 'retry' | 'email' | 'whatsapp' | 'call' | 'assign' | 'pause' | 'resume';
+type ActionKey = 'confirm' | 'review' | 'retry' | 'email' | 'whatsapp' | 'call' | 'assign' | 'followup' | 'pause' | 'resume';
 
-/** The single source of truth for which buttons a kind gets, and which is primary. */
+/**
+ * The single source of truth for which buttons a kind gets, and which is primary.
+ * "Follow up" = a dated task assigned to yourself (same tool as Assign call);
+ * it is offered wherever a call could be assigned, and never twice — a job
+ * with an open call/follow-up shows Log a call instead, which closes it.
+ */
 export const actionsFor = (c: BoardCard): { actions: ActionKey[]; primary: ActionKey | null } => {
   const rungCh = c.rung?.channel;
   const nudgePrimary: ActionKey | null = rungCh === 'email' ? 'email' : rungCh === 'whatsapp' ? 'whatsapp' : rungCh === 'call' ? 'assign' : null;
   switch (c.kind) {
     case 'declaration_pending': return { actions: ['confirm', 'review'], primary: 'confirm' };
-    case 'send_failed': return { actions: ['retry', c.failed?.channel === 'whatsapp' ? 'email' : 'whatsapp', 'call', 'pause'], primary: 'retry' };
+    case 'send_failed': return { actions: ['retry', c.failed?.channel === 'whatsapp' ? 'email' : 'whatsapp', 'call', 'followup', 'pause'], primary: 'retry' };
     case 'call_open': return { actions: ['call', 'email', 'whatsapp', 'pause'], primary: 'call' };
-    case 'paused': return { actions: ['resume', 'call'], primary: 'resume' };
-    case 'rung_due': return { actions: ['email', 'whatsapp', 'call', 'assign', 'pause'], primary: nudgePrimary };
-    case 'rung_ahead': return { actions: ['email', 'whatsapp', 'call', 'assign', 'pause'], primary: nudgePrimary };
-    case 'payment_ahead': return { actions: ['email', 'whatsapp', 'call', 'assign', 'pause'], primary: null };
+    case 'paused': return { actions: ['resume', 'call', 'followup'], primary: 'resume' };
+    case 'rung_due': return { actions: ['email', 'whatsapp', 'call', 'assign', 'followup', 'pause'], primary: nudgePrimary };
+    case 'rung_ahead': return { actions: ['email', 'whatsapp', 'call', 'assign', 'followup', 'pause'], primary: nudgePrimary };
+    case 'payment_ahead': return { actions: ['email', 'whatsapp', 'call', 'assign', 'followup', 'pause'], primary: null };
     case 'ladder_exhausted':
-    case 'overdue_no_ladder': return { actions: ['email', 'whatsapp', 'call', 'assign', 'pause'], primary: null };
+    case 'overdue_no_ladder': return { actions: ['email', 'whatsapp', 'call', 'assign', 'followup', 'pause'], primary: null };
     case 'awaiting_activation': return { actions: [], primary: null };
     default: return { actions: [], primary: null };
   }
@@ -166,8 +177,10 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
   const mono: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' };
   const hairline = `${colors.utility.primaryText}14`;
 
-  const [panel, setPanel] = useState<'assign' | 'pause' | null>(null);
+  const [panel, setPanel] = useState<'assign' | 'pause' | 'followup' | null>(null);
   const [assignTo, setAssignTo] = useState<string>(meId || '');
+  const [assignDue, setAssignDue] = useState<string>('');
+  const [followUpDue, setFollowUpDue] = useState<string>(() => tomorrowISO());
   const [pauseReason, setPauseReason] = useState<PauseReason>('manual');
   const [pauseUntil, setPauseUntil] = useState<string>('');
   const [panelBusy, setPanelBusy] = useState(false);
@@ -194,7 +207,12 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
   const submitAssign = async () => {
     if (!assignTo) return;
     setPanelBusy(true);
-    try { await actions.onAssign(c, assignTo); setPanel(null); } finally { setPanelBusy(false); }
+    try { await actions.onAssign(c, assignTo, assignDue || null); setPanel(null); setAssignDue(''); } finally { setPanelBusy(false); }
+  };
+  const submitFollowUp = async () => {
+    if (!meId || !followUpDue) return;
+    setPanelBusy(true);
+    try { await actions.onAssign(c, meId, followUpDue); setPanel(null); } finally { setPanelBusy(false); }
   };
   const submitPause = async () => {
     if (pauseReason === 'promise' && !pauseUntil) return;
@@ -221,6 +239,7 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
       case 'whatsapp': return <Btn key={k} primary={p} onClick={() => actions.onNudge(c, 'whatsapp')} icon={<MessageCircle size={s} />} label="WhatsApp" title={c.kind === 'payment_ahead' ? 'Send an early heads-up on WhatsApp' : 'Send the reminder on WhatsApp'} />;
       case 'call': return <Btn key={k} primary={p} onClick={() => actions.onCall(c)} icon={<PhoneCall size={s} />} label="Log a call" />;
       case 'assign': return <Btn key={k} primary={p} onClick={() => { setPanel(panel === 'assign' ? null : 'assign'); setAssignTo(meId || ''); }} icon={<UserPlus size={s} />} label="Assign call" />;
+      case 'followup': return meId ? <Btn key={k} onClick={() => setPanel(panel === 'followup' ? null : 'followup')} icon={<CalendarClock size={s} />} label="Follow up" title="Set a dated follow-up for yourself" /> : null;
       case 'pause': return <Btn key={k} onClick={() => setPanel(panel === 'pause' ? null : 'pause')} icon={<PauseCircle size={s} />} label="Pause" />;
       case 'resume': return <Btn key={k} primary={p} onClick={() => actions.onResume(c)} icon={<PlayCircle size={s} />} label="Resume" />;
       default: return null;
@@ -231,7 +250,7 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
     <span className="flex-none text-[10px] font-bold px-2.5 py-1 rounded-full border whitespace-nowrap"
       title={isRungPill ? ladderText(ladder) : undefined}
       style={{ color: kc, borderColor: `${kc}55`, backgroundColor: c.kind === 'paused' ? 'transparent' : `${kc}14`, cursor: isRungPill ? 'help' : 'default' }}>
-      {kindLabel(c)}
+      {kindLabel(c, meId)}
     </span>
   );
 
@@ -250,7 +269,16 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
             <option value="">Assign the call to…</option>
             {team.map((m) => <option key={m.user_id} value={m.user_id}>{m.name || m.user_id}</option>)}
           </select>
+          <input type="date" value={assignDue} min={todayISO()} onChange={(e) => setAssignDue(e.target.value)} style={inputStyle} aria-label="Due by (optional)" title="Due by (optional)" />
           <Btn primary onClick={submitAssign} label={panelBusy ? '…' : 'Assign'} />
+          <Btn onClick={() => setPanel(null)} icon={<X size={12} />} label="" title="Cancel" />
+        </div>
+      )}
+      {panel === 'followup' && (
+        <div className={`mt-2.5 flex items-center gap-2 flex-wrap ${compact ? '' : 'pl-5'}`}>
+          <span className="text-[11.5px] font-bold" style={sub}>Remind me on</span>
+          <input type="date" value={followUpDue} min={todayISO()} onChange={(e) => setFollowUpDue(e.target.value)} style={inputStyle} aria-label="Follow up on" />
+          <Btn primary onClick={submitFollowUp} label={panelBusy ? '…' : 'Set follow-up'} />
           <Btn onClick={() => setPanel(null)} icon={<X size={12} />} label="" title="Cancel" />
         </div>
       )}
@@ -286,7 +314,7 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
           <button onClick={() => actions.onOpen(c)} className="text-[10px] font-bold" style={{ ...mono, color: brand }}>{c.contract_number}</button>
           <p className="text-[14px] font-extrabold tabular-nums" style={ink}>{c.amount != null ? fmtMoney(c.amount, c.currency) : ''}</p>
         </div>
-        <p className="text-[11px] mt-1 leading-snug" style={{ color: c.days_overdue > 0 && c.kind !== 'declaration_pending' ? red : colors.utility.secondaryText }}>{evidence(c, ladder)}</p>
+        <p className="text-[11px] mt-1 leading-snug" style={{ color: c.days_overdue > 0 && c.kind !== 'declaration_pending' ? red : colors.utility.secondaryText }}>{evidence(c, ladder, meId)}</p>
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
           {keys.map(button)}
           {openBtn}
@@ -306,7 +334,7 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
             {name}
             <button onClick={() => actions.onOpen(c)} className="ml-2 text-[10px] font-bold align-middle" style={{ ...mono, color: brand }}>{c.contract_number}</button>
           </p>
-          <p className="text-[12.5px] mt-0.5" style={{ color: c.days_overdue > 0 && c.kind !== 'declaration_pending' ? red : colors.utility.secondaryText }}>{evidence(c, ladder)}</p>
+          <p className="text-[12.5px] mt-0.5" style={{ color: c.days_overdue > 0 && c.kind !== 'declaration_pending' ? red : colors.utility.secondaryText }}>{evidence(c, ladder, meId)}</p>
         </div>
         <div className="text-right flex-none">
           <p className="text-lg font-extrabold tabular-nums" style={ink}>{c.amount != null ? fmtMoney(c.amount, c.currency) : ''}</p>

@@ -44,6 +44,32 @@ source of record, do not re-run), contractnest-api, contractnest-ui.
  HEADLINE now names both: "29 need you — 29 reminders due. 49 payments and
  N reminders fall due in the next 30 days."
 
+─── STEP 5 ADDED 2026-09-17 — Follow up ─────────────
+ "Follow up" = a dated task assigned to YOURSELF through the existing
+ Assign-call tool (owner: not a bookmark; distinct from an appointment).
+ · migration jtd-nucleus/011 (LIVE): jtd_escalate_payment_call gains
+   p_due_at (the task's scheduled_at; business_context.task_kind =
+   'follow_up' when you assign yourself, else 'escalation'; a date more than
+   a day in the past is refused: due_in_past). The 7-arg overload was DROPPED
+   so the call is unambiguous. The board anchors an open call on its due
+   date, so "follow up on Tuesday" sits in the right column and turns
+   overdue when Tuesday passes; call_task carries due_at + kind; the feed
+   carries task_kind + due_at.
+ · API: POST …/escalate accepts due_at (YYYY-MM-DD → 10:00 IST, or ISO).
+ · UI: every card that can assign a call gets "Follow up" (date, default
+   tomorrow → "Set follow-up"); Assign call gets an optional "Due by" date;
+   the pill reads "Your follow-up" / "Follow-up" / "Call assigned"; the
+   evidence line reads "follow-up by you · due 20 Sep"; the feed reads
+   "<you> set a follow-up on <buyer> for 20 Sep". Log a call closes it.
+ Probed live (rolled back): follow-up 3 days out → kind call_open, bucket
+ "next 3 days", Mine 1; second follow-up on the same job → refused
+ (call_already_open); past date → refused (due_in_past).
+ Extra checklist:
+ [ ] Follow up on an overdue card → pick a date → card moves to that
+     column with pill "Your follow-up"; Mine shows it; Log a call closes it
+     and the card returns to its rung state.
+ [ ] Assign call with a "Due by" date → card lands in that column.
+
 ─── DB (LIVE, applied 2026-09-17) ───────────────────
  contractnest-edge/supabase/migrations/jtd-nucleus/010_collections_board_reader.sql
    jtd_collections_board(p_tenant, p_is_live, p_filters jsonb, p_user)
@@ -109,6 +135,6 @@ Restart the API (new route) and hard-refresh the UI (Ctrl+F5).
    lands mostly in the last band. The label is honest; a date-labelled band
    set for custom ranges is the obvious follow-up.
  · Who=Mine/Unassigned is about call tasks only (payments have no owner yet).
- · Steps 5 (Follow up = self-assigned task) and 6 (contract Audit timeline
-   with JTD rows; per-card History) are next.
+ · Step 5 (Follow up) is in this batch. Step 6 (contract Audit timeline
+   with JTD rows; per-card History) is next.
  · Engines still ungated by vani_is_enabled (stitch 6).
