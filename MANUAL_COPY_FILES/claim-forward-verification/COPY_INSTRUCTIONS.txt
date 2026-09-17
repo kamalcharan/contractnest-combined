@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════
+BATCH: claim-forward-verification (2026-09-17) — /api/contracts/claim now
+       forwards the review-link secret and the registered mobile, so a
+       buyer can actually claim a contract
+═══════════════════════════════════════════════════
+Owner: "claim did not work" — buyer tenant, /contracts/claim, CNAK-D73613 +
+mobile 9949701175 → "We could not verify this claim…" (VERIFICATION_REQUIRED).
+
+Submodule affected: contractnest-api only. One file. No UI, edge or DB
+change. Restart the API after copying.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ CNAK-lite v2 made claim_contract_by_cnak refuse a bare CNAK: the caller
+ must send the review link's secret (auto-claim) or the mobile number the
+ seller has on file (manual claim). The UI sends them, the edge forwards
+ them, contractService.claimContract accepts them — but
+ contractController.claimContract read only `cnak` from the body and called
+ the service with four arguments, so the RPC always got p_secret NULL and
+ p_mobile NULL. Every manual claim through the API has failed since v2;
+ the grant for CN-1010 carries the buyer's mobile (+919949701175) and the
+ typed number matched it — the RPC never saw it. (The registration-time
+ auto-claim calls the RPC directly from the auth edge function and was
+ unaffected.)
+
+─── WHAT CHANGED ────────────────────────────────────
+ contractnest-api/src/controllers/contractController.ts
+ · claimContract reads `secret` and `mobile` from the body (trimmed,
+   strings only) and passes them as the service's 5th/6th arguments.
+   Nothing else touched.
+
+ Noted, not changed: the service calls the edge with environment 'live'
+ hard-coded for claims, so a Test-mode contract can never be claimed
+ through this route (the RPC would answer ENVIRONMENT_MISMATCH). Fine for
+ the signia → buyer test, which is Live on both sides.
+
+Production checklist
+  Transactions: the RPC is one transaction (already).
+  Races:        the RPC locks the grant row FOR UPDATE (already).
+  Errors:       unchanged — RPC refusals surface as before.
+  Toasts / Loaders: UI untouched; existing claim page toasts + VaNiLoader.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\claim-forward-verification\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "✅ claim-forward-verification copied" -ForegroundColor Green
+cd contractnest-api ; npm run dev      # restart — controller change
+
+Verified here: API tsc exit 0, 0 errors.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — CN-1010 (signia → buyer), Live on both sides
+═══════════════════════════════════════════════════
+The order matters: a sign-off contract must be ACCEPTED before it can be
+claimed (the RPC says "not accepted yet" otherwise).
+- [ ] As the buyer (logged out or any browser), open the review link
+      /contract-review?cnak=CNAK-D73613&secret=<secret from the grant row>
+      and Accept. CN-1010 → active; billing/service events generated.
+- [ ] Logged in as buyer@b.com (Live), /contracts/claim: enter CNAK-D73613
+      + 9949701175 → "Contract claimed successfully"; or open
+      /contracts/claim?cnak=CNAK-D73613&secret=<secret> → same without
+      typing the mobile.
+- [ ] Wrong mobile → still "We could not verify this claim…" (the gate
+      works, it just never received the number before).
+- [ ] Buyer's Contracts list shows CN-1010 flipped to a vendor contract;
+      To Pay shows its instalments; a "signia" vendor contact now exists in
+      the buyer tenant.
+- [ ] Second claim of the same CNAK from the buyer → "already in your
+      ContractHub" (no error).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
