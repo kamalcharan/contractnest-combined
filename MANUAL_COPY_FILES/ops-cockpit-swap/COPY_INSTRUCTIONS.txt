@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════
+BATCH: ops-cockpit-swap (2026-09-17) — /ops/cockpit IS the Ops board (revenue
+       side) · "Ops (preview)" gone · VaNi (old) menu re-hidden
+═══════════════════════════════════════════════════
+Owner: "swap to original OPS and then hide menu - VaNi (old)".
+
+REQUIRES ops-services-lane and ops-appointments-loop copied first (this batch's
+App.tsx and industryMenus.ts are seeded FROM ops-appointments-loop and
+supersede that batch's copies). Copy the three in that order.
+
+Submodule affected: contractnest-ui only. No API, no DB.
+
+─── WHAT CHANGED ────────────────────────────────────
+ · /ops/cockpit — the landing page after login for everyone, lite flavours
+   included — now renders the Ops board for the REVENUE perspective. The
+   board is revenue-only by owner decision (To Pay stays its own page), so
+   the EXPENSE perspective keeps the original cockpit (awaiting acceptance,
+   RFQ tracker) through a 20-line picker, pages/ops/cockpit/Home.tsx. Lite
+   buyers and vendor-side users land somewhere that makes sense; when To Pay
+   covers them, Home.tsx collapses to one line and index.tsx is deleted.
+ · /ops/cockpit/next redirects to /ops/cockpit (bookmarks). The "Ops
+   (preview)" menu entry is gone. The appointment redirects now point at
+   /ops/cockpit?focus=services; the board's ?focus= handling already works.
+ · VaNi (old) menu block commented out again (it was un-hidden on 16 Sep for
+   the spec review). Routes and page files untouched — later cleanup pass.
+ · Lite menus: the two "Appointments" grow entries removed (they pointed at
+   the retired route). The lite upsell copy blocks and route→copy maps for
+   appointments are left in place — dead but harmless.
+
+─── FILES ───────────────────────────────────────────
+ contractnest-ui/src/pages/ops/cockpit/Home.tsx        NEW — perspective picker
+ contractnest-ui/src/App.tsx                            /ops/cockpit → OpsHome; /next → redirect; appointment redirects updated
+ contractnest-ui/src/utils/constants/industryMenus.ts   preview entry removed; VaNi (old) block commented out
+ contractnest-ui/src/utils/constants/liteAccess.ts      lite Appointments entries removed
+ (ops-appointments-loop/…/Commitments.tsx header comment updated to say it is
+  mounted through Home.tsx — same batch file, no functional change)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+# (after ops-services-lane and ops-appointments-loop, in that order)
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-swap\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ ops-cockpit-swap copied" -ForegroundColor Green
+cd contractnest-ui ; npm run dev    # Ctrl+F5
+
+Verified here (all three batches copied in order, retired pages deleted):
+UI tsc = pristine main count, 0 in touched files · vite build passes ·
+submodule restored.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Log in (revenue perspective) → you land on the Ops board at
+      /ops/cockpit: focus strip, headline, lanes. Menu: Operations → Ops
+      Cockpit only; no "Ops (preview)".
+- [ ] /ops/cockpit/next → redirects to /ops/cockpit.
+- [ ] /ops/appointments → /ops/cockpit with Services focused.
+- [ ] Switch to the expense perspective → /ops/cockpit shows the original
+      cockpit (awaiting acceptance / RFQ tracker); switch back → the board,
+      in place, no reload.
+- [ ] Sidebar: no "VaNi (old)" group; "VaNi" (Overview · Briefing) still there.
+- [ ] A lite (CNAK or RFQ) user: Dashboard still opens /ops/cockpit and
+      renders; the Grow menu has no Appointments entry.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
