@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+BATCH: buyer-side-seller-fields (2026-09-17) — the buyer's contract list
+       names the seller and links the vendor contact the claim created
+═══════════════════════════════════════════════════
+Owner: "why is 'contact missing' on the buyer side — any issue in the
+CNAK" → no; "go ahead apply migration".
+
+Submodule affected: contractnest-edge only — one migration, ALREADY
+APPLIED LIVE (source of record; do not re-run). No UI/API change: the UI
+already reads these fields (pages/contracts/experience/model.ts
+counterparty() and ContactClassificationBadge.tsx) and had nothing to read.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ The claim was fine (grant claimed, vendor contact "signia" created in the
+ buyer tenant, tagged CNAK-D73613). get_contracts_list emitted no seller
+ fields at all, so every claimed row read "Provider details in contract"
+ and "Contact link missing" — CN-1010 and the vikuna plan row alike.
+
+─── WHAT CHANGED (LIVE) ─────────────────────────────
+ contractnest-edge/.../contracts/079_contracts_list_seller_fields.sql
+ · Flat list rows gain seller_company, seller_name (owner tenant's
+   business_name, else tenant name) and seller_contact_id (the caller
+   tenant's contact sourced from the owner tenant, preferring the one
+   tagged with the row's CNAK) — NULL on rows the caller owns.
+ Verified live: buyer tenant → CN-1010 seller "signia", contact
+ 27cfadef… (the claim's vendor contact) → the badge will read "Vendor";
+ CN-1049 seller "Vikuna Technologies llp", contact NULL (a plan
+ subscription creates no vendor contact — still the open item). signia's
+ own list unchanged (fields NULL).
+
+ Pre-existing, NOT touched: get_contracts_list's group_by='buyer' branch
+ fails with "missing FROM-clause entry for table c" (its ORDER BY uses the
+ outer alias inside the grouped aggregate). Callers in UI/API found by
+ grep: 4. Flagged in CLAUDE.md, fix when someone needs that mode.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY (source-of-record only, nothing to run)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\buyer-side-seller-fields\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — buyer@b.com, Live, Expense
+═══════════════════════════════════════════════════
+- [ ] /contracts: CN-1010 row reads "signia" with a "Vendor" badge (no
+      "Contact link missing"); Open contract works.
+- [ ] CN-1049 (vikuna plan): reads "Vikuna Technologies llp"; badge still
+      says contact link missing until plan subscriptions create the vendor
+      contact (separate item).
+- [ ] signia /contracts: unchanged.
