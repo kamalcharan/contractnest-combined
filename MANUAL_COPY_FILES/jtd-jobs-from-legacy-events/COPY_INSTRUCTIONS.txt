@@ -1,0 +1,105 @@
+═══════════════════════════════════════════════════
+BATCH: jtd-jobs-from-legacy-events (2026-09-17) — every activation leaves
+       payment/service JOBS behind (the ₹37,000 on CN-1010 was invisible on
+       Ops); the seller is told the buyer accepted
+═══════════════════════════════════════════════════
+Owner: "solve the 37000 invisibility its very critical ... ok do the seller
+notice as well".
+
+Submodule affected: contractnest-edge only — two migrations, BOTH ALREADY
+APPLIED LIVE (source of record; do not re-run). No API or UI change.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ 1. CN-1010 was accepted through the public review link. That path runs
+    respond_to_contract → V1 activation trigger → legacy t_contract_events
+    (1 billing ₹37,000 + 7 service) and ZERO n_jtd jobs. Only
+    update_contract_status_v2 (wizard self-activation) materializes jobs;
+    both cutover mirrors are UPDATE-only, so an event born without a twin
+    never got one. The Ops board's Collections rows come from payment jobs
+    → the ₹37,000 was on Money In and nowhere on Ops. Platform-wide at the
+    time: 68 contracts / 955 events without a twin across 9 tenants,
+    ~₹1.04 crore of open billing that no Collections lane could chase.
+ 2. The accept queued a bare pgmq message ({source_type_code:
+    'contract_accepted'}, no jtd_id); the worker fetched n_jtd by
+    "undefined", logged the error and dropped it. No template, no
+    recipient — the seller has never been told.
+
+─── WHAT CHANGED (LIVE) ─────────────────────────────
+ jtd-nucleus/018_jobs_from_legacy_events.sql
+ · jtd_mirror_jobs_from_events(contract, tenant): id-preserving twin jobs
+   for every event without one (the cutover/001 mapping; legacy status
+   copied verbatim, never 'created', so no queue message / credit gate).
+   Refuses a contract that already holds non-twin jobs (materialized set
+   with its own ids) so nothing can appear twice.
+ · trigger_queue_contract_events(): after the V1 event build, mirror;
+   wrapped so it can never block an activation.
+ · Backfill ran: 68 contracts, 955 jobs (Hygene 300 · Freedom 236 · Value
+   188 · Trinity 182 · vikuna 13 · hubb 12 · stw 10 · signia 8 · flow1 6),
+   counts and rupee sums verified per contract, 0 skipped, gap now 0,
+   queue depth 0. CN-1010 now shows on signia's board as "Rung due" ₹37,000
+   in Overdue (its billing date is 8 Sep), plus its 3 service rows.
+ jtd-nucleus/019_contract_accepted_notice.sql
+ · Global email template contract_accepted_email (source contract_accepted)
+   with provider_template_id NULL — see OWNER ACTION.
+ · jtd_notify_contract_accepted(contract, tenant, responder_name):
+   recipient = tenant profile business_email → contract creator's profile
+   email → tenant's default active user; template = tenant row else
+   global, ONLY when it has a provider id. Inserts one n_jtd email row
+   (status created → enqueued → worker sends) carrying contract_id, so it
+   shows in the History drawer, the Audit tab and the Register. Otherwise
+   returns {skipped: no_recipient | no_provider_template} and inserts
+   nothing (no failed rows pile up).
+ · respond_to_contract: the bare pgmq.send block replaced by a guarded
+   PERFORM of the helper (anchor rewrite + post-check; pgmq.send gone).
+ Probed live and rolled back on CN-1010: as-is → skipped
+ no_provider_template, recipient signia@s.com (creator); with a probe
+ provider id → row pending, 1 queue message, variables:
+   seller_name=signia · buyer_name=buyer b · contract_title=Buyer Contract
+   · contract_number=CN-1010 · contract_value=INR 37,000.00 ·
+   accepted_on=17 Sep 2026, 20:46 · contract_link=https://www.contractnest.com/contracts/<id>
+
+─── OWNER ACTION (the notice sends only after this) ─
+ MSG91's email API refuses a send without a template id (worker
+ handlers/email.ts), and no "contract accepted" template exists in MSG91 —
+ the existing pair (contract_signoff_notification / contract_signoff) is
+ the acceptance REQUEST to the buyer, a different message. Register an
+ MSG91 email template with variables
+   seller_name, buyer_name, contract_title, contract_number,
+   contract_value, accepted_on, contract_link
+ (the HTML is in the n_jtd_templates row to copy from), then:
+   UPDATE n_jtd_templates SET provider_template_id = '<msg91 template id>'
+   WHERE template_key = 'contract_accepted_email' AND tenant_id IS NULL;
+ From then on every public acceptance emails the seller. A WhatsApp
+ variant needs its own MSG91 WhatsApp template (positional, per the
+ CLAUDE.md trap) and a second template row on channel 'whatsapp'; the
+ helper is email-only today.
+
+ Not changed (noted): update_contract_status V1 still queues bare
+ messages for contract_sent / contract_accepted / contract_expired /
+ rfq_sent — harmless (the worker drops them with the same log line) but
+ noisy; those are the seller's own status changes, no notice is owed.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY (source-of-record only, nothing to run)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\jtd-jobs-from-legacy-events\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ jtd-jobs-from-legacy-events copied (migrations already live)" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] signia /ops/cockpit → Collections: CN-1010 "buyer b" ₹37,000 in
+      Overdue with the ladder pill (rung due); Email / WhatsApp / Log a
+      call / Assign call all work on it; History shows the migration-
+      created job.
+- [ ] Focus strip counts unchanged otherwise (BBB board untouched — BBB
+      already had twins from the cutover).
+- [ ] Create + send a new sign-off contract from signia, accept it on the
+      review link (local stack): its payment rows appear on the board
+      immediately after acceptance, no backfill needed.
+- [ ] After registering the MSG91 template and setting provider_template_id:
+      accept another contract → signia@s.com (or the business email once
+      set on the Business Profile) receives "buyer accepted …"; the row
+      shows under the contract's History / Audit tab.
+═══════════════════════════════════════════════════
