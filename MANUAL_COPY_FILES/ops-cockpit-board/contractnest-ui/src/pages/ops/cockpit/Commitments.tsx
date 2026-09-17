@@ -211,7 +211,7 @@ const OpsCommitmentsPage: React.FC = () => {
     <button onClick={onClick} aria-pressed={on}
       className="inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full text-[11.5px] font-bold border whitespace-nowrap"
       style={on ? { backgroundColor: color || brand, color: '#fff', borderColor: color || brand }
-                : { color: color || colors.utility.primaryText, borderColor: `${color || colors.utility.primaryText}35`, backgroundColor: colors.utility.secondaryBackground }}>
+                : { color: color || colors.utility.primaryText, borderColor: `${color || colors.utility.primaryText}35`, backgroundColor: colors.utility.primaryBackground }}>
       {children}
     </button>
   );
@@ -223,7 +223,7 @@ const OpsCommitmentsPage: React.FC = () => {
   );
   const selectStyle: React.CSSProperties = {
     border: `1px solid ${colors.utility.primaryText}30`, borderRadius: 999, padding: '0 12px', fontSize: 11.5, fontWeight: 700,
-    backgroundColor: colors.utility.secondaryBackground, color: colors.utility.primaryText, minHeight: 36,
+    backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText, minHeight: 36,
   };
 
   // ── guards ─────────────────────────────────────────────────────────────────
@@ -349,25 +349,26 @@ const OpsCommitmentsPage: React.FC = () => {
         </button>
       </div>
 
-      {/* ── controls: VaNi · window · view · search ── */}
-      <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
+      {/* ── controls card: VaNi · window · view · search · filters ── */}
+      <div className="mt-6 rounded-2xl border px-4 py-3.5" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: hairline }}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <button onClick={() => navigate(vaniChip.to)} title={vaniChip.title}
           className="inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full text-[11.5px] font-bold border"
           style={{ color: vaniChip.color, borderColor: `${vaniChip.color}55`, backgroundColor: `${vaniChip.color}12` }}>
           <Sparkles size={12} /> {vaniChip.text} <ArrowUpRight size={12} />
         </button>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45` }} role="group" aria-label="Horizon">
+          <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="Horizon">
             {HORIZONS.map((h) => <Seg key={h} on={!range && horizon === h} onClick={() => setHorizon(h)} title={`Next ${h} days`}>{h} d</Seg>)}
             <Seg on={!!range} onClick={() => { setRangeOpen((o) => !o); if (!draftFrom) { setDraftFrom(data.today); setDraftTo(data.window.to); } }} title="Pick dates">
               <CalendarRange size={12} /> {range ? `${fmtDate(range.from)} – ${fmtDate(range.to)}` : 'Dates'}
             </Seg>
           </div>
-          <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45` }} role="group" aria-label="View">
+          <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="View">
             <Seg on={view === 'list'} onClick={() => setView('list')} title="List"><List size={12} /> List</Seg>
             <Seg on={view === 'lanes'} onClick={() => setView('lanes')} title="Lanes by when"><LayoutGrid size={12} /> Lanes</Seg>
           </div>
-          <label className="inline-flex items-center gap-2 rounded-full border px-3 min-h-[36px] w-52" style={{ borderColor: hairline, backgroundColor: colors.utility.secondaryBackground }}>
+          <label className="inline-flex items-center gap-2 rounded-full border px-3 min-h-[36px] w-52" style={{ borderColor: `${colors.utility.primaryText}30`, backgroundColor: colors.utility.primaryBackground }}>
             <Search size={13} style={sub} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="name · contract · ref" aria-label="Search"
               className="bg-transparent outline-none text-xs w-full" style={ink} />
@@ -411,7 +412,7 @@ const OpsCommitmentsPage: React.FC = () => {
             {Object.entries(data.facets.cycles).sort(([a], [b]) => a.localeCompare(b)).map(([label, c]) => <option key={label} value={label}>{label} · {c}</option>)}
           </select>
         )}
-        <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${colors.utility.primaryText}30` }} role="group" aria-label="Who">
+        <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${colors.utility.primaryText}30`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="Who">
           {(['team', 'mine', 'unassigned'] as const).map((w) => (
             <Seg key={w} on={who === w} onClick={() => setWho(w)} title={w === 'mine' ? 'Calls assigned to me' : w === 'unassigned' ? 'No call assigned' : 'Everyone'}>
               {w === 'team' ? 'Team' : w === 'mine' ? 'Mine' : 'Unassigned'} <span className="tabular-nums opacity-80">{data.facets.who[w] ?? 0}</span>
@@ -423,6 +424,7 @@ const OpsCommitmentsPage: React.FC = () => {
             showing {data.counts.matched} of {data.counts.in_window} · clear <X size={12} />
           </button>
         )}
+      </div>
       </div>
 
       {/* ── the board ── */}
