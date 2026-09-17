@@ -34,7 +34,8 @@ import {
 import type { ContractDetail } from '@/types/contracts';
 import { useContractAuditLog } from '@/hooks/queries/useServiceExecution';
 import type { AuditLogEntry } from '@/hooks/queries/useServiceExecution';
-import { useContractActivity, type ActivityRow } from '@/hooks/queries/useCollectionsQueries';
+import { useContractActivity, type ActivityRow, type RenderedMessage } from '@/hooks/queries/useCollectionsQueries';
+import { MessageToggle } from '@/components/ops/HistoryDrawer';
 
 // ═══════════════════════════════════════════════════
 // TYPES
@@ -59,6 +60,9 @@ interface AuditDisplayEntry {
   timestamp: string;
   icon: React.ElementType;
   iconColor: string;
+  /** For a sent communication: the message as it went (rendered template copy). */
+  message?: RenderedMessage;
+  channel?: string;
 }
 
 // ═══════════════════════════════════════════════════
@@ -126,6 +130,8 @@ const mapActivityRow = (row: ActivityRow): AuditDisplayEntry => {
     timestamp: row.at,
     icon: iconInfo.icon,
     iconColor: failed ? '#EF4444' : iconInfo.color,
+    message: row.message,
+    channel: row.channel,
   };
 };
 
@@ -374,6 +380,7 @@ const AuditTab: React.FC<AuditTabProps> = ({ contract, colors }) => {
                     </div>
                   )
                 )}
+                {entry.message && <MessageToggle message={entry.message} channel={entry.channel} colors={colors} />}
                 <div className="flex items-center gap-2 text-[10px]" style={{ color: colors.utility.secondaryText }}>
                   <span className="flex items-center gap-1">
                     <User className="w-3 h-3" />

@@ -108,6 +108,35 @@ source of record, do not re-run), contractnest-api, contractnest-ui.
  [ ] Send a nudge from the cockpit, reopen History → it is there with its
      status; the Audit tab shows the same row.
 
+─── ADDED 2026-09-17 — show the message that went ──────
+ Owner: "a reminder sent successfully — is it possible to show the content
+ of the message that has gone?" → "create a helper and show messages in
+ the audit".
+ · migration jtd-nucleus/013 (LIVE): jtd_render_message(tenant, source_type,
+   channel, vars) renders OUR template copy (n_jtd_templates subject/content,
+   tenant row then global, same resolution as the worker) with the row's
+   stored template_variables → {subject, body, template_key,
+   provider_template_id, source:'template_copy'}. The provider (MSG91)
+   formats the final bytes; this is the faithful preview as long as our copy
+   matches the registered template — the bubble says so in small print.
+   jtd_nudge_payment now also returns 'message' (spliced by prosrc
+   substitution, post-checked). jtd_contract_activity rows carry 'message'
+   for every communication (ladder nudges, the scanner's automated
+   reminders, payment-received notices).
+ · UI: "Show message" toggle under every communication row in the History
+   drawer AND in the Audit tab's Collections rows (one shared MessageBubble /
+   MessageToggle in components/ops/HistoryDrawer.tsx). Subject for email,
+   body with the template's line breaks kept.
+ Probed live: Nishikant's WhatsApp reminder renders "Hi NISHIKANT
+ MHAISEKHAR, BBB Bhagyanagar has sent you an invoice. Invoice: INV-10033 ·
+ Amount due: Rs 4,500 · Pay here: 9849502193@kbl"; the nudge tool's return
+ carries the rendered email (subject + body) — rolled back.
+ Extra checklist:
+ [ ] History → a reminder row → "Show message" → the text as sent.
+ [ ] Contract Audit tab → Collections → same toggle on the same row.
+ Not done (out of the asked scope): a "View message" link on the send
+ toast — the tool already returns the text, so it is a UI-only follow-up.
+
 ─── DB (LIVE, applied 2026-09-17) ───────────────────
  contractnest-edge/supabase/migrations/jtd-nucleus/010_collections_board_reader.sql
    jtd_collections_board(p_tenant, p_is_live, p_filters jsonb, p_user)

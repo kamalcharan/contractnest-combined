@@ -12,10 +12,39 @@ import { ArrowUpRight, Mail, MessageCircle, PhoneCall, UserPlus, PauseCircle, Pl
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useInvoiceTheme } from '@/pages/invoices/ui';
 import { fmtMoney } from '@/utils/format';
-import { useContractActivity, type ActivityRow, type ActivitySource } from '@/hooks/queries/useCollectionsQueries';
+import { useContractActivity, type ActivityRow, type ActivitySource, type RenderedMessage } from '@/hooks/queries/useCollectionsQueries';
 import { clean, fmtTime } from './JobCard';
 
 const PAGE = 30;
+
+/**
+ * The message as it went: our template copy with the row's variables. Shared
+ * by the History drawer and the contract page's Audit tab so both read the
+ * same thing. `pre-wrap` keeps the template's line breaks.
+ */
+export const MessageBubble: React.FC<{ message: RenderedMessage; channel?: string; colors: any }> = ({ message, channel, colors }) => (
+  <div className="mt-2 rounded-xl border px-3 py-2.5" style={{ borderColor: `${colors.utility.primaryText}14`, backgroundColor: colors.utility.secondaryBackground }}>
+    {message.subject && <p className="text-[12px] font-bold mb-1" style={{ color: colors.utility.primaryText }}>{message.subject}</p>}
+    <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: colors.utility.primaryText }}>{message.body}</p>
+    <p className="text-[10px] mt-2" style={{ color: colors.utility.secondaryText }}>
+      Our copy of the {channel === 'whatsapp' ? 'WhatsApp' : channel || ''} template{message.provider_template_id ? ` (${message.provider_template_id})` : ''} with the values that were sent. The provider formats the final message.
+    </p>
+  </div>
+);
+
+/** "Show message" toggle + bubble — one component, used per row. */
+export const MessageToggle: React.FC<{ message?: RenderedMessage; channel?: string; colors: any }> = ({ message, channel, colors }) => {
+  const [open, setOpen] = useState(false);
+  if (!message) return null;
+  return (
+    <>
+      <button onClick={() => setOpen((o) => !o)} className="text-[11px] font-bold mt-1 min-h-[28px]" style={{ color: colors.brand.primary }} aria-expanded={open}>
+        {open ? 'Hide message' : 'Show message'}
+      </button>
+      {open && <MessageBubble message={message} channel={channel} colors={colors} />}
+    </>
+  );
+};
 
 /** Icon + accent for a row, by kind first, then source. */
 export const rowVisual = (r: ActivityRow, colors: any): { Icon: React.ElementType; color: string } => {
@@ -107,6 +136,7 @@ const HistoryDrawer: React.FC<{
                         <p className="text-[11px] mt-0.5" style={sub}>{(r.from || '—').replace(/_/g, ' ')} → <b style={{ color }}>{(r.to || '—').replace(/_/g, ' ')}</b></p>
                       )}
                       {r.detail && <p className="text-[11.5px] mt-0.5" style={sub}>{r.detail}</p>}
+                      <MessageToggle message={r.message} channel={r.channel} colors={colors} />
                       <p className="text-[10.5px] mt-1 flex items-center gap-2 flex-wrap" style={{ ...sub, ...mono }}>
                         <span>{who}</span>
                         <span>·</span>

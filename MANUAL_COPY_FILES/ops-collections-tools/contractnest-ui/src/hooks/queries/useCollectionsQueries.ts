@@ -181,6 +181,16 @@ export interface ActivityRow {
   event_id?: string;
   ref_id?: string;
   category?: string;
+  /** The message as sent — our template copy rendered with the row's stored variables (jtd_render_message). */
+  message?: RenderedMessage;
+}
+export interface RenderedMessage {
+  subject?: string;
+  body: string;
+  template_key?: string;
+  provider_template_id?: string;
+  /** 'template_copy': the provider formats the final message; this is the faithful preview. */
+  source: 'template_copy' | string;
 }
 export interface ContractActivity {
   success: boolean;
@@ -331,6 +341,8 @@ export interface NudgeResult {
   amount: string;
   nudge_count: number;
   next_dunning_at: string | null;
+  /** What went out, rendered (migration 013). Absent when no template copy exists. */
+  message?: RenderedMessage;
 }
 
 export const useNudgePayment = () =>
