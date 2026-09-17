@@ -1,4 +1,7 @@
 -- ============================================================================
+-- NOTE 2026-09-17: text updated to match the live body after migration 017
+-- (invoice_rows union, invoice_overdue/invoice_ahead kind ranks, needs_by_lane,
+-- payment_request in the feed). 017 applied them as an anchor rewrite.
 -- jtd-nucleus/014 — Ops SERVICES lane: visit tools + the board reader that
 -- serves both lanes. Spec: OPS-JTD-TOOLS-SPEC.md §4, §5, §11 (extension
 -- pattern). Owner decisions 2026-09-17: lanes are chips on the same board;
@@ -486,7 +489,38 @@ BEGIN
            v.scheduled_date
       FROM visits v
   ),
-  all_rows AS (SELECT * FROM job_rows UNION ALL SELECT * FROM awaiting_rows UNION ALL SELECT * FROM visit_rows),
+  invoice_rows AS (
+    -- a WHOLE-INVOICE due (017): Money In's rule (get_tenant_receivables `ev` union) — open receivable invoice, balance > 0,
+    -- contract with no live billing event; skipped when an open payment job already points at the invoice (that job is the row)
+    SELECT i.id::text, 'collections',
+           CASE WHEN x.due < v_today THEN 'invoice_overdue' ELSE 'invoice_ahead' END,
+           NULL::uuid, c.id, c.contract_number::text, c.buyer_id, c.buyer_name::text,
+           i.id, i.invoice_number::text, NULL::text, NULL::text, NULL::integer, NULL::integer,
+           i.balance, COALESCE(i.currency,'INR')::text, x.due, i.status::text,
+           GREATEST(v_today - x.due, 0), (x.due - v_today), 0, COALESCE(s.n, 0)::integer, s.last_at,
+           s.last_channel, CASE WHEN s.n > 0 THEN 'payment_request' END, s.last_status, NULL::text, NULL::uuid, NULL::timestamptz,
+           NULL::integer, NULL::integer, NULL::text, NULL::timestamptz,
+           NULL::text, NULL::date,
+           NULL::uuid, NULL::text, NULL::numeric, NULL::text, NULL::timestamptz,
+           NULL::uuid, NULL::uuid, NULL::text, NULL::timestamptz, NULL::text,
+           NULL::text, NULL::timestamptz, NULL::date,
+           NULL::uuid, NULL::text, NULL::text, NULL::jsonb,
+           (x.due::timestamp AT TIME ZONE 'Asia/Kolkata')
+      FROM public.t_invoices i
+      JOIN public.t_contracts c ON c.id = i.contract_id
+      CROSS JOIN LATERAL (SELECT COALESCE(i.due_date, (i.issued_at AT TIME ZONE 'Asia/Kolkata')::date, (i.created_at AT TIME ZONE 'Asia/Kolkata')::date) AS due) x
+      LEFT JOIN LATERAL (SELECT count(*) AS n, max(n.created_at) AS last_at,
+                                (array_agg(n.channel_code ORDER BY n.created_at DESC))[1] AS last_channel,
+                                (array_agg(n.status_code ORDER BY n.created_at DESC))[1] AS last_status
+                           FROM public.n_jtd n WHERE n.tenant_id = p_tenant AND n.source_type_code = 'payment_request' AND n.source_id = i.id) s ON true
+     WHERE i.tenant_id = p_tenant AND i.invoice_type = 'receivable' AND COALESCE(i.is_active, true) AND COALESCE(i.is_live, true) = p_is_live
+       AND i.status IN ('unpaid','partially_paid') AND i.balance > 0
+       AND NOT EXISTS (SELECT 1 FROM public.t_contract_events e WHERE e.contract_id = i.contract_id AND e.event_type = 'billing' AND COALESCE(e.is_active, true)
+                          AND COALESCE(e.is_live, true) = p_is_live AND COALESCE(e.status, '') NOT IN ('cancelled','skipped','waived'))
+       AND NOT EXISTS (SELECT 1 FROM public.n_jtd j WHERE j.tenant_id = p_tenant AND j.event_type_code = 'payment' AND j.invoice_id = i.id
+                          AND j.status_code IN ('scheduled','due','overdue','partial_payment') AND COALESCE(j.is_active, true))
+  ),
+  all_rows AS (SELECT * FROM job_rows UNION ALL SELECT * FROM awaiting_rows UNION ALL SELECT * FROM visit_rows UNION ALL SELECT * FROM invoice_rows),
   placed AS (
     SELECT r.*, (r.anchor_at AT TIME ZONE 'Asia/Kolkata')::date AS anchor_date, ((r.anchor_at AT TIME ZONE 'Asia/Kolkata')::date - v_today) AS days FROM all_rows r
   ),
@@ -495,9 +529,9 @@ BEGIN
            CASE WHEN p.anchor_at IS NULL THEN 'parked' WHEN p.days < 0 THEN 'overdue' WHEN p.days = 0 THEN 'today'
                 WHEN p.days <= v_b1 THEN 'b1' WHEN p.days <= v_b2 THEN 'b2' ELSE 'b3' END AS bucket,
            CASE p.kind WHEN 'declaration_pending' THEN 0 WHEN 'send_failed' THEN 1 WHEN 'visit_in_progress' THEN 2 WHEN 'slot_to_confirm' THEN 2 WHEN 'rung_due' THEN 3
-                       WHEN 'visit_overdue' THEN 4 WHEN 'visit_today' THEN 5 WHEN 'call_open' THEN 6 WHEN 'overdue_no_ladder' THEN 7
+                       WHEN 'visit_overdue' THEN 4 WHEN 'visit_today' THEN 5 WHEN 'call_open' THEN 6 WHEN 'overdue_no_ladder' THEN 7 WHEN 'invoice_overdue' THEN 7
                        WHEN 'ladder_exhausted' THEN 8 WHEN 'awaiting_activation' THEN 9 WHEN 'visit_scheduled' THEN 10
-                       WHEN 'payment_ahead' THEN 11 WHEN 'rung_ahead' THEN 12 ELSE 13 END AS kind_rank,
+                       WHEN 'payment_ahead' THEN 11 WHEN 'invoice_ahead' THEN 11 WHEN 'rung_ahead' THEN 12 ELSE 13 END AS kind_rank,
            (CASE WHEN p.anchor_at IS NULL THEN v_from IS NULL
                  ELSE (v_from IS NULL OR (p.anchor_at AT TIME ZONE 'Asia/Kolkata')::date >= v_from) AND (p.anchor_at AT TIME ZONE 'Asia/Kolkata')::date <= v_to END) AS f_window,
            (v_kinds IS NULL OR p.kind = ANY (v_kinds)) AS f_kind,
@@ -564,7 +598,7 @@ BEGIN
        || jsonb_build_object('unassigned_visits', (SELECT count(*) FROM bucketed b WHERE b.f_window AND b.lane = 'services' AND b.owner_id IS NULL AND b.f_channel AND b.f_age AND b.f_cycle AND b.f_slot AND b.f_q)) AS who,
       -- needs_by_lane: the focus strip's "N need you" per lane — window only, no other filter, so the strip is a stable map while the user drills
       (SELECT jsonb_build_object('collections', count(*) FILTER (WHERE b.lane = 'collections'), 'services', count(*) FILTER (WHERE b.lane = 'services'))
-         FROM bucketed b WHERE b.f_window AND b.kind IN ('declaration_pending','send_failed','call_open','rung_due','overdue_no_ladder','ladder_exhausted','awaiting_activation','visit_overdue','visit_today','visit_in_progress','slot_to_confirm')) AS needs_by_lane,
+         FROM bucketed b WHERE b.f_window AND b.kind IN ('declaration_pending','send_failed','call_open','rung_due','overdue_no_ladder','ladder_exhausted','awaiting_activation','invoice_overdue','visit_overdue','visit_today','visit_in_progress','slot_to_confirm')) AS needs_by_lane,
       (SELECT count(*) FROM bucketed b WHERE b.f_window) AS in_window,
       (SELECT count(*) FROM matched) AS matched
   )
@@ -582,7 +616,7 @@ BEGIN
       'actor_type', n.performed_by_type, 'actor_name', n.performed_by_name, 'at', n.created_at, 'error', n.error_message) ORDER BY n.created_at DESC), '[]'::jsonb)
     INTO v_happened
     FROM (SELECT * FROM public.n_jtd n WHERE n.tenant_id = p_tenant AND COALESCE(n.is_live, true) = p_is_live
-           AND n.source_type_code IN ('payment_nudge_email','payment_nudge_whatsapp','payment_call_due','payment_call_logged') ORDER BY n.created_at DESC LIMIT 40) n;
+           AND n.source_type_code IN ('payment_nudge_email','payment_nudge_whatsapp','payment_call_due','payment_call_logged','payment_request') ORDER BY n.created_at DESC LIMIT 40) n;
 
   -- visit activity joins the feed from n_jtd_history (visit_* actions), newest first, merged client-side by 'at'
   SELECT COALESCE(v_happened, '[]'::jsonb) || COALESCE((SELECT jsonb_agg(jsonb_build_object(
