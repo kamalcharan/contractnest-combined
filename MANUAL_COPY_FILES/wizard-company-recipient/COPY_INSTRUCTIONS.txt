@@ -1,0 +1,102 @@
+═══════════════════════════════════════════════════
+BATCH: wizard-company-recipient (2026-09-17) — a corporate contact with no
+       contact person is a valid recipient; the wizard says so in Agreement
+       and Delivery stops refusing it
+═══════════════════════════════════════════════════
+Owner: "it has contact number and mobile name — if there is a restriction,
+in the 2nd step only we have to alert saying add the contact person";
+"fix it".
+
+Submodule affected: contractnest-ui only. Three files. No route, API, edge
+or DB change. Existing draft save path, toasts and loaders untouched.
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ CN-1010 (signia → "buyer b", live draft) stopped at chapter 04 Delivery &
+ acceptance with "Not saved. The selected contact person is missing. Return
+ to Agreement to choose the recipient." "buyer b" is a corporate contact
+ with a mobile and an email and, at the time, no contact person. Delivery
+ required, for any corporate recipient, either a chosen person or the
+ "use company contact" flag whenever acceptance is not automatic; the flag
+ is only set by a button inside the collapsed "Contact person & delivery
+ details" section of Agreement, and Agreement itself never asked for it.
+ The draft's saved wizard state: buyerId set, buyerContactPersonId null,
+ useCompanyContact false, acceptanceMethod signoff → blocked. The message
+ was wrong too: no person had ever been selected and none existed.
+
+─── WHAT CHANGED ────────────────────────────────────
+ steps/BuyerSelectionStep.tsx
+ · New effect: when the loaded corporate contact has zero contact persons
+   (and no person / company flag is set yet), the company contact is
+   selected automatically — same wiring as the existing "auto-select the
+   primary person" effect, no toast. The "Using Company Contact Info" card
+   then shows in the picker as before. Guarded against the change-buyer
+   flow and the loading state; runs once per contact.
+ experience/AgreementPage.tsx
+ · The contact card's caption now says, in that chapter: "No contact person
+   — the agreement goes to the company's own mobile and email. Add a contact
+   person in Contacts if you want a named recipient." (was "Company contact
+   selected"). State-driven; no extra fetch.
+ experience/DeliveryPage.tsx
+ · A person is required to EXIST only when one was chosen in Agreement
+   (needsPerson = corporate && buyerContactPersonId). Otherwise the contact
+   itself is the acceptance recipient and its own channels are shown —
+   matching what the send handler already does (buyer_contact_person_id,
+   else buyer_id). The only remaining refusal is a chosen person that has
+   since been removed: "The contact person chosen in Agreement is no
+   longer on this contact. Return to Agreement to choose the recipient."
+ · CN-1010 as saved today passes this chapter without going back.
+
+ Not changed (noted): a contact person with no mobile/email — e.g. the
+ "buytest" person just linked under "buyer b" — will show "No email on this
+ contact…" in Delivery, and the send falls back to that person's channels
+ only (edge contracts handler, lookupId = buyer_contact_person_id first).
+ Give the person a mobile/email in Contacts, or leave the company contact
+ selected.
+
+Production checklist
+  Transactions: n/a — no write path changed; drafts save as before.
+  Races:        the new effect is guarded by the loading flag, the
+                change-buyer flag and "already chosen" state; it cannot
+                re-fire after the parent state updates.
+  Errors:       Delivery's validation list and recipient card unchanged in
+                shape; only the condition and the wording.
+  Toasts:       none added (owner: alert belongs in the Agreement step —
+                it is inline copy there, not a toast).
+  Loaders:      existing InlineLoader for recipient details unchanged.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\wizard-company-recipient\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ wizard-company-recipient copied" -ForegroundColor Green
+# UI dev server picks it up; Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — on SIGNIA (Live)
+═══════════════════════════════════════════════════
+- [ ] Reopen draft CN-1010 → it resumes at Delivery & acceptance; with
+      "After the other party accepts" chosen, the Acceptance contact card
+      reads "buyer b" with the company email (kamalcharan@gmail.com), no
+      validation error; "Continue" saves and moves to Events Preview.
+- [ ] Go back to Agreement on CN-1010: the contact card lists "buytest"
+      under Contract Contact Person (auto-selected as the only person);
+      pick it → Delivery shows "buytest" and "No email on this contact…"
+      (it has no channels yet). Press "Use Company Contact Info" → caption
+      reads "No contact person — the agreement goes to the company's own
+      mobile and email…"; Delivery shows "buyer b" again.
+- [ ] New draft with a corporate contact that has NO contact persons: after
+      picking it, the picker shows "Using Company Contact Info" by itself
+      and the caption above; Delivery passes with sign-off acceptance.
+- [ ] New draft with a corporate contact that HAS persons: the primary
+      person is auto-selected as before; nothing else changes.
+- [ ] Individual contact: unchanged (no person section, Delivery passes).
+- [ ] Change contact mid-draft ("Change" → pick another): no stale
+      auto-selection from the previous contact.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
