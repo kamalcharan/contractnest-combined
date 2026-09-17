@@ -94,7 +94,7 @@ All tools: `SECURITY DEFINER`, tenant-scoped by `p_tenant_id`, take `p_actor_typ
 
 **Actor rule:** a human call passes the user's id; VaNi passes its well-known id. Autonomy is *not* enforced inside the tools today (everything is manual); when VaNi arrives, the autonomy check lives in VaNi's dispatcher, in front of the same tools.
 
-## 5. Cockpit (`/ops/cockpit`, staged at `/ops/cockpit/next`)
+## 5. Cockpit (`/ops/cockpit` — the board is the revenue-side landing page since 2026-09-17, batch `ops-cockpit-swap`; the expense side keeps the original cockpit via `pages/ops/cockpit/Home.tsx` until To Pay covers it; `/ops/cockpit/next` redirects)
 
 **BUILT 2026-09-17 as ONE BOARD (batch `ops-cockpit-board`, migration `jtd-nucleus/010`) — this supersedes the three-section layout below, which is kept for the record.** Owner decisions: lanes apply to everything, not only Coming up; filters are real; list and lane cards are the same component with the same actions.
 

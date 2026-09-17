@@ -1,6 +1,7 @@
 // src/pages/ops/cockpit/Commitments.tsx
 //
-// Ops on JTD — the future body of /ops/cockpit, staged at /ops/cockpit/next.
+// Ops on JTD — the body of /ops/cockpit for the revenue side (mounted through
+// ./Home.tsx since 2026-09-17; staged at /ops/cockpit/next before that).
 // Collections + Services lanes, read from ONE reader (jtd_ops_board) and acted
 // on with TOOLS that carry an actor (spec §4, §11): the ladder tools for
 // payments, the visit tools (assign · schedule · confirm slot · start · done)
@@ -169,7 +170,7 @@ const OpsCommitmentsPage: React.FC = () => {
     if (l === 'collections') setSlot('');
     if (l === 'services') { setChannel(''); setCycle(''); }
   };
-  // Deep link: /ops/cockpit/next?focus=services (the retired Appointments and Event Schedule entries land here).
+  // Deep link: /ops/cockpit?focus=services (the retired Appointments routes land here).
   const [params, setParams] = useSearchParams();
   useEffect(() => {
     const f = params.get('focus');
