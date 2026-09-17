@@ -14,7 +14,7 @@
 // too; the Log-a-call sheet is a modal the page owns (one at a time).
 
 import React, { useState } from 'react';
-import { ArrowUpRight, Check, Mail, MessageCircle, PhoneCall, UserPlus, PauseCircle, PlayCircle, RefreshCw, X, IndianRupee, CalendarClock } from 'lucide-react';
+import { ArrowUpRight, Check, Mail, MessageCircle, PhoneCall, UserPlus, PauseCircle, PlayCircle, RefreshCw, X, IndianRupee, CalendarClock, History } from 'lucide-react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useInvoiceTheme } from '@/pages/invoices/ui';
 import { fmtMoney, fmtDate } from '@/utils/format';
@@ -32,6 +32,8 @@ export interface JobCardActions {
   onConfirm: (card: BoardCard) => void;
   onReview: (card: BoardCard) => void;
   onOpen: (card: BoardCard) => void;
+  /** Opens the contract's activity timeline (History drawer). */
+  onHistory: (card: BoardCard) => void;
 }
 
 export interface LadderInfo {
@@ -256,9 +258,14 @@ const JobCard: React.FC<JobCardProps> = ({ card: c, compact, busy, locked, team,
 
   const name = clean(c.buyer_name) || c.contract_number;
   const openBtn = (
-    <button onClick={() => actions.onOpen(c)} className={`inline-flex items-center gap-1 font-bold ${compact ? 'text-[11px]' : 'text-xs ml-auto'}`} style={{ color: brand }}>
-      Open <ArrowUpRight size={compact ? 12 : 13} />
-    </button>
+    <span className={`inline-flex items-center gap-3 ${compact ? '' : 'ml-auto'}`}>
+      <button onClick={() => actions.onHistory(c)} className={`inline-flex items-center gap-1 font-bold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{ color: brand }} title="What has already been tried on this contract">
+        <History size={compact ? 12 : 13} /> History
+      </button>
+      <button onClick={() => actions.onOpen(c)} className={`inline-flex items-center gap-1 font-bold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{ color: brand }}>
+        Open <ArrowUpRight size={compact ? 12 : 13} />
+      </button>
+    </span>
   );
 
   const panels = (

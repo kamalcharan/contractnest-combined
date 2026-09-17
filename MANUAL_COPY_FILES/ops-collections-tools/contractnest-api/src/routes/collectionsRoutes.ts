@@ -6,6 +6,8 @@
 //   GET  /worklist?horizon=30            jtd_collections_worklist (legacy shape)
 //   GET  /board?horizon=&from=&to=&bands=&kinds=&channel=&age=&cycle=&who=&q=&limit=&limits=
 //                                        jtd_collections_board — the cockpit reads THIS
+//   GET  /contracts/:contractId/activity?sources=&limit=&offset=
+//                                        jtd_contract_activity — the Audit tab + the card's History drawer
 //   POST /payments/:jobId/nudge          jtd_nudge_payment      {channel, note}
 //   POST /payments/:jobId/call           jtd_log_payment_call   {called_at, outcome, notes, promise_date}
 //   POST /payments/:jobId/escalate       jtd_escalate_payment_call {assign_to, note, due_at}  (self + due_at = Follow up)
@@ -49,6 +51,7 @@ const toolLimit = rateLimit({
 
 router.get('/worklist', readLimit, controller.worklist);
 router.get('/board', readLimit, controller.board);
+router.get('/contracts/:contractId/activity', readLimit, controller.contractActivity);
 router.post('/payments/:jobId/nudge', toolLimit, controller.nudge);
 router.post('/payments/:jobId/call', toolLimit, controller.logCall);
 router.post('/payments/:jobId/escalate', toolLimit, controller.escalate);

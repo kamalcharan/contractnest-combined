@@ -21,6 +21,8 @@ const PAUSE_REASONS = ['promise', 'dispute', 'manual'] as const;
 // Refusals that are the caller's doing (400/404/409) vs. everything else (500).
 const REFUSAL_STATUS: Record<string, number> = {
   job_not_found: 404,
+  contract_not_found: 404,
+  contract_required: 400,
   assignee_not_in_tenant: 404,
   job_not_open: 409,
   already_paid: 409,
@@ -169,6 +171,26 @@ class CollectionsController {
     } catch (error) {
       console.error('[CollectionsController] board error:', error);
       internalError(res, 'Failed to load the collections board');
+    }
+  };
+
+  /** GET /contracts/:contractId/activity?sources=service,billing,collections&limit=50&offset=0 */
+  contractActivity = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const contractId = String(req.params.contractId || '');
+      if (!/^[0-9a-f-]{36}$/i.test(contractId)) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'contractId must be a uuid', 400); return; }
+      const allowed = ['service', 'billing', 'collections'];
+      const sources = (this.str(req.query.sources) || '').split(',').map((s) => s.trim()).filter((s) => allowed.includes(s));
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? '50'), 10) || 50, 1), 500);
+      const offset = Math.max(parseInt(String(req.query.offset ?? '0'), 10) || 0, 0);
+      const result = await collectionsService.contractActivity(
+        this.tenantId(req), this.isLive(req), contractId, sources.length ? sources : null, limit, offset
+      );
+      if (!result.success) { this.refuse(res, result.error!); return; }
+      sendSuccess(res, result.data);
+    } catch (error) {
+      console.error('[CollectionsController] contractActivity error:', error);
+      internalError(res, 'Failed to load the contract activity');
     }
   };
 

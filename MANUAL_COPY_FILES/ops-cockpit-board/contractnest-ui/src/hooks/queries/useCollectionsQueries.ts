@@ -160,9 +160,48 @@ export interface CollectionsBoard {
   generated_at: string;
 }
 
+/** One row of a contract's activity timeline (jtd_contract_activity). */
+export type ActivitySource = 'service' | 'billing' | 'collections';
+export interface ActivityRow {
+  id: string;
+  source: ActivitySource;
+  kind: string;
+  at: string;
+  actor_type: 'user' | 'vani' | 'system' | 'customer' | string;
+  actor_name: string;
+  title: string;
+  detail?: string;
+  from?: string;
+  to?: string;
+  channel?: string;
+  status?: string;
+  amount?: number;
+  currency?: string;
+  job_id?: string;
+  event_id?: string;
+  ref_id?: string;
+  category?: string;
+}
+export interface ContractActivity {
+  success: boolean;
+  contract_id: string;
+  contract_number: string;
+  buyer_id: string | null;
+  buyer_name: string | null;
+  limit: number;
+  offset: number;
+  sources: ActivitySource[] | null;
+  rows: ActivityRow[];
+  total: number;
+  counts: { service: number; billing: number; collections: number; all: number };
+  generated_at: string;
+}
+
 export const collectionsKeys = {
   all: ['collections'] as const,
   board: (tenantId: string, filters: BoardFilters) => [...collectionsKeys.all, 'board', tenantId, filters] as const,
+  activity: (tenantId: string, contractId: string, sources: string, limit: number, offset: number) =>
+    [...collectionsKeys.all, 'activity', tenantId, contractId, sources, limit, offset] as const,
 };
 
 /** Human copy for the tools' machine-readable refusals. */
@@ -232,6 +271,30 @@ export const useCollectionsBoard = (filters: BoardFilters, options?: { enabled?:
     placeholderData: keepPreviousData,
     staleTime: 20 * 1000,
     refetchOnWindowFocus: true,
+  });
+};
+
+/** A contract's activity timeline — read by the Audit tab and the card's History drawer. */
+export const useContractActivity = (
+  contractId: string | null | undefined,
+  opts?: { sources?: ActivitySource[]; limit?: number; offset?: number; enabled?: boolean }
+) => {
+  const { currentTenant } = useAuth();
+  const sources = (opts?.sources ?? []).join(',');
+  const limit = opts?.limit ?? 50;
+  const offset = opts?.offset ?? 0;
+  return useQuery({
+    queryKey: collectionsKeys.activity(currentTenant?.id || '', contractId || '', sources, limit, offset),
+    queryFn: async (): Promise<ContractActivity> => {
+      if (!currentTenant?.id || !contractId) throw new Error('Missing contract');
+      const params: Record<string, string> = { limit: String(limit), offset: String(offset) };
+      if (sources) params.sources = sources;
+      const response = await api.get(`${BASE}/contracts/${contractId}/activity`, { params });
+      return unwrap<ContractActivity>(response);
+    },
+    enabled: !!currentTenant?.id && !!contractId && opts?.enabled !== false,
+    placeholderData: keepPreviousData,
+    staleTime: 20 * 1000,
   });
 };
 
