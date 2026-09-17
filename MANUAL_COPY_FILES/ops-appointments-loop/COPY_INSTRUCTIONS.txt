@@ -1,0 +1,180 @@
+═══════════════════════════════════════════════════
+BATCH: ops-appointments-loop (2026-09-17) — Appointments = the visit's slot,
+       closed WITH THE CUSTOMER · Ask customer → public /slot/:token page →
+       Accept / Suggest another time / Not needed · old appointment pages retired
+       · board loader
+═══════════════════════════════════════════════════
+Owner: "appointments?" → "ok go ahead — also integrate 'loader' into the page,
+ping when done".
+
+REQUIRES ops-services-lane to be copied first (this batch's files are seeded
+FROM it: JobCard, Commitments, the hook, the collections API files). If
+ops-services-lane is already merged to main, copy this batch straight in.
+
+Submodules affected: contractnest-edge (migration 015 — ALREADY APPLIED LIVE
+as 015a/b/c + one anchor rewrite; the 014 text in ops-services-lane was
+updated to match the live board reader — source of record, do not re-run),
+contractnest-api, contractnest-ui.
+
+─── WHY ─────────────────────────────────────────────
+ Live facts: 164 appointments ever · 163 auto-cancelled by the nightly
+ expiry cron · 1 requested · 0 accepted. The scanner asks six days ahead,
+ nobody chases by hand, and the customer never had a way to answer.
+
+─── WHAT CHANGED ────────────────────────────────────
+ THE LOOP
+ · "Ask customer" on every visit card whose slot is not yet confirmed. One
+   tap: if no timed slot exists it proposes 10:00 on the planned day, then
+   offers
+     Share on WhatsApp   opens wa.me/<customer> with the message + link,
+                         from YOUR number — works today, nothing to register
+     Copy message        clipboard
+     Send on WhatsApp /  appear only once the owner registers the provider
+     Send by email       templates (see OWNER ACTION) — sent by ContractNest
+   Every ask is recorded (appointment asked_at / ask_count, history
+   visit_slot_asked, the feed).
+ · The customer opens /slot/:token (public, no login — the check-in pattern;
+   the unguessable per-appointment slot_token is the grant) and sees
+   "Hi <first name>, can we visit on <slot>?" with
+     Yes, that works      → appointment accepted → visit moves to that slot →
+                            the existing "visit scheduled" WhatsApp goes out
+     Suggest another time → appointment rescheduled to the customer's time,
+                            NEVER self-confirms: the card becomes
+                            "Customer proposed a slot" (needs you) with
+                            Confirm slot primary
+     Not needed this time → declined; changing their mind re-opens on the
+                            same link
+   The page shows the business name/logo/phone, the service, visit n of m,
+   the technician; states: proposed · you suggested · confirmed · declined ·
+   under way · closed. Own spinner, inline errors, phone-first.
+ · Board: new kind slot_to_confirm (in "need you", Services chip "Slots to
+   confirm", headline "N customer slots to confirm"), card evidence "asked
+   17 Sep · no reply yet" / "customer suggested Tue 22 Sep, 4:30 PM — 'Afternoon
+   please'" / "customer said not needed", feed rows for asked / confirmed /
+   suggested / not needed, "Awaiting customer" pill once asked.
+ · ?focus=services deep link on /ops/cockpit/next.
+ RETIRED
+ · /ops/appointments (kanban) and /appointments (stub) → redirect to the board
+   with the Services focus; menu entry removed; the two page files are deleted
+   (see STEP 2b). The hook useAppointmentQueries stays (EventCard, Event
+   Schedule, VaNi desk still import it).
+ LOADER (owner ask)
+ · The board keeps the last answer on screen while a new one loads (focus,
+   filter, action, refresh) and now SHOWS it: a thin pulsing bar under the
+   controls and the board dims to 55% until the answer lands. Per-card
+   buttons already spin on the action in flight; the public page has its
+   own spinner on load and on every button.
+
+─── OWNER ACTION (to enable "Send" from ContractNest) ─
+ Until done, only Share/Copy are offered — nothing is broken.
+ 1. MSG91 WhatsApp: register a POSITIONAL template
+      Hi {{1}}, {{2}} would like to visit for {{3}} on {{4}}. Tap to confirm or
+      suggest another time: {{5}}
+    (1 customer, 2 business, 3 service, 4 slot, 5 link — the order in
+    n_jtd_templates.variables; the worker's generic positional path needs no
+    code). Then:
+      UPDATE n_jtd_templates SET provider_template_id = '<msg91 name>'
+       WHERE template_key = 'visit_slot_request_whatsapp' AND tenant_id IS NULL;
+ 2. MSG91 email: create a template with variables customer_name,
+    tenant_name, service_name, slot_text, link; then set
+    provider_template_id on template_key 'visit_slot_request_email'.
+ The board's ask_channels reflects this automatically.
+
+─── FILES ───────────────────────────────────────────
+ contractnest-edge/supabase/migrations/jtd-nucleus/015_visit_slot_customer_loop.sql   LIVE
+ contractnest-api/src/services/collectionsService.ts        askVisitSlot()
+ contractnest-api/src/controllers/collectionsController.ts  askVisitSlot handler (+ link base from
+                                                            PUBLIC_APP_URL | FRONTEND_URL | request origin)
+ contractnest-api/src/routes/collectionsRoutes.ts           POST /api/jtd/collections/visits/:eventId/ask
+ contractnest-api/src/services/visitSlotService.ts          NEW — public RPC pass-through
+ contractnest-api/src/controllers/visitSlotController.ts    NEW
+ contractnest-api/src/routes/visitSlotPublicRoutes.ts       NEW — /api/visit-slot/:token (GET) · /respond (POST), no auth, no-cache
+ contractnest-api/src/index.ts                              registers the public router (lazy-require block, like check-in)
+ contractnest-ui/src/hooks/queries/useCollectionsQueries.ts slot_to_confirm, visit.ask, ask_channels, useAskVisitSlot
+ contractnest-ui/src/components/ops/JobCard.tsx             Ask customer action + panel, slot_to_confirm, evidence
+ contractnest-ui/src/pages/ops/cockpit/Commitments.tsx      wiring, chip, headline, feed, ?focus=, LOADER
+ contractnest-ui/src/pages/visit-slot/VisitSlotPage.tsx     NEW — the customer's page
+ contractnest-ui/src/pages/visit-slot/useVisitSlot.ts       NEW — bare-axios client
+ contractnest-ui/src/App.tsx                                /slot/:token route; /ops/appointments + /appointments → redirects
+ contractnest-ui/src/utils/constants/industryMenus.ts       Appointments entry removed
+
+Production checklist
+  Transactions: every tool/RPC is one PL/pgSQL transaction; downstream
+                refusals RAISE 'TOOL:…' and roll back (probe: decline →
+                re-open → accept left exactly 1 active appointment).
+  Races:        FOR UPDATE on the event (ask) and the appointment (respond);
+                update_appointment stays version-checked; one action in
+                flight per card; single-use-safe (asking twice records
+                twice, answering twice is idempotent on accept).
+  Errors:       machine-readable reasons → HTTP → REASON_COPY toasts; the
+                public page renders the API's message inline.
+  Toasts:       react-hot-toast via useToolMutation (board); inline on the
+                public page (no Toaster outside the shell).
+  Loaders:      board bar + dim (new), per-card spinner, public page spinner.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 1 — copy
+Copy-Item "MANUAL_COPY_FILES\ops-appointments-loop\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-appointments-loop\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-appointments-loop\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source-of-record SQL only
+Copy-Item "MANUAL_COPY_FILES\ops-services-lane\contractnest-edge\*"     -Destination "contractnest-edge\" -Recurse -Force   # 014 text updated to match live
+
+STEP 2b — delete the retired pages (App.tsx no longer imports them)
+Remove-Item "contractnest-ui\src\pages\operations\appointments" -Recurse -Force
+Remove-Item "contractnest-ui\src\pages\appointments" -Recurse -Force
+Write-Host "✅ ops-appointments-loop copied" -ForegroundColor Green
+
+STEP 3 — run
+cd contractnest-api ; npm run dev      # restart — new public router
+cd ..\contractnest-ui ; npm run dev    # Ctrl+F5
+# Optional: set PUBLIC_APP_URL on the API (e.g. https://app.contractnest.com)
+# so the /slot links carry the public origin; locally the request origin is used.
+
+Verified here: API tsc exit 0 · UI tsc = pristine main count, 0 in touched
+files · vite build passes with the two pages deleted · submodules restored.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — on SIGNIA
+═══════════════════════════════════════════════════
+- [ ] /ops/appointments and /appointments both land on the board with
+      Services focused; no Appointments entry in the menu.
+- [ ] A scheduled visit with "no slot agreed yet": primary button is
+      Ask customer. Panel says it proposes 10:00 on the planned day →
+      "Share on WhatsApp" → wa.me opens with the message + link; the card now
+      reads "Awaiting customer · asked <today> · no reply yet"; the feed shows
+      "<you> asked <customer> to confirm <slot>".
+- [ ] Open the link on a phone (or paste it): business header, "Hi <name>,
+      can we visit on …?", service, visit n of m.
+      · Suggest another time → pick tomorrow 4:30 PM, note → "we will
+        confirm shortly". Board: card is "Customer proposed a slot" (amber,
+        needs you, chip Slots to confirm), evidence shows the suggestion and
+        the note; Confirm slot primary → confirm → page reloads as
+        "Confirmed for …"; the customer's WhatsApp confirmation goes out if
+        that rule is on.
+      · Not needed this time → page says so; board card shows "customer
+        said not needed"; the feed shows it. Then "Changed your mind?" →
+        Yes → confirmed again (same link).
+- [ ] Copy message → clipboard has the message; the link is shown under the
+      buttons.
+- [ ] "Send on WhatsApp / by email" buttons are absent (templates not
+      registered) — after the OWNER ACTION they appear and send.
+- [ ] Ask on a visit whose planned date has passed → "schedule a slot
+      first"; Ask on a confirmed slot → not offered.
+- [ ] Loader: switch focus / a filter / press Refresh → thin pulsing bar
+      under the controls and the board dims until the new answer lands.
+- [ ] Bad token /slot/00000000-0000-0000-0000-000000000000 → "We couldn't
+      open this link"; a non-uuid token → same.
+
+⚠️ signia is LIVE data: an agreed slot moves the real visit and can notify
+   the customer. Test on a visit you would act on anyway.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════
