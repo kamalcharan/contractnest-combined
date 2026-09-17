@@ -174,10 +174,10 @@ const OpsCommitmentsPage: React.FC = () => {
   const actions: JobCardActions = {
     onNudge: (c, ch) => { if (c.job_id) run(c.id, () => nudge.mutateAsync({ jobId: c.job_id!, channel: ch })); },
     onCall: (c) => { if (c.job_id) setCallFor(c); },
-    onAssign: (c, userId) => {
+    onAssign: (c, userId, dueAt) => {
       if (!c.job_id) return;
       if (!userId) { toast.error('Pick a teammate first'); return; }
-      return run(c.id, () => escalate.mutateAsync({ jobId: c.job_id!, assignTo: userId }));
+      return run(c.id, () => escalate.mutateAsync({ jobId: c.job_id!, assignTo: userId, dueAt: dueAt || null }));
     },
     onPause: (c, reason: PauseReason, until) => {
       if (!c.job_id) return;
@@ -479,7 +479,8 @@ const HappenedRow: React.FC<{ h: WlHappened }> = ({ h }) => {
   const text =
     h.kind === 'payment_nudge_email' ? `${who} reminded ${buyer} by email${h.rung ? ` · rung ${h.rung}` : ' · heads-up'}`
     : h.kind === 'payment_nudge_whatsapp' ? `${who} reminded ${buyer} on WhatsApp${h.rung ? ` · rung ${h.rung}` : ' · heads-up'}`
-    : h.kind === 'payment_call_due' ? `${who} assigned a call about ${buyer} to ${h.assigned_to_name || 'a teammate'}`
+    : h.kind === 'payment_call_due' && h.task_kind === 'follow_up' ? `${who} set a follow-up on ${buyer}${h.due_at ? ` for ${fmtDate(h.due_at)}` : ''}`
+    : h.kind === 'payment_call_due' ? `${who} assigned a call about ${buyer} to ${h.assigned_to_name || 'a teammate'}${h.due_at ? ` · due ${fmtDate(h.due_at)}` : ''}`
     : h.kind === 'payment_call_logged' ? `${who} called ${buyer} — ${h.outcome === 'no_answer' ? 'no answer' : h.outcome || 'logged'}${h.notes ? `: ${h.notes}` : ''}`
     : `${who} · ${h.kind}`;
   const statusColor = h.status === 'failed' ? colors.semantic.error : h.status === 'delivered' || h.status === 'read' || h.status === 'completed' ? colors.semantic.success : colors.utility.secondaryText;

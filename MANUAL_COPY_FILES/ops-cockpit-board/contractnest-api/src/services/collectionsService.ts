@@ -107,10 +107,11 @@ class CollectionsService {
     });
   }
 
-  escalate(tenantId: string, jobId: string, assignTo: string, actor: Actor, note: string | null) {
+  /** Assign a call; with `dueAt` it is a dated task ("Follow up" when assigned to oneself). */
+  escalate(tenantId: string, jobId: string, assignTo: string, actor: Actor, note: string | null, dueAt: string | null = null) {
     return this.call('jtd_escalate_payment_call', {
       p_tenant: tenantId, p_job_id: jobId, p_assign_to: assignTo,
-      p_actor_type: actor.type, p_actor_id: actor.id, p_actor_name: actor.name, p_note: note
+      p_actor_type: actor.type, p_actor_id: actor.id, p_actor_name: actor.name, p_note: note, p_due_at: dueAt
     });
   }
 

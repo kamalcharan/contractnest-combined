@@ -37,6 +37,7 @@ const REFUSAL_STATUS: Record<string, number> = {
   unsupported_channel: 400,
   invalid_outcome: 400,
   promise_date_required: 400,
+  due_in_past: 400,
   invalid_reason: 400,
   actor_required: 401,
 };
@@ -241,7 +242,7 @@ class CollectionsController {
     }
   };
 
-  /** POST /payments/:jobId/escalate  {assign_to, note} */
+  /** POST /payments/:jobId/escalate  {assign_to, note, due_at}  — due_at: YYYY-MM-DD (→ 10:00 IST) or an ISO date-time */
   escalate = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const actor = this.actor(req);
@@ -249,8 +250,14 @@ class CollectionsController {
       const jobId = String(req.params.jobId || '');
       const assignTo = this.str(req.body?.assign_to);
       if (!jobId || !assignTo) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'jobId and assign_to are required', 400); return; }
+      let dueAt = this.str(req.body?.due_at);
+      if (dueAt) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dueAt)) dueAt = `${dueAt}T10:00:00+05:30`;
+        if (Number.isNaN(Date.parse(dueAt))) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'due_at must be a date or date-time', 400); return; }
+        dueAt = new Date(dueAt).toISOString();
+      }
 
-      const result = await collectionsService.escalate(this.tenantId(req), jobId, assignTo, actor, this.str(req.body?.note));
+      const result = await collectionsService.escalate(this.tenantId(req), jobId, assignTo, actor, this.str(req.body?.note), dueAt);
       if (!result.success) { this.refuse(res, result.error!); return; }
       sendSuccess(res, result.data);
     } catch (error) {

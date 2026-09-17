@@ -80,7 +80,8 @@ export interface BoardCard {
   paused_reason?: string;
   promise_date?: string;
   declaration?: { id: string; kind: 'session' | 'public'; amount: number; reference?: string; at: string };
-  call_task?: { id: string; assigned_to?: string; assigned_to_name?: string };
+  /** An open call task. `kind` is 'follow_up' when the actor assigned themself, else 'escalation'; `due_at` is when it is due. */
+  call_task?: { id: string; assigned_to?: string; assigned_to_name?: string; due_at?: string; kind?: 'follow_up' | 'escalation' | string };
   failed?: { reminder_id?: string; channel?: string; error?: string; at?: string };
   awaiting?: { status: string; since: string; start_date?: string };
 }
@@ -110,6 +111,8 @@ export interface WlHappened {
   notes: string | null;
   assigned_to: string | null;
   assigned_to_name: string | null;
+  task_kind?: 'follow_up' | 'escalation' | string | null;
+  due_at?: string | null;
   actor_type: string;
   actor_name: string | null;
   at: string;
@@ -180,7 +183,8 @@ export const REASON_COPY: Record<string, string> = {
   invalid_outcome: 'Pick an outcome for the call.',
   promise_date_required: 'A promise needs a date.',
   assignee_not_in_tenant: 'That person is not in your team.',
-  call_already_open: 'A call is already assigned for this payment.',
+  call_already_open: 'A call or follow-up is already open for this payment — log it first.',
+  due_in_past: 'Pick a date from today onwards.',
   invalid_reason: 'Pick a reason for pausing.',
   actor_required: 'Sign in again and retry.',
 };
@@ -291,11 +295,18 @@ export const useLogPaymentCall = () =>
     'Could not log the call'
   );
 
+/** Assign a call to a teammate, or — assigned to yourself with a date — set a Follow up. */
 export const useEscalatePaymentCall = () =>
-  useToolMutation<{ jobId: string; assignTo: string; note?: string }, { success: boolean; assigned_to_name: string | null }>(
+  useToolMutation<
+    { jobId: string; assignTo: string; note?: string; dueAt?: string | null },
+    { success: boolean; assigned_to_name: string | null; task_kind?: string; due_at?: string }
+  >(
     (v) => `${BASE}/payments/${v.jobId}/escalate`,
-    (v) => ({ assign_to: v.assignTo, note: v.note ?? null }),
-    (r) => `Call assigned to ${r.assigned_to_name || 'a teammate'}`,
+    (v) => ({ assign_to: v.assignTo, note: v.note ?? null, due_at: v.dueAt ?? null }),
+    (r, v) =>
+      r.task_kind === 'follow_up'
+        ? `Follow-up set${v.dueAt ? ` for ${new Date(r.due_at || v.dueAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}`
+        : `Call assigned to ${r.assigned_to_name || 'a teammate'}${v.dueAt ? ` · due ${new Date(r.due_at || v.dueAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}`,
     'Could not assign the call'
   );
 
