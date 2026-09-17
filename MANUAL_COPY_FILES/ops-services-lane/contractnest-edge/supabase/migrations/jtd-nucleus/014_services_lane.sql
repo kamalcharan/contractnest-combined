@@ -558,12 +558,15 @@ BEGIN
          FROM bucketed b WHERE b.f_window AND b.f_kind AND b.f_lane AND b.f_channel AND b.f_age AND b.f_cycle AND b.f_slot AND b.f_q)
        -- + unassigned_visits, which ignores the lane AND kind filters: the headline's "N visits have no technician yet" signal holds on the All view
        || jsonb_build_object('unassigned_visits', (SELECT count(*) FROM bucketed b WHERE b.f_window AND b.lane = 'services' AND b.owner_id IS NULL AND b.f_channel AND b.f_age AND b.f_cycle AND b.f_slot AND b.f_q)) AS who,
+      -- needs_by_lane: the focus strip's "N need you" per lane — window only, no other filter, so the strip is a stable map while the user drills
+      (SELECT jsonb_build_object('collections', count(*) FILTER (WHERE b.lane = 'collections'), 'services', count(*) FILTER (WHERE b.lane = 'services'))
+         FROM bucketed b WHERE b.f_window AND b.kind IN ('declaration_pending','send_failed','call_open','rung_due','overdue_no_ladder','ladder_exhausted','awaiting_activation','visit_overdue','visit_today','visit_in_progress')) AS needs_by_lane,
       (SELECT count(*) FROM bucketed b WHERE b.f_window) AS in_window,
       (SELECT count(*) FROM matched) AS matched
   )
   SELECT jsonb_build_object(
     'buckets', (SELECT jsonb_agg(jsonb_build_object('key', b.key, 'from_days', b.from_days, 'to_days', b.to_days, 'count', b.total, 'cards', b.cards) ORDER BY b.ord) FROM buckets b),
-    'facets', (SELECT jsonb_build_object('kinds', f.kinds, 'lanes', f.lanes, 'channels', f.channels, 'ages', f.ages, 'cycles', f.cycles, 'slots', f.slots, 'who', f.who) FROM facets f),
+    'facets', (SELECT jsonb_build_object('kinds', f.kinds, 'lanes', f.lanes, 'channels', f.channels, 'ages', f.ages, 'cycles', f.cycles, 'slots', f.slots, 'who', f.who, 'needs_by_lane', f.needs_by_lane) FROM facets f),
     'counts', (SELECT jsonb_build_object('in_window', f.in_window, 'matched', f.matched) FROM facets f)
   ) INTO v_board;
 

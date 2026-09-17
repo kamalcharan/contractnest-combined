@@ -74,6 +74,30 @@ do not re-run), contractnest-api, contractnest-ui.
  visit_slot_confirmed · visit_started · visit_completed) with the payment
  feed, newest first.
 
+─── ADDED 2026-09-17 (same day) — the FOCUS STRIP ───
+ Owner, after the first screenshot: "collections and services are mixed up
+ into the filters — segregate … All / Collections / Services should come
+ first, a strip like 'here is where you need to focus'; header and data
+ change with it" · "need you — I prefer, VaNi might hand tasks back with
+ 'Needs intervention'" · filters on top, not an e-commerce rail (agreed;
+ revisit when a third lane makes the chip rows wrap).
+ · The strip is the FIRST thing on the page: three cards All · Collections ·
+   Services, each with "N need you" (or "nothing needs you"). It is the
+   focus, not a filter — it persists per browser and survives "clear".
+   Numbers come from facets.needs_by_lane (reader, LIVE): window only,
+   never moved by any filter, so the strip stays a stable map while you
+   drill. A future VaNi "needs intervention" kind simply counts there.
+ · Headline, board, filters and feed follow the focus. On a lane the
+   headline says only that lane's words ("Nothing needs you in Collections
+   right now."); the signal line hides on Collections; the VaNi chip shows
+   on All + Collections only (Services reads "Service visits · run by your
+   team"); the feed shows payment rows on Collections, visit rows on
+   Services, both on All.
+ · Filters are never mixed: on All, one labelled row per lane
+   ("COLLECTIONS  chips… channel cycle" / "SERVICES  chips… slot"); on a
+   lane, only its row. A shared row underneath — overdue age · Team/Mine/
+   Unassigned · clear — applies to every lane.
+
 ─── FILES ───────────────────────────────────────────
  contractnest-edge/supabase/migrations/jtd-nucleus/014_services_lane.sql
    LIVE. jtd__visit_refusal, jtd__visit_note, the five tools, jtd_ops_board,
@@ -128,11 +152,20 @@ files · vite build passes · submodules restored pristine.
 🧪 TESTING CHECKLIST — on SIGNIA (live: 41 visits + 28 payments in 90 d,
    25 visits overdue, 16 scheduled, all 41 without a technician)
 ═══════════════════════════════════════════════════
-- [ ] /ops/cockpit/next → lane chips All 69 · Collections 28 · Services 41
-      (90 d); headline reads "… 25 visits overdue …" and "16 visits, N
-      payments and M reminders fall due in the next 90 days."
-- [ ] Signal line "41 visits have no technician yet →" jumps to Services +
-      Unassigned; pick Collections → channel/cycle selects back, slot gone.
+- [ ] /ops/cockpit/next → focus strip first: All "41 need you" ·
+      Collections "16 need you" · Services "25 need you" (90 d). Pick a kind
+      chip or Who → the strip numbers do NOT move; the headline/board do.
+- [ ] All: headline "… 25 visits overdue …" and "16 visits, N payments and
+      M reminders fall due in the next 90 days."; two labelled filter rows
+      COLLECTIONS / SERVICES, then the shared row (age · Who).
+- [ ] Services: headline has no money words; VaNi chip replaced by
+      "Service visits · run by your team"; only visit chips + slot; the feed
+      shows only visit rows. Collections: no visit words, no signal line,
+      channel + cycle back, slot gone, feed = payment rows only.
+- [ ] Reload the page → the chosen focus is remembered; "clear" resets the
+      filters but keeps the focus.
+- [ ] Signal line "41 visits have no technician yet →" (All and Services)
+      jumps to Services + Unassigned.
 - [ ] A visit card (List and Lanes look identical bar density): Visit n/m ·
       block · "no technician" · "no slot". Assign → pick a teammate → toast
       "Visit assigned to …" → card shows the technician; Who=Mine finds it.

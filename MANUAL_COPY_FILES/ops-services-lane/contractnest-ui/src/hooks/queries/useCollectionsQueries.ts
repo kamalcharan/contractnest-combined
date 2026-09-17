@@ -187,6 +187,8 @@ export interface CollectionsBoard {
     cycles: Record<string, number>;
     /** `unassigned_visits` ignores the lane and kind filters — the headline's "no technician yet" signal. */
     who: Record<'team' | 'mine' | 'unassigned', number> & { unassigned_visits?: number };
+    /** "N need you" per lane over the window only (no other filter) — the focus strip. */
+    needs_by_lane: Partial<Record<BoardLane, number>>;
   };
   counts: { in_window: number; matched: number };
   happened: WlHappened[];

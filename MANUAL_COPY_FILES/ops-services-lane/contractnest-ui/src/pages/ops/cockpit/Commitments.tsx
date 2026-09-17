@@ -90,6 +90,7 @@ const PAGE = 20;
 // or throw in private windows — every read/write is guarded.
 const VIEW_KEY = 'ops.board.view';
 const HORIZON_KEY = 'ops.board.horizon';
+const LANE_KEY = 'ops.board.lane';
 const readPref = <T,>(key: string, ok: (v: unknown) => v is T, fallback: T): T => {
   try {
     const raw = window.localStorage.getItem(key);
@@ -101,6 +102,8 @@ const readPref = <T,>(key: string, ok: (v: unknown) => v is T, fallback: T): T =
 const writePref = (key: string, v: unknown) => { try { window.localStorage.setItem(key, JSON.stringify(v)); } catch { /* ignore */ } };
 const isView = (v: unknown): v is View => v === 'list' || v === 'lanes';
 const isHorizon = (v: unknown): v is Horizon => (HORIZONS as number[]).includes(v as number);
+const isLane = (v: unknown): v is BoardLane | null => v === null || v === 'collections' || v === 'services';
+const laneName = (l: BoardLane | null) => (l === 'collections' ? 'Collections' : l === 'services' ? 'Services' : 'All');
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const sum = (o: Partial<Record<string, number>> | undefined, keys: string[]) => keys.reduce((a, k) => a + (o?.[k] ?? 0), 0);
@@ -142,7 +145,8 @@ const OpsCommitmentsPage: React.FC = () => {
   const setHorizon = (h: Horizon) => { setHorizonState(h); writePref(HORIZON_KEY, h); setRange(null); setRangeOpen(false); setLimits({}); };
 
   // ── filters ────────────────────────────────────────────────────────────────
-  const [lane, setLaneState] = useState<BoardLane | null>(null);
+  // The lane is the FOCUS (the strip above the headline), not a filter: it persists and survives "clear".
+  const [lane, setLaneState] = useState<BoardLane | null>(() => readPref(LANE_KEY, isLane, null));
   const [group, setGroup] = useState<Group | null>(null);
   const [slot, setSlot] = useState<SlotState | ''>('');
   const [channel, setChannel] = useState<WlChannel | ''>('');
@@ -158,6 +162,7 @@ const OpsCommitmentsPage: React.FC = () => {
   // Switching lane drops a kind filter that belongs to the other lane (it would empty the board) and lane-specific selects.
   const setLane = (l: BoardLane | null) => {
     setLaneState(l);
+    writePref(LANE_KEY, l);
     if (l && group && GROUPS.find((g) => g.key === group)?.lane !== l) setGroup(null);
     if (l === 'collections') setSlot('');
     if (l === 'services') { setChannel(''); setCycle(''); }
@@ -178,8 +183,8 @@ const OpsCommitmentsPage: React.FC = () => {
     if (Object.keys(limits).length) f.limits = limits;
     return f;
   }, [range, horizon, lane, group, slot, channel, age, cycle, who, q, limits]);
-  const anyFilter = !!(lane || group || slot || channel || age || cycle || who !== 'team' || q);
-  const clearFilters = () => { setLaneState(null); setGroup(null); setSlot(''); setChannel(''); setAge(''); setCycle(''); setWho('team'); setSearch(''); setQ(''); };
+  const anyFilter = !!(group || slot || channel || age || cycle || who !== 'team' || q);
+  const clearFilters = () => { setGroup(null); setSlot(''); setChannel(''); setAge(''); setCycle(''); setWho('team'); setSearch(''); setQ(''); };
 
   // ── data + tools ───────────────────────────────────────────────────────────
   const enabled = perspective === 'revenue';
@@ -330,6 +335,13 @@ const OpsCommitmentsPage: React.FC = () => {
   const aheadTotal = ahead.reduce((a, p) => a + p.v, 0);
   const ladder = data.ladder;
   const buckets = data.buckets.filter((b) => b.count > 0 || b.key === 'overdue' || b.key === 'today');
+  // Focus strip numbers: window only, never moved by filters (the reader computes them that way).
+  const needsByLane = { collections: data.facets.needs_by_lane?.collections ?? 0, services: data.facets.needs_by_lane?.services ?? 0 };
+  const needsFor = (l: BoardLane | null) => (l ? needsByLane[l] : needsByLane.collections + needsByLane.services);
+  // The feed follows the focus: payment rows for Collections, visit rows for Services, both on All — one timeline, newest first.
+  const feed = [...data.happened]
+    .filter((h) => !lane || (lane === 'services') === h.kind.startsWith('visit_'))
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   const bucketColor = (key: BucketKey) => (key === 'overdue' ? red : key === 'today' ? green : key === 'parked' ? colors.utility.secondaryText : colors.utility.primaryText);
   const showMore = (key: BucketKey, shown: number) => setLimits((l) => ({ ...l, [key]: shown + PAGE }));
 
@@ -379,14 +391,35 @@ const OpsCommitmentsPage: React.FC = () => {
 
   return (
     <div className={`px-6 py-8 mx-auto ${view === 'lanes' ? 'max-w-[1400px]' : 'max-w-4xl'}`}>
+      {/* ── focus strip: WHERE to look first. Sets the lane; headline, board, filters and feed follow. ── */}
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3" style={{ ...sub, ...mono }}>
+        ops · {currentTenant?.name || 'your business'} · {fmtDate(data.today)} · where to focus
+      </p>
+      <div className="grid gap-2 mb-6" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }} role="tablist" aria-label="Focus">
+        {LANES.map((l) => {
+          const on = lane === l.key;
+          const c = needsFor(l.key);
+          return (
+            <button key={l.label} role="tab" aria-selected={on} onClick={() => setLane(l.key)}
+              className="text-left rounded-2xl border px-4 py-3 min-h-[64px] transition-colors"
+              style={on ? { backgroundColor: brand, borderColor: brand, color: '#fff' }
+                        : { backgroundColor: colors.utility.secondaryBackground, borderColor: hairline, color: colors.utility.primaryText }}>
+              <span className="flex items-center gap-1.5 text-[12px] font-extrabold uppercase tracking-[0.12em]" style={mono}>
+                {l.key === 'services' && <Wrench size={12} />}{l.label}
+              </span>
+              <span className="block mt-1 text-[15px] font-bold tabular-nums" style={{ opacity: c ? 1 : 0.6 }}>
+                {c ? `${c} need you` : 'nothing needs you'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── headline ── */}
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-4" style={{ ...sub, ...mono }}>
-            ops · {currentTenant?.name || 'your business'} · {fmtDate(data.today)}
-          </p>
           <h1 className="text-[26px] sm:text-[30px] leading-snug font-medium max-w-2xl" style={ink}>
-            {n.needs === 0 ? <>Nothing needs you right now. </> : <>
+            {n.needs === 0 ? <>Nothing needs you{lane ? ` in ${laneName(lane)}` : ''} right now. </> : <>
               <Num v={n.needs} color={red} g={null} /> need you —{' '}
               {n.reminders > 0 && <><Num v={n.reminders} color={red} g="reminders" /> {n.reminders === 1 ? 'reminder' : 'reminders'} due, </>}
               {n.confirm > 0 && <><Num v={n.confirm} color={amber} g="confirm" /> declared {n.confirm === 1 ? 'payment' : 'payments'} to confirm, </>}
@@ -410,7 +443,7 @@ const OpsCommitmentsPage: React.FC = () => {
                 </>
               : <>Nothing falls due {windowText}.</>}
           </h1>
-          {n.unassignedVisits > 0 && (
+          {lane !== 'collections' && n.unassignedVisits > 0 && (
             <button onClick={() => { setLane('services'); setWho('unassigned'); }}
               className="mt-3 inline-flex items-center gap-1.5 text-[12.5px] font-bold" style={{ color: amber }}>
               <Wrench size={13} /> {plural(n.unassignedVisits, 'visit')} {n.unassignedVisits === 1 ? 'has' : 'have'} no technician yet <ArrowUpRight size={12} />
@@ -427,11 +460,18 @@ const OpsCommitmentsPage: React.FC = () => {
       {/* ── controls card: VaNi · window · view · search · filters ── */}
       <div className="mt-6 rounded-2xl border px-4 py-3.5" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: hairline }}>
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button onClick={() => navigate(vaniChip.to)} title={vaniChip.title}
-          className="inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full text-[11.5px] font-bold border"
-          style={{ color: vaniChip.color, borderColor: `${vaniChip.color}55`, backgroundColor: `${vaniChip.color}12` }}>
-          <Sparkles size={12} /> {vaniChip.text} <ArrowUpRight size={12} />
-        </button>
+        {lane === 'services' ? (
+          // VaNi speaks about payment reminders; on Services it has nothing to say yet.
+          <span className="inline-flex items-center gap-1.5 px-3 min-h-[36px] text-[11.5px] font-bold" style={sub}>
+            <Wrench size={12} /> Service visits · run by your team
+          </span>
+        ) : (
+          <button onClick={() => navigate(vaniChip.to)} title={vaniChip.title}
+            className="inline-flex items-center gap-1.5 px-3 min-h-[36px] rounded-full text-[11.5px] font-bold border"
+            style={{ color: vaniChip.color, borderColor: `${vaniChip.color}55`, backgroundColor: `${vaniChip.color}12` }}>
+            <Sparkles size={12} /> {vaniChip.text} <ArrowUpRight size={12} />
+          </button>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="Horizon">
             {HORIZONS.map((h) => <Seg key={h} on={!range && horizon === h} onClick={() => setHorizon(h)} title={`Next ${h} days`}>{h} d</Seg>)}
@@ -465,24 +505,9 @@ const OpsCommitmentsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── lanes (WHAT) ── */}
-      <div className="mt-3 flex items-center gap-2 flex-wrap">
-        <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${brand}45`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="Lane">
-          {LANES.map((l) => {
-            const c = l.key ? (data.facets.lanes[l.key] ?? 0) : sum(data.facets.lanes, ['collections', 'services']);
-            return (
-              <Seg key={l.label} on={lane === l.key} onClick={() => setLane(l.key)} title={l.key === 'services' ? 'Service visits' : l.key === 'collections' ? 'Payments and reminders' : 'Every lane'}>
-                {l.key === 'services' && <Wrench size={12} />}{l.label} <span className="tabular-nums opacity-80">{c}</span>
-              </Seg>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── filters ── */}
-      <div className="mt-2 flex items-center gap-2 flex-wrap">
-        {GROUPS.map((g) => {
-          if (lane && g.lane !== lane) return null;
+      {/* ── lane filters: never mixed. On All, one labelled row per lane; on a lane, only its own row. ── */}
+      {(lane ? [lane] : (['collections', 'services'] as BoardLane[])).map((l) => {
+        const chips = GROUPS.filter((g) => g.lane === l).map((g) => {
           const c = sum(k, g.kinds);
           if (!c && group !== g.key) return null;
           const color = g.key === 'ahead' || g.key === 'visits_scheduled' || g.key === 'visits_today' ? green
@@ -490,31 +515,50 @@ const OpsCommitmentsPage: React.FC = () => {
             : g.key === 'calls' || g.key === 'in_progress' ? brand
             : g.key === 'paused' ? colors.utility.secondaryText : red;
           return <Chip key={g.key} on={group === g.key} onClick={() => setGroup(group === g.key ? null : g.key)} color={color}>{g.label} <span className="tabular-nums opacity-80">{c}</span></Chip>;
-        })}
-        {lane !== 'services' && (
-          <select value={channel} onChange={(e) => setChannel(e.target.value as WlChannel | '')} style={selectStyle} aria-label="Next rung channel">
-            <option value="">Any channel</option>
-            {(['email', 'whatsapp', 'call'] as WlChannel[]).map((ch) => <option key={ch} value={ch}>{ch === 'whatsapp' ? 'WhatsApp' : ch === 'email' ? 'Email' : 'Call'} next · {data.facets.channels[ch] ?? 0}</option>)}
-          </select>
-        )}
+        }).filter(Boolean);
+        const selects = l === 'collections' ? (
+          <>
+            <select value={channel} onChange={(e) => setChannel(e.target.value as WlChannel | '')} style={selectStyle} aria-label="Next rung channel">
+              <option value="">Any channel</option>
+              {(['email', 'whatsapp', 'call'] as WlChannel[]).map((ch) => <option key={ch} value={ch}>{ch === 'whatsapp' ? 'WhatsApp' : ch === 'email' ? 'Email' : 'Call'} next · {data.facets.channels[ch] ?? 0}</option>)}
+            </select>
+            {Object.keys(data.facets.cycles).length > 0 && (
+              <select value={cycle} onChange={(e) => setCycle(e.target.value)} style={selectStyle} aria-label="Billing cycle">
+                <option value="">Any cycle</option>
+                {Object.entries(data.facets.cycles).sort(([a], [b]) => a.localeCompare(b)).map(([label, c]) => <option key={label} value={label}>{label} · {c}</option>)}
+              </select>
+            )}
+          </>
+        ) : (
+          Object.keys(data.facets.slots).length > 0 && (
+            <select value={slot} onChange={(e) => setSlot(e.target.value as SlotState | '')} style={selectStyle} aria-label="Customer slot">
+              <option value="">Any slot</option>
+              {(['confirmed', 'proposed', 'none'] as SlotState[]).map((s) => (
+                <option key={s} value={s}>{s === 'confirmed' ? 'Slot confirmed' : s === 'proposed' ? 'Slot proposed' : 'No slot yet'} · {data.facets.slots[s] ?? 0}</option>
+              ))}
+            </select>
+          )
+        );
+        if (chips.length === 0 && !selects) return null;
+        return (
+          <div key={l} className="mt-3 flex items-center gap-2 flex-wrap">
+            {!lane && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.18em] w-24" style={{ ...sub, ...mono }}>
+                {l === 'services' && <Wrench size={11} />}{laneName(l)}
+              </span>
+            )}
+            {chips}
+            {selects}
+          </div>
+        );
+      })}
+
+      {/* ── shared filters: apply to every lane ── */}
+      <div className="mt-3 pt-3 flex items-center gap-2 flex-wrap border-t" style={{ borderColor: hairline }}>
         <select value={age} onChange={(e) => setAge(e.target.value as BoardFilters['age'] | '')} style={selectStyle} aria-label="Overdue by">
           <option value="">Any age</option>
           {(['0-7', '8-30', '31-90', '90+'] as const).map((a) => <option key={a} value={a}>Overdue {a === '90+' ? '90+' : a} days · {data.facets.ages[a] ?? 0}</option>)}
         </select>
-        {lane !== 'services' && Object.keys(data.facets.cycles).length > 0 && (
-          <select value={cycle} onChange={(e) => setCycle(e.target.value)} style={selectStyle} aria-label="Billing cycle">
-            <option value="">Any cycle</option>
-            {Object.entries(data.facets.cycles).sort(([a], [b]) => a.localeCompare(b)).map(([label, c]) => <option key={label} value={label}>{label} · {c}</option>)}
-          </select>
-        )}
-        {lane !== 'collections' && Object.keys(data.facets.slots).length > 0 && (
-          <select value={slot} onChange={(e) => setSlot(e.target.value as SlotState | '')} style={selectStyle} aria-label="Customer slot">
-            <option value="">Any slot</option>
-            {(['confirmed', 'proposed', 'none'] as SlotState[]).map((s) => (
-              <option key={s} value={s}>{s === 'confirmed' ? 'Slot confirmed' : s === 'proposed' ? 'Slot proposed' : 'No slot yet'} · {data.facets.slots[s] ?? 0}</option>
-            ))}
-          </select>
-        )}
         <div className="inline-flex rounded-full border p-0.5" style={{ borderColor: `${colors.utility.primaryText}30`, backgroundColor: colors.utility.primaryBackground }} role="group" aria-label="Who">
           {(['team', 'mine', 'unassigned'] as const).map((w) => (
             <Seg key={w} on={who === w} onClick={() => setWho(w)} title={w === 'mine' ? 'Calls and visits assigned to me' : w === 'unassigned' ? 'No call assigned · no technician yet' : 'Everyone'}>
@@ -544,12 +588,11 @@ const OpsCommitmentsPage: React.FC = () => {
       {/* ── WHAT HAPPENED ── */}
       <div className="flex items-baseline gap-3 mb-2.5 mt-10">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...mono, color: colors.utility.primaryText }}>what happened</p>
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...sub, ...mono }}>{data.happened.length ? `last ${data.happened.length}` : 'nothing yet'}</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...sub, ...mono }}>{feed.length ? `${lane ? `${laneName(lane).toLowerCase()} · ` : ''}last ${Math.min(feed.length, 12)}` : `nothing yet${lane ? ` in ${laneName(lane)}` : ''}`}</p>
       </div>
-      {data.happened.length > 0 && (
+      {feed.length > 0 && (
         <div className="rounded-2xl border divide-y max-w-4xl" style={{ borderColor: hairline, backgroundColor: colors.utility.secondaryBackground }}>
-          {/* the reader concatenates payment + visit activity; one timeline, newest first */}
-          {[...data.happened].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, 12).map((h) => <HappenedRow key={h.id} h={h} />)}
+          {feed.slice(0, 12).map((h) => <HappenedRow key={h.id} h={h} />)}
         </div>
       )}
 
