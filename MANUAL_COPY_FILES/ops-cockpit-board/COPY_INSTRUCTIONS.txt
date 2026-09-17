@@ -70,6 +70,44 @@ source of record, do not re-run), contractnest-api, contractnest-ui.
      and the card returns to its rung state.
  [ ] Assign call with a "Due by" date → card lands in that column.
 
+─── STEP 6 ADDED 2026-09-17 — one activity timeline per contract ─────
+ The contract page's Audit tab read only the service-execution audit log,
+ so none of the collections activity showed; the cockpit had no history.
+ · migration jtd-nucleus/012 (LIVE, applied as 012 + 012b):
+   jtd_contract_activity(tenant, contract, is_live, sources[], limit, offset)
+   unions, for ONE contract: service (t_audit_log), billing
+   (t_contract_event_audit of its billing events), collections (every n_jtd
+   communication/task about it — by contract_id, by its payment-job ids, or
+   by business_context.contract_id, which is all the scanner's automated
+   payment_due rows carry; ladder paused/resumed history; declarations as
+   two rows — declared, then confirmed/rejected). One row shape (when, who,
+   title, from→to, channel, status, amount, ids), newest first, paged,
+   per-source counts. Never totals.
+ · API: GET /api/jtd/collections/contracts/:contractId/activity
+        ?sources=service,billing,collections&limit=50&offset=0
+ · UI:
+   contractnest-ui/src/components/ops/HistoryDrawer.tsx (NEW) — right-hand
+     drawer: All / Collections / Billing events / Service chips with counts,
+     timeline rows with icon by kind, status colour, "Show 30 more",
+     "Open contract". Opened from the new "History" link next to Open on
+     EVERY card, both views (JobCard onHistory; Commitments renders it).
+   contractnest-ui/src/components/contracts/AuditTab.tsx (EDITED) — keeps
+     its five categories on the old reader byte-for-byte; adds "Collections"
+     and "Billing events" from the activity reader; "All" is the union; the
+     summary strip and chip counts include them.
+ Probed live: CN-1001 → 7 rows (2 declarations by CHARAN KAMAL, 1
+ confirmation, 4 billing-event changes); the nudged contract → "Reminder on
+ WhatsApp to NISHIKANT MHAISEKHAR · rung 1 [sent · Sanjay Ghotikar]";
+ paging + unknown source + unknown contract handled.
+ Extra checklist:
+ [ ] Cockpit card → History → drawer lists what was tried; chips filter;
+     Open contract goes to the contract page.
+ [ ] /contracts/<id> → Audit tab → "Collections N" and "Billing events N"
+     chips appear; All shows reminders/declarations interleaved with the
+     old rows; the five old chips behave exactly as before.
+ [ ] Send a nudge from the cockpit, reopen History → it is there with its
+     status; the Audit tab shows the same row.
+
 ─── DB (LIVE, applied 2026-09-17) ───────────────────
  contractnest-edge/supabase/migrations/jtd-nucleus/010_collections_board_reader.sql
    jtd_collections_board(p_tenant, p_is_live, p_filters jsonb, p_user)
@@ -135,6 +173,6 @@ Restart the API (new route) and hard-refresh the UI (Ctrl+F5).
    lands mostly in the last band. The label is honest; a date-labelled band
    set for custom ranges is the obvious follow-up.
  · Who=Mine/Unassigned is about call tasks only (payments have no owner yet).
- · Step 5 (Follow up) is in this batch. Step 6 (contract Audit timeline
-   with JTD rows; per-card History) is next.
+ · Steps 5 (Follow up) and 6 (History drawer + Audit timeline) are in this
+   batch — the whole 2026-09-17 review order is now built.
  · Engines still ungated by vani_is_enabled (stitch 6).

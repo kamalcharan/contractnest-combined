@@ -89,6 +89,18 @@ class CollectionsService {
     });
   }
 
+  /**
+   * One activity timeline for a contract (migration jtd-nucleus/012): service
+   * audit + billing-event audit + every JTD communication/task/declaration.
+   */
+  contractActivity(tenantId: string, isLive: boolean, contractId: string,
+                   sources: string[] | null, limit: number, offset: number) {
+    return this.call('jtd_contract_activity', {
+      p_tenant: tenantId, p_contract_id: contractId, p_is_live: isLive,
+      p_sources: sources, p_limit: limit, p_offset: offset
+    });
+  }
+
   nudge(tenantId: string, jobId: string, channel: 'email' | 'whatsapp', actor: Actor,
         note: string | null, paymentLink: string | null, upiId: string | null) {
     return this.call('jtd_nudge_payment', {

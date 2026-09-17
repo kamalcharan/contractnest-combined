@@ -44,6 +44,7 @@ import {
 } from '@/hooks/queries/useCollectionsQueries';
 import JobCard, { clean, fmtTime, type JobCardActions, type PauseReason } from '@/components/ops/JobCard';
 import LogCallSheet from '@/components/ops/LogCallSheet';
+import HistoryDrawer from '@/components/ops/HistoryDrawer';
 import { useInvoiceTheme } from '../../invoices/ui';
 import { fmtMoney, fmtDate } from '@/utils/format';
 
@@ -163,6 +164,7 @@ const OpsCommitmentsPage: React.FC = () => {
 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [callFor, setCallFor] = useState<BoardCard | null>(null);
+  const [historyFor, setHistoryFor] = useState<BoardCard | null>(null);
   const refresh = () => queryClient.invalidateQueries({ queryKey: collectionsKeys.all });
 
   // One action in flight at a time; the hooks toast and refetch.
@@ -197,6 +199,7 @@ const OpsCommitmentsPage: React.FC = () => {
     },
     onReview: (c) => navigate(c.declaration?.kind === 'session' ? '/group-sessions' : `/contracts/${c.contract_id}`),
     onOpen: (c) => navigate(`/contracts/${c.contract_id}`),
+    onHistory: (c) => setHistoryFor(c),
   };
 
   // ── chrome ─────────────────────────────────────────────────────────────────
@@ -454,6 +457,16 @@ const OpsCommitmentsPage: React.FC = () => {
         <button onClick={() => navigate('/money-in')} className="font-bold" style={{ color: brand }}>Money In</button>; the ladder is set under{' '}
         <button onClick={() => navigate('/settings/configure/automation-rules')} className="font-bold" style={{ color: brand }}>Automation Rules</button>.
       </p>
+
+      {historyFor && (
+        <HistoryDrawer
+          contractId={historyFor.contract_id}
+          title={clean(historyFor.buyer_name) || historyFor.contract_number}
+          subtitle={`${historyFor.contract_number}${historyFor.cycle_label ? ` · ${historyFor.cycle_label}` : ''}${historyFor.due_date ? ` · due ${fmtDate(historyFor.due_date)}` : ''}`}
+          onClose={() => setHistoryFor(null)}
+          onOpenContract={() => navigate(`/contracts/${historyFor.contract_id}`)}
+        />
+      )}
 
       {callFor && callFor.job_id && (
         <LogCallSheet
