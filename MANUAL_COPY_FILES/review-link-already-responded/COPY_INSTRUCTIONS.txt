@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════
+BATCH: review-link-already-responded (2026-09-17) — the WhatsApp review
+       link opens (it was missing its '?'), and a link opened after the
+       contract was answered says so instead of "Access Error"
+═══════════════════════════════════════════════════
+Owner: received the sign-off WhatsApp; the button opened
+https://www.contractnest.com/contract-reviewcnak=CNAK-D73613&secret=…?fbclid=…
+→ 404. "contract has already been claimed — show appropriate UI; 404 means
+the user thinks there is an error. fix the RPC".
+
+Submodules affected: contractnest-edge (migration contracts/080 — ALREADY
+APPLIED LIVE; edge function `contracts` — DEPLOYED, see below),
+contractnest-ui (three files).
+
+─── WHAT WAS WRONG ──────────────────────────────────
+ 1. The registered MSG91 WhatsApp button URL is
+    https://www.contractnest.com/contract-review{{1}} — no '?'. The code
+    sent the suffix as "cnak=…&secret=…" (its comment assumed the template
+    carried the '?'), so the phone opened /contract-reviewcnak=… — no such
+    route → the SPA's 404 page. WhatsApp then appended ?fbclid=… to what it
+    took for a query-less URL.
+ 2. Independently: opening a valid link after the buyer accepted returned
+    {valid:false, error:"This contract has already been accepted"} and the
+    page rendered a red "Access Error" card.
+
+─── WHAT CHANGED ────────────────────────────────────
+ contractnest-edge/supabase/functions/contracts/jtd-integration.ts  (DEPLOYED)
+ · WhatsApp suffix now carries the '?' itself: ?cnak=…&secret=…
+   Byte-identical to the deployed bundle otherwise (only this file
+   differed, and only in comment dashes).
+ contractnest-ui/src/pages/contracts/review/ReviewLinkRedirect.tsx  (new)
+ contractnest-ui/src/App.tsx
+ · Catch-all route: a path starting with /contract-review<junk> is
+   normalised to /contract-review?<junk> (leading '?'/'/' stripped) before
+   the 404 page — so links from the OLD template shape still open, and if
+   the MSG91 template is ever edited to include '?', the resulting
+   "??cnak=" also opens.
+ contractnest-ui/src/pages/contracts/review/index.tsx
+ · Param reader accepts "?cnak" keys and cuts a trailing "?fbclid=…" off
+   the secret.
+ · New state card when the RPC says already_responded: green "Already
+   accepted" (date, contract, seller; "Add to my ContractHub" →
+   /contracts/claim?cnak&secret when not yet claimed, "log in to open it"
+   when claimed) · amber "This link has expired" · red "Contract declined".
+   "Access Error" remains only for genuinely invalid links.
+ contractnest-edge/.../contracts/080_validate_access_already_responded.sql  (LIVE)
+ · validate_contract_access: for accepted / rejected / expired grants
+   returns valid:false + already_responded, status, responded_at, claimed,
+   contract {id,name,number,status,total,currency}, tenant {id,name}.
+   Verified live on CNAK-D73613: accepted · claimed true · CN-1010 · signia.
+
+Verified here: UI tsc = 1170 errors = pristine main · vite build passes ·
+submodules restored.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\review-link-already-responded\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\review-link-already-responded\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source of record (deployed + live)
+# UI dev server picks it up; Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open the exact WhatsApp link you received (the one with
+      /contract-reviewcnak=…?fbclid=…) on the local UI: it lands on
+      /contract-review and shows "Already accepted · Buyer Contract
+      (CN-1010) · from signia · on 17 Sep" with "Log in".
+- [ ] Open /contract-review?cnak=CNAK-D73613&secret=<secret> → same card.
+- [ ] Open with a wrong secret → still "Access Error / Invalid access code".
+- [ ] Send a NEW sign-off contract from signia: the WhatsApp button now
+      opens /contract-review?cnak=…&secret=… directly (edge deployed).
+- [ ] Any other unknown path (e.g. /nothing-here) → the normal 404 page.
+═══════════════════════════════════════════════════
