@@ -1,0 +1,534 @@
+// src/utils/constants/industryMenus.ts
+import { industries } from '../../lib/constants/industries';
+
+// Menu item interface
+export interface MenuItem {
+  id: string;
+  label: string;
+  icon: string; // Lucide icon name
+  path: string;
+  adminOnly?: boolean;
+  hasSubmenu?: boolean;
+  submenuItems?: MenuItem[];
+  defaultOpen?: boolean; // For submenus that should be open by default
+  /** Perspective-scoped nav: one money workspace per side. revenueOnly
+   *  items render only in Revenue mode (Money In — who owes you);
+   *  expenseOnly items only in Expense mode (To Pay — what you owe).
+   *  The routes themselves stay reachable for cross-links. */
+  revenueOnly?: boolean;
+  expenseOnly?: boolean;
+}
+
+// Default menu structure
+export const defaultMenuItems: MenuItem[] = [
+{ id: 'home', label: 'Home', icon: 'Home', path: '/experience' },
+{
+  id: 'getting-started',
+  label: 'Getting Started',
+  icon: 'Compass',
+  path: '/onboarding/welcome',
+  hasSubmenu: false
+},
+  // HIDDEN: Dashboard - login/signup now redirects to /ops/cockpit
+  // {
+  //   id: 'dashboard',
+  //   label: 'Dashboard',
+  //   icon: 'Home',
+  //   path: '/dashboard',
+  //   hasSubmenu: false
+  // },
+  // 2026-09-17 (ops-menu-flatten, owner): the "Operations" group is gone — its entries are main menus,
+  // in the same place and order. Ids kept so nothing keyed on them changes.
+  // 2026-09-17 (ops-cockpit-swap): /ops/cockpit IS the Ops board (revenue side); /ops/cockpit/next redirects here.
+  { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
+  // HIDDEN 2026-08-14: superseded by Money In (/money-in) + To Pay (/to-pay),
+  // which read the same get_tenant_receivables/get_tenant_payables RPCs.
+  // ⚠ "Collected this month" (visible on this page, all-time only on Money
+  // In) has NOT been ported yet — that KPI is lost while this is hidden.
+  // See CLAUDE.md "Finance (AR/AP) menu is superseded" / review item 1.
+  // Page left in place; do not delete pages/operations/finance/ yet.
+  // { id: 'ops-finance', label: 'Finance (AR/AP)', icon: 'Wallet', path: '/ops/finance' },
+  // 2026-09-17 (commitments-register): Event Schedule became the Commitments Register — every commitment in
+  // every status + the Activity timeline (appointments, follow-ups, calls, reminders). Ops = what needs you now.
+  { id: 'ops-services', label: 'Commitments Register', icon: 'CalendarClock', path: '/ops/services' },
+  // 2026-09-18 (ops-timeboard): the Plan's cards on a clock — week, day by person, agenda; drag to propose/confirm.
+  { id: 'ops-timeboard', label: 'Timeboard', icon: 'CalendarDays', path: '/ops/timeboard' },
+  { id: 'ops-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions' },
+  // RETIRED 2026-09-17 (ops-appointments-loop): the appointment is the service's slot on the Ops board
+  // (Services focus · Schedule · Ask customer · Confirm slot); /ops/appointments redirects there.
+  // { id: 'ops-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments' },
+  { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
+  { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
+  { id: 'facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry' },
+  // HIDDEN: Activity Feed, Reports - commented out
+  // { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' }
+  // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+  // REMOVED: Contacts menu with sub-lists - Contacts is a main menu above (id 'entities', /contacts)
+  /*
+  {
+    id: 'contacts',
+    label: 'Contacts',
+    icon: 'Users',
+    path: '/contacts',
+    hasSubmenu: true,
+    submenuItems: [
+      {
+        id: 'contacts-all',
+        label: 'All Contacts',
+        icon: 'Users',
+        path: '/contacts'
+      },
+      {
+        id: 'contacts-buyers',
+        label: 'Buyers',
+        icon: 'ShoppingCart',
+        path: '/contacts?filter=buyers'
+      },
+      {
+        id: 'contacts-partners',
+        label: 'Partners',
+        icon: 'Handshake',
+        path: '/contacts?filter=partners'
+      },
+      {
+        id: 'contacts-service-providers',
+        label: 'Service Providers',
+        icon: 'Wrench',
+        path: '/contacts?filter=service_providers'
+      }
+    ]
+  },
+  */
+  // The product-led experience IS the Contracts entry (owner, 2026-09-16).
+  // Id stays 'ncontracts' so menu state and the industryMenuOverrides keyed on
+  // the old 'contracts' id (hidden below) remain untangled — every industry
+  // sees the plain "Contracts" label, per the domain-agnostic decision.
+  { id: 'ncontracts', label: 'Contracts', icon: 'FileText', path: '/ncontracts' },
+  // Claim Contract promoted to the main menu from the hidden classic group
+  // (owner, 2026-09-16). Same id as before so nothing keyed on it changes.
+  { id: 'contracts-claim', label: 'Claim Contract', icon: 'Download', path: '/contracts/claim' },
+  /* HIDDEN 2026-09-16 (owner): classic Contracts menu. The /contracts routes
+     stay registered — the hub, /contracts/:id and the wizard remain reachable
+     from the experience pages; only this menu entry is hidden. Un-hide by
+     uncommenting this block (and remove the top-level Claim entry above).
+  {
+    id: 'contracts',
+    label: 'Contracts',
+    icon: 'FileText',
+    path: '/contracts',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/contracts' },
+      // HIDDEN: Contract Preview, Invite Sellers
+      // { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
+      // { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
+      { id: 'contracts-claim', label: 'Claim Contract', icon: 'Download', path: '/contracts/claim' }
+    ]
+  },
+  */
+  // Money In / To Pay — ONE money workspace per side (owner decision,
+  // 2026-08-13). Money In merges receivables + invoices: buyer stories with
+  // instalments, documents and receipts inside. To Pay is its expense mirror.
+  {
+    id: 'money-in',
+    label: 'Money In',
+    icon: 'Wallet',
+    path: '/money-in',
+    revenueOnly: true
+  },
+  // Invoices — the document register (owner request, 2026-08-14). Money In is
+  // still the money surface: it answers "who owes me and what do I do about
+  // it", grouped by buyer and scoped to the live picture. That deliberately
+  // cannot answer "where is INV-10059", because settled and cancelled
+  // documents have no place in a story about open money. This entry is the
+  // flat, searchable list of every invoice, and is reached from Money In too.
+  // Kept as its OWN top-level item rather than a submenu under Money In,
+  // because making Money In a submenu parent would turn it into a toggle and
+  // cost it its one-click route (see Sidebar: hasSubmenu items link to '#').
+  {
+    id: 'invoices',
+    label: 'Invoices',
+    icon: 'Receipt',
+    path: '/invoices',
+    revenueOnly: true
+  },
+  {
+    id: 'to-pay',
+    label: 'To Pay',
+    icon: 'Banknote',
+    path: '/to-pay',
+    expenseOnly: true
+  },
+  // Requests (RFQ) — its OWN menu item, not a toggle inside Contracts.
+  // An RFQ is a different object with a different lifecycle (draft → sent →
+  // quotes in → awarded → converted). Visible on BOTH sides, because the
+  // two halves of an RFQ live on opposite sides:
+  //   EXPENSE → RAISE a request + track the ones you sent
+  //   REVENUE → VIEW requests you received and RESPOND with a quote
+  // The page enforces the difference (the "New Request" button only exists
+  // on expense); the menu must not hide the view/respond half.
+  {
+    id: 'requests',
+    label: 'Requests',
+    icon: 'Inbox',
+    path: '/requests'
+  },
+  // VaNi — the real agent surface: Overview (landing + trial) and Briefing.
+  // Autonomy & Credits joins when built (agreed end-state: 3 items).
+  {
+    id: 'vani',
+    label: 'VaNi',
+    icon: 'Sparkles',
+    path: '/vani/landing',
+    hasSubmenu: true,
+    defaultOpen: false,
+    submenuItems: [
+      { id: 'vani-landing', label: 'Overview', icon: 'Home', path: '/vani/landing' },
+      { id: 'vani-briefing', label: 'Briefing', icon: 'Sunrise', path: '/vani/briefing' }
+    ]
+  },
+  // HIDDEN 2026-08-14: VaNi (old) — mock/reference pages, per the block's own
+  // prior comment ("parked here until the cleanup pass removes them") this
+  // was always the intended end state, confirmed by the owner. Includes
+  // vani-receivables (/vani/finance/receivables), the 100% mock Accounts
+  // Receivable page — retire it in the same cleanup pass, per CLAUDE.md
+  // "Finance (AR/AP) menu is superseded". Pages left in place; delete only in
+  // the owner's later code-cleanup pass, not now.
+  // WAS VISIBLE FOR REVIEW (2026-09-16, owner request) while the JTD tools /
+  // collections-ladder spec was finalised. RE-HIDDEN 2026-09-17 (owner request,
+  // batch ops-cockpit-swap): the review is done — the Ops board, the ladder tools
+  // and the automation rules replaced what these mock pages sketched. Routes and
+  // page files stay in place for the later code-cleanup pass; nothing else
+  // references the 'vani-old' id.
+  /*
+  {
+    id: 'vani-old',
+    label: 'VaNi (old)',
+    icon: 'Archive',
+    path: '/vani/dashboard',
+    hasSubmenu: true,
+    defaultOpen: false, // reference only — must not auto-expand and crowd the sidebar
+    submenuItems: [
+      { id: 'vani-dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/vani/dashboard' },
+      { id: 'vani-jobs', label: 'Jobs', icon: 'Briefcase', path: '/vani/jobs' },
+      { id: 'vani-events', label: 'Business Events', icon: 'CalendarClock', path: '/vani/events' },
+      { id: 'vani-templates', label: 'Templates', icon: 'FileText', path: '/vani/templates' },
+      { id: 'vani-channels', label: 'Channels', icon: 'MessageSquare', path: '/vani/channels' },
+      { id: 'vani-bbb-chat', label: 'BBB Chat', icon: 'MessageCircle', path: '/vani/channels/bbb/chat' },
+      { id: 'vani-analytics', label: 'Analytics', icon: 'BarChart2', path: '/vani/analytics' },
+      { id: 'vani-webhooks', label: 'Webhooks', icon: 'Webhook', path: '/vani/webhooks' },
+      { id: 'vani-receivables', label: 'Accounts Receivable', icon: 'Wallet', path: '/vani/finance/receivables' },
+      { id: 'vani-service-schedule', label: 'Service Schedule', icon: 'CalendarCheck', path: '/vani/operations/services' },
+      { id: 'vani-rules', label: 'Process Rules', icon: 'ListChecks', path: '/vani/rules' },
+      { id: 'vani-chat', label: 'Chat', icon: 'MessagesSquare', path: '/vani/chat' }
+    ]
+  },
+  */
+  // HIDDEN: Templates, Tasks - commented out for now
+  /*
+  {
+    id: 'templates',
+    label: 'Templates',
+    icon: 'FileTemplate',
+    path: '/service-contracts/templates',
+    hasSubmenu: true,
+    submenuItems: [...]
+  },
+  {
+    id: 'tasks',
+    label: 'Tasks',
+    icon: 'CheckSquare',
+    path: '/tasks',
+    hasSubmenu: false
+  },
+  */
+  // HIDDEN: Appointments — commented out
+  /*
+  {
+    id: 'appointments',
+    label: 'Appointments',
+    icon: 'Calendar',
+    path: '/appointments',
+    hasSubmenu: false
+  },
+  */
+  // Catalog Studio - all submenus visible
+  {
+    id: 'catalog-studio',
+    label: 'Catalog Studio',
+    icon: 'Layers',
+    path: '/catalog-studio',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
+      { id: 'catalog-studio-equipment', label: 'VaNi Seeding', icon: 'Sprout', path: '/catalog-studio/equipment' },
+      { id: 'catalog-studio-templates-list', label: 'Templates', icon: 'List', path: '/catalog-studio/templates-list' }
+    ]
+  },
+
+  // Extend — customer touchpoints (Website / WhatsApp / Email): publish a
+  // template as a public buy link. Paid feature (touchpoint add-ons).
+  {
+    id: 'extend',
+    label: 'Extend',
+    icon: 'Share2',
+    path: '/extend',
+    hasSubmenu: false
+  },
+
+  // HIDDEN: Service Catalog - commented out for now
+  /*
+  {
+    id: 'catalog',
+    label: 'Service Catalog',
+    icon: 'Package',
+    path: '/catalog',
+    hasSubmenu: true,
+    submenuItems: [...]
+  },
+  */
+  // Settings menu - simplified (removed Pricing Plans, My Subscription)
+  {
+    id: 'settings',
+    label: 'Settings',
+    icon: 'Settings',
+    path: '/settings',
+    hasSubmenu: true,
+    submenuItems: [
+      {
+        id: 'settings-configure',
+        label: 'Configure',
+        icon: 'Sliders',
+        path: '/settings/configure'
+      }
+      // HIDDEN: Pricing Plans, My Subscription - commented out
+      /*
+      {
+        id: 'pricing-plans',
+        label: 'Pricing Plans',
+        icon: 'CreditCard',
+        path: '/businessmodel/tenants/pricing-plans'
+      },
+      {
+        id: 'my-subscription',
+        label: 'My Subscription',
+        icon: 'Package',
+        path: '/businessmodel/tenants/subscription'
+      }
+      */
+    ]
+  },
+  // UPDATED: Implementation Toolkit - updated paths for service-contracts structure
+  // REMOVED: plan-detail, plan-versions, subscription-management submenus
+  // REMOVED: user-management and analytics menu items (moved under toolkit or removed)
+  {
+    id: 'implementation-toolkit',
+    label: 'Implementation Toolkit',
+    icon: 'Tool',
+    path: '/implementation',
+    adminOnly: true,
+    hasSubmenu: true,
+    defaultOpen: true, // Implementation Toolkit should be open by default
+    submenuItems: [
+      {
+        id: 'global-templates',
+        label: 'Global Templates',
+        icon: 'FileText',
+        path: '/service-contracts/templates/admin/global-templates'
+      },
+      {
+        id: 'global-template-designer',
+        label: 'Global Template Designer',
+        icon: 'Edit',
+        path: '/service-contracts/templates/admin/global-designer'
+      },
+      {
+        id: 'template-analytics',
+        label: 'Template Analytics',
+        icon: 'BarChart',
+        path: '/service-contracts/templates/admin/analytics'
+      },
+      {
+        id: 'configure-plan',
+        label: 'Configure Plan',
+        icon: 'Settings',
+        path: '/settings/businessmodel/admin/pricing-plans'
+      },
+      {
+        id: 'subscription-dashboard',
+        label: 'Subscription Dashboard',
+        icon: 'BarChart',
+        path: '/admin/subscription-management'
+      },
+      {
+        id: 'billing-dashboard',
+        label: 'Billing Dashboard',
+        icon: 'CreditCard',
+        path: '/settings/businessmodel/admin/billing'
+      },
+      {
+        id: 'tenant-profiles',
+        label: 'Group Member Profiles',
+        icon: 'Users',
+        path: '/vani/tenant-profiles'
+      },
+      {
+        id: 'bbb-admin',
+        label: 'BBB Admin',
+        icon: 'Shield',
+        path: '/vani/channels/bbb/admin'
+      },
+      {
+        id: 'product-masters',
+        label: 'Product Masters',
+        icon: 'Package',
+        path: '/vani/toolkit/product-masters'
+      }
+    ]
+  },
+  // JTD Admin — Release 1 (Observability)
+  {
+    id: 'jtd-admin',
+    label: 'JTD Admin',
+    icon: 'Activity',
+    path: '/admin/jtd',
+    adminOnly: true,
+    hasSubmenu: true,
+    defaultOpen: false,
+    submenuItems: [
+      {
+        id: 'jtd-queue',
+        label: 'Queue Monitor',
+        icon: 'ListOrdered',
+        path: '/admin/jtd/queue'
+      },
+      {
+        id: 'jtd-tenants',
+        label: 'Tenant Operations',
+        icon: 'Building2',
+        path: '/admin/jtd/tenants'
+      },
+      {
+        id: 'jtd-events',
+        label: 'Event Explorer',
+        icon: 'Search',
+        path: '/admin/jtd/events'
+      },
+      {
+        id: 'jtd-worker',
+        label: 'Worker Health',
+        icon: 'HeartPulse',
+        path: '/admin/jtd/worker'
+      },
+      {
+        id: 'jtd-templates',
+        label: 'Template Mapping',
+        icon: 'FileText',
+        path: '/admin/jtd/templates'
+      }
+    ]
+  },
+  // Smart Forms Admin — Form Template Management
+  {
+    id: 'smart-forms-admin',
+    label: 'Smart Forms',
+    icon: 'FileText',
+    path: '/admin/smart-forms',
+    adminOnly: true,
+    hasSubmenu: false,
+    defaultOpen: false,
+  }
+];
+
+// Industry-specific menu overrides - UPDATED template paths
+export const industryMenuOverrides: Record<string, Partial<Record<string, { label: string, icon?: string }>>> = {
+  healthcare: {
+    // HIDDEN: Contacts menu overrides - contacts menu hidden
+    // contacts: { label: 'Patients & Staff', icon: 'Users' },
+    // 'contacts-buyers': { label: 'Patients', icon: 'Users' },
+    // 'contacts-partners': { label: 'Medical Partners', icon: 'Stethoscope' },
+    // 'contacts-service-providers': { label: 'Healthcare Providers', icon: 'UserCheck' },
+    contracts: { label: 'Care Packages', icon: 'Stethoscope' },
+    'contracts-create': { label: 'Create Care Package', icon: 'FilePlus' },
+    templates: { label: 'Care Templates', icon: 'FileTemplate' },
+    'my-templates': { label: 'My Care Templates', icon: 'FolderOpen' },
+    'template-designer': { label: 'Care Template Designer', icon: 'Edit' },
+    appointments: { label: 'Patient Appointments', icon: 'Stethoscope' },
+    'implementation-toolkit': { label: 'Clinical Implementation Tools', icon: 'Stethoscope' }
+  },
+  financial_services: {
+    // HIDDEN: Contacts menu overrides - contacts menu hidden
+    // contacts: { label: 'Clients & Partners', icon: 'Users' },
+    // 'contacts-buyers': { label: 'Clients', icon: 'DollarSign' },
+    // 'contacts-partners': { label: 'Financial Partners', icon: 'Handshake' },
+    // 'contacts-service-providers': { label: 'Service Providers', icon: 'Building2' },
+    contracts: { label: 'Financial Agreements', icon: 'DollarSign' },
+    'contracts-create': { label: 'Create Agreement', icon: 'FilePlus' },
+    templates: { label: 'Agreement Templates', icon: 'FileTemplate' },
+    'my-templates': { label: 'My Agreement Templates', icon: 'FolderOpen' },
+    'template-designer': { label: 'Agreement Designer', icon: 'Edit' },
+    appointments: { label: 'Client Meetings', icon: 'Calendar' },
+    'implementation-toolkit': { label: 'Financial Implementation Suite', icon: 'DollarSign' }
+  },
+  education: {
+    // HIDDEN: Contacts menu overrides - contacts menu hidden
+    // contacts: { label: 'Students & Faculty', icon: 'Users' },
+    // 'contacts-buyers': { label: 'Students', icon: 'GraduationCap' },
+    // 'contacts-partners': { label: 'Education Partners', icon: 'Handshake' },
+    // 'contacts-service-providers': { label: 'Faculty & Staff', icon: 'UserCheck' },
+    contracts: { label: 'Learning Programs', icon: 'GraduationCap' },
+    'contracts-create': { label: 'Create Program', icon: 'FilePlus' },
+    templates: { label: 'Program Templates', icon: 'FileTemplate' },
+    'my-templates': { label: 'My Program Templates', icon: 'FolderOpen' },
+    'template-designer': { label: 'Program Designer', icon: 'Edit' },
+    appointments: { label: 'Sessions', icon: 'Calendar' },
+    'implementation-toolkit': { label: 'Education Implementation Tools', icon: 'GraduationCap' }
+  },
+  construction: {
+    // HIDDEN: Contacts menu overrides - contacts menu hidden
+    // contacts: { label: 'Contractors & Clients', icon: 'Users' },
+    // 'contacts-buyers': { label: 'Clients', icon: 'Building2' },
+    // 'contacts-partners': { label: 'Construction Partners', icon: 'Handshake' },
+    // 'contacts-service-providers': { label: 'Contractors', icon: 'Hammer' },
+    contracts: { label: 'Project Contracts', icon: 'Hammer' },
+    'contracts-create': { label: 'Create Project Contract', icon: 'FilePlus' },
+    templates: { label: 'Project Templates', icon: 'FileTemplate' },
+    'my-templates': { label: 'My Project Templates', icon: 'FolderOpen' },
+    'template-designer': { label: 'Project Designer', icon: 'Edit' },
+    appointments: { label: 'Site Visits', icon: 'MapPin' },
+    'implementation-toolkit': { label: 'Construction Implementation Kit', icon: 'Hammer' }
+  }
+};
+
+// Get industry-specific menu items (keeping original function signature)
+export const getMenuItemsForIndustry = (industryId: string | undefined): MenuItem[] => {
+  if (!industryId) return defaultMenuItems;
+
+  // Start with the default menu items
+  const menuItems = [...defaultMenuItems];
+
+  // Apply industry-specific overrides if they exist
+  const overrides = industryMenuOverrides[industryId];
+  if (overrides) {
+    menuItems.forEach(item => {
+      const override = overrides[item.id];
+      if (override) {
+        item.label = override.label || item.label;
+        item.icon = override.icon || item.icon;
+      }
+
+      // Also check submenu items
+      if (item.hasSubmenu && item.submenuItems) {
+        item.submenuItems.forEach(subItem => {
+          const subOverride = overrides[subItem.id];
+          if (subOverride) {
+            subItem.label = subOverride.label || subItem.label;
+            subItem.icon = subOverride.icon || subItem.icon;
+          }
+        });
+      }
+    });
+  }
+
+  return menuItems;
+};

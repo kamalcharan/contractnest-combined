@@ -1,0 +1,128 @@
+═══════════════════════════════════════════════════
+BATCH: ops-timeboard (2026-09-18) — the TIMEBOARD: every hour, every person,
+       every commitment; drag a service onto a time (or a person) and confirm
+═══════════════════════════════════════════════════
+POA batch 3 (owner: "start batch 3"). UI only — no migration, no API change.
+The Plan tab (023) lines the days up; this puts the same cards on a clock,
+reading the same two readers: jtd_plan for the rows and get_team_availability
+(024) for the hours, days off, leave and holidays that hatch the columns.
+
+Submodules affected:
+  contractnest-ui — pages/ops/timeboard/index.tsx (NEW, the page),
+                    components/ops/timeboard/model.ts (NEW — placement,
+                    availability, clash preview, find-a-slot; pure functions),
+                    components/ops/timeboard/Grid.tsx (NEW — Week + Day),
+                    components/ops/timeboard/Agenda.tsx (NEW — phone default),
+                    App.tsx (route /ops/timeboard; built on pristine main —
+                    nothing unmerged touches App.tsx),
+                    utils/constants/industryMenus.ts (menu entry "Timeboard"
+                    after Commitments Register — a SUPERSET of batch
+                    ops-menu-flatten's copy; copy this batch after it)
+  ⚠ Depends on the unmerged batches ops-expense-board, ops-plan-view and
+    ops-availability being copied in (useOpsPlan, useTeamAvailability,
+    JobCard with clash pills, the Plan hooks). Copy order: expense-board →
+    plan-view → availability → menu-flatten → THIS.
+
+─── WHAT IT DOES ───────────────────────────────────
+ /ops/timeboard (menu: Timeboard, revenue side; expense shows a one-line note)
+ Views: WEEK (a column per day, Mon–Sun) · DAY (a column per person, then
+   Unassigned, then VaNi) · AGENDA (the phone default; a list per day).
+   Earlier / Today / Later, a date picker, lane (All · Services ·
+   Collections), Who (whole team / mine / unassigned), a Person select
+   (when the team has more than one), search. Day and search live in the
+   URL (?day=&q=) so a link lands on the same view.
+ Columns: header = day (or person) + the hours that apply ("09:00–18:00",
+   "day off", "Ganesh Chaturthi", "10:00–16:00 · dentist"); a top strip of
+   everything WITHOUT a real time (unslotted services as draggable chips,
+   payments / reminders / follow-ups / declared rolled up into chips that
+   open a list); then the hours, hatched outside the working window, on a
+   day off, a holiday or leave; a red rule at now on today.
+ Blocks: services with a slot (proposed = dashed amber, asked = solid amber,
+   confirmed = green, in progress = brand, overdue = red), sized by
+   duration_minutes (024), side by side when they overlap, ⚠ when the
+   reader says they clash. Day view: a person's follow-ups at their due
+   time; the VaNi column carries the ladder's reminders at their time
+   (greyed with "Open VaNi" when VaNi is off — the counterfactual is the pitch).
+ THE GESTURE: pick a service up (chip or block) and drop it on a time — in
+   the Day view on a person too. Never silent: a confirm bar reads "Move AC
+   servicing · CN-1010 (Acme) to Tue 22 Sep, 2 pm and assign to Ravi", shows
+   the clash preview computed from the availability the page already holds
+   (day off · leave · outside 09:00–18:00 · overlaps …), and offers
+   [Propose to customer] (jtd_schedule_visit, not confirmed) · [Confirm slot]
+   / [Keep confirmed] (confirmed) · Cancel. A drop on another person's
+   column assigns first (jtd_assign_visit) then schedules. The server's own
+   warnings still come back in the toast. Nothing else is draggable:
+   payments and reminders have no slot; a follow-up's reschedule has no API
+   route yet (jtd_item_reschedule exists in the DB — pending).
+ SIDE PANEL: tap any block, chip or agenda row → the full JobCard with every
+   verb (nudge, call, assign, pause, confirm declaration, invoice, assign /
+   schedule / confirm slot / start / mark done / ask customer, History) —
+   the same wiring as Ops and the Plan tab — plus, for a service, FIND A
+   SLOT: the next free times (14 days, working hours, skipping days off,
+   leave, holidays and other timed services; for its technician, or for
+   everyone when unassigned). Picking one opens the same confirm bar.
+ STRIP over the grid: N need you · N clashes · N to place · N awaiting
+   customer · N unassigned · N carried over → (list) · N parked → (list) ·
+   VaNi is on/off. Day view adds the VaNi line: "Plan this day · N" when on
+   (usePlanDay, 023), the greyed "VaNi would place N and send R reminders"
+   when off.
+
+ Verified: UI tsc 1170 = pristine on the assembled local state (expense-board
+ + items-on-jtd + plan-view + availability + menu-flatten + this); vite
+ build passes; the three views rendered in a throwaway harness with mocked
+ rows and availability (week, day-by-person, agenda) — strips share one
+ height so the hours line up across columns, hatching for a person's
+ 10:00–16:00, a Sunday off, a holiday and a morning's leave, overlapping
+ blocks side by side, the follow-up in its person's column, the reminder in
+ VaNi's. Not exercised against the live API in this session (no auth from
+ here): the drag → confirm → schedule chain calls the same hooks the Plan
+ tab's Schedule panel already uses.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/wonderful-knuth-kb61tu
+# (if not already copied) the batches this one builds on, in this order:
+Copy-Item "MANUAL_COPY_FILES\ops-expense-board\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-plan-view\contractnest-ui\*"     -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-availability\contractnest-ui\*"  -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-menu-flatten\contractnest-ui\*"  -Destination "contractnest-ui\" -Recurse -Force
+# this batch
+Copy-Item "MANUAL_COPY_FILES\ops-timeboard\contractnest-ui\*"     -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ ops-timeboard copied" -ForegroundColor Green
+cd contractnest-ui; npm run dev      # Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — signia, Live
+═══════════════════════════════════════════════════
+- [ ] Menu shows "Timeboard" after Commitments Register; /ops/timeboard opens
+      the Week view on this week, today's column ringed, the now rule visible.
+- [ ] Column headers read the hours saved on /settings/configure/cadence;
+      Sunday reads "day off" and is hatched; a marked holiday shows its label.
+- [ ] Services with a slot appear as blocks at their time; unslotted ones as
+      dashed chips in the top strip; payments as "N due" chips that open a list.
+- [ ] Drag a chip onto Tue 11:00 → the confirm bar names the service, the
+      day and time → Propose to customer → toast "Slot proposed for …" → the
+      block appears at 11:00 (dashed amber); the same card on Ops reads "Slot
+      proposed".
+- [ ] Drag a block onto 08:00 → the bar shows "⚠ outside 09:00–18:00" before
+      you confirm; Confirm slot → the toast repeats the warning, the block
+      carries ⚠.
+- [ ] Day view: columns per person + Unassigned + VaNi; drag a service from
+      Unassigned onto a person at 14:00 → bar reads "… and assign to <name>"
+      → Propose → the card is assigned and slotted; a second service on the
+      same person at 14:30 → "overlaps …" in the bar.
+- [ ] Tap a block → side panel with the full card; Find a slot → next free
+      times listed; pick one → confirm bar → Propose.
+- [ ] Day view VaNi line: "Plan this day · N" places the unslotted services;
+      the VaNi column shows the ladder's reminders at 10:00.
+- [ ] Agenda on a phone width: days listed, rows in time order, tap opens
+      the panel; nothing draggable there (Schedule from the card works).
+- [ ] buyer@b.com (VaNi off): reminders greyed, "Open VaNi"; expense
+      perspective shows the one-line note.
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
