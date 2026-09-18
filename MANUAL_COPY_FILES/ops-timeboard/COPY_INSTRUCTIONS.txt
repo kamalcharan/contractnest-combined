@@ -34,14 +34,20 @@ Submodules affected:
           working minutes over the visible days, hours line or "day off",
           clashes) — click = View as. "VaNi" card with the autonomy dial
           Draft / Ask me / Auto (client preference, localStorage).
- BOARD    "To place" tray = every unslotted service in the window + carried
-          (draggable chips: block · contract · minutes · due · technician),
+ BOARD    "To place" tray = every unslotted service in the window + carried,
+          GROUPED by contract + block and collapsed by default (fix after the
+          first screenshot, 2026-09-18: 27 chips had pushed the grid below the
+          fold) — header "27 to place · 22 overdue · 4 contracts", one chip per
+          group with ×N and the oldest due, click a group to open its services
+          (draggable, one by one), "Show all" opens every group; the tray is
+          height-capped and scrolls, so the grid always stays above the fold;
           then the grid — DAY = a column per person + Unassigned + VaNi,
           WEEK = a column per day, AGENDA = the list. Hatched off-hours /
           day off / holiday / leave, now rule, blocks sized by duration,
           side by side on overlap, ⚠ on a clash; a person's follow-ups at
           their due time and the ladder's reminders in VaNi's column (Day).
- SIDE     The selected item = the board's own JobCard with every verb, the
+ SIDE     (400px; the card renders compact so the evidence line does not wrap
+          word by word) The selected item = the board's own JobCard with every verb, the
           CONFIRM BAR under it after a drop ("Move to Tue 22 Sep 2 pm · Ravi?"
           → Move / Move & confirm / Keep as is; a confirmed slot reads "This
           slot was confirmed with the customer. Move … and ask them again?"
@@ -51,6 +57,11 @@ Submodules affected:
           greyed with Open VaNi when VaNi is off) and "Your day" (the signed-
           in user's rows today). A list (carried / parked / a roll-up chip)
           opens here too.
+ BACKLOG  "VaNi suggests" leads with the carried-over services: "22 services
+          are overdue since 15 Aug with no slot — about 3 working days of work.
+          Spread them over the coming days rather than today" with "Find a slot
+          for the oldest" (manual, never gated). Spreading them automatically is
+          POA batch 4.
  GESTURE  drag a service (tray or grid) onto a time — Day view: onto a person
           (assigns first) → confirm bar → jtd_schedule_visit (proposed, or
           confirmed) → toast with UNDO (puts the previous slot back through

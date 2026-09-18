@@ -115,6 +115,18 @@ const TimeboardPage: React.FC = () => {
   /** the tray: every service in the window (and carried over) with no slot yet */
   const tray = useMemo(() => [...(data?.carried.cards || []), ...cards].filter((c) => isService(c) && !isTimedService(c) && isDraggable(c) && (!viewAs || !c.owner_id || c.owner_id === viewAs)), [data, cards, viewAs]);
   const gridCards = useMemo(() => cards.filter((c) => !(isService(c) && !isTimedService(c))), [cards]);
+  /** the tray grouped by contract + block, oldest due first — a backlog of 14 services on one contract is one chip until opened */
+  const trayGroups = useMemo(() => {
+    const m = new Map<string, { key: string; contract: string; block: string; oldest: string; cards: BoardCard[] }>();
+    for (const c of tray) {
+      const key = `${c.contract_id}|${c.visit?.block_name || ''}`;
+      const due = c.due_date || localDayOf(c.anchor_at) || '9999-12-31';
+      const g = m.get(key) || { key, contract: c.contract_number, block: c.visit?.block_name || c.contract_number, oldest: due, cards: [] };
+      g.cards.push(c); if (due < g.oldest) g.oldest = due; m.set(key, g);
+    }
+    return Array.from(m.values()).map((g) => ({ ...g, cards: [...g.cards].sort((a, b) => ((a.due_date || a.anchor_at || '') < (b.due_date || b.anchor_at || '') ? -1 : 1)) })).sort((a, b) => (a.oldest < b.oldest ? -1 : a.oldest > b.oldest ? 1 : a.contract.localeCompare(b.contract)));
+  }, [tray]);
+  const trayOverdue = useMemo(() => tray.filter((c) => { const d = c.due_date || localDayOf(c.anchor_at); return !!d && d < isoDay(today0()); }).length, [tray]);
   const columns = useMemo<GridColumn[]>(() => {
     if (!data) return [];
     if (view === 'day') {
@@ -141,6 +153,8 @@ const TimeboardPage: React.FC = () => {
   const [dragging, setDragging] = useState<BoardCard | null>(null);
   const [pending, setPending] = useState<DropTarget | null>(null);
   const [finder, setFinder] = useState<{ cardId: string; who: string; from: string; slots: FreeSlot[] | null } | null>(null);
+  const [trayOpen, setTrayOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!selected || !data) return;
@@ -255,6 +269,15 @@ const TimeboardPage: React.FC = () => {
         run: view === 'day' ? () => runDay(anchor, () => planDay.mutateAsync({ day: anchor })) : first ? () => openFinder(first) : undefined,
       });
     }
+    const backlog = (data.carried.cards || []).filter((c) => isService(c) && !isTimedService(c) && isDraggable(c));
+    if (backlog.length > 0) {
+      const oldest = backlog.reduce((m, c) => { const d = c.due_date || localDayOf(c.anchor_at) || ''; return d && (!m || d < m) ? d : m; }, '');
+      const days = Math.max(1, Math.ceil(backlog.length / Math.max(1, Math.floor(8 * 60 / fallbackMinutes) * Math.max(1, team.length))));
+      out.push({
+        key: 'backlog', text: `${backlog.length} service${backlog.length === 1 ? ' is' : 's are'} overdue${oldest ? ` since ${dayOf(oldest).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''} with no slot — about ${days} working day${days === 1 ? '' : 's'} of work${team.length > 1 ? ` across ${team.length} people` : ''}. Spread them over the coming days rather than today.`,
+        label: `Find a slot for the oldest`, run: () => openFinder(backlog.sort((a, b) => ((a.due_date || a.anchor_at || '') < (b.due_date || b.anchor_at || '') ? -1 : 1))[0]),
+      });
+    }
     if (dayCounts.proposed > 0) out.push({
       key: 'ask', text: `${dayCounts.proposed} proposed slot${dayCounts.proposed === 1 ? '' : 's'} ${scope} ${dayCounts.proposed === 1 ? 'has' : 'have'} not been put to the customer.${askChannels.length ? '' : ' No send template is registered yet — Share from each card works today.'}`,
       label: view === 'day' && askChannels.length ? `Ask everyone ${askChannels[0] === 'whatsapp' ? 'on WhatsApp' : 'by email'} · ${dayCounts.proposed}` : undefined,
@@ -263,7 +286,7 @@ const TimeboardPage: React.FC = () => {
     if (dayCounts.reminders_due > 0) out.push({ key: 'rem', text: `${dayCounts.reminders_due} payment reminder${dayCounts.reminders_due === 1 ? '' : 's'} ${scope} ${data.ladder?.rule_enabled ? 'run by the ladder.' : 'wait — Payment reminders are switched off under Automation Rules.'}`, label: data.ladder?.rule_enabled ? undefined : 'Turn on Payment reminders', run: data.ladder?.rule_enabled ? undefined : () => navigate('/settings/configure/automation-rules') });
     if (dayCounts.clashes > 0) out.push({ key: 'clash', text: `${dayCounts.clashes} slot${dayCounts.clashes === 1 ? '' : 's'} ${scope} clash${dayCounts.clashes === 1 ? 'es' : ''} — outside hours, on a day off or leave, or overlapping. Drag ${dayCounts.clashes === 1 ? 'it' : 'them'} clear.` });
     return out;
-  }, [data, dayCounts, view, anchor, tray, dial, askChannels]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, dayCounts, view, anchor, tray, dial, askChannels, team.length, fallbackMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── chrome ────────────────────────────────────────────────────────────────
   const Seg: React.FC<{ on: boolean; onClick: () => void; title?: string; children: React.ReactNode }> = ({ on, onClick, title, children }) => (
@@ -354,7 +377,7 @@ const TimeboardPage: React.FC = () => {
       {plan.isPending && !data ? <div className="py-16 flex justify-center"><LoadingSpinner size="md" /></div>
       : plan.isError ? <div className="py-12 text-center"><p className="text-sm mb-3" style={sub}>Couldn't load the timeboard.</p><Btn onClick={() => plan.refetch()}>Retry</Btn></div>
       : data ? (
-        <div className="mt-2 grid gap-3 items-start" style={{ gridTemplateColumns: phone() ? '1fr' : '220px minmax(0,1fr) 360px', opacity: plan.isFetching ? 0.8 : 1, transition: 'opacity .2s' }}>
+        <div className="mt-2 grid gap-3 items-start" style={{ gridTemplateColumns: phone() ? '1fr' : '220px minmax(0,1fr) 400px', opacity: plan.isFetching ? 0.8 : 1, transition: 'opacity .2s' }}>
           {/* ── RAIL ── */}
           <aside className="space-y-3">
             <section style={card} className="p-3">
@@ -394,22 +417,49 @@ const TimeboardPage: React.FC = () => {
             <div style={card} className="p-2.5 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] mr-1" style={{ ...mono, ...sub }}>To place</h3>
-                {tray.length === 0 && <span className="text-[11px]" style={sub}>Nothing waiting for a slot.</span>}
-                {tray.map((c) => {
-                  const due = c.due_date || localDayOf(c.anchor_at);
-                  const late = !!due && due < todayIso;
-                  return (
-                    <button key={c.id} draggable={busyId !== c.id} onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; window.setTimeout(() => setDragging(c), 0); }} onDragEnd={() => setDragging(null)} onClick={() => select(c)}
-                      className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-lg border text-[11px] cursor-grab active:cursor-grabbing max-w-full" style={{ borderColor: selected?.id === c.id ? brand : late ? `${red}66` : hairline, backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText }}
-                      title={`${c.visit?.block_name || 'Service'} · ${c.contract_number} · ${clean(c.buyer_name)} · drag onto the grid to propose a slot${view === 'day' ? ' for that person' : ''}`}>
-                      <span className="w-1 h-4 rounded-full" style={{ backgroundColor: late ? red : c.owner_id ? brand : colors.utility.secondaryText }} />
-                      <span className="font-bold truncate">{c.visit?.block_name || c.contract_number}</span>
-                      <span className="truncate" style={sub}>{c.contract_number} · {durationOf(c, fallbackMinutes)}m{due ? ` · due ${dayOf(due).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}{c.owner_id ? ` · ${personName(c.owner_id)}` : ''}</span>
-                    </button>
-                  );
-                })}
-                {tray.length > 0 && <span className="text-[10.5px]" style={sub}>Drag onto the grid to propose a slot{view === 'day' ? ' for that person' : ''}, or let VaNi place it.</span>}
+                {tray.length === 0 ? <span className="text-[11px]" style={sub}>Nothing waiting for a slot.</span> : (
+                  <>
+                    <span className="text-[11.5px]" style={ink}><b>{tray.length}</b> to place{trayOverdue > 0 && <span style={{ color: red }}> · <b>{trayOverdue}</b> overdue</span>} · {trayGroups.length} contract{trayGroups.length === 1 ? '' : 's'}</span>
+                    <button onClick={() => setTrayOpen((v) => !v)} className="text-[11px] font-bold" style={{ color: brand }}>{trayOpen ? 'Collapse' : 'Show all'}</button>
+                    <span className="text-[10.5px] ml-auto" style={sub}>Drag a service onto the grid to propose a slot{view === 'day' ? ' for that person' : ''}, or let VaNi place it.</span>
+                  </>
+                )}
               </div>
+              {tray.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5 overflow-y-auto" style={{ maxHeight: trayOpen ? 220 : 76 }}>
+                  {trayGroups.map((g) => {
+                    const open = trayOpen || openGroups.has(g.key);
+                    const late = g.oldest < todayIso;
+                    return (
+                      <React.Fragment key={g.key}>
+                        {!open ? (
+                          <button onClick={() => setOpenGroups((x) => { const n = new Set(x); n.add(g.key); return n; })} title={`${g.cards.length} service${g.cards.length === 1 ? '' : 's'} on ${g.contract} — open the group to drag them one by one`}
+                            className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-lg border text-[11px] max-w-full" style={{ borderColor: late ? `${red}66` : hairline, backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText }}>
+                            <span className="w-1 h-4 rounded-full" style={{ backgroundColor: late ? red : brand }} />
+                            <span className="font-bold truncate">{g.block}</span>
+                            <span style={sub}>{g.contract}</span>
+                            {g.cards.length > 1 && <span className="px-1.5 rounded-full text-[10px] font-bold" style={{ backgroundColor: `${late ? red : brand}18`, color: late ? red : brand }}>×{g.cards.length}</span>}
+                            <span style={{ ...sub, color: late ? red : undefined }}>{late ? 'oldest due' : 'due'} {dayOf(g.oldest).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                            {g.cards.length === 1 && <span style={sub}>· drag</span>}
+                          </button>
+                        ) : g.cards.map((c) => {
+                          const due = c.due_date || localDayOf(c.anchor_at);
+                          const lateOne = !!due && due < todayIso;
+                          return (
+                            <button key={c.id} draggable={busyId !== c.id} onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; window.setTimeout(() => setDragging(c), 0); }} onDragEnd={() => setDragging(null)} onClick={() => select(c)}
+                              className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-lg border text-[11px] cursor-grab active:cursor-grabbing max-w-full" style={{ borderColor: selected?.id === c.id ? brand : lateOne ? `${red}66` : hairline, backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText }}
+                              title={`${c.visit?.block_name || 'Service'} · ${c.contract_number} · ${clean(c.buyer_name)} · drag onto the grid`}>
+                              <span className="w-1 h-4 rounded-full" style={{ backgroundColor: lateOne ? red : c.owner_id ? brand : colors.utility.secondaryText }} />
+                              <span className="font-bold truncate">{c.visit?.block_name || c.contract_number}</span>
+                              <span className="truncate" style={sub}>{c.contract_number}{c.visit?.sequence ? ` · #${c.visit.sequence}` : ''} · {durationOf(c, fallbackMinutes)}m{due ? ` · due ${dayOf(due).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : ''}{c.owner_id ? ` · ${personName(c.owner_id)}` : ''}</span>
+                            </button>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {view === 'agenda' ? (
               <Agenda days={data.days} fallbackMinutes={fallbackMinutes} selectedId={selected?.id} meId={meId} onSelect={select} />
@@ -427,7 +477,7 @@ const TimeboardPage: React.FC = () => {
                   <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...mono, ...sub }}>{kindLabel(selected, meId)}</span>
                   <button onClick={() => { setSelected(null); setPending(null); }} aria-label="Close" style={sub}><X size={15} /></button>
                 </div>
-                <JobCard card={selected} busy={busyId === selected.id} locked={!!busyId && busyId !== selected.id} team={team} ladder={data.ladder} meId={meId} actions={actions} askChannels={askChannels} />
+                <JobCard card={selected} compact busy={busyId === selected.id} locked={!!busyId && busyId !== selected.id} team={team} ladder={data.ladder} meId={meId} actions={actions} askChannels={askChannels} />
                 {pending && pending.card.id === selected.id && confirmBar}
                 {isService(selected) && isDraggable(selected) && !pending && <div className="mt-2"><Btn onClick={() => openFinder(selected)}><CalendarSearch size={12} /> Find a slot</Btn></div>}
               </section>
@@ -445,7 +495,7 @@ const TimeboardPage: React.FC = () => {
                   <div key={s.key} className="rounded-xl border p-2.5 mb-2" style={{ borderColor: hairline, backgroundColor: colors.utility.primaryBackground }}>
                     <p className="text-[12px]" style={ink}>{s.text}</p>
                     {s.run && s.label && dial !== 'draft' && (
-                      vaniOn || s.key === 'rem' || s.key === 'place' && view !== 'day'
+                      vaniOn || s.key === 'rem' || s.key === 'backlog' || (s.key === 'place' && view !== 'day')
                         ? <div className="mt-2"><Btn primary disabled={!!busyId || !!busyDay} onClick={s.run}>{busyDay ? <LoadingSpinner size="sm" /> : <Wand2 size={12} />} {s.label}</Btn></div>
                         : <p className="mt-1.5 text-[11px]" style={sub}>VaNi would do this. <button onClick={openVani} className="font-bold" style={{ color: brand }}>Open VaNi →</button></p>
                     )}
