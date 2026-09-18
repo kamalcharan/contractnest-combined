@@ -1,0 +1,632 @@
+<title>ContractNest Timeboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f7f5f2; --surface:#ffffff; --surface-2:#f1ede7; --ink:#1c1a17; --ink-2:#5c574f; --ink-3:#8c867d; --line:#e6e1da; --line-2:#efebe5;
+  --accent:#E8672B; --accent-bg:#fdf0e8; --accent-ink:#b84c15;
+  --ok:#1f8a5b; --ok-bg:#e8f5ee; --warn:#c77d0e; --warn-bg:#fdf4e3; --bad:#d1385a; --bad-bg:#fdecf0;
+  --visit:#3b6ea5; --visit-bg:#e9f0f8; --followup:#7a4fb8; --followup-bg:#f0eaf8; --session:#17878a; --session-bg:#e4f3f3;
+  --off:repeating-linear-gradient(135deg,transparent 0 6px,rgba(28,26,23,.05) 6px 7px);
+  --shadow:0 1px 2px rgba(28,26,23,.05),0 10px 30px rgba(28,26,23,.08);
+  --font:'Manrope',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --hour:52px; --gutter:48px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#15130f; --surface:#1f1c17; --surface-2:#282420; --ink:#f1ede6; --ink-2:#b8b1a6; --ink-3:#857e73; --line:#35312a; --line-2:#2b2823;
+  --accent:#f0783d; --accent-bg:#3a2417; --accent-ink:#ffb48a;
+  --ok:#3fbf85; --ok-bg:#183326; --warn:#e5a13a; --warn-bg:#3a2c12; --bad:#ef6b88; --bad-bg:#3d1c25;
+  --visit:#7fa9d8; --visit-bg:#1e2c3b; --followup:#b394e6; --followup-bg:#2a2138; --session:#5cc4c7; --session-bg:#153334;
+  --off:repeating-linear-gradient(135deg,transparent 0 6px,rgba(241,237,230,.06) 6px 7px);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --bg:#15130f; --surface:#1f1c17; --surface-2:#282420; --ink:#f1ede6; --ink-2:#b8b1a6; --ink-3:#857e73; --line:#35312a; --line-2:#2b2823;
+  --accent:#f0783d; --accent-bg:#3a2417; --accent-ink:#ffb48a;
+  --ok:#3fbf85; --ok-bg:#183326; --warn:#e5a13a; --warn-bg:#3a2c12; --bad:#ef6b88; --bad-bg:#3d1c25;
+  --visit:#7fa9d8; --visit-bg:#1e2c3b; --followup:#b394e6; --followup-bg:#2a2138; --session:#5cc4c7; --session-bg:#153334;
+  --off:repeating-linear-gradient(135deg,transparent 0 6px,rgba(241,237,230,.06) 6px 7px);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,select:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{height:100%;display:flex;flex-direction:column;padding-inline:16px;padding-block:0;max-width:1600px;margin:0 auto}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:12px 8px;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;line-height:1.1}
+.brand b{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.brand span{font-size:11px;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.datenav{display:flex;align-items:center;gap:6px}
+.datenav h1{font-size:16px;font-weight:700;margin:0 6px;white-space:nowrap;text-wrap:balance}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-weight:700}
+.icon-btn:hover{border-color:var(--ink-3)}
+.pill-btn{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:13px}
+.pill-btn:hover{border-color:var(--ink-3)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:9px;padding:3px;gap:2px}
+.seg button{padding:5px 12px;border-radius:7px;font-weight:600;font-size:13px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.viewas{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-3);font-weight:600;margin-left:auto}
+.primary{height:32px;padding:0 14px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:13px}
+.primary:hover{filter:brightness(.95)}
+
+/* focus strip */
+.strip{display:flex;gap:8px;flex-wrap:wrap;padding-block:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.chip b{font-family:var(--mono);font-weight:600;color:var(--ink)}
+.chip.on{border-color:var(--ink);color:var(--ink)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
+.chip.bad .dot{background:var(--bad)} .chip.warn .dot{background:var(--warn)} .chip.acc .dot{background:var(--accent)} .chip.ok .dot{background:var(--ok)}
+.strip .spacer{flex:1}
+.legend{display:flex;gap:12px;font-size:11.5px;color:var(--ink-3);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* layout */
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:220px minmax(0,1fr) 300px;gap:12px;padding-bottom:12px}
+.rail,.side{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:auto}
+.rail{padding:10px}
+.rail h3,.side h3,.tray h3{margin:0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+.person{display:grid;grid-template-columns:32px 1fr;gap:8px;padding:8px;border-radius:10px;cursor:pointer;align-items:center;margin-top:4px}
+.person:hover{background:var(--surface-2)}
+.person.on{background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12px;color:#fff}
+.person .name{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px}
+.person .role{font-size:11.5px;color:var(--ink-3)}
+.load{height:5px;border-radius:3px;background:var(--line-2);margin-top:5px;overflow:hidden}
+.load i{display:block;height:100%;background:var(--ink-3);border-radius:3px}
+.load.hot i{background:var(--bad)}
+.person .meta{font-size:11px;color:var(--ink-3);font-family:var(--mono);margin-top:2px}
+.person.off .name::after{content:"off today";font:600 10px var(--font);color:var(--warn);background:var(--warn-bg);padding:1px 6px;border-radius:999px}
+.vani-dial{margin-top:10px;padding:10px;border-radius:10px;background:var(--accent-bg);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+.vani-dial .name{font-weight:800;color:var(--accent-ink);display:flex;gap:6px;align-items:center}
+.vani-dial p{margin:4px 0 8px;font-size:12px;color:var(--ink-2)}
+.dial{display:flex;background:var(--surface);border-radius:8px;padding:2px;gap:2px;border:1px solid var(--line)}
+.dial button{flex:1;padding:4px;border-radius:6px;font-size:11.5px;font-weight:700;color:var(--ink-3)}
+.dial button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+/* board */
+.board{display:flex;flex-direction:column;min-width:0;min-height:0;gap:10px}
+.tray{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tray h3{margin-right:4px}
+.tray .hint{font-size:12px;color:var(--ink-3)}
+.tray-item{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);cursor:grab;font-size:12.5px;font-weight:600;touch-action:none}
+.tray-item .bar{width:4px;height:22px;border-radius:2px}
+.tray-item small{font-weight:500;color:var(--ink-3);font-family:var(--mono);font-size:11px}
+.tray-item.due{border-color:var(--bad)}
+.grid-wrap{flex:1;min-height:0;background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.heads{display:grid;grid-template-columns:var(--gutter) repeat(var(--cols),minmax(0,1fr));border-bottom:1px solid var(--line);position:relative;z-index:2;background:var(--surface)}
+.head{padding:8px 8px 6px;border-left:1px solid var(--line-2);min-width:0}
+.head .d{font-size:11px;color:var(--ink-3);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.head .n{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px}
+.head.today .n span{background:var(--accent);color:#fff;border-radius:7px;padding:0 6px}
+.head .sub{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.head .sub.bad{color:var(--bad);font-weight:600}
+.head .avatar{width:22px;height:22px;font-size:10px}
+.scroll{flex:1;overflow:auto;position:relative}
+.grid{display:grid;grid-template-columns:var(--gutter) repeat(var(--cols),minmax(0,1fr));height:calc(var(--hour) * var(--hours));position:relative}
+.gut{position:relative}
+.gut span{position:absolute;right:6px;transform:translateY(-50%);font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.col{position:relative;border-left:1px solid var(--line-2);background-image:linear-gradient(var(--line-2) 1px,transparent 1px);background-size:100% var(--hour)}
+.col.today{background-color:color-mix(in srgb,var(--accent) 4%,transparent)}
+.col.drop{box-shadow:inset 0 0 0 2px var(--accent)}
+.avail{position:absolute;left:0;right:0;background:var(--off);pointer-events:none}
+.avail.leave{background:var(--warn-bg);border-top:1px dashed var(--warn);border-bottom:1px dashed var(--warn)}
+.avail.leave::after{content:attr(data-label);position:absolute;top:4px;left:6px;font:600 10px var(--font);color:var(--warn)}
+.now{position:absolute;left:0;right:0;height:2px;background:var(--accent);z-index:3;pointer-events:none}
+.now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.item{position:absolute;left:3px;right:3px;border-radius:8px;padding:4px 6px 4px 9px;overflow:hidden;cursor:grab;user-select:none;touch-action:none;border:1px solid transparent;font-size:12px;line-height:1.3;background:var(--kbg);box-shadow:0 1px 2px rgba(0,0,0,.05);z-index:1}
+.item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k)}
+.item.proposed,.item.asked{background:var(--surface);border-style:dashed;border-color:var(--k)}
+.item.customer_proposed{border-color:var(--warn);box-shadow:0 0 0 2px var(--warn-bg);animation:pulse 2.2s ease-in-out infinite}
+.item.clash{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad-bg)}
+.item.done{opacity:.55}
+.item.sel{outline:2px solid var(--ink);z-index:2}
+.item.dragging{opacity:.35}
+.item .t{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);display:flex;justify-content:space-between;gap:4px}
+.item .ttl{font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .who{font-size:11px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.item.short .pills,.item.short .who{display:none}
+.item.short{padding-block:2px}.item.short .t{display:none}
+.pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.acc{background:var(--accent-bg);color:var(--accent-ink)}
+.ghost{position:fixed;pointer-events:none;z-index:50;opacity:.9;box-shadow:var(--shadow);transform:translate(-50%,-10px)}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 2px var(--warn-bg)}50%{box-shadow:0 0 0 5px var(--warn-bg)}}
+@media (prefers-reduced-motion:reduce){.item.customer_proposed{animation:none}}
+
+/* agenda */
+.agenda{flex:1;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 12px 14px}
+.agenda .day{margin-top:12px}
+.agenda .day h4{margin:0 0 6px;font-size:13px;display:flex;align-items:baseline;gap:8px;position:sticky;top:0;background:var(--surface);padding-block:6px;border-bottom:1px solid var(--line-2)}
+.agenda .day h4 small{color:var(--ink-3);font-weight:600;font-family:var(--mono)}
+.arow{display:grid;grid-template-columns:76px 4px 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line-2);cursor:pointer;border-radius:8px}
+.arow:hover{background:var(--surface-2)}
+.arow.sel{background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.arow .t{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.arow .bar{width:4px;height:100%;min-height:30px;border-radius:2px;background:var(--k)}
+.arow .ttl{font-weight:700}
+.arow .who{font-size:12px;color:var(--ink-3)}
+.arow .pills{display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap}
+.empty{padding:14px 4px;color:var(--ink-3);font-size:13px}
+
+/* side */
+.side{display:flex;flex-direction:column}
+.side section{padding:12px}
+.side section + section{border-top:1px solid var(--line)}
+.sug{margin-top:8px;padding:10px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line)}
+.sug p{margin:0 0 8px;font-size:12.5px}
+.sug .acts,.detail .acts{display:flex;gap:6px;flex-wrap:wrap}
+.btn{height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:12px}
+.btn:hover{border-color:var(--ink-3)}
+.btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.acc:hover{filter:brightness(.95)}
+.btn.ghost{border-color:transparent;color:var(--ink-3)}
+.detail h2{margin:4px 0 2px;font-size:15px;font-weight:800;text-wrap:balance}
+.detail .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px;margin:8px 0 10px}
+.detail .kv dt{color:var(--ink-3);margin:0}.detail .kv dd{margin:0;font-weight:600}
+.detail .kv dd.mono{font-weight:500}
+.detail .hist{margin:10px 0 0;padding:0;list-style:none;font-size:12px;color:var(--ink-2)}
+.detail .hist li{padding:4px 0;border-top:1px solid var(--line-2);display:grid;grid-template-columns:70px 1fr;gap:8px}
+.detail .hist li span{font-family:var(--mono);color:var(--ink-3);font-size:11px}
+.confirmbar{margin-top:10px;padding:10px;border-radius:10px;background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);font-size:12.5px}
+.vani-tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--accent-ink);background:var(--accent-bg);padding:1px 7px;border-radius:999px;letter-spacing:.02em}
+.side .muted{font-size:12px;color:var(--ink-3);margin:8px 0 0}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(28,26,23,.45);display:grid;place-items:center;z-index:60;padding:16px}
+.modal .box{width:min(520px,100%);background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:16px;max-height:90vh;overflow:auto}
+.modal h2{margin:0 0 4px;font-size:17px;font-weight:800}
+.modal .lead{color:var(--ink-3);font-size:12.5px;margin:0 0 12px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.form label.wide{grid-column:1/-1}
+.slots{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.slot{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.slot .when{font-family:var(--mono);font-weight:600;font-size:13px}
+.slot .why{font-size:12px;color:var(--ink-3)}
+.slot.best{border-color:var(--ok)}
+.slot .acts{display:flex;gap:6px}
+
+/* toast */
+.toasts{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:70;width:min(460px,calc(100% - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
+.toast.vani{background:var(--accent);color:#fff}
+.toast .undo{margin-left:auto;text-decoration:underline;font-weight:800}
+
+/* responsive */
+@media (max-width:1100px){.layout{grid-template-columns:200px minmax(0,1fr)}.side{position:fixed;right:16px;bottom:16px;top:auto;width:min(360px,calc(100% - 32px));max-height:60vh;z-index:40;box-shadow:var(--shadow)}.side:not(.open){display:none}}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .rail{overflow-x:auto;display:flex;gap:6px;padding:8px}.rail h3{display:none}
+  .person{grid-template-columns:auto;padding:6px 10px;margin:0;flex:0 0 auto}.person .load,.person .meta,.person .role{display:none}.person .avatar{display:none}
+  .vani-dial{margin:0;padding:6px 10px;flex:0 0 auto;display:flex;gap:8px;align-items:center}.vani-dial p{display:none}.dial{width:auto}
+  .viewas{margin-left:0}.top h1{font-size:14px}
+  .side{left:16px;right:16px;width:auto;max-height:70vh}
+  :root{--hour:46px;--gutter:40px}
+}
+</style>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand"><b>Timeboard</b><span>Ops · signia · IST</span></div>
+    <div class="datenav">
+      <button class="icon-btn" id="prev" aria-label="Previous">‹</button>
+      <button class="pill-btn" id="todayBtn">Today</button>
+      <button class="icon-btn" id="next" aria-label="Next">›</button>
+      <h1 id="range"></h1>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-view="day">Day</button><button data-view="week">Week</button><button data-view="agenda">Agenda</button>
+    </div>
+    <div class="viewas">View as
+      <select id="viewas"><option value="owner">Kamal · owner</option><option value="ravi">Ravi · technician</option><option value="meera">Meera · collections</option></select>
+    </div>
+    <button class="primary" id="findSlot">Find a slot</button>
+  </header>
+
+  <div class="strip" id="strip"></div>
+
+  <div class="layout">
+    <aside class="rail" id="rail"></aside>
+    <section class="board" id="board"></section>
+    <aside class="side" id="side"></aside>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ───────────── data (example rows for signia, week of 14–20 Sep 2026; today = Fri 18 Sep) ───────────── */
+const TODAY = '2026-09-18';
+const NOW_MIN = 10*60+35;
+const PEOPLE = [
+  {id:'kamal', name:'Kamal', role:'Owner · chair', color:'#1c1a17', hours:[9,19], off:[0], leaves:[]},
+  {id:'ravi',  name:'Ravi Kumar', role:'Technician · AC, HVAC', color:'#3b6ea5', hours:[9,18], off:[0], leaves:[]},
+  {id:'suresh',name:'Suresh N.', role:'Technician · DG, lifts', color:'#17878a', hours:[8,17], off:[0,3], leaves:[{date:'2026-09-17', from:14, to:18, label:'Leave · half day'}]},
+  {id:'meera', name:'Meera S.', role:'Collections', color:'#7a4fb8', hours:[10,19], off:[0,6], leaves:[]},
+];
+const VANI = {id:'vani', name:'VaNi', role:'Agent', color:'#E8672B', hours:[0,24], off:[], leaves:[]};
+const KIND = {visit:{k:'var(--visit)',kbg:'var(--visit-bg)',label:'Service visit'}, followup:{k:'var(--followup)',kbg:'var(--followup-bg)',label:'Follow-up'}, session:{k:'var(--session)',kbg:'var(--session-bg)',label:'Session'}, vani:{k:'var(--accent)',kbg:'var(--accent-bg)',label:'VaNi action'}};
+
+let seq = 100;
+const mk = (o)=>Object.assign({id:'i'+(seq++), dur:60, hist:[]}, o);
+let items = [
+  // service visits (appointments = the visit's agreed slot)
+  mk({kind:'visit', title:'AC servicing 3/7', contract:'CN-1010', customer:'buyer (Banjara Hills)', person:'ravi', start:'2026-09-18T10:00', dur:120, status:'confirmed', setBy:'Customer · accepted on /slot link', hist:[['Wed 16','Slot proposed by Kamal'],['Wed 16','Asked · WhatsApp share'],['Thu 17','Customer accepted']]}),
+  mk({kind:'visit', title:'Chiller inspection', contract:'CN-1023', customer:'Renown WSpace', person:'ravi', start:'2026-09-18T11:30', dur:90, status:'proposed', setBy:'Kamal', hist:[['Thu 17','Slot proposed by Kamal · not asked yet']]}),
+  mk({kind:'visit', title:'DG set service 2/4', contract:'CN-1031', customer:'Trinity Tecnitions', person:'suresh', start:'2026-09-14T09:00', dur:120, status:'done', setBy:'Suresh', hist:[['Mon 14','Started 09:04 · TKT-10007'],['Mon 14','Completed 10:50']]}),
+  mk({kind:'visit', title:'Lift AMC visit', contract:'CN-1042', customer:'STW', person:'suresh', start:'2026-09-19T15:00', dur:90, status:'customer_proposed', setBy:'Customer', note:'Customer: "Saturday after 3 works better"', hist:[['Tue 15','Slot proposed Fri 18 · 11:00'],['Tue 15','Asked ×1'],['Thu 17','Customer suggested Sat 19 · 15:00']]}),
+  mk({kind:'visit', title:'Lift AMC 4/12', contract:'CN-1027', customer:'Value Elevators', person:'ravi', start:'2026-09-15T14:00', dur:60, status:'asked', asked:2, setBy:'Kamal', hist:[['Fri 11','Slot proposed'],['Fri 11','Asked ×1 · WhatsApp'],['Mon 14','Asked ×2 · VaNi reminder'],['—','No reply for 3 days']]}),
+  mk({kind:'visit', title:'AC servicing 1/4', contract:'CN-1035', customer:'Freedom Services', person:'suresh', start:'2026-09-17T15:00', dur:90, status:'confirmed', setBy:'Customer', hist:[['Mon 14','Customer accepted']]}),
+  mk({kind:'visit', title:'Water purifier service', contract:'CN-1018', customer:'Hygene Services', person:null, start:null, due:'2026-09-18', dur:60, status:'unslotted', hist:[['Sat 12','Planned by the contract schedule']]}),
+  mk({kind:'visit', title:'DG set service 3/4', contract:'CN-1031', customer:'Trinity Tecnitions', person:null, start:null, due:'2026-09-21', dur:120, status:'unslotted', hist:[]}),
+  mk({kind:'visit', title:'AC servicing 4/7', contract:'CN-1010', customer:'buyer (Banjara Hills)', person:'ravi', start:'2026-09-21T10:00', dur:120, status:'proposed', setBy:'Schedule', hist:[]}),
+  // follow-ups (self-assigned tasks on a payment)
+  mk({kind:'followup', title:'Call about ₹42,000 overdue', contract:'CN-1006', customer:'flow1', person:'meera', start:'2026-09-18T11:00', dur:30, status:'open', amount:'₹42,000 · 12 d overdue', setBy:'Meera', hist:[['Tue 15','Rung 2 email sent by VaNi'],['Wed 16','Follow-up set by Meera']]}),
+  mk({kind:'followup', title:'Promised-date check', contract:'CN-1012', customer:'stw', person:'meera', start:'2026-09-21T10:30', dur:30, status:'open', amount:'₹1,10,000 · promised 21 Sep', setBy:'Meera', hist:[['Thu 17','Call logged · promised to pay 21 Sep · reminders paused']]}),
+  mk({kind:'followup', title:'Escalation · unpaid Q2', contract:'CN-1044', customer:'hubb', person:'kamal', start:'2026-09-16T12:00', dur:30, status:'done', amount:'₹24,000', setBy:'Meera → Kamal', hist:[['Wed 16','Call logged · reached · disputed line item']]}),
+  mk({kind:'followup', title:'Chase slot reply', contract:'CN-1027', customer:'Value Elevators', person:'kamal', start:'2026-09-19T11:00', dur:20, status:'open', setBy:'VaNi (suggested) · Kamal', vani:true, hist:[]}),
+  // sessions (group-session occurrences)
+  mk({kind:'session', title:'Saturday Network Meeting', contract:'BBB · 46 members', customer:'BBB Bhagyanagar', person:'kamal', start:'2026-09-19T08:00', dur:120, status:'confirmed', setBy:'Block cadence', hist:[['—','Check-in QR live · 3 dues open']]}),
+  // VaNi actions (what the agent will do, at what time)
+  mk({kind:'vani', title:'Payment reminders · rung 1', contract:'9 emails', person:'vani', start:'2026-09-14T10:00', dur:30, status:'sent', auto:'auto', hist:[['Mon 14','9 sent · 7 delivered · 2 opened']]}),
+  mk({kind:'vani', title:'Rung 3 · WhatsApp', contract:'4 messages', person:'vani', start:'2026-09-17T10:00', dur:30, status:'sent', auto:'auto', hist:[]}),
+  mk({kind:'vani', title:'Payment reminders · rung 2', contract:'6 emails · ₹3.1 L', person:'vani', start:'2026-09-18T10:00', dur:30, status:'sent', auto:'auto', hist:[['Fri 18','6 sent 10:00']]}),
+  mk({kind:'vani', title:'Ask again · slot links', contract:'3 customers', person:'vani', start:'2026-09-18T16:00', dur:30, status:'needs_approval', auto:'ask', hist:[['—','Drafted from the visit-slot ladder · waits for approval']]}),
+  mk({kind:'vani', title:'Looking-forward WhatsApp', contract:'BBB · 46 members', person:'vani', start:'2026-09-18T18:00', dur:30, status:'planned', auto:'auto', hist:[['—','1 day before Saturday Network Meeting']]}),
+  mk({kind:'vani', title:'No-show regret', contract:'BBB · absentees', person:'vani', start:'2026-09-19T12:00', dur:30, status:'planned', auto:'auto', hist:[['—','Session end + 2h']]}),
+  mk({kind:'vani', title:'Escalate to a call · ₹18,000', contract:'CN-1039 · rung 4', person:'vani', start:'2026-09-21T10:00', dur:30, status:'needs_approval', auto:'ask', hist:[['—','Would assign a call task to Meera']]}),
+];
+
+let suggestions = [
+  {id:'s1', text:'<b>Chiller inspection</b> (CN-1023) overlaps <b>AC servicing</b> (CN-1010) on Ravi today. Move it to <b class="mono">13:30</b> — Ravi is free and Renown\'s window is 9–17.', acts:[['Move to 13:30','move','i101','2026-09-18T13:30'],['Skip','skip']]},
+  {id:'s2', text:'<b>AC servicing 1/4</b> (CN-1035) sits inside Suresh\'s leave on Thu. Hand it to <b>Ravi at 15:00</b> — he is free and 4 km away from his 13:00 job.', acts:[['Reassign to Ravi','assign','i105','ravi'],['Skip','skip']]},
+  {id:'s3', text:'<b>Water purifier service</b> (CN-1018) is due today with no slot. Propose <b>Ravi · 15:00</b> and ask Hygene on WhatsApp?', acts:[['Propose & ask','place','i106','ravi','2026-09-18T15:00'],['Skip','skip']]},
+  {id:'s4', text:'<b>Lift AMC 4/12</b> (CN-1027): asked twice, no reply in 3 days. Set a follow-up for Kamal tomorrow 11:00 to call them?', acts:[['Already set','skip'],['Skip','skip']]},
+];
+
+/* ───────────── state ───────────── */
+const state = {view: window.innerWidth < 820 ? 'agenda' : 'week', anchor: TODAY, who:'all', viewAs:'owner', sel:null, focus:null, autonomy:'ask', pending:null};
+try{ const v=localStorage.getItem('tb.view'); if(v) state.view=v; }catch(e){}
+
+/* ───────────── helpers ───────────── */
+const H0=7, H1=21; // grid hours
+const $=(s,r=document)=>r.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const toDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays=(s,n)=>{const d=toDate(s);d.setDate(d.getDate()+n);return iso(d);};
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtD=s=>{const d=toDate(s);return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;};
+const dayOf=s=>s?s.slice(0,10):null;
+const minOf=s=>{const [h,m]=s.slice(11).split(':').map(Number);return h*60+m;};
+const fmtT=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
+const fmtT12=m=>{const h=Math.floor(m/60),mm=m%60;const ap=h<12?'AM':'PM';return `${((h+11)%12)+1}${mm?':'+pad(mm):''} ${ap}`;};
+const weekStart=s=>{const d=toDate(s);const wd=(d.getDay()+6)%7;d.setDate(d.getDate()-wd);return iso(d);};
+const person=id=>id==='vani'?VANI:PEOPLE.find(p=>p.id===id);
+const initials=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+const byId=id=>items.find(i=>i.id===id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function statusPill(i){
+  if(i.kind==='vani'){
+    if(i.status==='sent') return '<span class="pill ok">sent</span>';
+    if(i.status==='needs_approval') return '<span class="pill warn">needs approval</span>';
+    if(i.status==='skipped') return '<span class="pill">skipped</span>';
+    return `<span class="pill acc">${i.auto==='auto'?'auto':'will ask'}</span>`;
+  }
+  if(i.kind==='session') return '<span class="pill ok">on cadence</span>';
+  if(i.kind==='followup') return i.status==='done'?'<span class="pill">done</span>':'<span class="pill">follow-up</span>';
+  return ({confirmed:'<span class="pill ok">confirmed</span>', proposed:'<span class="pill warn">slot proposed</span>', asked:`<span class="pill warn">asked ×${i.asked||1}</span>`, customer_proposed:'<span class="pill warn">customer proposed</span>', done:'<span class="pill">done</span>', unslotted:'<span class="pill bad">no slot</span>', cancelled:'<span class="pill">cancelled</span>'})[i.status]||'';
+}
+function needsYou(i){ return i.status==='customer_proposed' || i.status==='needs_approval' || i.status==='unslotted' || (i.kind==='visit' && !i.person && i.start) || clashOf(i).length>0; }
+
+/* availability + clashes */
+function offReason(p, day, sMin, eMin){
+  if(!p) return null;
+  const d=toDate(day).getDay();
+  if(p.off.includes(d)) return 'day off';
+  const [h0,h1]=p.hours; if(sMin<h0*60||eMin>h1*60) return 'outside hours';
+  const lv=p.leaves.find(l=>l.date===day && sMin<l.to*60 && eMin>l.from*60); if(lv) return lv.label.toLowerCase();
+  return null;
+}
+function clashOf(i){
+  const out=[]; if(!i.start||!i.person||i.person==='vani'||i.status==='done'||i.status==='cancelled') return out;
+  const d=dayOf(i.start), s=minOf(i.start), e=s+i.dur;
+  if(i.kind!=='session'){ const r=offReason(person(i.person), d, s, e); if(r) out.push(r); }
+  items.forEach(o=>{ if(o!==i && o.person===i.person && o.start && dayOf(o.start)===d && o.status!=='done' && o.status!=='cancelled'){ const os=minOf(o.start), oe=os+o.dur; if(s<oe && e>os) out.push('overlaps '+o.title); }});
+  return out;
+}
+
+/* who is visible */
+function visiblePeople(){
+  if(state.viewAs==='ravi') return [person('ravi')];
+  if(state.viewAs==='meera') return [person('meera')];
+  return state.who==='all'?[...PEOPLE]:[person(state.who)];
+}
+function showVani(){ return state.viewAs!=='ravi' && (state.who==='all'||state.who==='vani'); }
+function visibleItems(){
+  const ids=new Set(visiblePeople().map(p=>p.id)); if(showVani()) ids.add('vani');
+  return items.filter(i=>{
+    if(state.viewAs==='ravi' && i.kind!=='visit') return false;
+    if(state.viewAs==='meera' && !(i.kind==='followup' || (i.kind==='vani' && /remind|escalat|rung/i.test(i.title)))) return false;
+    if(!i.person) return state.viewAs!=='meera';
+    return ids.has(i.person);
+  }).filter(i=>!state.focus || (state.focus==='needs'?needsYou(i):state.focus==='clash'?clashOf(i).length:state.focus==='vani'?i.kind==='vani'&&i.status==='needs_approval':true));
+}
+function daysInView(){ if(state.view==='day') return [state.anchor]; const ws=weekStart(state.anchor); return Array.from({length:7},(_,k)=>addDays(ws,k)); }
+
+/* ───────────── render ───────────── */
+function render(){ renderTop(); renderStrip(); renderRail(); renderBoard(); renderSide(); }
+
+function renderTop(){
+  document.querySelectorAll('.seg [data-view]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view===state.view));
+  const ds=daysInView(); const a=toDate(ds[0]), b=toDate(ds[ds.length-1]);
+  $('#range').textContent = state.view==='day' ? `${fmtD(state.anchor)} ${a.getFullYear()}` : `${a.getDate()} ${a.getMonth()!==b.getMonth()?MON[a.getMonth()]+' ':''}– ${b.getDate()} ${MON[b.getMonth()]} ${b.getFullYear()}`;
+  $('#viewas').value=state.viewAs;
+}
+function renderStrip(){
+  const all=items; const ds=daysInView();
+  const inView=i=>i.start && ds.includes(dayOf(i.start));
+  const needs=all.filter(i=>(inView(i)||!i.start)&&needsYou(i)).length;
+  const clashes=all.filter(i=>inView(i)&&clashOf(i).length).length;
+  const place=all.filter(i=>i.status==='unslotted').length;
+  const vani=all.filter(i=>i.kind==='vani'&&i.status==='needs_approval').length;
+  const chip=(key,cls,label,n)=>`<button class="chip ${cls} ${state.focus===key?'on':''}" data-focus="${key}"><span class="dot"></span>${label} <b>${n}</b></button>`;
+  $('#strip').innerHTML = chip('needs','warn','Need you',needs)+chip('clash','bad','Clashes',clashes)+chip('place','','To place',place)+chip('vani','acc','VaNi waiting on you',vani)
+    +'<span class="spacer"></span><div class="legend"><span><i style="background:var(--visit)"></i>Service visit</span><span><i style="background:var(--followup)"></i>Follow-up</span><span><i style="background:var(--session)"></i>Session</span><span><i style="background:var(--accent)"></i>VaNi</span><span><i style="background:var(--off);border:1px solid var(--line)"></i>Not available</span></div>';
+}
+function loadFor(p){
+  const ds=daysInView(); let booked=0, cap=0;
+  ds.forEach(d=>{ const dow=toDate(d).getDay(); if(!p.off.includes(dow)) cap+=(p.hours[1]-p.hours[0])*60; });
+  items.forEach(i=>{ if(i.person===p.id && i.start && ds.includes(dayOf(i.start)) && i.status!=='cancelled') booked+=i.dur; });
+  return {booked,cap};
+}
+function renderRail(){
+  const ppl = state.viewAs==='owner'?PEOPLE:visiblePeople();
+  let h='<h3>Who</h3>';
+  if(state.viewAs==='owner') h+=`<div class="person ${state.who==='all'?'on':''}" data-who="all" tabindex="0"><div class="avatar" style="background:var(--ink-3)">∗</div><div><div class="name">Everyone</div><div class="role">${PEOPLE.length} people + VaNi</div></div></div>`;
+  ppl.forEach(p=>{
+    const {booked,cap}=loadFor(p); const pct=cap?Math.min(100,Math.round(booked/cap*100)):0;
+    const offToday=p.off.includes(toDate(state.anchor).getDay());
+    const clashes=items.filter(i=>i.person===p.id&&clashOf(i).length).length;
+    h+=`<div class="person ${state.who===p.id?'on':''} ${offToday&&state.view==='day'?'off':''}" data-who="${p.id}" tabindex="0"><div class="avatar" style="background:${p.color}">${initials(p.name)}</div><div><div class="name">${esc(p.name)}</div><div class="role">${esc(p.role)}</div><div class="load ${pct>85?'hot':''}"><i style="width:${pct}%"></i></div><div class="meta">${(booked/60).toFixed(1)}h of ${(cap/60).toFixed(0)}h · ${p.hours[0]}–${p.hours[1]}${clashes?` · <span style="color:var(--bad)">${clashes} clash</span>`:''}</div></div></div>`;
+  });
+  if(state.viewAs!=='ravi'){
+    const waiting=items.filter(i=>i.kind==='vani'&&i.status==='needs_approval').length;
+    h+=`<div class="vani-dial"><div class="name"><span class="avatar" style="background:var(--accent);width:22px;height:22px;font-size:10px">V</span>VaNi ${waiting?`<span class="pill warn">${waiting} waiting</span>`:''}</div><p>Runs the ladders and asks for slots. The dial sets how much it does on its own.</p><div class="dial" role="group" aria-label="Autonomy">${['draft','ask','auto'].map(a=>`<button data-auto="${a}" aria-pressed="${state.autonomy===a}">${{draft:'Draft',ask:'Ask me',auto:'Auto'}[a]}</button>`).join('')}</div></div>`;
+  }
+  $('#rail').innerHTML=h;
+}
+
+function renderBoard(){
+  const b=$('#board'); const vis=visibleItems();
+  const tray=items.filter(i=>i.status==='unslotted' && (state.viewAs!=='meera'));
+  let h='';
+  if(state.viewAs!=='meera') h+=`<div class="tray" id="tray"><h3>To place</h3>${tray.length?tray.map(i=>`<div class="tray-item ${i.due<=TODAY?'due':''}" data-id="${i.id}" tabindex="0"><span class="bar" style="background:${KIND[i.kind].k}"></span><span>${esc(i.title)} <small>${i.contract} · ${i.dur}m · due ${fmtD(i.due).slice(4)}</small></span></div>`).join(''):'<span class="hint">Nothing waiting for a slot.</span>'}<span class="hint">Drag onto the grid to propose a slot${state.view==='day'?' for that person':''}, or let VaNi place it.</span></div>`;
+  if(state.view==='agenda') h+=renderAgenda(vis); else h+=renderGrid(vis);
+  b.innerHTML=h; if(state.view!=='agenda'){ const sc=$('#scroll'); sc.scrollTop=Math.max(0,(7.75-H0)*hourPx()); }
+}
+const hourPx=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour'));
+
+function renderGrid(vis){
+  const cols = state.view==='week' ? daysInView().map(d=>({key:d, day:d, person:null})) : [...visiblePeople().map(p=>({key:p.id, day:state.anchor, person:p})), ...(showVani()?[{key:'vani',day:state.anchor,person:VANI}]:[])];
+  const heads=cols.map(c=>{
+    if(state.view==='week'){ const d=toDate(c.day); const n=vis.filter(i=>i.start&&dayOf(i.start)===c.day); const cl=n.filter(i=>clashOf(i).length).length; return `<div class="head ${c.day===TODAY?'today':''}"><div class="d">${DOW[d.getDay()]}</div><div class="n"><span>${d.getDate()}</span></div><div class="sub ${cl?'bad':''}">${n.length} item${n.length===1?'':'s'}${cl?` · ${cl} clash`:''}</div></div>`; }
+    const p=c.person; const n=vis.filter(i=>i.person===p.id&&i.start&&dayOf(i.start)===c.day); const r=p.id==='vani'?null:offReason(p,c.day,p.hours[0]*60,p.hours[0]*60+1);
+    return `<div class="head"><div class="n"><span class="avatar" style="background:${p.color}">${initials(p.name)}</span>${esc(p.name.split(' ')[0])}</div><div class="sub ${r==='day off'?'bad':''}">${p.id==='vani'?'always on':r==='day off'?'day off':`${p.hours[0]}:00–${p.hours[1]}:00`} · ${n.length}</div></div>`;
+  }).join('');
+  const gut=Array.from({length:H1-H0+1},(_,k)=>`<span style="top:${k*100/(H1-H0)}%">${fmtT((H0+k)*60)}</span>`).join('');
+  const body=cols.map(c=>{
+    let inner='';
+    const ppl = state.view==='week' ? (state.who==='all'||state.who==='vani'?[]:[person(state.who)]) : (c.person.id==='vani'?[]:[c.person]);
+    ppl.forEach(p=>{ const dow=toDate(c.day).getDay();
+      if(p.off.includes(dow)) inner+=`<div class="avail" style="top:0;bottom:0"></div>`;
+      else { inner+=`<div class="avail" style="top:0;height:${pos(p.hours[0]*60)}px"></div><div class="avail" style="top:${pos(p.hours[1]*60)}px;bottom:0"></div>`; p.leaves.filter(l=>l.date===c.day).forEach(l=>inner+=`<div class="avail leave" data-label="${esc(l.label)}" style="top:${pos(l.from*60)}px;height:${(l.to-l.from)*hourPx()}px"></div>`); }
+    });
+    if(c.day===TODAY) inner+=`<div class="now" style="top:${pos(NOW_MIN)}px"></div>`;
+    const list=vis.filter(i=>i.start&&dayOf(i.start)===c.day&&(state.view==='week'||i.person===c.key));
+    inner+=laneLayout(list).map(([i,ix,n])=>itemEl(i,ix,n)).join('');
+    return `<div class="col ${c.day===TODAY&&state.view==='week'?'today':''}" data-key="${c.key}" data-day="${c.day}" data-person="${c.person?c.person.id:''}">${inner}</div>`;
+  }).join('');
+  return `<div class="grid-wrap" style="--cols:${cols.length};--hours:${H1-H0}"><div class="heads"><div class="head" style="border:0"></div>${heads}</div><div class="scroll" id="scroll"><div class="grid" id="grid"><div class="gut">${gut}</div>${body}</div></div></div>`;
+}
+const pos=m=>(m-H0*60)/60*hourPx();
+function laneLayout(list){ const L=list.slice().sort((a,b)=>minOf(a.start)-minOf(b.start)); const out=[]; let cluster=[], end=-1;
+  const flush=()=>{ cluster.forEach((it,ix)=>out.push([it,ix,cluster.length])); cluster=[]; };
+  L.forEach(it=>{ const s=minOf(it.start); if(cluster.length && s>=end) flush(); cluster.push(it); end=Math.max(end, s+it.dur); }); flush(); return out; }
+function itemEl(i,ix=0,n=1){
+  const k=KIND[i.kind]; const s=minOf(i.start), e=s+i.dur; const cl=clashOf(i); const p=person(i.person);
+  const short=i.dur<45;
+  const who = state.view==='week' ? (p?`<span class="avatar" style="background:${p.color};width:14px;height:14px;font-size:8px;display:inline-grid;vertical-align:-2px;margin-right:3px">${initials(p.name)}</span>${esc(i.customer||'')}`:`<span class="pill bad">unassigned</span> ${esc(i.customer||'')}`) : esc(i.customer||i.contract||'');
+  return `<div class="item ${i.status} ${cl.length?'clash':''} ${short?'short':''} ${state.sel===i.id?'sel':''}" data-id="${i.id}" tabindex="0" style="--k:${k.k};--kbg:${k.kbg};left:calc(3px + ${ix*100/n}%);right:${n>1?'auto':'3px'};width:${n>1?`calc(${100/n}% - 5px)`:'auto'};top:${pos(s)}px;height:${Math.max(22,i.dur/60*hourPx()-3)}px"><div class="t"><span>${fmtT(s)}–${fmtT(e)}</span>${i.vani||i.setBy?.startsWith('VaNi')?'<span class="vani-tag">VaNi</span>':''}</div><div class="ttl">${short?`<span class="mono" style="font-weight:500;color:var(--ink-3)">${fmtT(s)}</span> `:''}${esc(i.title)}</div><div class="who">${who}</div><div class="pills">${statusPill(i)}${cl.length?`<span class="pill bad">${esc(cl[0])}</span>`:''}</div></div>`;
+}
+function renderAgenda(vis){
+  const ds = state.view==='agenda' ? daysInView() : [state.anchor];
+  let h='<div class="agenda">';
+  ds.forEach(d=>{
+    const list=vis.filter(i=>i.start&&dayOf(i.start)===d).sort((a,b)=>minOf(a.start)-minOf(b.start));
+    const dt=toDate(d);
+    h+=`<div class="day"><h4>${d===TODAY?'<span style="color:var(--accent)">Today · </span>':''}${fmtD(d)} <small>${list.length} item${list.length===1?'':'s'}</small></h4>`;
+    if(!list.length) h+='<div class="empty">Nothing scheduled.</div>';
+    list.forEach(i=>{ const p=person(i.person); const cl=clashOf(i);
+      h+=`<div class="arow ${state.sel===i.id?'sel':''}" data-id="${i.id}" tabindex="0" style="--k:${KIND[i.kind].k}"><div class="t">${fmtT(minOf(i.start))}<br><span style="color:var(--ink-3)">${i.dur}m</span></div><div class="bar"></div><div><div class="ttl">${esc(i.title)}</div><div class="who">${p?esc(p.name):'<span class="pill bad">unassigned</span>'} · ${esc(i.customer||i.contract||'')}</div></div><div class="pills">${statusPill(i)}${cl.length?`<span class="pill bad">${esc(cl[0])}</span>`:''}</div></div>`;
+    });
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+
+function renderSide(){
+  const s=$('#side'); const i=state.sel?byId(state.sel):null;
+  let h='';
+  if(i){
+    const p=person(i.person); const cl=clashOf(i); const k=KIND[i.kind];
+    h+=`<section class="detail"><div style="display:flex;justify-content:space-between;align-items:center"><span class="pill" style="background:${k.kbg};color:${k.k}">${k.label}</span><button class="btn ghost" data-act="close">Close</button></div><h2>${esc(i.title)}</h2><div style="font-size:12.5px;color:var(--ink-3)">${esc(i.contract)}${i.customer?' · '+esc(i.customer):''}</div>
+    <dl class="kv"><dt>When</dt><dd class="mono">${i.start?`${fmtD(dayOf(i.start))} · ${fmtT(minOf(i.start))}–${fmtT(minOf(i.start)+i.dur)}`:`no slot · due ${fmtD(i.due)}`}</dd><dt>Who</dt><dd>${p?esc(p.name):'<span class="pill bad">unassigned</span>'}</dd><dt>State</dt><dd>${statusPill(i)}${cl.map(c=>` <span class="pill bad">${esc(c)}</span>`).join('')}</dd>${i.amount?`<dt>Amount</dt><dd class="mono">${esc(i.amount)}</dd>`:''}${i.setBy?`<dt>Set by</dt><dd>${esc(i.setBy)}</dd>`:''}${i.note?`<dt>Note</dt><dd style="font-weight:500">${esc(i.note)}</dd>`:''}</dl>
+    <div class="acts">${actionsFor(i).map(a=>`<button class="btn ${a[2]||''}" data-act="${a[1]}" data-id="${i.id}">${a[0]}</button>`).join('')}</div>
+    ${state.pending&&state.pending.id===i.id?confirmBar(state.pending):''}
+    <ul class="hist">${(i.hist||[]).map(r=>`<li><span>${esc(r[0])}</span>${esc(r[1])}</li>`).join('')}</ul></section>`;
+  }
+  if(state.viewAs!=='ravi'){
+    const live=suggestions.filter(x=>!x.done);
+    h+=`<section><h3>VaNi suggests</h3>${live.length?live.map(x=>`<div class="sug"><p>${x.text}</p><div class="acts">${x.acts.map((a,ix)=>`<button class="btn ${ix===0&&a[1]!=='skip'?'acc':''}" data-sug="${x.id}" data-ix="${ix}">${a[0]}</button>`).join('')}</div></div>`).join(''):'<p class="muted">Nothing to suggest. VaNi re-reads the board every 15 minutes.</p>'}<p class="muted">Autonomy: <b>${{draft:'Draft only',ask:'Ask me first',auto:'Act, then tell me'}[state.autonomy]}</b>. On <b>Auto</b> these would already be done, and appear as "What VaNi did".</p></section>`;
+  } else if(!i){ h+='<section><h3>Your day</h3><p class="muted">Tap a visit for the address, the contact and the buttons. Drag to move it; the office confirms with the customer.</p></section>'; }
+  s.innerHTML=h; s.classList.toggle('open', !!i);
+}
+function actionsFor(i){
+  const A=[];
+  if(i.kind==='visit'){
+    if(i.status==='unslotted') A.push(['Find a slot','find','acc'],['Assign','assign']);
+    else if(i.status==='customer_proposed') A.push(['Confirm slot','confirm','acc'],['Suggest another','reask'],['Assign','assign']);
+    else if(i.status==='proposed') A.push(['Ask customer','ask','acc'],['Confirm slot','confirm'],['Assign','assign']);
+    else if(i.status==='asked') A.push(['Ask again','ask','acc'],['Follow up by call','followup'],['Confirm slot','confirm']);
+    else if(i.status==='confirmed') A.push(['Start visit','start','acc'],['Mark done','done'],['Assign','assign']);
+    if(i.status!=='done') A.push(['Open contract','open']);
+  }
+  if(i.kind==='followup'){ if(i.status!=='done') A.push(['Log a call','logcall','acc'],['Reschedule','resched'],['Assign','assign']); A.push(['Open contract','open']); }
+  if(i.kind==='session') A.push(['Open session','open','acc'],['Check-in QR','open']);
+  if(i.kind==='vani'){ if(i.status==='needs_approval') A.push(['Approve','approve','acc'],['Edit message','open'],['Skip this time','skipv']); else if(i.status==='planned') A.push(['Run now','approve','acc'],['Hold','skipv']); else A.push(['Show messages','open']); }
+  return A;
+}
+function confirmBar(pd){
+  const i=byId(pd.id);
+  const to=`${fmtD(dayOf(pd.start)).slice(0,6)} ${fmtT(minOf(pd.start))}${pd.person&&pd.person!==i.person?` · ${person(pd.person).name.split(' ')[0]}`:''}`;
+  return `<div class="confirmbar">${i.status==='confirmed'?`This slot was <b>confirmed with the customer</b>. Move to <b class="mono">${to}</b> and ask them again?`:`Move to <b class="mono">${to}</b>?`}<div class="acts" style="margin-top:8px"><button class="btn acc" data-act="applymove">${i.status==='confirmed'?'Move & ask':'Move'}</button>${i.status==='confirmed'?'<button class="btn" data-act="applymove-keep">Move, keep confirmed</button>':''}<button class="btn ghost" data-act="cancelmove">Keep as is</button></div></div>`;
+}
+
+/* ───────────── actions ───────────── */
+function toast(msg, vani, undo){
+  const t=document.createElement('div'); t.className='toast'+(vani?' vani':''); t.innerHTML=`${vani?'<b>VaNi</b> · ':''}${msg}${undo?'<button class="undo">Undo</button>':''}`;
+  if(undo) t.querySelector('.undo').onclick=()=>{undo();t.remove();render();};
+  $('#toasts').appendChild(t); setTimeout(()=>t.remove(), 4200);
+}
+function push(i, line){ i.hist=i.hist||[]; i.hist.push([fmtD(TODAY).slice(0,6), line]); }
+function moveItem(i, start, personId, mode){
+  const before={start:i.start,person:i.person,status:i.status};
+  i.start=start; if(personId!==undefined&&personId!==null&&personId!=='') i.person=personId;
+  if(i.status==='unslotted') i.status='proposed';
+  if(i.kind==='visit' && before.status==='confirmed' && mode==='reask'){ i.status='asked'; i.asked=(i.asked||0)+1; push(i,`Moved to ${fmtT(minOf(start))} · asked again`); if(state.autonomy!=='draft') items.push(mk({kind:'vani',title:'Slot changed · ask',contract:i.contract,person:'vani',start:start.slice(0,11)+'10:00',dur:15,status:state.autonomy==='auto'?'planned':'needs_approval',auto:state.autonomy==='auto'?'auto':'ask',hist:[['—','Follows the moved slot']]})); }
+  else if(i.kind==='vani'){ push(i,`Rescheduled by ${state.viewAs==='owner'?'Kamal':'you'} to ${fmtT(minOf(start))}`); }
+  else push(i, `${before.start?'Moved':'Placed'} → ${fmtD(dayOf(start)).slice(0,6)} ${fmtT(minOf(start))}${i.person&&i.person!==before.person?' · '+person(i.person).name:''}`);
+  return ()=>{ Object.assign(i,before); };
+}
+function act(name, id){
+  const i=byId(id); if(!i&&!['close','cancelmove','applymove','applymove-keep'].includes(name)) return;
+  switch(name){
+    case 'close': state.sel=null; state.pending=null; break;
+    case 'cancelmove': state.pending=null; break;
+    case 'applymove': case 'applymove-keep': { const pd=state.pending; const it=byId(pd.id); const undo=moveItem(it,pd.start,pd.person,name==='applymove'&&it.status==='confirmed'?'reask':'keep'); state.pending=null; toast(`Moved ${it.title}`,false,undo); break; }
+    case 'confirm': i.status='confirmed'; push(i,'Slot confirmed by Kamal'); toast(`Confirmed · customer notified`); break;
+    case 'ask': i.status='asked'; i.asked=(i.asked||0)+1; push(i,`Asked ×${i.asked} · WhatsApp share`); toast('Slot link ready to share on WhatsApp'); break;
+    case 'reask': i.status='proposed'; push(i,'Counter-proposed to the customer'); toast('Sent a different time'); break;
+    case 'assign': { const next=PEOPLE.filter(p=>p.id!=='kamal'&&p.id!=='meera').find(p=>p.id!==i.person)||person('ravi'); i.person=next.id; push(i,`Assigned to ${next.name}`); toast(`Assigned to ${next.name}`); break; }
+    case 'start': i.status='in_progress'; push(i,'Started · TKT-10011'); toast('Visit started'); break;
+    case 'done': i.status='done'; push(i,'Completed'); toast('Marked done'); break;
+    case 'followup': items.push(mk({kind:'followup',title:'Call about the slot',contract:i.contract,customer:i.customer,person:'kamal',start:addDays(TODAY,1)+'T11:00',dur:20,status:'open',setBy:'Kamal',hist:[]})); toast('Follow-up set for tomorrow 11:00'); break;
+    case 'logcall': i.status='done'; push(i,'Call logged · reached'); toast('Call logged · follow-ups closed'); break;
+    case 'resched': toast('Drag it to a new time — or pick one in the agenda'); break;
+    case 'approve': i.status=i.start&&dayOf(i.start)===TODAY&&minOf(i.start)<=NOW_MIN?'sent':'planned'; i.auto='auto'; push(i,'Approved by Kamal'); toast(`Approved · runs at ${fmtT(minOf(i.start))}`,true); break;
+    case 'skipv': i.status='skipped'; push(i,'Skipped by Kamal'); toast('Skipped this time',true); break;
+    case 'find': openFind(i); return;
+    case 'open': toast('Opens the contract page in the app'); return;
+  }
+  render();
+}
+function runSuggestion(sid, ix){
+  const s=suggestions.find(x=>x.id===sid); const a=s.acts[ix];
+  if(a[1]==='move'){ const i=byId(a[2]); const undo=moveItem(i,a[3]); i.setBy='VaNi (suggested) · Kamal'; i.vani=true; toast(`Moved ${i.title} to ${fmtT(minOf(a[3]))}`,true,undo); }
+  if(a[1]==='assign'){ const i=byId(a[2]); const b=i.person; i.person=a[3]; i.vani=true; push(i,`Reassigned to ${person(a[3]).name} on VaNi's suggestion`); toast(`Reassigned to ${person(a[3]).name}`,true,()=>{i.person=b;}); }
+  if(a[1]==='place'){ const i=byId(a[2]); moveItem(i,a[4],a[3]); i.status='asked'; i.asked=1; i.vani=true; i.setBy='VaNi (suggested) · Kamal'; push(i,'Asked ×1 · WhatsApp'); toast(`Proposed ${person(a[3]).name.split(' ')[0]} 15:00 and asked ${i.customer}`,true); }
+  s.done=true; state.sel=a[2]||state.sel; render();
+}
+
+/* find a slot */
+function openFind(prefill){
+  const tray=items.filter(i=>i.status==='unslotted');
+  const m=document.createElement('div'); m.className='modal'; m.id='modal';
+  m.innerHTML=`<div class="box"><h2>Find a slot</h2><p class="lead">Looks at working hours, leave and what is already on the board. Proposes, never confirms — the customer or the team does that.</p>
+  <div class="form"><label class="wide">What<select id="f_what">${tray.map(i=>`<option value="${i.id}" ${prefill&&prefill.id===i.id?'selected':''}>${esc(i.title)} · ${i.contract}</option>`).join('')}<option value="new">Something new…</option></select></label>
+  <label>Duration<select id="f_dur"><option>60</option><option>90</option><option>120</option><option>180</option></select></label>
+  <label>Who<select id="f_who"><option value="any">Any technician</option>${PEOPLE.filter(p=>/Technician/.test(p.role)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>
+  <label>From<input id="f_from" type="date" value="${TODAY}"></label>
+  <label>Customer window<select id="f_win"><option value="9-17">9–17 (office)</option><option value="7-11">7–11 (morning)</option><option value="14-20">14–20 (afternoon)</option></select></label></div>
+  <div class="slots" id="slots"></div>
+  <div class="acts" style="display:flex;gap:6px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" data-close>Close</button></div></div>`;
+  document.body.appendChild(m);
+  const calc=()=>{ const it=byId($('#f_what').value); const dur=it?it.dur:+$('#f_dur').value; if(it) $('#f_dur').value=dur;
+    const who=$('#f_who').value; const from=$('#f_from').value||TODAY; const [w0,w1]=$('#f_win').value.split('-').map(Number);
+    const cands=(who==='any'?PEOPLE.filter(p=>/Technician/.test(p.role)):[person(who)]);
+    const out=[];
+    for(let d=0; d<7 && out.length<6; d++){ const day=addDays(from,d);
+      cands.forEach(p=>{ for(let m=Math.max(p.hours[0],w0)*60; m+dur<=Math.min(p.hours[1],w1)*60; m+=30){ if(out.length>=6) break;
+        const probe={person:p.id,start:`${day}T${fmtT(m)}`,dur,status:'proposed',title:'',kind:'visit'}; if(clashOf(probe).length) continue;
+        const dayLoad=items.filter(x=>x.person===p.id&&x.start&&dayOf(x.start)===day).length;
+        out.push({p,day,m,why:`${p.name.split(' ')[0]} · ${dayLoad?dayLoad+' other job'+(dayLoad>1?'s':'')+' that day':'free day'}${day===TODAY&&m<=NOW_MIN?' · already past':''}`}); break; } });
+    }
+    out.sort((a,b)=>a.day.localeCompare(b.day)||a.m-b.m);
+    $('#slots').innerHTML=out.length?out.slice(0,4).map((s,ix)=>`<div class="slot ${ix===0?'best':''}"><div class="when">${fmtD(s.day)}<br>${fmtT(s.m)}–${fmtT(s.m+dur)}</div><div class="why">${esc(s.why)}${ix===0?' · <b style="color:var(--ok)">earliest</b>':''}</div><div class="acts"><button class="btn" data-pick="${s.p.id}|${s.day}T${fmtT(s.m)}|propose">Propose</button><button class="btn acc" data-pick="${s.p.id}|${s.day}T${fmtT(s.m)}|ask">Propose & ask</button></div></div>`).join(''):'<div class="empty">No free slot in the next 7 days for that window. Widen the window or add a person.</div>';
+  };
+  m.addEventListener('change',calc); calc();
+  m.addEventListener('click',e=>{ if(e.target===m||e.target.closest('[data-close]')){m.remove();return;}
+    const b=e.target.closest('[data-pick]'); if(!b) return; const [pid,start,mode]=b.dataset.pick.split('|');
+    let it=byId($('#f_what').value); if(!it){ it=mk({kind:'visit',title:'New service visit',contract:'—',customer:'—',dur:+$('#f_dur').value,status:'unslotted',hist:[]}); items.push(it); }
+    moveItem(it,start,pid); if(mode==='ask'){ it.status='asked'; it.asked=1; push(it,'Asked ×1 · WhatsApp share'); }
+    state.sel=it.id; state.anchor=dayOf(start); m.remove(); toast(mode==='ask'?`Proposed and asked ${it.customer}`:`Proposed ${fmtT(minOf(start))} for ${person(pid).name.split(' ')[0]}`); render(); });
+}
+
+/* ───────────── drag (pointer) ───────────── */
+let drag=null;
+function startDrag(el, e, fromTray){
+  const id=el.dataset.id; const i=byId(id); if(!i) return;
+  if(i.kind==='session'){ return; }
+  drag={id, el, fromTray, x0:e.clientX, y0:e.clientY, moved:false, ghost:null};
+  el.setPointerCapture?.(e.pointerId);
+}
+function onMove(e){ if(!drag) return;
+  if(!drag.moved){ if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)<5) return; drag.moved=true; const g=drag.el.cloneNode(true); g.classList.add('ghost'); g.style.width=drag.el.offsetWidth+'px'; g.style.top=g.style.left=''; document.body.appendChild(g); drag.ghost=g; drag.el.classList.add('dragging'); }
+  drag.ghost.style.left=e.clientX+'px'; drag.ghost.style.top=e.clientY+'px';
+  document.querySelectorAll('.col.drop').forEach(c=>c.classList.remove('drop')); const c=colAt(e.clientX,e.clientY); if(c) c.classList.add('drop');
+}
+function colAt(x,y){ drag.ghost&&(drag.ghost.style.display='none'); const el=document.elementFromPoint(x,y); drag.ghost&&(drag.ghost.style.display=''); return el?el.closest('.col'):null; }
+function onUp(e){ if(!drag) return; const d=drag; drag=null; d.el.classList.remove('dragging'); d.ghost?.remove(); document.querySelectorAll('.col.drop').forEach(c=>c.classList.remove('drop'));
+  if(!d.moved){ select(d.id); return; }
+  const col=colAt(e.clientX,e.clientY); if(!col){ render(); return; }
+  const i=byId(d.id); const r=col.getBoundingClientRect(); let m=Math.round(((e.clientY-r.top)/hourPx()*60+H0*60 - (d.fromTray?0:15))/15)*15; m=Math.max(H0*60,Math.min(H1*60-i.dur,m));
+  const day=col.dataset.day; const pid=col.dataset.person||null; const start=`${day}T${fmtT(m)}`;
+  if(i.kind==='vani' && pid && pid!=='vani'){ toast('VaNi actions stay in VaNi\'s column'); render(); return; }
+  if(i.kind!=='vani' && pid==='vani'){ toast('Only VaNi\'s own actions live there. Use "Find a slot" to let VaNi place it.'); render(); return; }
+  if(i.kind==='followup' && pid && !/kamal|meera/.test(pid)){ toast('Follow-ups belong to the office, not a technician'); render(); return; }
+  if(i.start===start && (pid===null||pid===i.person)){ render(); return; }
+  if(i.kind==='visit' && (i.status==='confirmed'||i.status==='asked')){ state.sel=i.id; state.pending={id:i.id,start,person:pid}; render(); return; }
+  const undo=moveItem(i,start,pid); state.sel=i.id; toast(`${d.fromTray?'Placed':'Moved'} ${i.title} → ${fmtT(m)}`,false,undo); render();
+}
+function select(id){ state.sel = state.sel===id?null:id; state.pending=null; render(); const el=document.querySelector(`.item[data-id="${id}"],.arow[data-id="${id}"]`); el&&el.focus({preventScroll:true}); }
+
+/* ───────────── wiring ───────────── */
+document.addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target.closest('.item,.tray-item'); if(t && !e.target.closest('button')) startDrag(t,e,t.classList.contains('tray-item')); });
+document.addEventListener('pointermove',onMove); document.addEventListener('pointerup',onUp); document.addEventListener('pointercancel',()=>{ if(drag){drag.ghost?.remove();drag=null;render();} });
+document.addEventListener('click',e=>{
+  const v=e.target.closest('[data-view]'); if(v){ state.view=v.dataset.view; try{localStorage.setItem('tb.view',state.view)}catch(x){} render(); return; }
+  const w=e.target.closest('[data-who]'); if(w){ state.who=w.dataset.who; render(); return; }
+  const a=e.target.closest('[data-auto]'); if(a){ state.autonomy=a.dataset.auto; items.filter(i=>i.kind==='vani'&&i.status!=='sent'&&i.status!=='skipped').forEach(i=>{ i.auto=state.autonomy==='auto'?'auto':'ask'; if(state.autonomy==='auto'&&i.status==='needs_approval'){i.status='planned';} if(state.autonomy!=='auto'&&i.status==='planned'&&i.auto!=='auto'){i.status='needs_approval';} }); toast({draft:'VaNi drafts only; you send.',ask:'VaNi asks before acting.',auto:'VaNi acts within the rules and reports back.'}[state.autonomy],true); render(); return; }
+  const f=e.target.closest('[data-focus]'); if(f){ state.focus = state.focus===f.dataset.focus?null:f.dataset.focus; if(state.focus==='place'){ state.focus=null; $('#tray')?.scrollIntoView({behavior:'smooth',block:'center'}); } render(); return; }
+  const ar=e.target.closest('.arow'); if(ar){ select(ar.dataset.id); return; }
+  const ac=e.target.closest('[data-act]'); if(ac){ act(ac.dataset.act, ac.dataset.id||state.sel); return; }
+  const sg=e.target.closest('[data-sug]'); if(sg){ runSuggestion(sg.dataset.sug,+sg.dataset.ix); return; }
+});
+document.addEventListener('keydown',e=>{ if(e.target.matches('input,select,textarea')) return;
+  if(e.key==='Escape'){ $('#modal')?.remove(); state.sel=null; state.pending=null; render(); }
+  if(e.key==='ArrowLeft') nav(-1); if(e.key==='ArrowRight') nav(1);
+  if(e.key==='Enter'&&e.target.dataset?.id){ select(e.target.dataset.id); }
+  if(e.key==='t'||e.key==='T'){ state.anchor=TODAY; render(); }
+});
+function nav(n){ state.anchor=addDays(state.anchor, state.view==='day'?n:7*n); render(); }
+$('#prev').onclick=()=>nav(-1); $('#next').onclick=()=>nav(1); $('#todayBtn').onclick=()=>{state.anchor=TODAY;render();};
+$('#viewas').onchange=e=>{ state.viewAs=e.target.value; state.who='all'; state.sel=null; if(state.viewAs==='ravi'&&state.view==='week'&&window.innerWidth<820) state.view='agenda'; render(); toast({owner:'Everything, every lane.',ravi:'Only your visits. Same board, same buttons.',meera:'Follow-ups and the reminders VaNi runs for you.'}[state.viewAs]); };
+$('#findSlot').onclick=()=>openFind();
+render();
+</script>
