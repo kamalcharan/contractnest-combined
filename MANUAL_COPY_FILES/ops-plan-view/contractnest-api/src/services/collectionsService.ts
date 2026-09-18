@@ -96,10 +96,18 @@ class CollectionsService {
    * kind + anchor + bucket, filters and per-bucket paging applied server-side.
    * `userId` is only used by the who=mine filter.
    */
-  board(tenantId: string, isLive: boolean, filters: BoardFilters, userId: string | null) {
+  board(tenantId: string, isLive: boolean, filters: BoardFilters, userId: string | null, perspective: 'revenue' | 'expense' = 'revenue') {
     // jtd_ops_board (migration 014) serves BOTH lanes — collections + services — in one row model.
-    return this.call('jtd_ops_board', {
+    // jtd_ops_board_expense (migration 021) is the buyer's board — same shape, lanes payables · services · acceptance.
+    return this.call(perspective === 'expense' ? 'jtd_ops_board_expense' : 'jtd_ops_board', {
       p_tenant: tenantId, p_is_live: isLive, p_filters: filters, p_user: userId
+    });
+  }
+
+  /** Expense side (migration 021): the buyer answers a proposed slot from inside the app — same tool as /slot/:token. */
+  respondSlot(tenantId: string, appointmentId: string, action: 'accept' | 'propose' | 'decline', proposedAt: string | null, note: string | null) {
+    return this.call('jtd_buyer_respond_slot', {
+      p_tenant: tenantId, p_appointment_id: appointmentId, p_action: action, p_proposed_at: proposedAt, p_note: note
     });
   }
 

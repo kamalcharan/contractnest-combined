@@ -86,5 +86,7 @@ router.post('/visits/:eventId/ask', toolLimit, controller.askVisitSlot);
 router.get('/plan', readLimit, controller.plan);
 router.post('/plan/:day/place', toolLimit, controller.planDay);
 router.post('/plan/:day/ask', toolLimit, controller.askDay);
+// Expense side (migration 021): the buyer answers a proposed slot in-app — {action: accept|propose|decline, proposed_at?, note?}
+router.post('/slots/:appointmentId/respond', toolLimit, controller.respondSlot);
 
 export default router;

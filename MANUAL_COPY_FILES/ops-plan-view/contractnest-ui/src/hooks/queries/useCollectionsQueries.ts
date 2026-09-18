@@ -50,9 +50,21 @@ export type BoardKind =
   | 'visit_today'
   | 'visit_scheduled'
   /** the customer suggested another time on /slot/:token — the team confirms (migration 015) */
-  | 'slot_to_confirm';
+  | 'slot_to_confirm'
+  // ── EXPENSE side (migration 021, jtd_ops_board_expense): what needs the BUYER ──
+  /** a bill I owe: an instalment or a whole invoice on a contract I claimed */
+  | 'bill_overdue' | 'bill_due'
+  /** I declared an offline payment — the seller has not confirmed it yet */
+  | 'bill_declared'
+  /** the seller proposed a time for a service at my place — answer it */
+  | 'slot_offered'
+  | 'service_in_progress' | 'service_awaited' | 'service_today' | 'service_scheduled'
+  /** a contract addressed to me is waiting for my acceptance (review link in-app) */
+  | 'to_accept';
 
-export type BoardLane = 'collections' | 'services';
+/** Revenue: collections · services. Expense: payables · services · acceptance. */
+export type BoardLane = 'collections' | 'services' | 'payables' | 'acceptance';
+export type Perspective = 'revenue' | 'expense';
 export type SlotState = 'confirmed' | 'proposed' | 'none';
 
 /** The services block on a visit row. The row's `id`/`job_id` is the service event id. */
@@ -142,6 +154,16 @@ export interface BoardCard {
   call_task?: { id: string; assigned_to?: string; assigned_to_name?: string; due_at?: string; kind?: 'follow_up' | 'escalation' | string };
   failed?: { reminder_id?: string; channel?: string; error?: string; at?: string };
   awaiting?: { status: string; since: string; start_date?: string };
+  // ── expense side (migration 021) ──
+  /** The seller as this tenant sees it (also placed in buyer_name so the card title reads the same). */
+  seller_name?: string;
+  seller_tenant_id?: string;
+  /** The contract's CNAK — the buyer's key to the in-app pay / declare flow (my-access → secret). */
+  cnak?: string;
+  /** to_accept only: "cnak=…&secret=…" — opens /contract-review in-app. */
+  review_link_suffix?: string;
+  /** services rows: the open appointment to answer (accept · propose · decline). */
+  appointment_id?: string;
 }
 
 export interface BoardBucket {
@@ -183,6 +205,8 @@ export interface WlTeamMember {
 }
 
 export interface BoardFilters {
+  /** expense → jtd_ops_board_expense (the buyer's board); default revenue */
+  perspective?: Perspective;
   horizon?: number;
   from?: string;
   to?: string;
@@ -201,6 +225,7 @@ export interface BoardFilters {
 
 export interface CollectionsBoard {
   success: boolean;
+  perspective?: Perspective;
   today: string;
   is_live: boolean;
   window: { from: string | null; to: string; horizon_days: number | null; bands: [number, number] };
@@ -333,6 +358,7 @@ const unwrap = <T,>(response: any): T => (response.data?.data ?? response.data) 
 /** BoardFilters → the GET query string the controller expects. */
 const toParams = (f: BoardFilters): Record<string, string> => {
   const p: Record<string, string> = {};
+  if (f.perspective === 'expense') p.perspective = 'expense';
   if (f.horizon) p.horizon = String(f.horizon);
   if (f.from) p.from = f.from;
   if (f.to) p.to = f.to;
@@ -690,6 +716,23 @@ export const useAskVisitSlot = () =>
       ? `Slot ${fmtSlot(r.scheduled_at)} proposed — share the link with ${r.recipient_name || 'the customer'}`
       : `Asked ${r.recipient_name || 'the customer'} ${r.channel === 'whatsapp' ? 'on WhatsApp' : 'by email'} to confirm ${fmtSlot(r.scheduled_at)}`),
     'Could not ask the customer'
+  );
+
+/**
+ * Expense side (migration 021): the buyer answers the seller's proposed slot
+ * from the board — same tool as the public /slot/:token page.
+ */
+export const useRespondSlot = () =>
+  useToolMutation<
+    { appointmentId: string; action: 'accept' | 'propose' | 'decline'; proposedAt?: string; note?: string },
+    { success: boolean; state?: string; scheduled_at?: string | null }
+  >(
+    (v) => `${BASE}/slots/${v.appointmentId}/respond`,
+    (v) => ({ action: v.action, proposed_at: v.proposedAt ?? null, note: v.note ?? null }),
+    (r, v) => (v.action === 'accept' ? `Slot confirmed${r.scheduled_at ? ` for ${fmtSlot(r.scheduled_at)}` : ''} — the provider is notified`
+      : v.action === 'propose' ? `You suggested ${fmtSlot(r.scheduled_at)} — waiting for the provider to confirm`
+      : 'Marked as not needed — the provider is notified'),
+    'Could not answer the slot'
   );
 
 export const useResumeDunning = () =>

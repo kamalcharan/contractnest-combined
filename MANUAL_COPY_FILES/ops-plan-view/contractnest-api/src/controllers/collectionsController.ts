@@ -160,7 +160,7 @@ class CollectionsController {
       }
       const kinds = list(qs.kinds);
       if (kinds) filters.kinds = kinds;
-      const lanes = list(qs.lanes)?.filter((l) => l === 'collections' || l === 'services');
+      const lanes = list(qs.lanes)?.filter((l) => l === 'collections' || l === 'services' || l === 'payables' || l === 'acceptance');
       if (lanes?.length) filters.lanes = lanes;
       const slot = oneOf(qs.slot, ['confirmed', 'proposed', 'none'] as const);
       if (slot) filters.slot = slot;
@@ -188,7 +188,9 @@ class CollectionsController {
         if (Object.keys(limits).length) filters.limits = limits;
       }
 
-      const result = await collectionsService.board(this.tenantId(req), this.isLive(req), filters, req.user?.id || null);
+      // perspective=expense → the buyer's board (migration 021); anything else is the revenue board.
+      const perspective = oneOf(qs.perspective, ['revenue', 'expense'] as const) || 'revenue';
+      const result = await collectionsService.board(this.tenantId(req), this.isLive(req), filters, req.user?.id || null, perspective);
       if (!result.success) { this.refuse(res, result.error!); return; }
       sendSuccess(res, result.data);
     } catch (error) {
@@ -274,6 +276,35 @@ class CollectionsController {
     } catch (error) {
       console.error('[CollectionsController] contractActivity error:', error);
       internalError(res, 'Failed to load the contract activity');
+    }
+  };
+
+  /**
+   * POST /slots/:appointmentId/respond  {action: accept|propose|decline, proposed_at?, note?}
+   * Expense side (migration 021): the buyer answers the seller's proposed slot
+   * in-app. proposed_at: ISO, or a local date-time read as IST.
+   */
+  respondSlot = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const actor = this.actor(req);
+      if (!actor) { sendError(res, ERROR_CODES.UNAUTHORIZED, 'Sign in to answer a slot', 401); return; }
+      const id = String(req.params.appointmentId || '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'appointmentId is required', 400); return; }
+      const action = this.str(req.body?.action);
+      if (action !== 'accept' && action !== 'propose' && action !== 'decline') { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'action must be accept, propose or decline', 400); return; }
+      let when = this.str(req.body?.proposed_at);
+      if (action === 'propose') {
+        if (!when) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'proposed_at is required to propose a time', 400); return; }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(when)) when = `${when}T10:00:00+05:30`;
+        else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(when)) when = `${when}${when.length === 16 ? ':00' : ''}+05:30`;
+        if (Number.isNaN(Date.parse(when))) { sendError(res, ERROR_CODES.VALIDATION_ERROR, 'proposed_at must be a date or date-time', 400); return; }
+      }
+      const result = await collectionsService.respondSlot(this.tenantId(req), id, action, action === 'propose' ? new Date(when!).toISOString() : null, this.str(req.body?.note));
+      if (!result.success) { this.refuse(res, result.error!); return; }
+      sendSuccess(res, result.data);
+    } catch (error) {
+      console.error('[CollectionsController] respondSlot error:', error);
+      internalError(res, 'Failed to answer the slot');
     }
   };
 

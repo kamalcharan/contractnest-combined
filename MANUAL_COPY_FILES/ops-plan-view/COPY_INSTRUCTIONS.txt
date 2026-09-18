@@ -13,6 +13,13 @@ Submodules affected:
                       (source of record, do not re-run)
   contractnest-api  — services/collectionsService.ts, controllers/
                       collectionsController.ts, routes/collectionsRoutes.ts
+                      ⚠ these three and useCollectionsQueries.ts are SUPERSETS
+                      of batch ops-expense-board's copies (respondSlot, the
+                      expense perspective) — the first cut was built on
+                      pristine main and threw "does not provide an export
+                      named 'useRespondSlot'" on a checkout that had
+                      ops-expense-board copied in. Fixed 2026-09-18. Copy
+                      order between the two batches no longer matters.
   contractnest-ui   — components/ops/PlanView.tsx (NEW),
                       pages/ops/register/index.tsx (Plan tab; a SUPERSET of
                       batch ops-items-on-jtd's copy of the same file),
