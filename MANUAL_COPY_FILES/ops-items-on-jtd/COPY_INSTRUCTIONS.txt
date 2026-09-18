@@ -1,0 +1,144 @@
+═══════════════════════════════════════════════════
+BATCH: ops-items-on-jtd (2026-09-17/18) — appointments and follow-ups are
+       now ITEMS ON THE COMMITMENT (json on n_jtd), one infra, one set of
+       tools; t_appointments is a compatibility VIEW
+═══════════════════════════════════════════════════
+Owner: "appointments and followups should share same infra — both have
+status, assigned to, what time, reschedule, assigned by, service to
+(buyer)"; "t_appointments will not be needed — n_jtd events like billing,
+services might have followups json records, they might have appointment
+jsons against them"; costs accepted (mirror via migration; transactions
+handle concurrency); "go ahead".
+
+Submodules affected:
+  contractnest-edge — three migrations under jtd-nucleus/, ALL APPLIED
+                      LIVE (source of record, do not re-run):
+                        022a_items_core.sql
+                        022b_tools_on_items.sql
+                        022c_view_backfill_cleanup.sql
+  contractnest-ui   — three small files (labels + one type), listed below
+  contractnest-api  — NO change (every route keeps its RPC and shape)
+
+─── THE MODEL (022a) ───────────────────────────────
+ Two jsonb columns on n_jtd, partial GIN (jsonb_path_ops) indexes:
+   followups    [] — any number per commitment
+   appointments [] — at most ONE open per commitment (slot_already_open)
+ Every item carries the same spine: id, kind, status, scheduled_at,
+ original_at, assigned_to(_name), set_by {type,id,name,at}, note,
+ rescheduled[] (every move, with reason), outcome {code,note,by,at},
+ closed_at, created_at, updated_at. Follow-ups add rung/origin;
+ appointments add proposed_by (us|customer), proposed_slots, token,
+ asked_at, ask_count, customer_response, is_active.
+ Follow-up statuses: open | done | cancelled.
+ Appointment statuses: proposed | asked | confirmed | customer_proposed |
+   no_response | declined | completed | no_show | cancelled
+   (legacy view mapping: proposed/asked → requested, confirmed → accepted,
+   customer_proposed → rescheduled).
+ Every change goes through ONE writer, jtd_item_write: job row FOR UPDATE,
+ version bump (optional p_expected_version → version_conflict), one
+ n_jtd_history row with details.item_id, actor triple on everything.
+ Generic tools on top: jtd_item_add · jtd_item_assign · jtd_item_reschedule
+ (keeps original_at, appends rescheduled[]) · jtd_item_close (outcomes:
+ follow-up done|cancelled|reached|no_answer|promised|disputed|other;
+ appointment completed|cancelled|declined|not_needed|no_show|no_response).
+ jtd_ensure_visit_job(event_id) creates the service-visit job for an event
+ that never had one (018's insert for one row) so an item always has a
+ job to hang on.
+
+─── WHAT WAS REWIRED (022b) — same signatures, same result shapes ───
+ create_appointment / update_appointment — legacy wrappers, now write an
+   item; accept moves the event and calls
+   fn_enqueue_service_visit_scheduled(item id) (replaces the dropped
+   trg_fn_notif_appointment_confirmed trigger, same customer message).
+ jtd_schedule_visit · jtd_confirm_visit_slot · jtd_ask_visit_slot ·
+   visit_slot_resolve / visit_slot_respond (token lookup via
+   appointments @> [{"token": …}], actor 'customer') ·
+   jtd_buyer_respond_slot · jtd_complete_visit (closes open appointments) ·
+   gs_schedule_assign (no appointment rows).
+ jtd_escalate_payment_call — a follow-up / escalation is now an ITEM on
+   the payment job (returns task_jtd_id = item id). The old refusals
+   call_already_open and duplicate_rung are GONE: any number of follow-ups.
+ jtd_log_payment_call — still inserts the payment_call_logged record row;
+   closes every open follow-up item with the call outcome.
+ jtd_tasks — reads follow-up items (same output shape for the register).
+ jtd_ops_board — open_call from followups; feed shows the item actions.
+ jtd_activity / jtd_contract_activity — titles + groups for
+   followup_* / appointment_* / follow_up_set / escalated.
+ get_appointments_list — +asked_at, ask_count, customer_response.
+ run_contract_event_scanner — STEP 2b (silent auto-request of an
+   appointment six days ahead, the source of 163 auto-cancelled rows) CUT.
+ reset_tenant_session_and_forms — clears the arrays.
+
+─── BACKFILL + VIEW + CLEANUP (022c) ───────────────
+ 165 t_appointments rows → 165 appointment items (row-for-row post-check,
+ ids preserved); open payment_call_due task rows → follow-up items (the
+ rows retired: is_active=false, business_context.migrated_to_item).
+ t_appointments renamed t_appointments_legacy_022 (read-only; drop in a
+ later batch). t_appointments is now a VIEW over n_jtd.appointments
+ (id = item id, event_id = job id, version = job version, is_active = the
+ job's latest item) with INSTEAD OF INSERT/UPDATE/DELETE triggers, so the
+ 20 legacy readers/writers (get_contract_events_list, get_vani_briefing,
+ get_appointments_list, fn_enqueue_service_visit_scheduled, both boards,
+ jtd_assign_visit, …) are unchanged.
+ cron appointment-auto-expire UNSCHEDULED, expire_stale_appointment_requests
+ DROPPED (the nightly cron that cancelled every unanswered request).
+
+ Verified live after apply: 165 items / 165 jobs, view = 165; 1 follow-up
+ item, 1 task row retired; cron gone; scanner 2b gone; 11 writers rewired;
+ signia board 63 rows (29 services + 22 collections need you), buyer board
+ 4, BBB 78 (unchanged); signia tasks {all 1, open 1}; appointments list 17.
+ Whole migration probed first in one transaction ending in RAISE (backfill,
+ view, follow-up chain incl. version_conflict and log-call closing two,
+ appointment chain incl. slot_already_open, share link, customer propose →
+ slot_to_confirm, buyer not_your_contract, confirm moves event, view
+ UPDATE/DELETE, scanner adds nothing, expense board, briefing).
+ NOTE: CN-1010's live appointment reads "cancelled" — the legacy 03:00 IST
+ cron ran once more before 022c removed it, not the migration.
+
+─── UI (three files) ───────────────────────────────
+ src/pages/ops/register/index.tsx
+   Appointments lane: status 'requested' reads "Slot proposed"; it reads
+   "Asked" (×N when asked more than once) ONLY when asked_at is set — i.e.
+   the customer actually got the link. Before, every scanner-made row read
+   "Asked" though nobody was ever asked.
+ src/hooks/queries/useAppointmentQueries.ts
+   Appointment type gains asked_at / ask_count / customer_response.
+ src/components/contracts/EventCard.tsx
+   "Book appointment" → "Propose slot" (that is what the button does; the
+   ask is a separate step on the Ops board).
+ tsc error count 1170 = pristine main; vite build passes.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-items-on-jtd\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only, already live
+Copy-Item "MANUAL_COPY_FILES\ops-items-on-jtd\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Write-Host "✅ ops-items-on-jtd copied" -ForegroundColor Green
+cd contractnest-ui; npm run dev     # Ctrl+F5 in the browser
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — signia (seller), buyer@b.com, Live
+═══════════════════════════════════════════════════
+- [ ] /ops/services → Appointments lane: rows read "Slot proposed" /
+      "Confirmed" / "Cancelled"; "Asked" only on a row you actually shared.
+- [ ] /ops/services → Follow-ups lane: the existing follow-up still lists
+      (open, due date, assignee); Activity tab shows follow-up rows.
+- [ ] /ops/cockpit (signia) → a Collections card → Follow up (pick a date)
+      → the card moves to that date's column; a SECOND Follow up on the
+      same card is accepted (no "call already open").
+- [ ] Same card → Log a call → both follow-ups close; History shows them.
+- [ ] Services card → Schedule (propose) → Ask customer (Share) → link
+      opens /slot/:token → Suggest another time → board shows
+      "Slot to confirm" → Confirm slot → the visit moves to that time.
+- [ ] Contract view → a service event → "Propose slot" (was Book
+      appointment) → same flow, event date moves.
+- [ ] buyer@b.com /ops/cockpit (Expense) → slot offered card → Accept /
+      Suggest another time → seller side reflects it.
+- [ ] Mark done on a visit → its open appointment reads Completed.
+- [ ] Nothing new appears overnight: no auto-"Asked" rows, no auto-Cancelled.
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
