@@ -75,6 +75,11 @@ Submodules affected:
  complete/ask visit), the Log-a-call sheet and the History drawer.
  "Carried over" (overdue, collapsed, red) sits first; "Parked" (no date)
  last. The page header's Refresh button and progress bar follow the plan.
+ A STATUS select (owner ask, 2026-09-18): Need you · To place · Slot
+ proposed · Asked · To confirm · Confirmed · In progress · Unassigned ·
+ Payments due · Reminders due · Declared · Follow-ups, with the window's
+ counts; filters the cards client-side by the counts' own rules, day
+ headers keep their full sentence and show "n of m".
 
  Verified: tsc 1170 = pristine main; vite build passes; API tsc 0. Probed in
  one rolled-back transaction on signia (14 days; every card under its IST
@@ -110,6 +115,9 @@ cd ../contractnest-ui; npm run dev      # Ctrl+F5
       pressing again places nothing.
 - [ ] "Ask everyone" does NOT appear (no template registered yet); the line
       reads "N proposed · ask each from its card…".
+- [ ] Status select → e.g. "To place": only those cards remain, each day
+      header shows "n of m", days with none say "None to place on this day";
+      "Any status" restores.
 - [ ] Switch window (7 / 30 / dates), lane, Who, search → the days follow;
       Refresh in the header spins the plan.
 - [ ] Log a call and History open from a card on the Plan tab.

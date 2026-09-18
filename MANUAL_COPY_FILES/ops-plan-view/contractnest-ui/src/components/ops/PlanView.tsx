@@ -20,6 +20,9 @@
 //   VaNi OFF → the same numbers, greyed: "VaNi would place N, ask M and send R
 //              reminders" with "Open VaNi →". The counterfactual is the pitch;
 //              nothing manual is withheld.
+// A Status select (owner ask, 2026-09-18) filters the cards client-side by the
+// same rules as the counts — the day headers keep their full counts and show
+// "n of m" so a filtered day still reads what it holds.
 // Rows anchored before the window come first as "carried over"; rows with no
 // anchor sit at the end as "parked". Never a balance or a total of money.
 
@@ -56,6 +59,38 @@ const isoDay = (d: Date) => { const p = (n: number) => String(n).padStart(2, '0'
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const today0 = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** The Status filter: one of the day's count keys, client-side over the cards the reader already returned (same rules as jtd__plan_counts). */
+export type PlanStatus = 'needs_you' | 'to_place' | 'proposed' | 'asked' | 'to_confirm' | 'confirmed' | 'in_progress' | 'unassigned_services' | 'payments' | 'reminders_due' | 'declarations' | 'followups';
+const NEEDS_KINDS = new Set(['declaration_pending', 'send_failed', 'call_open', 'rung_due', 'overdue_no_ladder', 'ladder_exhausted', 'awaiting_activation', 'invoice_overdue', 'visit_overdue', 'visit_today', 'visit_in_progress', 'slot_to_confirm']);
+export const STATUS_OPTIONS: Array<{ key: PlanStatus; label: string }> = [
+  { key: 'needs_you', label: 'Need you' },
+  { key: 'to_place', label: 'To place' }, { key: 'proposed', label: 'Slot proposed' }, { key: 'asked', label: 'Asked' },
+  { key: 'to_confirm', label: 'To confirm' }, { key: 'confirmed', label: 'Confirmed' }, { key: 'in_progress', label: 'In progress' },
+  { key: 'unassigned_services', label: 'Unassigned' },
+  { key: 'payments', label: 'Payments due' }, { key: 'reminders_due', label: 'Reminders due' }, { key: 'declarations', label: 'Declared' },
+  { key: 'followups', label: 'Follow-ups' },
+];
+export const matchesStatus = (c: BoardCard, s: PlanStatus): boolean => {
+  const svc = c.lane === 'services';
+  const slot = c.slot_state || 'none';
+  const asked = !!c.visit?.ask?.asked_at;
+  switch (s) {
+    case 'needs_you': return NEEDS_KINDS.has(c.kind);
+    case 'to_place': return svc && (c.kind === 'visit_scheduled' || c.kind === 'visit_today' || c.kind === 'visit_overdue') && slot === 'none';
+    case 'proposed': return svc && slot === 'proposed' && c.kind !== 'slot_to_confirm' && !asked;
+    case 'asked': return svc && slot === 'proposed' && c.kind !== 'slot_to_confirm' && asked;
+    case 'to_confirm': return c.kind === 'slot_to_confirm';
+    case 'confirmed': return svc && slot === 'confirmed';
+    case 'in_progress': return c.kind === 'visit_in_progress';
+    case 'unassigned_services': return svc && !c.owner_id;
+    case 'payments': return c.lane === 'collections' && c.kind !== 'call_open';
+    case 'reminders_due': return c.kind === 'rung_due' || c.kind === 'rung_ahead';
+    case 'declarations': return c.kind === 'declaration_pending';
+    case 'followups': return c.kind === 'call_open';
+    default: return true;
+  }
+};
 
 /** "3 services (2 to place · 1 asked) · 2 payments due · 1 reminder due · 1 follow-up" — never money. */
 export const planSentence = (c: PlanCounts): string => {
@@ -101,6 +136,7 @@ const PlanView: React.FC<{
   const [to, setTo] = useState(() => isoDay(addDays(today0(), 13)));
   const [lane, setLane] = useState<Lane>('all');
   const [who, setWho] = useState<Who>('team');
+  const [status, setStatus] = useState<PlanStatus | ''>('');
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
   useEffect(() => { const t = setTimeout(() => setQ(search.trim()), 250); return () => clearTimeout(t); }, [search]);
@@ -306,10 +342,14 @@ const PlanView: React.FC<{
     );
   };
 
+  const filterCards = (cards: BoardCard[]) => (status ? cards.filter((c) => matchesStatus(c, status)) : cards);
+  const statusLabel = STATUS_OPTIONS.find((o) => o.key === status)?.label || '';
+
   const DaySection: React.FC<{ d: PlanDay }> = ({ d }) => {
     const c = d.counts;
     const past = !!data && d.day < data.today;
     const dt = new Date(`${d.day}T00:00:00`);
+    const cards = filterCards(d.cards);
     return (
       <section className="rounded-2xl border px-4 py-3.5" style={{ borderColor: d.is_today ? `${brand}70` : hairline, backgroundColor: colors.utility.secondaryBackground }}>
         <div className="flex items-start gap-4 flex-wrap">
@@ -320,12 +360,13 @@ const PlanView: React.FC<{
           </div>
           <p className="text-[12.5px] flex-1 min-w-[200px]" style={c.total ? ink : sub}>{c.total ? planSentence(c) : 'Nothing committed.'}</p>
           <div className="flex items-center gap-1.5">
+            {status && c.total > 0 && <Pill color={colors.utility.secondaryText} title={`${statusLabel}: ${cards.length} of ${c.total} on this day`}>{cards.length} of {c.total}</Pill>}
             {c.needs_you > 0 && <Pill color={amber}>{c.needs_you} need you</Pill>}
             {c.unassigned_services > 0 && <Pill color={colors.utility.secondaryText} title="Services with no technician yet">{c.unassigned_services} unassigned</Pill>}
           </div>
         </div>
         <VaniLine day={d.day} c={c} past={past} />
-        {c.total > 0 && <Cards keyName={d.day} cards={d.cards} />}
+        {cards.length > 0 ? <Cards keyName={d.day} cards={cards} /> : (status && c.total > 0 ? <p className="mt-2 text-[11.5px]" style={sub}>None {statusLabel.toLowerCase()} on this day.</p> : null)}
       </section>
     );
   };
@@ -355,6 +396,10 @@ const PlanView: React.FC<{
             <option value="team">Whole team</option>
             <option value="mine">Mine</option>
             <option value="unassigned">Unassigned</option>
+          </select>
+          <select value={status} onChange={(e) => setStatus(e.target.value as PlanStatus | '')} style={selectStyle} aria-label="Status">
+            <option value="">Any status</option>
+            {STATUS_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}{data ? ` · ${data.totals[o.key] + (data.carried.counts[o.key] || 0)}` : ''}</option>)}
           </select>
           <label className="inline-flex items-center gap-2 rounded-full border px-3 min-h-[36px] w-56" style={{ borderColor: `${colors.utility.primaryText}30`, backgroundColor: colors.utility.primaryBackground }}>
             <Search size={13} style={sub} />
@@ -400,7 +445,7 @@ const PlanView: React.FC<{
                 <span className="ml-auto"><Pill color={red}>{data.carried.counts.needs_you} need you</Pill></span>
               </button>
               {carriedOpen && <p className="mt-1 text-[11px]" style={sub}>Anchored before {fmtDate(data.window.from)} and still open. Reschedule, chase or close them from the card.</p>}
-              {carriedOpen && <Cards keyName="carried" cards={data.carried.cards} />}
+              {carriedOpen && <Cards keyName="carried" cards={filterCards(data.carried.cards)} />}
             </section>
           )}
           {data.days.map((d) => <DaySection key={d.day} d={d} />)}
@@ -411,7 +456,7 @@ const PlanView: React.FC<{
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...mono, ...sub }}>Parked</span>
                 <span className="text-[12.5px]" style={ink}>{planSentence(data.parked.counts)} · no date yet</span>
               </button>
-              {parkedOpen && <Cards keyName="parked" cards={data.parked.cards} />}
+              {parkedOpen && <Cards keyName="parked" cards={filterCards(data.parked.cards)} />}
             </section>
           )}
           <p className="mt-6 text-[11px] text-center" style={sub}>
