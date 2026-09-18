@@ -1,0 +1,131 @@
+═══════════════════════════════════════════════════
+BATCH: ops-availability (2026-09-18) — working hours, leave, visit duration
+       and CLASHES: what the Timeboard needs, and what Ops now warns about
+═══════════════════════════════════════════════════
+POA batch 2 (owner: "go to batch 2" after the plan view). The three fields
+none of this had: how long a visit takes, when people work, when they are
+off — and a clash check that is a WARNING on the card, never a refusal.
+
+Submodules affected:
+  contractnest-edge — migrations/jtd-nucleus/024_availability.sql, APPLIED
+                      LIVE (source of record, do not re-run)
+  contractnest-api  — services/availabilityService.ts (NEW), controllers/
+                      availabilityController.ts (NEW), routes/
+                      availabilityRoutes.ts (NEW), index.ts (mount at
+                      /api/availability), services/cadenceSettingsService.ts,
+                      controllers/cadenceSettingsController.ts, routes/
+                      cadenceSettingsRoutes.ts (PUT /hours)
+  contractnest-ui   — services/serviceURLs.ts, pages/settings/cadence/
+                      useCadenceSettings.ts + CadenceSettingsPage.tsx (Working
+                      hours card), pages/settings/users/userView.tsx (+card),
+                      components/users/AvailabilityCard.tsx (NEW), hooks/
+                      queries/useAvailabilityQueries.ts (NEW), hooks/queries/
+                      useCollectionsQueries.ts, components/ops/JobCard.tsx,
+                      components/ops/PlanView.tsx
+  ⚠ SUPERSETS: JobCard.tsx is a superset of ops-expense-board's copy;
+    useCollectionsQueries.ts and PlanView.tsx are supersets of
+    ops-plan-view's (which are supersets of ops-expense-board's). Copy
+    this batch LAST and any order of the earlier two is fine.
+
+─── WHAT IS LIVE (024) ─────────────────────────────
+ Tenant defaults on the EXISTING cadence settings (which already held
+ weekly_holidays + marked holidays): work_start 09:00, work_end 18:00,
+ default_visit_minutes 60. get_tenant_cadence_settings returns them;
+ upsert_tenant_working_hours(tenant, start, end, minutes) sets them.
+ Per user: t_user_availability (work_start/work_end/weekly_off, NULL =
+ the tenant's) and t_user_leave (date, part full|am|pm, label). RPCs
+ get_user_availability · set_user_availability · add_user_leave ·
+ remove_user_leave · get_team_availability. jtd_effective_hours(tenant,
+ user) is the one place that decides which hours apply.
+ jtd_visit_minutes(event): the contract block's config.duration
+ (value + unit → minutes) else the tenant default. Fact: no block carries
+ a duration today (0 of 5,425 catalog, 0 of 1,038 contract blocks), so
+ every visit is the tenant default until blocks are filled in.
+ jtd_slot_check(tenant, user, start, minutes, exclude_event) → [] or
+ [{kind, detail, event_id?}] with kinds weekly_off · holiday · leave ·
+ outside_hours · overlap. Overlaps are only against services that HAVE a
+ timed slot (event rows carry their creation clock time, never a real
+ time) so nothing false fires on unslotted services.
+ Warnings: jtd_schedule_visit, jtd_confirm_visit_slot and jtd_assign_visit
+ return `warnings` (the check for the technician). Appointment items carry
+ duration_minutes (new ones at add; 168 existing back-filled).
+ Board: every visit row's `visit` carries duration_minutes and, when the
+ slot clashes, `clashes`. Plan counts gain `clashes`. "Plan this day" now
+ starts from the organisation's work_start, steps by the default visit
+ length per technician, refuses a tenant day off (`day_off`), and each
+ placement carries its warnings (`warned_count`).
+
+─── API ────────────────────────────────────────────
+ PUT    /api/settings/cadence/hours        {work_start, work_end, default_visit_minutes}
+ GET    /api/availability/users/:userId
+ PUT    /api/availability/users/:userId    {work_start?, work_end?, weekly_off?} — all null = inherit
+ POST   /api/availability/users/:userId/leave   {date, part, label?}
+ DELETE /api/availability/users/:userId/leave?date=YYYY-MM-DD
+ GET    /api/availability/team?days=60
+
+─── UI ─────────────────────────────────────────────
+ /settings/configure/cadence → new "Working hours" card: from, to, "a visit
+   takes N min", Save (own dirty state, own toast).
+ /settings/users/:id → Overview gains "Working hours & leave": the hours
+   that apply (their own / the organisation's), a "Their own hours" switch
+   with time inputs and weekday chips (highlighted = off), Save; leave list
+   with add (date, full/morning/afternoon, label) and remove. Toasts via
+   the page's VaNi toast; spinners on load and on each save.
+ Ops board + Plan tab: a red "⚠ outside hours / day off / holiday / on
+   leave / overlaps (+N)" pill next to the kind pill on a service card,
+   reasons on hover. Schedule / Confirm slot / Assign toasts append the
+   warnings ("… · ⚠ overlaps AC servicing · CN-1010 at 14:00").
+ Plan tab: "N clashes" in the day sentence and a red pill; Status select
+   gains "Clashes".
+
+ Verified: API tsc 0; UI tsc 1170 = pristine on the assembled local state
+ (expense-board + plan-view + this); vite build passes. Probed live on
+ signia in one rolled-back transaction: getter defaults 09:00/60; hours
+ saved 08:30–17:30/90 and bad hours refused; a user given 10:00–16:00 with
+ Sat+Sun off and a morning's leave; the check flagged a Sunday (day off),
+ 09:00 on the leave day (leave + outside hours), and was clean at 14:00;
+ two services assigned to that user and scheduled 14:00 and 15:00 → the
+ second warned "overlaps … at 14:00", confirm warned too, both board rows
+ carried clashes and the plan counted 2; "Plan this day" refused the
+ Sunday and started 08:30 in 90-minute steps; 168 items carry a duration.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/wonderful-knuth-kb61tu
+Copy-Item "MANUAL_COPY_FILES\ops-availability\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only, already live
+Copy-Item "MANUAL_COPY_FILES\ops-availability\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-availability\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Write-Host "✅ ops-availability copied" -ForegroundColor Green
+cd contractnest-api; npm run dev        # new router
+cd ../contractnest-ui; npm run dev      # Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — signia, Live
+═══════════════════════════════════════════════════
+- [ ] /settings/configure/cadence: "Working hours" shows 09:00–18:00 · 60;
+      change to 09:30–17:30 · 90 → Save → toast; reload keeps it.
+- [ ] /settings/users → a user → Overview: "Working hours & leave" reads the
+      organisation's hours; tick "Their own hours", set 10:00–16:00, mark
+      Sat off → Save → "their own"; untick → Save → back to the
+      organisation's.
+- [ ] Same card: add leave for a coming weekday (Morning, "Dentist") → it
+      lists; remove it → gone.
+- [ ] /ops/cockpit → Services: assign a service to that user, Schedule it
+      at 09:00 on the leave day → toast ends "· ⚠ on leave (morning)…;
+      outside 10:00–16:00" and the card shows a red "⚠ on leave +1" pill
+      (hover lists both).
+- [ ] Schedule a second service for the same user at a time that overlaps
+      the first → "⚠ overlaps <block> · CN-… at HH:MM" on both cards.
+- [ ] Move one of them clear of the other → pills disappear.
+- [ ] /ops/services → Plan: the day sentence says "N clashes", the red pill
+      shows, Status "Clashes" filters to them.
+- [ ] Plan this day on a Sunday → toast "Sun is a day off"; on a weekday →
+      placed from 09:30 (or whatever you saved) in 90-minute steps.
+- [ ] Expense board (buyer@b.com) unchanged.
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
