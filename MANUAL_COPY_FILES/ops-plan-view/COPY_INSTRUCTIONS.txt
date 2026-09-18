@@ -1,0 +1,118 @@
+═══════════════════════════════════════════════════
+BATCH: ops-plan-view (2026-09-18) — the PLAN tab on the Commitments
+       Register: every day ahead with its commitments lined up; VaNi's
+       leverage ("Plan this day", "Ask everyone") gated, manual never withheld
+═══════════════════════════════════════════════════
+Owner: "as per JTD, Wed 16 Sep has a few events — can't those be shown as
+commitments lined up, and the user reviews (tooltip / popup) and confirms or
+proposes?" + the cross-selling rule: VaNi is the cream. Agreed: the plan is
+for everyone; the LEVERAGE is VaNi's. POA batch 1. "start batch 1".
+
+Submodules affected:
+  contractnest-edge — migrations/jtd-nucleus/023_plan_view.sql, APPLIED LIVE
+                      (source of record, do not re-run)
+  contractnest-api  — services/collectionsService.ts, controllers/
+                      collectionsController.ts, routes/collectionsRoutes.ts
+  contractnest-ui   — components/ops/PlanView.tsx (NEW),
+                      pages/ops/register/index.tsx (Plan tab; a SUPERSET of
+                      batch ops-items-on-jtd's copy of the same file),
+                      hooks/queries/useCollectionsQueries.ts (plan types +
+                      hooks), hooks/queries/useAppointmentQueries.ts (the
+                      022 type — same file as in ops-items-on-jtd)
+
+─── WHAT IS LIVE (023) ─────────────────────────────
+ jtd_plan(tenant, is_live, {from, to (≤120 d), lanes[], who, q}, user)
+   jtd_ops_board regrouped by IST anchor day. Every day of the window, empty
+   days included, each with its cards (the board's own rows → the same
+   JobCard, the same verbs) and counts: to_place · proposed · asked ·
+   to_confirm · confirmed · in_progress · unassigned_services · payments ·
+   followups · reminders_due · declarations · needs_you. `carried` = rows
+   anchored before the window (overdue), `parked` = no anchor. Passes through
+   team, ladder, ask_channels; returns vani_enabled.
+ jtd_plan_day(tenant, day, actor…)   "Plan this day"  — VaNi leverage
+   Every service on the day with no slot gets one: 10:00 IST first, then
+   +2 h per service already placed for the same technician (unassigned
+   share one sequence; nobody is guessed a technician). Each is
+   jtd_schedule_visit(proposed) — never confirmed. If the day is today and
+   the hour has passed, starts at the next full hour. Idempotent.
+ jtd_ask_day(tenant, day, channel, actor…)   "Ask everyone" — VaNi leverage
+   Every proposed-not-asked slot on the day → jtd_ask_visit_slot(email |
+   whatsapp). Until the slot-request templates are registered every row
+   refuses no_template; the UI only offers channels in ask_channels, so the
+   button does not appear yet.
+ Both refuse `vani_off` when vani_is_enabled(tenant) is false. The single-
+ item verbs on the cards are not gated.
+
+─── API ────────────────────────────────────────────
+ GET  /api/jtd/collections/plan?from&to&lanes&who&q
+ POST /api/jtd/collections/plan/:day/place            → jtd_plan_day
+ POST /api/jtd/collections/plan/:day/ask {channel}    → jtd_ask_day
+ vani_off → 403 · day_passed / day_required / bad_channel → 400.
+
+─── UI ─────────────────────────────────────────────
+ /ops/services → new PLAN tab (between Commitments and Activity; revenue
+ side only). Window Next 7 / 14 / 30 d or dates; lane All · Collections ·
+ Services; Who (whole team / mine / unassigned); search. A summary line for
+ the window ("VaNi is on/off" at the right). Then, per day: DOW + date
+ (Today ringed), a sentence ("3 services (2 to place · 1 asked) · 2 payments
+ due · 1 reminder due"), "N need you" and "N unassigned" pills, and ONE VaNi
+ line:
+   VaNi on  → [Plan this day · N] [Ask everyone on WhatsApp · M] (only for
+              channels with a registered template) · "R reminders run by the
+              ladder" / "turn on Payment reminders"
+   VaNi off → greyed "VaNi would place N, ask M and send R reminders for
+              this day. Open VaNi →"
+ Under it the day's cards — the board's JobCard, compact, first 6 then
+ "Show all N" — with the SAME actions wiring as Ops (nudge, call, assign,
+ pause/resume, confirm declaration, invoices, assign/schedule/confirm/start/
+ complete/ask visit), the Log-a-call sheet and the History drawer.
+ "Carried over" (overdue, collapsed, red) sits first; "Parked" (no date)
+ last. The page header's Refresh button and progress bar follow the plan.
+
+ Verified: tsc 1170 = pristine main; vite build passes; API tsc 0. Probed in
+ one rolled-back transaction on signia (14 days; every card under its IST
+ day; a future window has no carried rows; garbage filters never raise; the
+ 120-day clamp; Plan this day placed 1 service at 10:00 IST and a second run
+ placed 0; Ask everyone refused no_template; the gate refused vani_off on a
+ VaNi-off tenant). Live after apply: signia 53 rows in 14 d + 50 carried
+ (29 to place), BBB 78 (all payments, 29 reminders due), buyer 0 and
+ vani_enabled:false.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-plan-view\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # SQL source-of-record only, already live
+Copy-Item "MANUAL_COPY_FILES\ops-plan-view\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-plan-view\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Write-Host "✅ ops-plan-view copied" -ForegroundColor Green
+cd contractnest-api; npm run dev        # new routes
+cd ../contractnest-ui; npm run dev      # Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — signia (VaNi on), Live
+═══════════════════════════════════════════════════
+- [ ] /ops/services → Plan tab: 14 days listed, today ringed; "Carried over"
+      at the top reads the overdue count; days with nothing say
+      "Nothing committed."
+- [ ] A day with services: the sentence and the "N unassigned" pill match
+      the cards below; every card has its usual buttons (Schedule, Assign,
+      Ask customer, Start, Mark done, History).
+- [ ] VaNi line on a day with "to place" → Plan this day · N → toast
+      "Placed N services…" → the day re-reads with N proposed, 0 to place;
+      pressing again places nothing.
+- [ ] "Ask everyone" does NOT appear (no template registered yet); the line
+      reads "N proposed · ask each from its card…".
+- [ ] Switch window (7 / 30 / dates), lane, Who, search → the days follow;
+      Refresh in the header spins the plan.
+- [ ] Log a call and History open from a card on the Plan tab.
+- [ ] buyer@b.com (VaNi off): the VaNi line is greyed with "Open VaNi →";
+      no Plan/Ask buttons; cards still work.
+- [ ] Expense perspective: no Plan tab.
+- [ ] Commitments tab → Appointments lane still reads "Slot proposed" /
+      "Asked ×N" (the 022 edits ride along in this file).
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
