@@ -26,7 +26,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, RefreshCw, Search, X, Sparkles, AlertTriangle, Users, Wand2, CalendarSearch } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { vaniToast } from '@/components/common/toast/VaNiToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -162,27 +162,39 @@ const TimeboardPage: React.FC = () => {
     setSelected(fresh || null);
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const run = async (id: string, fn: () => Promise<unknown>) => {
+  // One action in flight at a time. A "Saving…" toast stays up until the tool answers (the hook then toasts the result); the side panel shows a spinner.
+  const run = async (id: string, fn: () => Promise<unknown>, label = 'Saving…') => {
     if (busyId || busyDay) return;
     setBusyId(id);
-    try { await fn(); } catch { /* toasted by the hook */ } finally { setBusyId(null); }
+    const t = vaniToast.info(label, { duration: 0, dismissible: false });
+    try { await fn(); } catch { /* toasted by the hook */ } finally { vaniToast.dismiss(t); setBusyId(null); }
   };
   const runDay = async (day: string, fn: () => Promise<unknown>) => {
     if (busyId || busyDay) return;
     setBusyDay(day);
-    try { await fn(); } catch { /* toasted */ } finally { setBusyDay(null); }
+    const t = vaniToast.info('VaNi is working on this day…', { duration: 0, dismissible: false });
+    try { await fn(); } catch { /* toasted */ } finally { vaniToast.dismiss(t); setBusyDay(null); }
+  };
+  /** After a slot lands: if its day is off screen, show that day — the owner's first question was "is it saved?" */
+  const landOn = (scheduledAt?: string | null) => {
+    const day = localDayOf(scheduledAt);
+    if (!day) return;
+    if (day < window_.from || day > window_.to) {
+      setAnchor(day);
+      vaniToast.info(`Now showing ${fmtDayShort(day)}`, { message: 'The slot landed on a day that was off screen.', duration: 4000 });
+    }
   };
   const actions: JobCardActions = {
     onNudge: (c, ch) => { if (c.job_id) run(c.id, () => nudge.mutateAsync({ jobId: c.job_id!, channel: ch })); },
     onCall: (c) => { if (c.job_id) setCallFor(c); },
-    onAssign: (c, userId, dueAt) => { if (!c.job_id) return; if (!userId) { toast.error('Pick a teammate first'); return; } return run(c.id, () => escalate.mutateAsync({ jobId: c.job_id!, assignTo: userId, dueAt: dueAt || null })); },
-    onPause: (c, reason: PauseReason, until) => { if (!c.job_id) return; if (reason === 'promise' && !until) { toast.error('A promise needs a date'); return; } return run(c.id, () => pause.mutateAsync({ jobId: c.job_id!, reason, until })); },
+    onAssign: (c, userId, dueAt) => { if (!c.job_id) return; if (!userId) { vaniToast.error('Pick a teammate first'); return; } return run(c.id, () => escalate.mutateAsync({ jobId: c.job_id!, assignTo: userId, dueAt: dueAt || null })); },
+    onPause: (c, reason: PauseReason, until) => { if (!c.job_id) return; if (reason === 'promise' && !until) { vaniToast.error('A promise needs a date'); return; } return run(c.id, () => pause.mutateAsync({ jobId: c.job_id!, reason, until })); },
     onResume: (c) => { if (c.job_id) run(c.id, () => resume.mutateAsync({ jobId: c.job_id! })); },
     onConfirm: (c) => {
       const d = c.declaration; if (!d) return;
       run(c.id, async () => {
         if (d.kind === 'session') await confirmGs.mutateAsync({ id: d.id, confirm: true }); else await confirmPay.mutateAsync({ id: d.id, confirm: true } as any);
-        toast.success(`Payment confirmed — ${fmtMoney(d.amount, c.currency)} from ${clean(c.buyer_name) || c.contract_number}`); refresh();
+        vaniToast.success(`Payment confirmed — ${fmtMoney(d.amount, c.currency)} from ${clean(c.buyer_name) || c.contract_number}`); refresh();
       });
     },
     onReview: (c) => navigate(c.declaration?.kind === 'session' ? '/group-sessions' : `/contracts/${c.contract_id}`),
@@ -195,13 +207,13 @@ const TimeboardPage: React.FC = () => {
         try { await sendInvoice.mutateAsync({ invoiceId: c.invoice_id!, channel }); refresh(); }
         catch (e) {
           const r = sendRefusal(e);
-          if (r?.reason === 'rule_disabled') toast.error((t) => (<span>Payment reminders are switched off under Automation Rules — the invoice was not sent.{' '}<button onClick={() => { toast.dismiss(t.id); navigate('/settings/configure/automation-rules'); }} className="font-bold underline">Open Automation Rules</button></span>), { duration: 7000 });
-          else toast.error(r?.message || 'Could not send the invoice', { duration: 5000 });
+          if (r?.reason === 'rule_disabled') vaniToast.error('The invoice was not sent', { message: 'Payment reminders are switched off under Automation Rules.', duration: 7000, action: { label: 'Open Automation Rules', onClick: () => navigate('/settings/configure/automation-rules') } });
+          else vaniToast.error(r?.message || 'Could not send the invoice', { duration: 5000 });
         }
       });
     },
-    onAssignVisit: (c, userId) => { if (!userId) { toast.error('Pick a technician first'); return; } return run(c.id, () => assignVisit.mutateAsync({ eventId: c.id, assignTo: userId })); },
-    onSchedule: (c, scheduledAt, confirmed) => { if (!scheduledAt) { toast.error('Pick a date and time first'); return; } return run(c.id, () => scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt, confirmed })); },
+    onAssignVisit: (c, userId) => { if (!userId) { vaniToast.error('Pick a technician first'); return; } return run(c.id, () => assignVisit.mutateAsync({ eventId: c.id, assignTo: userId })); },
+    onSchedule: (c, scheduledAt, confirmed) => { if (!scheduledAt) { vaniToast.error('Pick a date and time first'); return; } return run(c.id, async () => { const r = await scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt, confirmed }); landOn(r.scheduled_at); }, 'Saving the slot…'); },
     onConfirmSlot: (c) => { run(c.id, () => confirmSlot.mutateAsync({ eventId: c.id })); },
     onStartVisit: (c) => { run(c.id, () => startVisit.mutateAsync({ eventId: c.id })); },
     onCompleteVisit: (c, notes) => run(c.id, () => completeVisit.mutateAsync({ eventId: c.id, notes: notes || undefined })),
@@ -219,16 +231,25 @@ const TimeboardPage: React.FC = () => {
     setPending(null);
     await run(c.id, async () => {
       if (reassign) await assignVisit.mutateAsync({ eventId: c.id, assignTo: pid });
-      await scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt: `${day}T${minToHHMM(start)}`, confirmed });
+      const r = await scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt: `${day}T${minToHHMM(start)}`, confirmed });
+      landOn(r.scheduled_at);
       if (before) {
         const d = new Date(before.at); const back = `${isoDay(d)}T${minToHHMM(d.getHours() * 60 + d.getMinutes())}`;
-        toast((t) => (<span>Moved {c.visit?.block_name || c.contract_number}. <button className="font-bold underline ml-1" onClick={() => { toast.dismiss(t.id); run(c.id, () => scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt: back, confirmed: before.confirmed })); }}>Undo</button></span>), { duration: 6000 });
+        vaniToast.info(`Moved ${c.visit?.block_name || c.contract_number}`, { message: `Was ${fmtDayShort(isoDay(d))} ${fmtClock(d.getHours() * 60 + d.getMinutes())}`, duration: 8000, action: { label: 'Undo', onClick: () => { run(c.id, () => scheduleVisit.mutateAsync({ eventId: c.id, scheduledAt: back, confirmed: before.confirmed }), 'Putting the slot back…'); } } });
       }
-    });
+    }, 'Saving the slot…');
   };
   const onDrop = (t: DropTarget) => { setDragging(null); setPending(t); setSelected(t.card); setList(null); };
 
   // ── find a slot ───────────────────────────────────────────────────────────
+  /** the JobCard Schedule panel starts on the day on screen (Day view) or the window's first day, at the next full hour inside the organisation's hours */
+  const defaultSlotAt = useMemo(() => {
+    const day = view === 'day' ? anchor : window_.from;
+    const a = availFor(avail.data, UNASSIGNED, day);
+    let m = a.start ?? 9 * 60;
+    if (day === todayIso) { const now = new Date(); m = Math.max(m, (now.getHours() + 1) * 60); }
+    return `${day}T${minToHHMM(Math.min(m, 23 * 60))}`;
+  }, [view, anchor, window_.from, avail.data, todayIso]);
   const openFinder = (c?: BoardCard) => {
     const first = c || tray[0];
     setFinder({ cardId: first?.id || '', who: first?.owner_id || 'any', from: todayIso, slots: null });
@@ -474,10 +495,10 @@ const TimeboardPage: React.FC = () => {
             {selected && (
               <section style={card} className="p-3">
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ ...mono, ...sub }}>{kindLabel(selected, meId)}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.18em] inline-flex items-center gap-2" style={{ ...mono, ...sub }}>{kindLabel(selected, meId)}{busyId === selected.id && <span className="inline-flex items-center gap-1 normal-case tracking-normal font-bold" style={{ color: brand }}><LoadingSpinner size="sm" /> Saving…</span>}</span>
                   <button onClick={() => { setSelected(null); setPending(null); }} aria-label="Close" style={sub}><X size={15} /></button>
                 </div>
-                <JobCard card={selected} compact busy={busyId === selected.id} locked={!!busyId && busyId !== selected.id} team={team} ladder={data.ladder} meId={meId} actions={actions} askChannels={askChannels} />
+                <JobCard card={selected} compact busy={busyId === selected.id} locked={!!busyId && busyId !== selected.id} team={team} ladder={data.ladder} meId={meId} actions={actions} askChannels={askChannels} defaultSlotAt={defaultSlotAt} />
                 {pending && pending.card.id === selected.id && confirmBar}
                 {isService(selected) && isDraggable(selected) && !pending && <div className="mt-2"><Btn onClick={() => openFinder(selected)}><CalendarSearch size={12} /> Find a slot</Btn></div>}
               </section>

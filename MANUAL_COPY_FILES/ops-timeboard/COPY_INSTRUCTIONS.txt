@@ -9,6 +9,10 @@ reading the same two readers: jtd_plan for the rows and get_team_availability
 
 Submodules affected:
   contractnest-ui — pages/ops/timeboard/index.tsx (NEW, the page),
+                    hooks/queries/useCollectionsQueries.ts, components/ops/
+                    PlanView.tsx, components/ops/JobCard.tsx (SUPERSETS of the
+                    ops-availability copies — see TOASTS below; copy this batch
+                    after ops-availability),
                     components/ops/timeboard/model.ts (NEW — placement,
                     availability, clash preview, find-a-slot; pure functions),
                     components/ops/timeboard/Grid.tsx (NEW — Week + Day),
@@ -22,6 +26,26 @@ Submodules affected:
     ops-availability being copied in (useOpsPlan, useTeamAvailability,
     JobCard with clash pills, the Plan hooks). Copy order: expense-board →
     plan-view → availability → menu-flatten → THIS.
+
+─── TOASTS + LOADER (owner, 2026-09-18: "I created 2 slots but they are not
+    visible — I don't even know if data is saved; integrate standard loader
+    and toast") ───
+ FACT: App.tsx mounts VaNiToastProviderWithGlobal and has the react-hot-toast
+ <Toaster> commented out. Every `toast.success/error` from react-hot-toast in
+ the Ops hooks and pages rendered NOTHING — the tools ran, nothing said so.
+ The two slots WERE saved (n_jtd appointment items 06:27 + 06:28 UTC, status
+ confirmed, 19 Sep 10:00 IST = the card's Schedule default "tomorrow 10:00"),
+ on a day that was off screen.
+ FIX: useCollectionsQueries.ts (useToolMutation — every Ops verb), PlanView.tsx
+ and the Timeboard now use the standard `vaniToast` (components/common/toast/
+ VaNiToast.tsx): success / error with the same copy, action toasts for "Open
+ Automation Rules" and Undo. The Timeboard shows a "Saving…" toast that stays
+ until the tool answers plus a spinner in the side-panel header; after a
+ schedule it jumps to the slot's day if that day was off screen ("Now showing
+ Sat 19 Sep"); the card's Schedule panel on this page starts on the day on
+ screen at the next full hour inside working hours (JobCard gains an optional
+ `defaultSlotAt`). Commitments.tsx (ops-expense-board) and the other 60+
+ files that import react-hot-toast are still silent — pending, see CLAUDE.md.
 
 ─── WHAT IT DOES (rebuilt 2026-09-18 to the PLAYGROUND shell after the owner:
     "you gave me a beautiful UX and what you built is entirely different") ───
@@ -88,7 +112,7 @@ Copy-Item "MANUAL_COPY_FILES\ops-plan-view\contractnest-ui\*"     -Destination "
 Copy-Item "MANUAL_COPY_FILES\ops-availability\contractnest-ui\*"  -Destination "contractnest-ui\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\ops-menu-flatten\contractnest-ui\*"  -Destination "contractnest-ui\" -Recurse -Force
 # this batch
-Copy-Item "MANUAL_COPY_FILES\ops-timeboard\contractnest-ui\*"     -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-timeboard\contractnest-ui\*"     -Destination "contractnest-ui\" -Recurse -Force   # LAST — supersets of availability's hook/PlanView/JobCard
 Write-Host "✅ ops-timeboard copied" -ForegroundColor Green
 cd contractnest-ui; npm run dev      # Ctrl+F5
 
