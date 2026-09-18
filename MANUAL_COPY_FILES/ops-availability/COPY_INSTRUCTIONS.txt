@@ -17,9 +17,10 @@ Submodules affected:
                       cadenceSettingsRoutes.ts (PUT /hours)
   contractnest-ui   — services/serviceURLs.ts, pages/settings/cadence/
                       useCadenceSettings.ts + CadenceSettingsPage.tsx (Working
-                      hours card), pages/settings/users/userView.tsx (+card),
-                      components/users/AvailabilityCard.tsx (NEW), hooks/
-                      queries/useAvailabilityQueries.ts (NEW), hooks/queries/
+                      hours card), hooks/queries/useAvailabilityQueries.ts
+                      (NEW — read by the Timeboard; the per-user editor on
+                      /settings/users was REMOVED on owner instruction
+                      2026-09-18, "review post MVP"), hooks/queries/
                       useCollectionsQueries.ts, components/ops/JobCard.tsx,
                       components/ops/PlanView.tsx
   ⚠ SUPERSETS: JobCard.tsx is a superset of ops-expense-board's copy;
@@ -66,11 +67,9 @@ Submodules affected:
 ─── UI ─────────────────────────────────────────────
  /settings/configure/cadence → new "Working hours" card: from, to, "a visit
    takes N min", Save (own dirty state, own toast).
- /settings/users/:id → Overview gains "Working hours & leave": the hours
-   that apply (their own / the organisation's), a "Their own hours" switch
-   with time inputs and weekday chips (highlighted = off), Save; leave list
-   with add (date, full/morning/afternoon, label) and remove. Toasts via
-   the page's VaNi toast; spinners on load and on each save.
+ (Per-user hours and leave have no editor for now — owner: review post
+   MVP. The tables, RPCs and /api/availability stay; everyone inherits the
+   organisation's hours.)
  Ops board + Plan tab: a red "⚠ outside hours / day off / holiday / on
    leave / overlaps (+N)" pill next to the kind pill on a service card,
    reasons on hover. Schedule / Confirm slot / Assign toasts append the
@@ -106,16 +105,10 @@ cd ../contractnest-ui; npm run dev      # Ctrl+F5
 ═══════════════════════════════════════════════════
 - [ ] /settings/configure/cadence: "Working hours" shows 09:00–18:00 · 60;
       change to 09:30–17:30 · 90 → Save → toast; reload keeps it.
-- [ ] /settings/users → a user → Overview: "Working hours & leave" reads the
-      organisation's hours; tick "Their own hours", set 10:00–16:00, mark
-      Sat off → Save → "their own"; untick → Save → back to the
-      organisation's.
-- [ ] Same card: add leave for a coming weekday (Morning, "Dentist") → it
-      lists; remove it → gone.
-- [ ] /ops/cockpit → Services: assign a service to that user, Schedule it
-      at 09:00 on the leave day → toast ends "· ⚠ on leave (morning)…;
-      outside 10:00–16:00" and the card shows a red "⚠ on leave +1" pill
-      (hover lists both).
+- [ ] /settings/users → a user → Overview: NO availability card (removed).
+- [ ] /ops/cockpit → Services: Schedule a service at 08:00 (before the
+      organisation's hours) → toast ends "· ⚠ outside 09:00–18:00" and the
+      card shows a red "⚠ outside hours" pill.
 - [ ] Schedule a second service for the same user at a time that overlaps
       the first → "⚠ overlaps <block> · CN-… at HH:MM" on both cards.
 - [ ] Move one of them clear of the other → pills disappear.
