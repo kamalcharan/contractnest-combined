@@ -1,0 +1,39 @@
+BATCH: msg91-email-templates
+============================
+Two MSG91 EMAIL templates (HTML), house style matching payment_received_email_v2.
+
+Submodules affected: NONE. These are MSG91 dashboard artifacts + one SQL step.
+
+FILES
+  visit_slot_request_email.html   -> register at MSG91, then set provider_template_id
+  contract_accepted_email.html    -> register at MSG91, then set provider_template_id
+  set_provider_template_ids.sql   -> run AFTER registering (stores HTML + wires the ids)
+
+PLACEHOLDER SYNTAX
+  Both files use {{variable}} — the convention already stored in
+  n_jtd_templates.content_html for contract_signoff_email / payment_request_email /
+  user_invitation_email (all registered and working).
+  IF the MSG91 email editor for your account uses ##variable## instead, do one
+  find/replace per file: {{  -> ##   and  }} -> ##   . Names must not change.
+
+VARIABLES (names must match EXACTLY — email is name-based, not positional)
+  visit_slot_request_email : customer_name, tenant_name, service_name, slot_text, link
+  contract_accepted_email  : seller_name, buyer_name, contract_title, contract_number,
+                             contract_value, accepted_on, contract_link
+
+SUBJECTS (already stored in n_jtd_templates.subject — paste into MSG91)
+  visit_slot_request_email : Confirm your service visit on {{slot_text}} — {{tenant_name}}
+  contract_accepted_email  : {{buyer_name}} accepted {{contract_title}} ({{contract_number}})
+
+AFTER REGISTERING
+  Send the approved MSG91 template ids, then run set_provider_template_ids.sql
+  (edit the two id literals at the top first).
+  The Ops board's Email "Ask" button appears automatically once
+  provider_template_id is set — jtd_ops_board computes ask_channels from
+  exactly `provider_template_id IS NOT NULL`. No deploy needed for that.
+
+STILL OUTSTANDING (does NOT block email; blocks the WhatsApp ones)
+  jtd-worker v35 is deployed WITHOUT the generic positional path, so every
+  newly registered WhatsApp template will send its {{1}}..{{N}} scrambled.
+  cleanParam() is also missing from both v35 and repo main.
+  Email is UNAFFECTED (name-based). See session notes.
