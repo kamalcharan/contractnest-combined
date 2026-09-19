@@ -79,7 +79,14 @@ STILL OPEN
     flow. It is NOT a visible onboarding step — nothing writes a
     t_onboarding_step_status row for it.
   - Batch 5 (close-account deletes n_jtd_templates rows for the tenant).
-  - BBB's t_tenant_profiles.business_email is 'ghotikar@yahooo.com' (three o's)
-    vs the real login 'ghotikar@yahoo.com'. jtd_notify_contract_accepted picks
-    business_email FIRST, so the contract-accepted email would bounce. One-field
-    fix on /settings/business-profile — owner's data, not touched.
+  - BBB's t_tenant_profiles.business_email is 'ghotikar@yahooo.com' (three o's).
+    Owner confirms this is NOT a typo: it is a real mailbox belonging to a
+    DIFFERENT account. 'ghotikar@yahoo.com' (two o's) is BBB's actual address
+    and exists here only as an auth.users login.
+    Verified in this database: the three-o address appears exactly once (BBB's
+    business_email; not an auth user, not any other tenant's business_email);
+    the two-o address appears exactly once (the auth login).
+    Consequence: jtd_notify_contract_accepted reads business_email FIRST, so a
+    contract-accepted notification for BBB DELIVERS to that other mailbox — it
+    does not bounce, so nothing signals the misdirection. Left untouched: it is
+    owner data and may be deliberate. One field on /settings/business-profile.
