@@ -1,0 +1,40 @@
+BATCH: jtd-nucleus-025-null-guards  (POA Batch 1)
+
+*** STATUS: APPLIED LIVE 2026-09-19 as migration jtd_nucleus_025_tenant_id_null_guards — DO NOT RE-RUN ***
+
+Submodules affected: NONE (database only).
+
+WHAT
+  p_tenant_id is now mandatory on the four destructive tenant functions:
+    admin_close_tenant_account, admin_reset_all_data,
+    admin_reset_test_data, reset_tenant_session_and_forms
+
+WHY
+  None had a NULL check, and all four wrap their steps in
+  `EXCEPTION WHEN OTHERS THEN NULL`. A NULL argument deleted nothing
+  (tenant_id = NULL matches no rows) and reported SUCCESS — an admin clicking
+  "Reset All Data" would be told it worked when nothing happened. It also left
+  the door open for a future NULL-tolerant predicate to match shared rows
+  silently; n_jtd_templates in particular holds the global registry as
+  tenant_id IS NULL rows.
+
+PATTERN
+  Guard is the FIRST statement, outside every BEGIN…EXCEPTION block, so the
+  surrounding WHEN OTHERS handlers cannot swallow it. Copied from
+  cleanup_tenant_seed_data, which already did this.
+
+BEHAVIOUR (probed live in a rolled-back transaction, then applied)
+  close / reset_all / reset_test -> {success:false, error:'… p_tenant_id is required'}
+      (they have an outer WHEN OTHERS…RETURN; the edge callers already check
+       data?.success === false)
+  reset_tenant_session_and_forms -> raises (no outer handler; internal PERFORM only)
+  Probe also asserted n_jtd_templates row count unchanged (28) across all four
+  NULL calls.
+
+CALLER AUDIT (done before applying)
+  admin-tenant-management and tenant-account edge functions both reject a
+  missing tenant id with HTTP 400 before the RPC, so no live caller passes NULL.
+
+NOT DONE (rest of the POA)
+  Batch 2 unique index, Batch 3 registry + seeding, Batch 4 reconciler,
+  Batch 5 close-account deletes n_jtd_templates.

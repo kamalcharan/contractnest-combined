@@ -25,6 +25,15 @@ WHAT CHANGED
   all 4 points where a value enters `components` (named, positional, CTA
   button, header image) so no branch can bypass it.
 
+*** STATUS: APPLIED LIVE 2026-09-19 — DO NOT RE-RUN ***
+  jtd-worker was deployed from this batch as VERSION 36 (was 35), and
+  wire_whatsapp_template_ids.sql has been run. Verified after deploy: every
+  deployed file is byte-identical to the source here apart from the EOF
+  newline; cleanParam defined with 4 call sites; GENERIC PATH present;
+  templateVariableOrder passed from index.ts; cron job 1 succeeded post-deploy
+  with an empty queue and zero failures.
+  The steps below are the source of record for how it was done.
+
 STEP 1 — copy
   Copy-Item "MANUAL_COPY_FILES\jtd-worker-template-order\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
