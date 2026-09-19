@@ -1,0 +1,75 @@
+BATCH: jtd-tenant-template-seeding   (POA Batch 3)
+
+Submodules affected: contractnest-api  (2 files)
+  contractnest-api/src/seeds/jtdTemplates.seed.ts   (NEW)
+  contractnest-api/src/seeds/SeedRegistry.ts        (MODIFIED — 4 anchored edits)
+
+*** DATABASE SIDE ALREADY APPLIED LIVE 2026-09-19 as migration
+    jtd_nucleus_027_tenant_template_seeding — DO NOT RE-RUN ***
+
+WHAT THE MIGRATION ADDED (live)
+  jtd_platform_source_types()            -> text[]  single source of truth for the
+                                            identity/access codes that stay GLOBAL
+  fn_seed_jtd_templates_for_tenant(uuid) -> jsonb   copies every active tenant-scope
+                                            registry row to one tenant; idempotent
+  trg_fn_seed_jtd_templates()            -> trigger fn (fail-open, RAISE WARNING)
+  trg_tenants_seed_jtd_templates         AFTER INSERT ON t_tenants
+
+WHAT THIS BATCH ADDS (the /seeds registry entry)
+  Mirrors eventStatuses.seed.ts exactly: metadata + preview data here, all
+  INSERTs in the RPC. Fills the `notifications:` slot that SeedRegistry.ts had
+  already reserved in a comment. order: 4 (sequences 1, relationships 2,
+  eventStatuses 3).
+
+DESIGN
+  18 tenant-scope templates are seeded per tenant. The 3 identity/access source
+  types (user_invite, user_created, contract_signoff = 5 rows) stay GLOBAL only:
+  a tenant who has switched messaging off must still be able to invite a
+  teammate or let a counterparty reach the page where they sign. That list now
+  exists in three places that must stay in step —
+    jtd_platform_source_types()                (database)
+    PLATFORM_SOURCE_TYPES in jtdTemplates.seed.ts  (API, this batch)
+    GATE_EXEMPT_SOURCE_TYPES in jtd-worker/index.ts (edge)
+
+  Password reset / forgot password are NOT included: they are not JTD source
+  types at all — Supabase Auth delivers them.
+
+  ONE row per (tenant, source_type, channel) — NOT one per environment the way
+  seedTenantTemplatesService does for sequences. Two rows differing only by
+  is_live would both satisfy getTemplate(), which ends in .single() and errors
+  on multiple rows. uq_jtd_template_resolution (026) enforces this physically.
+
+PROBED LIVE (rolled back) BEFORE APPLYING
+  platform set = 3 codes
+  fresh tenant (buyer)      -> inserted 18, covered 18, missing 0
+  platform templates        -> NOT copied (0)
+  re-run same tenant        -> inserted 0  (idempotent)
+  BBB                       -> inserted 18, its own 5 group-session rows intact
+  closed tenant / unknown id / NULL -> all refused
+PROBED AFTER APPLYING (rolled back)
+  real INSERT into t_tenants -> trigger auto-seeded 18 rows, 0 platform rows,
+                                0 duplicate resolutions
+
+STEP 1 — copy
+  Copy-Item "MANUAL_COPY_FILES\jtd-tenant-template-seeding\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+STEP 2 — verify
+  cd contractnest-api
+  npm ci                       # if node_modules is missing
+  npx tsc --noEmit             # MUST be 0 errors (verified 0 with pinned TS 5.9.2)
+  cd ..
+
+  NOTE: running `npx tsc` WITHOUT node_modules installed pulls TypeScript 6.x
+  and reports 2 tsconfig deprecation errors plus ~1747 "Cannot find name
+  'process'" errors. Both are artefacts of missing dependencies, not real.
+
+STEP 3 — what to look at
+  The seed appears in the onboarding seed preview as "Notification Templates",
+  grouped by channel. No UI route changed.
+
+NOT DONE (rest of the POA)
+  Batch 4 reconciler (fn_jtd_template_diff: addition / modification / deletion)
+           + the BACKFILL of the 92 open tenants. Until that runs, only NEWLY
+           created tenants get templates; existing tenants still fall back to
+           the global registry rows, exactly as they do today.
+  Batch 5 close-account deletes n_jtd_templates rows for the tenant.
