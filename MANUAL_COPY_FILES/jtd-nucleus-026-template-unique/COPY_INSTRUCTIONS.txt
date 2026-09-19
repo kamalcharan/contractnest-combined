@@ -1,0 +1,60 @@
+BATCH: jtd-nucleus-026-template-unique  (POA Batch 2)
+
+*** STATUS: APPLIED LIVE 2026-09-19 as migration
+    jtd_nucleus_026_template_resolution_unique — DO NOT RE-RUN ***
+
+Submodules affected: NONE (database only). No code, no deploy.
+
+WHAT
+  CREATE UNIQUE INDEX uq_jtd_template_resolution
+    ON n_jtd_templates (
+      COALESCE(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid),
+      source_type_code,
+      channel_code
+    )
+    WHERE is_active;
+
+WHY
+  jtd-worker's getTemplate() resolves on
+      source_type_code + channel_code + tenant_id + is_active
+  and ends in .single(), which ERRORS on multiple rows instead of picking one.
+  One duplicate therefore stops that tenant's sends for that message type.
+
+  The pre-existing uq_template (tenant_id, template_key, channel_code, is_live)
+  could not prevent it:
+    - keys on template_key, not source_type_code (what actually resolves)
+    - is_live was NULL on 12 of 28 rows; NULLs are distinct in a unique index
+    - tenant_id NULL likewise distinct, so the GLOBAL registry rows that every
+      tenant falls back to were completely unprotected
+
+PROBED LIVE (one transaction, rolled back) BEFORE APPLYING
+  1. gap confirmed  - a 2nd GLOBAL row for (payment_received, whatsapp) under a
+                      different template_key was ACCEPTED by the old index
+  2. ambiguity      - that left 2 resolvable rows, which .single() would reject
+  3. index built    - clean over the existing 28 rows
+  4. global dup     - now REJECTED
+  5. tenant override- still ALLOWED (required by Batch 3 seeding)
+  6. tenant dup     - REJECTED
+  7. inactive row   - still ALLOWED (partial index)
+
+DESIGN NOTES
+  is_live is deliberately NOT in the key: getTemplate does not filter on it, so
+  two rows differing only by is_live are still two rows in front of .single().
+  This is what makes "one row per (tenant, source_type, channel)" enforceable —
+  and it is why the Batch 3 seeder must NOT seed live+test separately the way
+  seedTenantTemplatesService does for sequences.
+
+  is_active is NOT NULL DEFAULT true, so the predicate needed no COALESCE.
+
+  The old uq_template is left in place: harmless, merely under-protective.
+  Dropping it is a separate decision.
+
+VERIFIED AFTER APPLY
+  28 template rows intact, 28 active, queue depth 0, cron job 1 succeeded,
+  0 failures in the 5 minutes following.
+
+REST OF THE POA (not done)
+  Batch 3 registry + seeding (src/seeds/jtdTemplates.seed.ts,
+  fn_seed_jtd_templates_for_tenant, trg_tenants_seed_jtd_templates)
+  Batch 4 reconciler (fn_jtd_template_diff: addition / modification / deletion)
+  Batch 5 close-account deletes n_jtd_templates rows for the tenant
