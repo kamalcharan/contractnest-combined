@@ -1,0 +1,148 @@
+===================================================================
+BATCH: jtd-nucleus-031-sql
+Date : 2026-09-19
+===================================================================
+
+WHAT THIS IS
+------------
+Source-of-record copy of migration jtd-nucleus/031, ALREADY APPLIED LIVE.
+Nothing here needs to be run. Copy the file so the repo holds the SQL
+next to 025-030.
+
+Submodules affected: contractnest-edge  (one .sql file)
+No API / UI / edge-function change. Nothing to build or test.
+
+COPY COMMAND (PowerShell)
+-------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\jtd-nucleus-031-sql\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied 031_admin_delete_tenant.sql" -ForegroundColor Green
+
+VERIFY
+------
+Test-Path "contractnest-edge\supabase\migrations\jtd-nucleus\031_admin_delete_tenant.sql"
+
+(If 030 was not copied yet, copy that batch too:
+ MANUAL_COPY_FILES\jtd-nucleus-030-sql\)
+
+===================================================================
+WHAT 031 ADDED
+===================================================================
+
+1. admin_delete_tenant(p_tenant_id uuid, p_dry_run boolean DEFAULT true)
+   The hard delete, which did not exist. admin_close_tenant_account only
+   flips status to 'closed'; admin_reset_all_data only clears the data
+   INSIDE a tenant. The t_tenants row was never removable, so the platform
+   tenant count never fell.
+
+   28 FK children cascade off t_tenants. 9 more are ON DELETE NO ACTION and
+   block the delete, plus a long tail of tenant-scoped tables with no FK at
+   all -- 45 tables in total carry a tenant_id. Rather than hand-list them in
+   a fragile order, the function sweeps every such table in up to 12 passes
+   and lets FK order resolve itself.
+
+   The sweep swallows FK errors per statement -- the exact failure mode fixed
+   in 030 -- so it ENDS BY PROVING no row survived and RAISEs if one did,
+   instead of trusting the sweep. Refuses the platform admin tenant (is_admin)
+   outright. Dry run by default; service_role only.
+
+     select admin_delete_tenant('<uuid>');        -- dry run
+     select admin_delete_tenant('<uuid>', false); -- actually delete
+
+   Note: t_tenant_integrations.tenant_id is TEXT, not uuid -- hence the
+   ::text comparison in the sweep.
+
+2. admin_purge_orphan_auth_users -- widened from 030.
+   The 030 rule required no t_user_profiles row. True of throwaway signups,
+   not of a real tenant's users -- so deleting a tenant left its logins
+   behind (the first pass after the tenant deletes caught only 3 of 60).
+   A profile cascades on auth.users delete, so belonging to no tenant is the
+   real test. A platform-admin profile is still never an orphan.
+
+===================================================================
+RUN LIVE 2026-09-19 -- THE CLEAN SLATE
+===================================================================
+Owner decision this session: only 4 accounts survive (vikunatech@gmail.com,
+info@vikuna.io, ghotikar@yahoo.com / BBB, signia@s.com), PLUS the tenants
+CLAUDE.md records as receiving live automation, which the owner confirmed
+should be spared.
+
+KEPT (10 tenants)
+  BBB                 bbb382   77 contracts  75 invoices  129 contacts  5 users
+  signia              sig926   55            54            63           1
+  Trinity Tecnitions  tri418   17             9            26           1
+  Freedom Services    fre304   16            12            25           1
+  Hygene Services     hyg761   16            15            25           1
+  Value Elevators     val519   16             8            25           1
+  vikuna              vi4203   14            13            26           5
+  hubb                hub561    8             1             5           1
+  stw                 stw001    3             3             3           1
+  vikunatechnologies  vik563    0             0             2           1
+
+DELETED
+  128 tenants (every other account, closed and active alike)
+   57 auth identities (54 profiles cascaded with them)
+   23 vikuna cross-tenant TEST contracts
+   47 contracts belonging to a ghost tenant_id with no t_tenants row --
+      pre-existing residue from Mar-Jul, invisible to every UI because
+      all delete paths key on tenant. Found while reconciling the totals.
+
+BEFORE -> AFTER
+  tenants      138 -> 10
+  auth.users    74 -> 17
+  profiles      70 -> 16
+  contracts    307 -> 222
+  invoices       - -> 190
+
+VERIFIED AFTER (all asserted inside the transaction before it committed)
+  BBB contracts 77, invoices 75            -- untouched to the row
+  signia contracts 55                      -- untouched
+  CN-1047 / CN-1048 present                -- signia's and BBB's LIVE
+                                              Quarterly Rs 23,996 platform
+                                              plan subscriptions
+  0 tenantless contracts
+  0 logins with no tenant
+  0 profiles without an auth row
+  0 user links pointing at a deleted tenant
+  23-row global template registry intact
+  17 logins remain, every one a member of a surviving account
+
+WHY vikuna KEPT 14 OF ITS 37 CONTRACTS
+  vikuna IS the platform seller, so ALL 37 of its contracts are cross-tenant.
+  14 are the platform subscription contracts of the surviving tenants
+  (including BBB's and signia's live plans). Taking the instruction
+  "contracts between two tenants can be cleaned" literally would have
+  destroyed both survivors' subscription records. Only the 23 whose buyer
+  workspace was itself being deleted were removed.
+
+METHOD
+  Probed whole in one rolled-back transaction (RAISE 'PROBE OK'), then run
+  for real with the same assertions raising -- so any mismatch would have
+  rolled the entire clean-up back rather than leaving it half done.
+
+===================================================================
+NOT DONE -- OPEN FOR NEXT SESSION
+===================================================================
+- admin_close_tenant_account STILL ONLY FLIPS status TO 'closed'.
+  Closing an account from /admin/subscription-management or
+  /settings/business-profile will start growing the tenant count again.
+  Wiring it to call admin_delete_tenant is a one-line change, but it turns
+  "close" into "destroy" -- deliberately NOT done without a decision.
+
+- Group Sessions list pagination (raised by the owner, analysed, NOT built).
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx:1165
+  `filteredOccs` renders in the RPC's ascending date order with no client
+  sort; PAGE_SIZE = 10 (line 79). With 12 sessions, BBB's 19 Sep session
+  sits on page 2 and looked lost. Gets worse every fortnight.
+  Proposed: sort filteredOccs by date -- Past and All newest-first,
+  Upcoming soonest-first. ~3 lines, no RPC/API change. Awaiting go-ahead.
+  (Data was verified intact: 19 Sep occurrence seq 12 'held' is_live, with
+   25 attendance rows and zero dangling references. The clean-up never
+   touched BBB.)
+
+- The other non-cascading FKs noted in 030's audit still stand; they only
+  matter to admin_delete_tenant, which now handles them.
+===================================================================
