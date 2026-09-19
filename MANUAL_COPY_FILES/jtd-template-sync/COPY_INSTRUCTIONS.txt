@@ -1,0 +1,85 @@
+BATCH: jtd-template-sync   (POA Batch 4, narrowed)
+
+*** STATUS: APPLIED LIVE 2026-09-19 as migration jtd_nucleus_028_template_sync
+    — DO NOT RE-RUN.  Also: the 4 in-scope tenants were SEEDED live. ***
+
+Submodules affected: NONE (database only).
+
+SCOPE NARROWED BY OWNER
+  Only 4 tenants matter; the rest are being cleaned up. Resolved by LOGIN email
+  (auth.users -> t_user_tenants), not business_email:
+     ghotikar@yahoo.com    -> BBB                 dd194710-92b4-4110-80eb-0b492a0d2c1f
+     info@vikuna.io        -> vikunatechnologies  8527c263-6b98-469a-9145-8d967097b83c
+     signia@s.com          -> signia              80e3b843-525e-4368-b418-b1250d1d1d63
+     vikunatech@gmail.com  -> vikuna              70f8eb69-9ccf-4a0c-8177-cb6131934344
+
+  Seeded via the existing fn_seed_jtd_templates_for_tenant (no new code):
+     BBB                 23 rows (18 seeded + its 5 bespoke group-session, untouched)
+     signia              18
+     vikuna              18
+     vikunatechnologies  18
+  The full 92-tenant reconciler + backfill was NOT built — deliberately dropped.
+
+WHAT THIS MIGRATION ADDS
+  fn_jtd_template_sync(p_tenant uuid default null, p_dry_run boolean default false)
+
+  Solves the gap eager copy creates: before per-tenant rows existed, wiring a
+  GLOBAL template reached every tenant instantly via fallback. Once a tenant
+  owns a row, the tenant row WINS and a global change reaches nobody.
+
+  Asymmetric by design, because the two kinds of field have different authority:
+
+  COPY FIELDS  (name, description, subject, content, content_html, variables,
+               version)  -> ALWAYS refreshed from the registry.
+     The admin surface cannot edit them (UpdateTemplateRequest allows only
+     provider_template_id and is_active), so any difference is registry drift,
+     never a tenant's choice. `variables` especially MUST track the registry:
+     it is the declared order the worker uses to build body_1..N, and drift
+     there sends scrambled parameters — the v35 bug in a new disguise.
+
+  provider_template_id -> only FILLED when the tenant's is NULL.
+     A non-NULL value is a deliberate remap to the tenant's own MSG91 template,
+     which is the whole point of a per-tenant row. Never overwritten; reported
+     as provider_conflicts_left_alone.
+
+  is_active -> never touched (a tenant may have switched a message off).
+  Nothing is ever deleted. Closed tenants skipped. NULL p_tenant = all tenants.
+
+PROBED LIVE (one rolled-back transaction) BEFORE APPLYING
+  clean baseline                                        -> 0 / 0
+  simulate registry content+version change,
+  simulate wiring a previously-unwired registry row,
+  simulate a tenant deliberately remapping its own      ->
+      dry_run  copy=4  wire=4  conflicts=1
+      applied  copy=4  wire=4
+      tenant remap preserved
+      re-run   0 / 0   (converged, idempotent)
+VERIFIED AFTER APPLY
+  fn_jtd_template_sync(NULL, true) -> 0 / 0 / 0  (nothing pending)
+
+HOW TO USE IT — the routine after registering a new MSG91 template
+  1. Register the template at MSG91.
+  2. Wire the GLOBAL registry row:
+       update n_jtd_templates set provider_template_id = '<msg91 name>'
+        where tenant_id is null and template_key = '<key>';
+  3. See what would change (writes nothing):
+       select fn_jtd_template_sync(null, true);
+  4. Apply:
+       select fn_jtd_template_sync(null, false);
+  Step 3 is also the "alert" surface — run it any time to see registry drift.
+
+STILL OPEN
+  - The 4 remaining unregistered templates (appointment_reminder SMS,
+    service_reminder SMS, beyond_scope_invoice, service_report_ready) are
+    copied to the 4 tenants with provider_template_id NULL — inert, as before.
+    Registering them = the 4-step routine above.
+  - Seeding is hooked to t_tenants AFTER INSERT (tenant creation), NOT to the
+    VaNi onboarding flow specifically. It therefore covers all four onboarding
+    types (business/vani/cnak/cnak_vendor) and cannot be missed by an abandoned
+    flow. It is NOT a visible onboarding step — nothing writes a
+    t_onboarding_step_status row for it.
+  - Batch 5 (close-account deletes n_jtd_templates rows for the tenant).
+  - BBB's t_tenant_profiles.business_email is 'ghotikar@yahooo.com' (three o's)
+    vs the real login 'ghotikar@yahoo.com'. jtd_notify_contract_accepted picks
+    business_email FIRST, so the contract-accepted email would bounce. One-field
+    fix on /settings/business-profile — owner's data, not touched.
