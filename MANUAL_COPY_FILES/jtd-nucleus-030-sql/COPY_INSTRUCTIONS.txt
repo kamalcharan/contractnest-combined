@@ -1,0 +1,116 @@
+===================================================================
+BATCH: jtd-nucleus-030-sql
+Date : 2026-09-19
+===================================================================
+
+WHAT THIS IS
+------------
+Source-of-record copy of migration jtd-nucleus/030, which is ALREADY
+APPLIED LIVE. Nothing here needs to be run. Copy the file so the repo
+holds the SQL next to 025-029.
+
+Submodules affected: contractnest-edge  (one .sql file, no code change)
+No API / UI / edge-function change. Nothing to build or test.
+
+COPY COMMAND (PowerShell)
+-------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\jtd-nucleus-030-sql\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied 030_reset_fk_gaps_and_orphan_auth_purge.sql" -ForegroundColor Green
+
+VERIFY
+------
+Test-Path "contractnest-edge\supabase\migrations\jtd-nucleus\030_reset_fk_gaps_and_orphan_auth_purge.sql"
+
+===================================================================
+WHAT 030 CHANGED, AND WHAT WAS RUN WITH IT
+===================================================================
+
+1. admin_reset_all_data -- four missing deletes
+   t_contract_event_assets, t_public_payment_declarations,
+   t_session_payment_declarations and t_invoice_receipt_allocations all
+   reference t_contracts / t_invoices / n_jtd with ON DELETE NO ACTION and
+   were in NONE of the function's 38 DELETE statements. The parent delete
+   raised an FK violation that the per-statement
+   `EXCEPTION WHEN OTHERS THEN NULL` swallowed -- while the function still
+   returned success:true.
+
+   Live effect found: tenant flow1 (closed) still held 2 contracts and
+   5 event assets after a "successful" reset.
+
+   These are ROW deletes scoped by tenant_id. No table is dropped or
+   truncated. All four carry tenant_id, so no subquery is needed.
+
+2. admin_purge_orphan_auth_users(p_dry_run boolean DEFAULT true)
+   New. The "orphan" option. Closing an account clears its tenant data but
+   leaves the auth identity behind (143 auth.users against 77 tenant links).
+
+   A user is an orphan only if ALL of these hold:
+     - no t_user_tenants row
+     - no t_user_profiles row
+     - not referenced by t_contacts.auth_user_id, t_audit_logs.user_id,
+       t_tenant_files.created_by, t_invitation_audit_log.performed_by,
+       or any of the five t_user_invitations actor columns
+     - every tenant they created is already empty of members
+
+   t_tenants.created_by is NO ACTION and nullable, so it is set to NULL
+   rather than cascading the tenant row away -- the tenant record survives,
+   it just loses its creator pointer.
+
+   Defaults to a DRY RUN. service_role only (revoked from anon/authenticated).
+
+   Usage:
+     select admin_purge_orphan_auth_users();       -- dry run, lists them
+     select admin_purge_orphan_auth_users(false);  -- actually delete
+
+RUN LIVE 2026-09-19 (after the migration)
+-----------------------------------------
+  admin_reset_all_data(flow1)      -> contracts 2, contract_event_assets 5
+  admin_purge_orphan_auth_users(false)
+       orphan_users                 69
+       tenants_created_by_cleared   67
+       users_deleted                69
+
+AFTER STATE (verified)
+----------------------
+  auth.users            143 -> 74
+  remaining orphans     0
+  dangling tenant links 0
+  dangling profiles     0
+  t_user_profiles       70   (unchanged)
+  t_user_tenants        77   (unchanged)
+  global template registry  23  (unchanged)
+  tenant template rows      77  (unchanged)
+  contracts on closed tenants     0
+  event assets on closed tenants  0
+  logins intact: vikunatech@gmail.com, info@vikuna.io,
+                 ghotikar@yahoo.com, signia@s.com
+
+The 69 deleted identities were test/throwaway logins (mailinator,
+testNN@gmail.com, single-letter domains b.com / f.com / s.com) plus
+abandoned signups whose workspaces are closed. None had a profile,
+none belonged to any tenant, none was an admin.
+
+METHOD NOTE
+-----------
+The two edits to admin_reset_all_data use jtd__rewrite_fn anchor rewrites.
+A whitespace mismatch makes that technique no-op SILENTLY, so the file ends
+with a post-check that RAISEs unless all four new deletes are present.
+Probed whole in one rolled-back transaction before applying.
+
+STILL OPEN (not part of this batch)
+-----------------------------------
+- 13 tenants still marked 'active' were created by these orphans and have
+  zero members -- abandoned signups that were never closed. Their rows were
+  kept (created_by cleared). Close them if you want them out of the list.
+- admin_close_tenant_account does not call the orphan purge. Wiring the two
+  together would make closure self-cleaning; left alone for now.
+- The other non-cascading FKs found in the same audit (t_tenants children:
+  n_tenant_preferences, t_ai_agent_sessions, t_bm_tenant_subscription,
+  t_business_groups, t_tenant_profiles, t_vani_rules) do not affect
+  admin_reset_all_data, which never deletes the t_tenants row. They would
+  matter only if a hard tenant delete is ever built.
+===================================================================
