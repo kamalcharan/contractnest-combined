@@ -1,0 +1,26 @@
+BATCH: jtd-nucleus-025-029-sql
+
+*** ALL FIVE MIGRATIONS ARE ALREADY APPLIED LIVE (2026-09-19) — DO NOT RE-RUN ***
+
+Submodules affected: contractnest-edge (5 .sql files, source of record only)
+
+These are the SQL texts of the five migrations applied live during the
+2026-09-19 session, written out so the repository carries the record — the
+same convention as jtd-nucleus/021-024 staged by the previous session.
+Copying them changes nothing at runtime; they are documentation of what the
+database already contains.
+
+  025_tenant_id_null_guards.sql            p_tenant_id mandatory on the four
+                                           destructive tenant functions
+  026_template_resolution_unique.sql       uq_jtd_template_resolution
+  027_tenant_template_seeding.sql          jtd_platform_source_types,
+                                           fn_seed_jtd_templates_for_tenant,
+                                           trg_tenants_seed_jtd_templates
+  028_template_sync.sql                    fn_jtd_template_sync
+  029_reset_deletes_tenant_templates.sql   close/reset removes tenant templates
+
+STEP 1 — copy
+  Copy-Item "MANUAL_COPY_FILES\jtd-nucleus-025-029-sql\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Each file carries the same explanatory header used when it was applied,
+including the probe results and the reasoning behind the design choices.
