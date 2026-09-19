@@ -1,0 +1,55 @@
+BATCH: jtd-worker-template-order
+================================
+Fixes WhatsApp template parameter ORDER and restores whitespace cleaning.
+
+Submodules affected: contractnest-edge  (1 file)
+  contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+
+WHY
+  Deployed jtd-worker is v35. It has NO generic path: for any template without
+  a hand-written branch it does Object.values(templateData) — over a jsonb
+  column, whose key order Postgres does not preserve. Every newly registered
+  WhatsApp template therefore sends its {{1}}..{{N}} scrambled. MSG91 accepts
+  the request and returns a request_id, the row reads status='sent', and the
+  customer gets a mangled message. Verified against the real rows.
+
+  cleanParam() — which collapses whitespace so MSG91 does not reject a body
+  value containing a line break — was added in v34 and has since been LOST
+  from both the deployed function and repo main. Three live BBB contacts have
+  embedded CRLFs in their names; unfixed, every message to them fails.
+
+WHAT CHANGED
+  repo main already carries the generic path (reads templateVariableOrder,
+  i.e. n_jtd_templates.variables, and emits body_1..N in declared order).
+  This batch takes that file and adds back cleanParam(), applied centrally at
+  all 4 points where a value enters `components` (named, positional, CTA
+  button, header image) so no branch can bypass it.
+
+STEP 1 — copy
+  Copy-Item "MANUAL_COPY_FILES\jtd-worker-template-order\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STEP 2 — deploy the edge function
+  supabase functions deploy jtd-worker
+  (deployed version must go above 35; confirm in the Supabase dashboard)
+
+STEP 3 — wire the 4 WhatsApp template ids
+  Run wire_whatsapp_template_ids.sql (in this folder).
+  It is deliberately NOT applied yet — see the header comment in that file.
+
+VERIFIED (transpiled with esbuild, run against a stubbed MSG91)
+  - body_1..5 map to the declared order for visit_slot_request  PASS
+  - "JAGANNADHA SHASTRY SOMANCHI\r\n (BHUSHANA MEMBER)" collapses to one line  PASS
+  - Object.values order proven DIFFERENT from declared (reproduces the v35 bug)
+  - group_session_attendance_ack still NAMED, parameter_name preserved  PASS
+  - contract_signoff CTA button_1 intact, sub_type url, ?cnak= suffix unharmed  PASS
+  - template with variables:[] still falls back to Object.values, unchanged  PASS
+
+ALREADY LIVE (done in-session, no action needed)
+  - visit_slot_request_email + contract_accepted_email: provider_template_id
+    wired and content_html stored (md5 verified against the approved files).
+    Email is name-based, so it is unaffected by the ordering bug.
+  - Our preview copy (n_jtd_templates.content) synced to the approved bodies:
+    visit_slot WhatsApp now ends "Thank you."; the three service_visit rows
+    moved from {{1}}..{{N}} to named placeholders so jtd_render_message (which
+    substitutes by NAME) renders them in the History drawer / Audit tab.
+    Preview-only: WhatsApp sends never use this text.
