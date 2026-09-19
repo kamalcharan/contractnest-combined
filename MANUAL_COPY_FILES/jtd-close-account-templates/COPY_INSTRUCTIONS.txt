@@ -1,0 +1,50 @@
+BATCH: jtd-close-account-templates   (POA Batch 5 — final)
+
+*** STATUS: APPLIED LIVE 2026-09-19 as migration
+    jtd_nucleus_029_reset_deletes_tenant_templates — DO NOT RE-RUN ***
+
+Submodules affected: NONE (database only). No code, no deploy, nothing to copy.
+
+WHAT
+  One statement added to admin_reset_all_data, beside the existing
+  DELETE FROM n_jtd_tenant_config:
+
+    BEGIN DELETE FROM n_jtd_templates
+           WHERE tenant_id = p_tenant_id AND tenant_id IS NOT NULL;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  This covers BOTH surfaces — /admin/subscription-management and
+  /settings/business-profile — because admin_close_tenant_account calls
+  admin_reset_all_data. No second edit was needed.
+
+WHY THE `AND tenant_id IS NOT NULL`
+  It is belt-and-braces, not load-bearing: with a NULL argument
+  `tenant_id = NULL` already matches nothing, and Batch 1 (025) refuses a NULL
+  call outright. It is written explicitly because n_jtd_templates is the ONLY
+  table in this function holding SHARED rows — the global registry lives here
+  as tenant_id IS NULL — and every step is wrapped in
+  `EXCEPTION WHEN OTHERS THEN NULL`. If anyone later rewrites the predicate
+  with COALESCE or IS NOT DISTINCT FROM, it would wipe the registry for every
+  tenant SILENTLY. The clause makes that mistake hard to make by accident.
+
+DELIBERATELY NOT CHANGED
+  admin_reset_test_data. Templates are configuration, not test data, and
+  seeded rows carry is_live = true, so its `is_live = false` sweep already
+  skips them. Verified after apply: that function still contains no reference
+  to n_jtd_templates. Do not "fix" this.
+
+PROBED LIVE (one rolled-back transaction) BEFORE APPLYING
+  throwaway tenant -> trigger seeded 18 -> admin_reset_all_data       -> 18 -> 0
+  throwaway tenant -> trigger seeded 18 -> admin_close_tenant_account -> 18 -> 0
+  global registry unchanged (23)
+  the four in-scope tenants unchanged (77)
+  admin_reset_all_data(NULL) still refused, registry untouched
+
+VERIFIED AFTER APPLY
+  global registry 23 · tenant rows 77 · total 100 · no probe leftovers
+  admin_reset_all_data contains the delete; admin_reset_test_data does not
+  post-check also asserts the 025 NULL guard still sits AHEAD of the delete
+
+POA COMPLETE
+  025 NULL guards · 026 unique resolution index · 027 registry + seeding +
+  trigger · 028 registry-to-tenant sync · 029 close-account cleanup.
