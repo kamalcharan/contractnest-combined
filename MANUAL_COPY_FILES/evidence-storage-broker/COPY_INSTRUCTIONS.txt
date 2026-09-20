@@ -1,0 +1,164 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-broker   (Evidence Storage Redesign — batch B)
+Date:  2026-09-20
+Depends on: evidence-storage-schema (batch A) — already applied
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+  The broker. Firebase becomes a dumb blob store; every byte in or out goes
+  through the API with the Admin SDK and a short-TTL signed URL, authorised in
+  Postgres by contract_membership() before a URL is minted.
+
+  Nothing in the running product uses it yet — the existing upload paths are
+  untouched. Batch D migrates the five live call sites onto it.
+
+SUBMODULES AFFECTED
+  contractnest-api    5 new files + index.ts (2 route mounts)
+  contractnest-edge   1 migration (APPLIED) + 1 rules file (DO NOT DEPLOY YET)
+
+FILES
+  contractnest-api/src/
+    utils/firebaseStorageAdmin.ts        Admin SDK, signed URLs, object stat/delete
+    services/evidenceStorageService.ts   the broker: ask Postgres, then mint a URL
+    controllers/evidenceController.ts    HTTP shape + refusal → status mapping
+    routes/evidenceRoutes.ts             authed  → /api/evidence
+    routes/evidencePublicRoutes.ts       CNAK    → /api/public/evidence
+    index.ts                             mounts both (superset of pristine main)
+
+  contractnest-edge/supabase/migrations/evidence-storage/
+    002_evidence_broker_rpcs.sql         APPLIED 2026-09-20 — do NOT re-run
+
+  contractnest-edge/firebase/
+    storage.rules                        deny-all — ⚠️ DO NOT DEPLOY (see below)
+
+ENDPOINTS
+  Authed (x-tenant-id + Bearer):
+    POST   /api/evidence/slot                         → signed PUT url + evidence_id
+    POST   /api/evidence/:id/confirm                  → verifies + records TRUE size
+    GET    /api/evidence/:id/url                      → signed GET url (5 min)
+    GET    /api/evidence/contract/:contractId         → evidence list
+    DELETE /api/evidence/:id                          → marks deleted (sweeper reclaims)
+    GET    /api/evidence/usage                        → derived usage + warn level
+    POST   /api/evidence/contract/:id/revoke-access   → turn a CNAK off
+
+  Public (no auth, CNAK+secret in the URL, no-store headers):
+    GET /api/public/evidence/:cnak/:secret/contract/:contractId
+    GET /api/public/evidence/:cnak/:secret/:evidenceId/url
+
+HOW AN UPLOAD WORKS
+  1. Client asks for a slot, declaring file name, mime and size.
+  2. RPC checks membership (WRITE is contract-creator only), the mime allowlist
+     and the cap — all BEFORE the client does the work, so a technician learns
+     about a full quota before the visit, not after.
+  3. API mints a 10-minute signed PUT url; a pending registry row exists.
+  4. Client PUTs the bytes straight to Firebase.
+  5. Client confirms; the API reads the object back and records its TRUE size.
+     A declared size is a client claim — only the read-back size is metered.
+  An unconfirmed slot leaves an orphan the sweeper reclaims (batch G).
+
+THE CAP, AS SPECIFIED
+  Refused only once usage has ALREADY reached quota, so a tenant under the line
+  always finishes the upload in hand and is then locked until they top up —
+  a field emergency becomes an office task. warn_level: ok / warning (80%) /
+  critical (95%) / full.
+
+CNAK — closed the gap found in batch A
+  t_contract_access already had expires_at and is_active, and
+  validate_contract_access already enforced both — but nothing ever SET an
+  expiry, so all 159 live grants were indefinite bearer tokens.
+    · expires_at now DEFAULTS to 90 days on new grants
+    · a successful CNAK read pushes the expiry out 90 days (an active
+      relationship never expires; an abandoned link does)
+    · a grant with NULL expiry stays permanent — never given one retroactively
+    · revoke_contract_access() turns one off; creator only
+  ⚠️ The 159 EXISTING grants were deliberately left NULL. Expiring live
+     contract-review links retroactively would break links already in flight.
+     Backfilling them is a separate owner decision.
+
+⚠️ DO NOT DEPLOY firebase/storage.rules YET
+  The API still uploads through the Firebase CLIENT SDK with signInAnonymously()
+  in three places (storageService, tenantProfileService, integrationService).
+  Those ARE subject to storage rules. Deploying deny-all before batch D migrates
+  them would break avatar, logo, block-icon and QR uploads immediately.
+  Deploy it at the END of batch D, then verify a client-SDK read fails from a
+  test harness while an API-minted signed URL still works.
+
+ENV — already present in production (used by firebaseController today)
+  VITE_FIREBASE_PROJECT_ID · FIREBASE_CLIENT_EMAIL · FIREBASE_PRIVATE_KEY
+  VITE_FIREBASE_STORAGE_BUCKET · SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY
+  GET /api/evidence/usage returns 503 not_configured if any is missing.
+
+PROBE — run against production, rolled back, nothing persisted
+    write is creator-only (buyer AND stranger refused)
+    5 input guards refuse (mime, size, missing contract, bad contract, bad kind)
+    path = contracts/{contract_id}/{event|contract}/{uuid}.{ext}
+    identity asset = tenants/{tenant_id}/{kind}/{uuid}.{ext}, unmetered
+    confirm records the TRUE size, is idempotent, a retry cannot overwrite it
+    read: seller OK, BUYER OK, stranger forbidden
+    CNAK read OK · pending row unreadable · wrong secret forbidden
+    expiry refreshed on read · a permanent grant stays permanent
+    cap: full refuses · 95%=critical · 80%=warning · overdraft allowed once under
+    delete marks the row and frees the space, bytes left for the sweeper
+    new grants get 90d · 159 existing untouched
+    revoke: creator only, the key dies immediately
+    pending_path: owner sees a pending row, buyer refused, missing refused
+    list: pending hidden, seller+buyer both see it, stranger forbidden,
+          object paths never leaked, environment filtered
+  Verified live after apply: 9 broker functions present, registry 0 rows,
+  159/159 grants active and still NULL expiry, default now 90 days.
+
+VERIFICATION
+  contractnest-api:  npx tsc --noEmit  →  2 errors
+  Both are the pre-existing tsconfig deprecation warnings (moduleResolution,
+  baseUrl) — identical to pristine main. Zero new errors.
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-api\*" `
+          -Destination "contractnest-api\" -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ Copied." -ForegroundColor Green
+
+STEP 3: Build + run
+─────────────────────────────────
+cd contractnest-api
+npx tsc --noEmit        # expect 2 pre-existing tsconfig errors, nothing else
+npm run dev
+
+Look for these two lines on boot:
+  ✅ Evidence storage routes registered at /api/evidence
+  ✅ Evidence (public/CNAK) routes registered at /api/public/evidence
+
+STEP 4: Smoke test
+─────────────────────────────────
+GET /api/evidence/usage
+  (Bearer token + x-tenant-id)
+  → { used_bytes: 0, quota_bytes: 41943040, pct: 0, warn_level: "ok" }
+
+If it returns 503 not_configured, the Firebase service-account env vars are
+missing on that machine — the DB side is fine, only signing is unavailable.
+
+═══════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════
+- [ ] API boots, both route lines appear
+- [ ] GET /api/evidence/usage returns the shape above
+- [ ] POST /api/evidence/slot with a real contract you own → 201 + upload_url
+- [ ] Same call for a contract you do NOT own → 403 not_contract_creator
+- [ ] PUT the file to upload_url (Content-Type must match), then confirm → active
+- [ ] GET /api/evidence/:id/url → opens the file
+- [ ] Nothing else changed: existing uploads (avatar, logo, QR) still work
+
+═══════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════════════

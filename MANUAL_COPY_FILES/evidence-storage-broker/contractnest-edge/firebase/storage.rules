@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// ContractNest — Firebase Storage security rules
+// ============================================================================
+// DENY ALL DIRECT CLIENT ACCESS. Firebase is a dumb blob store: it holds bytes
+// and nothing else. Every read and write is brokered by the API with the Admin
+// SDK, which authorises against contract_membership() in Postgres and then
+// mints a short-TTL signed URL.
+//
+// Signed URLs are NOT governed by these rules — they carry their own signature —
+// so denying everything here closes the client SDK door without closing the
+// broker's.
+//
+// Why the rule lives here and the permission lives in Postgres: a service
+// contract is shared between buyer and seller, and its proofs belong to the
+// contract, not to either party's namespace. Expressing that in Firebase rules
+// would mean a second copy of the access model, in a second language, that
+// drifts from the first silently. So there is only one copy, and it sits beside
+// the contract row that defines it.
+//
+// ⚠️ DO NOT DEPLOY THIS UNTIL BATCH D IS LIVE.
+// The API today still uploads through the Firebase CLIENT SDK with
+// signInAnonymously() in three places (storageService, tenantProfileService,
+// integrationService). Those calls ARE subject to these rules, so deploying
+// deny-all before their call sites are migrated to the broker would break
+// avatar, logo, block-icon and QR uploads immediately.
+//
+// Deploy with:  firebase deploy --only storage
+// Verify with:  a client-SDK read from a test harness must FAIL, and an
+//               API-minted signed URL must still work.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
