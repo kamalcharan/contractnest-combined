@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-schema   (Evidence Storage Redesign — batch A)
+Date:  2026-09-20
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+  The database substrate for the Evidence Storage Redesign. ADDITIVE ONLY —
+  it creates, it does not drop. Nothing in the running product changes
+  behaviour when this is applied.
+
+SUBMODULES AFFECTED
+  contractnest-edge   (migrations only — no API, no UI in this batch)
+
+FILES
+  contractnest-edge/supabase/migrations/evidence-storage/
+      001_evidence_registry_and_membership.sql   — the migration
+      001_rollback.sql                           — undo, while the registry is empty
+
+WHAT IT CREATES
+  1. contract_membership(contract_id, tenant_id, cnak, secret)
+     THE access predicate — seller tenant OR buyer tenant OR a live CNAK+secret
+     grant for that contract. Plus contract_membership_self(contract_id) for RLS.
+     Every future caller (API broker, RLS, reporting) calls this and nothing else.
+
+  2. t_contract_evidence — the file registry
+     scope='contract'  → contracts/{contract_id}/{event_id}/{uuid}.{ext}   METERED
+     scope='tenant'    → tenants/{tenant_id}/{kind}/{uuid}.{ext}           NOT metered
+     object_path is a path, never a URL. size_bytes is read back from Firebase
+     at confirm, never trusted from the client. owner_tenant_id is the CREATING
+     tenant (seller on a contract, buyer on an RFQ) and is what metering sums.
+
+  3. t_tenants.storage_quota_bytes (default 40 MB) and
+     t_tenants.evidence_retention_days (90 default; 90/120/150/NULL=permanent)
+
+  4. RLS ENABLED on t_contract_event_assets.
+     SECURITY NOTE: this table has RLS disabled today while anon holds
+     SELECT/INSERT/UPDATE/DELETE on it — any holder of the public anon key can
+     read and modify all 482 rows across every tenant. This closes that.
+
+  5. m_form_submissions read policy WIDENED to the membership predicate.
+     It was strict tenant isolation, so a buyer tenant and a CNAK holder could
+     see none of it. Since most contracts prove themselves with a smart report
+     rather than a photo, buyer verification was failing for the common case.
+     The old clause is kept as the first branch — this can only widen.
+
+WHAT IT DELIBERATELY DOES NOT DO — the drops
+  t_contract_attachments / t_tenant_files / t_service_evidence / m_form_attachments
+  hold 0 rows, but 11 live functions reference them, four on hot read paths:
+      get_contract_by_id, get_service_ticket_detail,
+      get_service_ticket_report, get_service_tickets_list
+  PL/pgSQL late-binds table names, so DROP TABLE succeeds silently and those
+  functions then fail at CALL time — the contract detail page and the ticket
+  pages would break with no warning at migration time.
+  The drops move to their own batch, after those callers are rewritten.
+  Same reason storage_quota (integer MB) is left alone: get_admin_tenant_list
+  still reads it as MB. storage_quota_bytes is the new truth alongside it.
+
+PROBE — run against production 2026-09-20, rolled back, nothing persisted
+  Every assertion passed:
+    buyer-tenant contract OK (seller allowed, buyer allowed, stranger denied,
+                              null tenant denied)
+    null-buyer contract OK
+    CNAK+secret OK — wrong secret, wrong cnak and missing secret all denied
+    CNAK is single-contract — same key refused on a different contract
+    expiry honoured, revocation honoured
+    registry accepts a valid row of each scope and refuses 4 malformed ones
+      (contract row with no contract_id · tenant row with a contract_id ·
+       duplicate object_path · bad status)
+    metering = 300000 bytes — logo excluded, pending row uncounted
+    10/10 tenants defaulted to 40 MB + 90 days
+    retention accepts 90/120/150/NULL only (45 refused)
+    RLS on 3/3 tables, 6 policies
+    all 4 legacy tables still present
+  Post-probe verification confirmed production unchanged: registry absent,
+  predicate absent, no new tenant columns, event-assets RLS still off,
+  m_form_submissions_tenant_isolation restored, 159/159 grants still active.
+
+APPLY
+  This batch is migrations only. It has NOT been applied to production —
+  say the word and it goes on via apply_migration, or apply it yourself:
+
+    Supabase SQL editor → paste 001_evidence_registry_and_membership.sql → Run
+
+  To undo while the registry is still empty: run 001_rollback.sql.
+
+STEP 1: Copy files
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-schema\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied." -ForegroundColor Green
+
+STEP 2: Verify
+─────────────────────────────────
+Get-ChildItem "contractnest-edge\supabase\migrations\evidence-storage\"
+  → 001_evidence_registry_and_membership.sql
+  → 001_rollback.sql
+
+There is nothing to build or run locally — no API or UI file changed in this
+batch, so no dev server, no tsc, no vite.
+
+TESTING CHECKLIST (after the migration is applied)
+─────────────────────────────────
+  [ ] Contract detail page still loads (get_contract_by_id untouched — this is
+      the regression to watch, since RLS came on for t_contract_event_assets)
+  [ ] Service ticket list and ticket detail still load
+  [ ] Event Schedule / Commitments Register still load
+  [ ] The one live smart-form submission is still readable by its own tenant
+  [ ] Ops Cockpit board loads (reads t_contract_events, not touched)
+
+WAITING FOR CONFIRMATION
+─────────────────────────────────
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════════════
