@@ -1,0 +1,169 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-migrate   (Evidence Storage Redesign — batch D)
+Date:  2026-09-20
+Depends on: A (schema, applied) · B (broker, applied) · C (component)
+
+⚠️ COPY ORDER — this batch is a SUPERSET of earlier unmerged copies:
+      evidence-storage-broker  →  evidence-storage-component  →  THIS
+   contractnest-api/src/utils/firebaseStorageAdmin.ts      ⊃ batch B
+   contractnest-api/src/services/evidenceStorageService.ts ⊃ batch B
+   contractnest-ui/src/hooks/queries/useEvidenceQueries.ts ⊃ batch C
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+  The identity assets move onto the one storage path. Behaviour changes here
+  for the first time, so this is the batch to test hardest.
+
+  No migration. No new dependency. No DB change at all.
+
+SUBMODULES AFFECTED
+  contractnest-api    4 files (2 of them supersets of batch B)
+  contractnest-ui     4 files (1 of them a superset of batch C)
+  contractnest-edge   storage.rules (supersedes batch B's — still DO NOT DEPLOY)
+
+THE DESIGN DECISION IN THIS BATCH — two namespaces, two rules
+  The spec says deny all direct client access. That is right for contract
+  evidence and wrong for identity assets, and the live data proves it:
+  ContractDocument, PublicPaymentSection, the invoice views and 85 call sites
+  in total render a tenant logo from a DURABLE url. A 5-minute signed url
+  cannot serve a contract PDF emailed to a buyer, or a public review page
+  opened three days later.
+
+    contracts/**  private. Brokered reads only, signed per viewer, minutes.
+    tenants/**    public read, no write. Logo, avatar, block icon, payment QR.
+
+  These are public by nature — the logo is already on every invoice and on the
+  unauthenticated review page; the QR is printed and stuck on a desk. Nothing
+  confidential moved. Writes are denied everywhere; the Admin SDK bypasses
+  rules and is the only writer.
+
+WHAT MOVED
+  UI, via the batch-C hook (useUploadIdentityAsset):
+    AvatarSection.tsx        user avatar
+    PersonalInfoSection.tsx  the same avatar on the other surface
+    IconPicker.tsx           catalog block custom icon
+  Each now uploads to tenants/{tenant}/{kind}/… , is NOT metered against the
+  evidence quota, and gets back the durable url it already stored. Their
+  layouts are untouched — these surfaces needed their storage path changed,
+  not their controls.
+
+  Server-side, keeping their routes and contracts EXACTLY as they were:
+    tenantProfileService.uploadLogo   POST /api/tenant-profile/logo
+    integrationService.uploadQrImage  POST /api/integrations/upload-qr
+  Both now write through the Admin SDK into tenants/… with a registry row,
+  instead of the Firebase client SDK with signInAnonymously() and a stored
+  getDownloadURL() token. The multipart contract and the response shape are
+  identical, so both UI callers (useTenantProfile, TenantContext) and the
+  integrations form are unchanged.
+
+  ⚠️ The QR endpoint's DECODE LOGIC IS UNTOUCHED. It is what recovers org_id
+  and mcc from the bank's own sticker, and those two fields are the entire
+  reason UPI merchant payments work at BBB. Only where the bytes land changed.
+
+WHAT DID *NOT* MOVE, AND WHY
+  · Service evidence (TicketEvidencePanel) — the upload cannot be migrated
+    alone. get_service_ticket_detail, _report and _list all READ
+    t_service_evidence, so moving the write without the reads would make new
+    evidence invisible on the ticket. It goes with those reads in batch F,
+    where the category bug and the two decorative dropzones are also fixed.
+  · /settings/storage pages and the two old FileUploaders — the cleanup batch.
+  · Nothing was deleted. The legacy stack still works, untouched, so this
+    batch is reversible by copying the four original files back.
+
+⚠️ DO NOT DEPLOY storage.rules YET — now blocked until batch F, not D
+  Three surfaces still upload through the legacy /api/storage path, which uses
+  the client SDK and IS governed by these rules: the service-evidence panel,
+  the /settings/storage pages, and the two old FileUploaders. Deploying now
+  would break them.
+
+EXISTING FILES ARE SAFE
+  The 2 live tenant logos and 2 live QR images are firebasestorage.googleapis
+  .com urls carrying an access token. Those tokens authorise independently of
+  rules, so every existing asset keeps rendering after the rules deploy. Only
+  NEW uploads take the new path.
+
+VERIFICATION
+  contractnest-api:  npx tsc --noEmit                      → 2 errors
+                     pristine main                          → 2 errors
+  contractnest-ui:   npx tsc --noEmit -p tsconfig.json      → 1168 errors
+                     pristine main on this checkout         → 1168 errors
+                     ZERO new errors in either.
+  contractnest-ui:   npx vite build → passes (32s)
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files — IN THIS ORDER
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-api\*" `
+          -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-component\contractnest-ui\*" `
+          -Destination "contractnest-ui\" -Recurse -Force
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-migrate\contractnest-api\*" `
+          -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-migrate\contractnest-ui\*" `
+          -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-migrate\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ Copied." -ForegroundColor Green
+
+STEP 3: Build + run
+─────────────────────────────────
+cd contractnest-api
+npx tsc --noEmit        # 2 pre-existing errors
+npm run dev
+
+cd ..\contractnest-ui
+npx tsc --noEmit -p tsconfig.json   # 1168, same as main
+npm run dev
+# Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST — behaviour changes here
+═══════════════════════════════════════════════════════════════════════════
+Avatar
+- [ ] /settings/user-profile → change your profile picture → it uploads,
+      the toast APPEARS (it never did before — this file used react-hot-toast,
+      which renders nothing in this app), and the new picture shows
+- [ ] Reload: the picture is still there
+- [ ] The picture also updates on the other profile surface
+
+Block icon
+- [ ] Catalog Studio → a block → custom icon upload → icon appears and saves
+
+Tenant logo  (server-side path — the response shape did not change)
+- [ ] Settings → Business Profile → upload a logo → saves
+- [ ] The logo appears on an INVOICE and on the CONTRACT DOCUMENT
+- [ ] Open a public contract-review link in a private window → logo renders
+      (this is the durable-url case that the whole namespace split exists for)
+
+Integration QR  (the risky one — a live payment path)
+- [ ] Settings → Integrations → Offline UPI → upload the bank QR
+- [ ] The image shows on the card afterwards
+- [ ] ⚠️ CHECK IN THE DATABASE that credentials->'public' still carries
+      upi_id, payee_name, org_id AND mcc after the save. org_id/mcc are
+      decoded from the image and are what make UPI merchant payments work.
+      (There is a known separate bug where saving this form has wiped those
+      fields twice — unrelated to this batch, root cause still unfound. Do
+      not re-upload BBB's LIVE QR until that is settled; test on a test row.)
+
+Storage quota
+- [ ] /settings/upload-lab → the meter does NOT move after an avatar, logo,
+      icon or QR upload. Identity assets are unmetered by design.
+
+Nothing else broke
+- [ ] Service evidence upload behaves exactly as before (unchanged in D)
+- [ ] /settings/storage pages still work (unchanged in D)
+
+═══════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════════════
