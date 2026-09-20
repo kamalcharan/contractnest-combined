@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-component   (Evidence Storage Redesign — batch C)
+Date:  2026-09-20
+Depends on: evidence-storage-schema (A) + evidence-storage-broker (B)
+            — both already applied to the database
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+  The ONE upload component, over the batch-B broker, plus a lab page that
+  renders it in every mode against the real API.
+
+  UI ONLY. No API, no migration, no new dependency. Nothing existing is
+  rewired — the old upload paths still work untouched. Batch D moves the five
+  live call sites onto this.
+
+SUBMODULES AFFECTED
+  contractnest-ui   4 new files + App.tsx (one route)
+
+FILES
+  src/utils/imageCompression.ts                 canvas downscale, no dependency
+  src/hooks/queries/useEvidenceQueries.ts       slot → PUT → confirm, + usage/list/url/delete
+  src/components/common/evidence/FileUpload.tsx the component (+ EvidenceChip)
+  src/pages/settings/upload-lab/index.tsx       the bookmark
+  src/App.tsx                                   route /settings/upload-lab
+                                                (superset of pristine main)
+
+THE COMPONENT
+  <FileUpload
+     target={{ scope: 'contract', contractId, eventId }}   // metered
+     target={{ scope: 'tenant', assetKind: 'logo' }}       // not metered
+     accept multiple disabled showQuota label hint onUploaded />
+
+  · Quota meter shown BEFORE the work, with 80% / 95% / full states, and the
+    dropzone disables itself at full rather than letting someone pick a file
+    and then fail. This is the cap design from the spec: a technician learns
+    about a problem while they still have options.
+  · Real per-file progress from XHR upload events — genuine bytes sent, not a
+    spinner that lies. The PUT is the long part on a phone.
+  · One bad file in a batch does not abandon the rest.
+  · EvidenceChip renders what is already attached, with open + remove.
+
+COMPRESSION
+  Images are downscaled to a 1600px longest edge and re-encoded as JPEG (~82%)
+  BEFORE the size is declared, so the cap check sees the size that will really
+  be stored. A phone photo goes 3–5 MB → ~300 KB, which is what makes 40 MB
+  workable and cuts egress by the same factor.
+
+  Every failure path returns the ORIGINAL file instead of throwing. A
+  technician must never lose a photo because a canvas call failed on their
+  browser — worse compression is acceptable, a lost proof is not. PDFs and
+  documents pass through untouched. is_compressed + original_size_bytes are
+  recorded on the registry row, so if a per-contract "keep originals" flag
+  ever ships we can tell which historical evidence is a reduction.
+
+TOASTS AND LOADERS
+  vaniToast throughout — NOT react-hot-toast. The app mounts only VaNiToast,
+  so the ~60 files still importing react-hot-toast render nothing (the finding
+  recorded in CLAUDE.md on 18 Sep). Loading is the component's own progress
+  rows plus a spinner per file; no new loader component was created.
+
+VERIFICATION
+  contractnest-ui:  npx tsc --noEmit -p tsconfig.json  →  1168 errors
+                    pristine main on this checkout     →  1168 errors
+                    ZERO new errors.
+                    (The handover's 1170 was measured with the other staged
+                     batches assembled; this batch stands on main alone.)
+  contractnest-ui:  npx vite build  →  passes, built in 30s
+  Note: node_modules had to be installed with --legacy-peer-deps
+        (npm ci fails on a pre-existing peer conflict, unrelated to this batch).
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-component\contractnest-ui\*" `
+          -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Copied." -ForegroundColor Green
+
+STEP 3: Run
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+# Open: /settings/upload-lab
+
+The API must be running with batch B for the lab to do anything.
+
+═══════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST  (/settings/upload-lab)
+═══════════════════════════════════════════════════════════════════════════
+- [ ] Storage card shows used / quota / pct / warn_level (0 of 40 MB, "ok")
+- [ ] Paste a contract id YOU own → drop a photo → progress runs to Uploaded
+- [ ] The photo lands near 300 KB, not 3–5 MB (check the session log)
+- [ ] "On this contract" lists it; clicking the name opens it in a new tab
+- [ ] Remove takes it away and the meter drops back
+- [ ] Paste a contract you do NOT own → 403, "Only the contract owner can add
+      evidence to it."
+- [ ] Logo panel uploads and the meter does NOT move (identity assets unmetered)
+- [ ] "Wrong type on purpose" with a .zip → "That file type cannot be uploaded"
+- [ ] Disabled panel is visibly inert and not clickable
+- [ ] Kill the network mid-upload → row goes red with a real message, the app
+      does not hang, and the meter is unchanged (nothing was confirmed)
+- [ ] Nothing else changed: avatar, logo and QR uploads elsewhere still work
+
+═══════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════════════
