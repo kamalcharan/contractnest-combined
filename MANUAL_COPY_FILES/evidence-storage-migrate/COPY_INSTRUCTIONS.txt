@@ -19,7 +19,9 @@ WHAT THIS IS
 SUBMODULES AFFECTED
   contractnest-api    4 files (2 of them supersets of batch B)
   contractnest-ui     4 files (1 of them a superset of batch C)
-  contractnest-edge   storage.rules (supersedes batch B's — still DO NOT DEPLOY)
+  contractnest-edge   firebase/storage.rules  (supersedes batch B's — DO NOT DEPLOY)
+                      firebase/cors.json      (NEW — apply before testing the lab)
+                      firebase/README.md      (NEW — how and when to apply both)
 
 THE DESIGN DECISION IN THIS BATCH — two namespaces, two rules
   The spec says deny all direct client access. That is right for contract
@@ -113,6 +115,35 @@ Copy-Item "MANUAL_COPY_FILES\evidence-storage-migrate\contractnest-edge\*" `
 
 Write-Host "✅ Copied." -ForegroundColor Green
 
+STEP 2b: ⚠️ APPLY BUCKET CORS — needed before /settings/upload-lab works
+─────────────────────────────────
+The browser PUTs bytes straight to Google Cloud Storage using a signed url.
+A Firebase Storage bucket ships with NO CORS configuration, so the browser
+blocks that request before it is sent. This was never hit before because the
+Firebase client SDK talks to endpoints that are already CORS-enabled.
+
+  cd contractnest-edge\firebase
+  gcloud storage buckets update gs://contractnest-driveapp.firebasestorage.app `
+    --cors-file=cors.json
+
+  # older toolchains:
+  # gsutil cors set cors.json gs://contractnest-driveapp.firebasestorage.app
+
+Verify:
+  gcloud storage buckets describe gs://contractnest-driveapp.firebasestorage.app `
+    --format="default(cors_config)"
+
+NOT needed for anything in batch D itself — the logo and QR endpoints upload
+multipart to OUR api and the server writes to storage, so no browser-to-GCS
+request is involved. This is only for the browser-direct path from batch C
+(the upload lab, and the service-evidence panel once batch F moves it).
+
+SYMPTOM IF MISSING: the upload bar reaches ~15% and stops, with a CORS error
+in the browser console on a storage.googleapis.com PUT — no server error,
+nothing in the api log, nothing in Sentry. It reads like a code bug and is not.
+
+See contractnest-edge/firebase/README.md for editing the origin list.
+
 STEP 3: Build + run
 ─────────────────────────────────
 cd contractnest-api
@@ -152,6 +183,10 @@ Integration QR  (the risky one — a live payment path)
       (There is a known separate bug where saving this form has wiped those
       fields twice — unrelated to this batch, root cause still unfound. Do
       not re-upload BBB's LIVE QR until that is settled; test on a test row.)
+
+Upload lab (needs STEP 2b applied first)
+- [ ] /settings/upload-lab → a contract photo uploads past 15% to "Uploaded"
+      (if it stalls at ~15%, bucket CORS is not applied — see STEP 2b)
 
 Storage quota
 - [ ] /settings/upload-lab → the meter does NOT move after an avatar, logo,
