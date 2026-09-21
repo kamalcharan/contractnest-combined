@@ -1,0 +1,132 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-context
+Storage becomes a real number on the Workspace Account card
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────────────────────
+Your three assumptions were checked against the live database:
+
+  ✅ Contract uploads are metered   — evidence_usage() sums the registry
+  ✅ Held in core tenant tables     — t_contract_evidence.owner_tenant_id
+  ❌ Available to tenantContext     — it was NOT
+
+get_tenant_context was still reading t_tenant_context.limit_storage_mb
+and .usage_storage_mb, columns nothing has ever populated. So the card
+would have shown 0 MB used forever, no matter how much evidence was
+uploaded. That wire is now connected.
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge (migration copy only)
+
+DATABASE — ALREADY DONE, DO NOT RE-RUN
+───────────────────────────────────────────────────────────────────
+Migration evidence-storage/005_tenant_context_storage.sql was applied
+live on 2026-09-21. The file in this batch is the source-of-record copy.
+
+  storage_limit_mb(tenant)  -> t_tenants.storage_quota_bytes in MB
+  storage_used_mb(tenant)   -> live sum over t_contract_evidence
+  get_tenant_context        -> limits.storage_mb, usage.storage_mb and a
+                               NEW usage.storage block with exact bytes:
+                               {used_bytes, quota_bytes, free_bytes,
+                                pct, warn_level}
+
+storage_used_mb uses exactly the predicate evidence_usage uses, so the
+number on the card can never disagree with the number the upload broker
+enforces when it accepts or refuses a file.
+
+Verified live after applying — all tenants read 40 MB / 0 used / ok,
+which is correct: no contract evidence exists yet. The avatars uploaded
+so far are identity assets and are deliberately unmetered.
+
+FILES CHANGED (contractnest-ui) — 5
+───────────────────────────────────────────────────────────────────
+  src/utils/storageFormat.ts                                   NEW
+      Byte formatting (binary, so 40 MB matches the quota exactly),
+      a readStorage() guard that ignores payloads the RPC did not
+      report success on, and a clamped percentage for the bar.
+
+  src/hooks/queries/useTenantContext.ts
+      Adds TenantContextStorage and usage.storage (OPTIONAL — an older
+      API build simply omits it and every surface hides the row rather
+      than printing a fabricated zero).
+
+  src/pages/experience/TenantAccountNotice.tsx            HOME SCREEN
+      New "Evidence storage" row in the Workspace Account card, in the
+      same dt/dd + meter idiom as Contracts. Turns amber at 80%, red
+      at 95%.
+
+  src/pages/experience/accountSignals.ts                  HOME SCREEN
+      A storage notice once past 80%. Worth saying early because,
+      unlike the plan allowances (which are advisory and never block),
+      a full quota really does refuse the next upload.
+
+  src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+                                                        BUSINESS MODEL
+      A full "Evidence storage" card between the allowance grid and the
+      credit pools: free space large, a bar, exact used-of-quota, and
+      copy saying what counts (contract and visit evidence) and what
+      does not (profile pictures, logo, block icons, payment QRs), plus
+      that Live and Test share one figure.
+
+PRODUCTION CHECKLIST
+───────────────────────────────────────────────────────────────────
+  Transaction Management : N/A — read-only display
+  Race Conditions        : N/A — figure computed live per request, no
+                           stored counter to drift
+  Error Handling         : readStorage() rejects absent/failed payloads;
+                           every surface omits the row rather than
+                           showing a wrong number
+  Toasts                 : N/A — no user action on these surfaces
+  Loaders                : existing tenant-context query states reused
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files
+───────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-context\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-context\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied." -ForegroundColor Green
+
+STEP 3: Run
+───────────────────────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5  (the tenant-context query caches for 30s)
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] Home screen → Workspace Account card shows "Evidence storage"
+      reading "0 B used · 40 MB free of 40 MB" with an empty bar
+- [ ] Business Model → Subscription shows the Evidence storage card
+      between the allowance cards and Notification credits
+- [ ] Upload a service-execution evidence photo on a contract, refresh,
+      and confirm BOTH surfaces move by the size of that file
+- [ ] Upload a new profile picture and confirm NEITHER moves
+      (identity assets are not metered — this is the check that proves
+      the two namespaces are really separate)
+- [ ] The card is absent, not zeroed, if you point the UI at an API
+      build without migration 005
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  npx tsc --noEmit   1168 errors = identical to this checkout's
+                     pristine baseline (measured by stashing). Zero new.
+  npx vite build     passes (37.7s)
+  Migration probed whole in a rolled-back transaction first: a synthetic
+  34 MB row produced limits.storage_mb=40, usage.storage_mb=34 and
+  usage.storage pct 85.0 / warn_level "warning", then rolled back.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════
