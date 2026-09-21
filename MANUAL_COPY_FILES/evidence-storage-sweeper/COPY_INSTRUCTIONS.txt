@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-sweeper   (Evidence Storage Redesign — batch G, part 1)
+Date:  2026-09-21
+Depends on: A, B, C, D + migration 003 (all applied)
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+  The DATABASE HALF of StorageCleanup — the collector for everything that gets
+  marked 'deleted'. Migration only. APPLIED 2026-09-21; the file is the
+  source-of-record copy. Do NOT re-run it.
+
+  Nothing reclaims bytes yet: the API runner that actually calls Firebase is
+  part 2 and is not built. Until it is, marks accumulate harmlessly — which is
+  still strictly better than before, when the old files were simply lost.
+
+WHY THE API RUNS THE SWEEP, NOT THE JTD WORKER
+  The plan was a `system` channel on the jtd-worker. Implementation found the
+  edge runtime holds NO Firebase service account — only contractnest-api does —
+  so the worker could not delete an object itself, only call the API to do it.
+  That hop buys nothing for a daily idempotent sweep. So:
+
+    API (short timer) → storage_cleanup_due()      is it worth running?
+                      → storage_cleanup_claim()    object paths to reclaim
+                      → Firebase Admin delete      the only place bytes go
+                      → storage_cleanup_settle()   removes the settled rows
+                      → storage_cleanup_record()   one n_jtd row per run
+
+  The n_jtd row is still written, so a run is visible in history exactly as
+  asked. The cron lives in the API rather than pg_cron because the sweep needs
+  Firebase credentials, and putting an API URL and a shared secret in the
+  database to poke it would be a new secret for no gain.
+
+WHAT IT CREATES
+  JTD vocabulary : event type `system_job` (category action), channel `system`,
+                   source type `storage_cleanup`
+  storage_cleanup_claim(limit, orphan_hours)
+                   Rows to reclaim: status='deleted' (retired on purpose) plus
+                   status='pending' older than 24h (an upload that never
+                   confirmed). An ACTIVE row is never returned — that is the
+                   safety property: the sweeper can only remove what something
+                   else already decided was dead.
+  storage_cleanup_settle(done[], failed[])
+                   Removes rows whose objects are gone. Refuses to remove an
+                   active row even if one is named. Failed paths keep their row
+                   and are retried next run — losing the row would strand the
+                   bytes with nothing pointing at them.
+  storage_cleanup_record(tenant, counts, is_live)
+                   The history row, inserted at 'completed'.
+  storage_cleanup_due(min_hours)
+                   Whether a run is worth doing.
+  storage_cleanup_mark_environment(tenant, is_live)
+                   For the test reset — "space is space", so clearing test data
+                   has to give the bytes back. Until now every reset deleted
+                   rows and orphaned its objects forever.
+  storage_cleanup_mark_tenant_closed(tenant)
+                   Identity assets only. Contract evidence is deliberately left
+                   for the retention pass: it is the shared artefact and the
+                   counterparty may still need it.
+
+NO ADVISORY LOCK — and that is deliberate
+  The first version took pg_try_advisory_lock. The probe showed it is
+  session-scoped and RE-ENTRANT: a pooled connection can take it twice while
+  one unlock releases it once, leaking the lock and blocking every future
+  sweep. That failure is worse than the one it prevents.
+  It is not needed: deleting an already-gone object succeeds, settle removes
+  only the ids it is handed, and an active row can never be claimed or settled.
+  Two sweepers racing duplicate work and change nothing else.
+
+PROBE — run against production, rolled back, then applied
+    claim returns the retired row and the stale orphan
+    claim NEVER returns the active row, nor a fresh pending one (an upload may
+      still be in flight behind a slow connection)
+    settle removed exactly 2 and REFUSED the active row even when named
+    re-settling the same ids removes 0 — idempotent, which is what replaces
+      the lock
+    the record row lands at 'completed' and is never queued
+    the test reset marks only its own environment, leaving live rows alone
+    tenant close marks identity assets and PRESERVES contract evidence
+
+STEP 1: Copy
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-sweeper\contractnest-edge\*" `
+          -Destination "contractnest-edge\" -Recurse -Force
+
+⚠️ DO NOT RUN 004 — already applied 2026-09-21.
+Nothing to build: migration only, no API or UI file in this batch.
+
+STILL TO BUILD (batch G part 2)
+  · the API runner: timer → due → claim → Admin SDK delete → settle → record
+  · the admin storage screen: prefixes with counts and bytes, live / orphaned /
+    retained, and the button that deletes the legacy tenant_logos/,
+    tenant_integration_assets/ and tenant_<uuid>_<epoch>/ prefixes
+  · calling storage_cleanup_mark_environment from admin_reset_test_data and
+    reset_tenant_session_and_forms
+  · tenant-context limits.storage_mb / usage.storage_mb fed from the registry
+═══════════════════════════════════════════════════════════════════════════
