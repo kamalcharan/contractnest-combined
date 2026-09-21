@@ -23,6 +23,12 @@ interface ProfileInfoSectionProps {
   onValidateMobile: (mobile: string, countryCode: string) => Promise<boolean>;
   updating: boolean;
   initialEditMode?: boolean; // Start in edit mode (useful for onboarding)
+  /**
+   * Passed by the user-profile page and currently unused here — declared so the
+   * call site type-checks. Wiring it to the dirty-state tracking is its own
+   * change; this only stops it being an error.
+   */
+  onChangeDetected?: (hasChanges: boolean) => void;
 }
 
 const ProfileInfoSection: React.FC<ProfileInfoSectionProps> = ({
@@ -232,9 +238,13 @@ const ProfileInfoSection: React.FC<ProfileInfoSectionProps> = ({
         toast.error('Upload succeeded but no download URL returned');
         setUploadProgress(0);
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+    } catch (error: any) {
+      // Surface what actually failed. This message used to be a flat
+      // "Failed to upload image", which hid a TypeError from calling the
+      // onUpdateAvatar prop the page never passed — the upload had already
+      // succeeded, and the real fault was two lines further on.
+      console.error('Avatar save error:', error);
+      toast.error(error?.message || 'Could not save the profile picture');
       setUploadProgress(0);
     }
   };
