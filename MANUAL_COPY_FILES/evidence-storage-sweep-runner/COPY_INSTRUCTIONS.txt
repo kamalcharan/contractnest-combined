@@ -1,0 +1,180 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-sweep-runner        (Evidence Storage — G2)
+The sweep that actually reclaims bytes
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS COMPLETES
+───────────────────────────────────────────────────────────────────
+Batch G part 1 (evidence-storage-sweeper) built the database half:
+functions that decide WHAT may be reclaimed. Nothing reclaimed
+anything, because Postgres cannot delete a Firebase object. This is
+the other half.
+
+  storage_cleanup_due()     is a run worth doing at all?
+  storage_cleanup_claim()   rows to reclaim, with their object paths
+  deleteObject()            the only place bytes actually go
+  storage_cleanup_settle()  drop settled rows, KEEP the failed ones
+  storage_cleanup_record()  one n_jtd row per tenant per environment
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-edge (migration copy)
+
+⚠️ COPY ORDER — THIS BATCH MUST GO AFTER evidence-storage-broker
+───────────────────────────────────────────────────────────────────
+Its src/index.ts is a SUPERSET of the broker batch's copy (mounts
+/api/evidence AND /api/admin/storage, and starts the sweep timer).
+Copy the broker batch first, or copy this one last; either way this
+file must be the one that survives.
+
+DATABASE — ALREADY DONE, DO NOT RE-RUN
+───────────────────────────────────────────────────────────────────
+Migration evidence-storage/006_sweep_wiring.sql applied live
+2026-09-22. Three changes, two of them findings from building the
+runner:
+
+  1. storage_cleanup_claim() now returns is_live.
+     FOUND WHILE BUILDING: record(tenant, counts, is_live) needs it
+     and claim did not return it, so the runner would have filed
+     every test-environment sweep as live.
+
+  2. admin_reset_test_data() now calls
+     storage_cleanup_mark_environment(tenant, false).
+     "Space is space" — until now every test reset deleted its rows
+     and orphaned the Firebase objects forever.
+
+  3. reset_tenant_session_and_forms() likewise. Its p_is_live
+     defaults to NULL, which in that function's own body means BOTH
+     environments, so both are marked. Flagged rather than decided
+     silently.
+
+  Both resets wrap the call in EXCEPTION ... NULL, matching the
+  per-step pattern those functions already use — a storage failure
+  can never break a reset.
+
+FILES (contractnest-api) — 3
+───────────────────────────────────────────────────────────────────
+  src/services/storageCleanupService.ts                        NEW
+      runSweep() and the timer. Hourly tick; due() decides whether a
+      sweep actually happens, so it settles to ~daily and a restart
+      storm cannot cause a run storm. First tick 5 min after boot,
+      never during it. Skips quietly when Firebase is unconfigured.
+
+  src/routes/storageAdminRoutes.ts                             NEW
+      /api/admin/storage, authenticate + requireAdmin.
+        GET  /sweep/status   what a sweep would find, touching nothing
+        POST /sweep          run one now (skips the due() check)
+      The batch H folder browser will hang off this same router.
+
+  src/index.ts                          SUPERSET of broker's copy
+      Mounts the admin router and starts the timer once the server
+      is listening.
+
+WHY THE API AND NOT THE JTD WORKER
+───────────────────────────────────────────────────────────────────
+The edge runtime holds no Firebase service account, so the worker
+could only ask the API to delete — a hop that buys nothing for a
+daily idempotent sweep. And not pg_cron, because the sweep needs
+Firebase credentials; putting an API URL and a shared secret in the
+database to poke it would be a new secret for no gain.
+
+SAFETY PROPERTIES (each one probed)
+───────────────────────────────────────────────────────────────────
+  • claim() NEVER returns an 'active' row and settle() refuses to
+    remove one. The sweeper can only finish what something else
+    already decided was dead.
+  • A FAILED delete keeps its row and is retried next run. Dropping
+    it would strand the bytes with nothing pointing at them.
+  • deleteObject uses ignoreNotFound, so re-deleting is a no-op —
+    which is what makes the whole chain safe without a lock.
+  • No advisory lock, deliberately (see 004's own comment): it is
+    session-scoped and re-entrant, so a pooled connection can leak
+    it and block every future sweep. Two sweepers racing duplicate
+    work and change nothing else.
+  • A failed history row never loses a completed reclaim — the bytes
+    are already gone and the rows already settled, so it is reported
+    to Sentry rather than thrown.
+
+PRODUCTION CHECKLIST
+───────────────────────────────────────────────────────────────────
+  Transaction Management : each RPC is its own transaction; the
+                           sequence is idempotent by design rather
+                           than atomic (it spans an external API)
+  Race Conditions        : in-process `running` guard; cross-process
+                           safe by idempotency, no lock (see above)
+  Error Handling         : every step checked; failures retried next
+                           run; captureException throughout; a
+                           skipped sweep reports why
+  Toasts / Loaders       : N/A — no UI in this batch (batch H)
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/nifty-noether-vrovnh
+
+STEP 2: Copy Files  (broker FIRST, then this batch)
+───────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-api\*"       -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-sweep-runner\contractnest-api\*" -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-sweep-runner\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied - evidence-storage-sweep-runner" -ForegroundColor Green
+
+STEP 3: Run
+───────────────────────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+
+Look for these two lines on boot:
+  ✅ Storage admin routes registered at /api/admin/storage
+  🧹 StorageCleanup sweep scheduled
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] Boot prints both lines above
+- [ ] GET /api/admin/storage/sweep/status as an admin returns
+      { firebase_configured: true, due: …, orphans_waiting: …,
+        retired_waiting: … }
+- [ ] The same call as a NON-admin is refused
+- [ ] POST /api/admin/storage/sweep returns a summary. With nothing
+      to reclaim it reads { ran: true, claimed: 0 } — that is
+      success, not a failure
+- [ ] THE REAL TEST: upload a profile picture, change it again (the
+      old one is superseded to 'deleted' by migration 003), then
+      POST the sweep. Expect deleted ≥ 1, and the object gone from
+      Firebase
+- [ ] Reset test data on a tenant that has test-environment evidence,
+      then sweep — the bytes should come back
+- [ ] Check n_jtd for the history rows:
+      source_type_code='storage_cleanup', status 'completed'
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  npx tsc --noEmit   2 errors = identical to this checkout's pristine
+                     baseline (both are tsconfig deprecation notices
+                     from this environment's TS version, not code).
+                     Zero new.
+  Migration 006      probed whole in a rolled-back transaction:
+                     claim carries is_live; an ACTIVE row is never
+                     claimed; admin_reset_test_data retires ONLY the
+                     test-environment rows; the test row becomes
+                     claimable after the reset; settle removes it.
+  record()           probed live and rolled back with the exact
+                     payload the runner sends — wrote
+                     completed / storage_cleanup / system_job /
+                     system with counts intact, and due() correctly
+                     flipped to false afterwards.
+
+  NOT verified here: the Firebase delete itself. This container has
+  no service account, so the one step that needs real credentials is
+  yours to confirm — hence the profile-picture test above.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════
