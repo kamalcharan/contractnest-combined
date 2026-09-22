@@ -178,6 +178,139 @@ export async function deleteObject(objectPath: string): Promise<boolean> {
   }
 }
 
+export interface StoredObject {
+  path: string;
+  sizeBytes: number;
+  updated: string | null;
+  contentType: string | null;
+}
+
+export interface PrefixListing {
+  prefix: string;
+  objects: StoredObject[];
+  count: number;
+  bytes: number;
+  truncated: boolean;
+}
+
+/**
+ * Everything under a prefix. GCS has no real folders — a "folder" is just a
+ * shared path prefix — so this is the only way to know what a legacy tenant
+ * folder actually contains.
+ *
+ * `limit` caps what is RETURNED, not what is counted: the listing walks every
+ * page so count and bytes are the true totals even when only the first slice
+ * is handed back. An admin screen that under-reported the size of what a
+ * delete button is about to remove would be worse than useless.
+ */
+export async function listObjects(prefix: string, limit = 200): Promise<PrefixListing> {
+  const bucket = getApp().storage().bucket();
+  const objects: StoredObject[] = [];
+  let count = 0;
+  let bytes = 0;
+  let pageToken: string | undefined;
+
+  do {
+    const [files, nextQuery]: any = await bucket.getFiles({
+      prefix,
+      maxResults: 1000,
+      autoPaginate: false,
+      pageToken
+    });
+    for (const f of files) {
+      const size = Number(f.metadata?.size ?? 0);
+      count += 1;
+      bytes += Number.isFinite(size) ? size : 0;
+      if (objects.length < limit) {
+        objects.push({
+          path: f.name,
+          sizeBytes: Number.isFinite(size) ? size : 0,
+          updated: f.metadata?.updated ?? null,
+          contentType: f.metadata?.contentType ?? null
+        });
+      }
+    }
+    pageToken = nextQuery?.pageToken;
+  } while (pageToken);
+
+  return { prefix, objects, count, bytes, truncated: count > objects.length };
+}
+
+/** Top-level prefixes actually present in the bucket, with their totals. */
+export async function listTopLevelPrefixes(): Promise<Array<{ prefix: string; count: number; bytes: number }>> {
+  const bucket = getApp().storage().bucket();
+  const totals = new Map<string, { count: number; bytes: number }>();
+  let pageToken: string | undefined;
+
+  do {
+    const [files, nextQuery]: any = await bucket.getFiles({
+      maxResults: 1000,
+      autoPaginate: false,
+      pageToken
+    });
+    for (const f of files) {
+      // Objects sitting at the bucket root have no prefix of their own.
+      const top = f.name.includes('/') ? f.name.slice(0, f.name.indexOf('/')) : '(root)';
+      const size = Number(f.metadata?.size ?? 0);
+      const entry = totals.get(top) ?? { count: 0, bytes: 0 };
+      entry.count += 1;
+      entry.bytes += Number.isFinite(size) ? size : 0;
+      totals.set(top, entry);
+    }
+    pageToken = nextQuery?.pageToken;
+  } while (pageToken);
+
+  return [...totals.entries()]
+    .map(([prefix, v]) => ({ prefix, ...v }))
+    .sort((a, b) => b.bytes - a.bytes);
+}
+
+/**
+ * Delete everything under a prefix.
+ *
+ * Deliberately NOT a bucket.deleteFiles({ prefix }) one-liner: that reports
+ * nothing useful about what it removed, and this backs a button whose whole
+ * job is to say exactly what it did. Each object is deleted individually and
+ * counted, and a failure on one does not abandon the rest.
+ *
+ * This is the one operation here that destroys data a tenant uploaded, so the
+ * CALLER is responsible for refusing prefixes that must never be swept
+ * (contracts/, tenants/) — see storageAdminService.
+ */
+export async function deletePrefix(prefix: string): Promise<{ deleted: number; failed: number; bytes: number }> {
+  const bucket = getApp().storage().bucket();
+  let deleted = 0;
+  let failed = 0;
+  let bytes = 0;
+  let pageToken: string | undefined;
+
+  do {
+    const [files, nextQuery]: any = await bucket.getFiles({
+      prefix,
+      maxResults: 1000,
+      autoPaginate: false,
+      pageToken
+    });
+    for (const f of files) {
+      const size = Number(f.metadata?.size ?? 0);
+      try {
+        await f.delete({ ignoreNotFound: true });
+        deleted += 1;
+        bytes += Number.isFinite(size) ? size : 0;
+      } catch (error) {
+        failed += 1;
+        captureException(error instanceof Error ? error : new Error(String(error)), {
+          tags: { source: 'evidence_storage', action: 'deletePrefix' },
+          extra: { objectPath: f.name }
+        });
+      }
+    }
+    pageToken = nextQuery?.pageToken;
+  } while (pageToken);
+
+  return { deleted, failed, bytes };
+}
+
 /** Surfaced by the health endpoint so a misconfiguration is visible before an upload fails. */
 export function isConfigured(): boolean {
   try {

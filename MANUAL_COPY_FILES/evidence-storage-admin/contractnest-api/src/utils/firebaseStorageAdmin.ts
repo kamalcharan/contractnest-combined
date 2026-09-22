@@ -99,6 +99,47 @@ export async function signReadUrl(objectPath: string, fileName?: string): Promis
 }
 
 /**
+ * Saves a buffer straight to storage with the Admin SDK.
+ *
+ * For uploads that already reached our server as multipart (the tenant logo and
+ * the integration QR): there is no point handing the client a signed URL for
+ * bytes we are holding. Same bucket, same paths, same registry — only the
+ * transport differs.
+ */
+export async function saveBuffer(
+  objectPath: string,
+  buffer: Buffer,
+  mimeType: string,
+  metadata?: Record<string, string>
+): Promise<number> {
+  await file(objectPath).save(buffer, {
+    contentType: mimeType,
+    resumable: false,
+    metadata: { contentType: mimeType, ...(metadata ? { metadata } : {}) }
+  });
+  return buffer.length;
+}
+
+/**
+ * A DURABLE public URL for an identity asset.
+ *
+ * Contract evidence is deny-all + signed per viewer. Identity assets are not:
+ * a tenant's logo is already on every invoice and on the public contract-review
+ * page, and a payment QR is printed and stuck on a desk. They are public by
+ * nature, they must survive in an emailed PDF long after any signature would
+ * expire, and 85 call sites across the product store exactly this shape today.
+ *
+ * So `tenants/**` is public-read in the storage rules and this returns the
+ * plain media URL. Nothing else in the bucket is readable without a signature.
+ * Note this is rules-based rather than per-object ACLs, which uniform
+ * bucket-level access would refuse.
+ */
+export function publicUrl(objectPath: string): string {
+  const bucket = process.env.VITE_FIREBASE_STORAGE_BUCKET || '';
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+}
+
+/**
  * The true size of what Firebase actually holds. The size a client declares at
  * slot request is a claim; this is the fact that gets metered.
  */
