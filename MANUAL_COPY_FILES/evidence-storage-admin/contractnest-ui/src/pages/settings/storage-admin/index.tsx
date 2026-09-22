@@ -15,12 +15,13 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft, HardDrive, RefreshCw, Trash2, AlertTriangle,
-  ShieldCheck, FolderOpen, Loader2, X,
+  ShieldCheck, FolderOpen, Loader2, X, Eye, Building2, Ghost,
 } from 'lucide-react';
 import { useInvoiceTheme } from '@/pages/invoices/ui';
 import { formatStorageBytes } from '@/utils/storageFormat';
 import {
   useStorageOverview, useSweepStatus, useRunSweep, useDeletePrefix, usePrefixContents,
+  useViewObject,
   type PrefixRow,
 } from '@/hooks/queries/useStorageAdminQueries';
 
@@ -37,6 +38,7 @@ const StorageAdminPage: React.FC = () => {
   const sweep = useSweepStatus();
   const runSweep = useRunSweep();
   const deletePrefix = useDeletePrefix();
+  const viewObject = useViewObject();
 
   const [browsing, setBrowsing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<PrefixRow | null>(null);
@@ -171,15 +173,31 @@ const StorageAdminPage: React.FC = () => {
                       </div>
                       <p className="text-xs mt-1" style={{ color: dim }}>{meta.note}</p>
 
-                      {row.tenants.length > 0 && (
+                      {/* Whose folder is this. A bare prefix tells an admin
+                          nothing; the tenant NAME is the thing they need. */}
+                      {row.tenants.length > 0 ? (
                         <p className="text-xs mt-1.5" style={{ color: shared ? warn : dim }}>
-                          {shared && <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />}
+                          {shared
+                            ? <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />
+                            : <Building2 className="w-3 h-3 inline mr-1 -mt-0.5" />}
                           {shared
                             ? `Shared by ${row.tenants.length} tenants — deleting removes all of their files: `
                             : 'Tenant: '}
-                          <strong>{row.tenants.map(t => t.name || t.id).join(', ')}</strong>
+                          <strong style={{ color: ink }}>{row.tenants.map(t => t.name || t.id).join(', ')}</strong>
+                          {row.ownerTrace === 'id_prefix' && (
+                            <span style={{ color: dim }}> · matched from the id in the folder name</span>
+                          )}
                         </p>
-                      )}
+                      ) : row.ownerTrace === 'orphaned' ? (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ backgroundColor: `${warn}12`, color: warn }}>
+                          <Ghost className="w-3 h-3 inline mr-1 -mt-0.5" />
+                          <strong>Tenant no longer exists.</strong>{' '}
+                          <span style={{ color: dim }}>
+                            No tenant has an id starting <code>{row.tenantIdFragment}</code> — this folder
+                            outlived the workspace that created it.
+                          </span>
+                        </p>
+                      ) : null}
 
                       {row.references.length > 0 && (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ backgroundColor: `${ok}12`, color: ink }}>
@@ -243,9 +261,23 @@ const StorageAdminPage: React.FC = () => {
                         <>
                           <ul className="max-h-64 overflow-auto text-xs divide-y" style={{ borderColor: `${ink}12` }}>
                             {(contents.data?.objects ?? []).map((o: any) => (
-                              <li key={o.path} className="flex justify-between gap-3 px-3 py-1.5">
+                              <li key={o.path} className="flex items-center justify-between gap-3 px-3 py-1.5">
                                 <span className="truncate" style={{ color: ink }}>{o.path}</span>
-                                <span className="shrink-0" style={{ color: dim }}>{formatStorageBytes(o.sizeBytes)}</span>
+                                <span className="flex items-center gap-2 shrink-0">
+                                  <span style={{ color: dim }}>{formatStorageBytes(o.sizeBytes)}</span>
+                                  <button
+                                    type="button"
+                                    disabled={viewObject.isPending}
+                                    onClick={() => viewObject.mutate(o.path, {
+                                      onSuccess: (r) => r?.url && window.open(r.url, '_blank', 'noopener,noreferrer'),
+                                    })}
+                                    className="px-2 py-0.5 rounded-md text-[11px] font-semibold flex items-center gap-1 disabled:opacity-50"
+                                    style={{ backgroundColor: `${ink}0d`, color: ink }}
+                                    title="Open with a short-lived link"
+                                  >
+                                    <Eye className="w-3 h-3" /> View
+                                  </button>
+                                </span>
                               </li>
                             ))}
                           </ul>
@@ -286,6 +318,19 @@ const StorageAdminPage: React.FC = () => {
               {confirming.count.toLocaleString('en-IN')} file{confirming.count === 1 ? '' : 's'},
               {' '}{formatStorageBytes(confirming.bytes)}. This cannot be undone.
             </p>
+
+            {confirming.ownerTrace === 'orphaned' && (
+              <p className="text-sm mb-2 p-2 rounded-lg" style={{ backgroundColor: `${warn}14`, color: warn }}>
+                The tenant that owned this folder no longer exists. Nothing in the
+                product points at these files.
+              </p>
+            )}
+
+            {confirming.tenants.length === 1 && (
+              <p className="text-sm mb-2" style={{ color: ink }}>
+                Belongs to <strong>{confirming.tenants[0].name || confirming.tenants[0].id}</strong>.
+              </p>
+            )}
 
             {confirming.tenants.length > 1 && (
               <p className="text-sm mb-2 p-2 rounded-lg" style={{ backgroundColor: `${warn}14`, color: warn }}>

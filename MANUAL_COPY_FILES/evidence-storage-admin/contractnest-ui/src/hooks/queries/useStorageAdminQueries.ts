@@ -11,6 +11,8 @@ import api from '@/services/api';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
 
 export type PrefixKind = 'evidence' | 'identity' | 'legacy' | 'unknown';
+/** How a folder was traced to a tenant. 'orphaned' = the tenant is gone. */
+export type OwnerTrace = 'linked' | 'id_prefix' | 'orphaned' | 'unknown';
 
 export interface PrefixRow {
   prefix: string;
@@ -22,6 +24,8 @@ export interface PrefixRow {
   missingFromBucket?: boolean;
   /** Live rows still pointing into this prefix. Non-empty means not deletable. */
   references: Array<{ kind: string; label: string | null }>;
+  ownerTrace: OwnerTrace;
+  tenantIdFragment?: string;
 }
 
 export interface StorageOverview {
@@ -103,6 +107,14 @@ export const useRunSweep = () => {
     onError: () => vaniToast.error('Sweep failed', { message: 'Could not run the cleanup sweep.' }),
   });
 };
+
+/** A short-lived link to look at one object before deciding its fate. */
+export const useViewObject = () =>
+  useMutation({
+    mutationFn: async (path: string): Promise<{ url: string }> =>
+      unwrap(await api.get('/api/admin/storage/view', { params: { path } })),
+    onError: () => vaniToast.error('Could not open that file'),
+  });
 
 export const useDeletePrefix = () => {
   const queryClient = useQueryClient();

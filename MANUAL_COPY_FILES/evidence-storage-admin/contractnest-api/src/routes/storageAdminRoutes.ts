@@ -10,6 +10,7 @@
 //   GET  /overview       every prefix in the bucket, classified, with owners
 //   GET  /browse         what is actually inside one prefix
 //   POST /prefix/delete  remove a legacy / unaccounted-for prefix
+//   GET  /view           a short-lived link to look at one object
 //
 // The delete is the only destructive action here and the only one that
 // removes files a tenant uploaded. contracts/ and tenants/ are refused by
@@ -105,6 +106,20 @@ router.post('/prefix/delete', sweepLimit, async (req: express.Request, res: expr
   res.status(status).json({
     success: result.success,
     data: result,
+    error: result.success ? undefined : { code: result.reason },
+    metadata: { timestamp: new Date().toISOString() },
+  });
+});
+
+// A short-lived link to inspect one object. Not limited to the live
+// namespaces on purpose: legacy and orphaned files have no other viewer, and
+// looking before deleting is the point of this screen.
+router.get('/view', async (req: express.Request, res: express.Response) => {
+  const objectPath = String(req.query.path ?? '');
+  const result = await storageAdminService.viewUrl(objectPath);
+  res.status(result.success ? 200 : result.reason === 'invalid_path' ? 400 : 500).json({
+    success: result.success,
+    data: result.success ? { url: result.url } : undefined,
     error: result.success ? undefined : { code: result.reason },
     metadata: { timestamp: new Date().toISOString() },
   });

@@ -34,6 +34,7 @@ import {
   listObjects,
   listTopLevelPrefixes,
   deletePrefix,
+  signReadUrl,
   isConfigured,
   type PrefixListing,
 } from '../utils/firebaseStorageAdmin';
@@ -43,6 +44,17 @@ import { captureException } from '../utils/sentry';
 const PROTECTED_PREFIXES = ['contracts', 'tenants'];
 
 export type PrefixKind = 'evidence' | 'identity' | 'legacy' | 'unknown';
+
+/**
+ * How confidently a prefix was traced back to a tenant.
+ *   linked    - a tenant's storage_path points here
+ *   id_prefix - no storage_path, but the legacy folder name embeds the first 8
+ *               characters of a tenant's UUID (tenant_<id8>_<epoch>)
+ *   orphaned  - the name embeds an id that matches NO tenant. The tenant was
+ *               deleted and these files outlived it.
+ *   unknown   - not a per-tenant folder at all
+ */
+export type OwnerTrace = 'linked' | 'id_prefix' | 'orphaned' | 'unknown';
 
 export interface PrefixRow {
   prefix: string;
@@ -59,6 +71,10 @@ export interface PrefixRow {
    * deleting would break a logo, an avatar, a payment QR or a stored file.
    */
   references: Array<{ kind: string; label: string | null }>;
+  /** How the tenants below were established. See OwnerTrace. */
+  ownerTrace: OwnerTrace;
+  /** The id fragment in the folder name, when it has one. Shown when orphaned. */
+  tenantIdFragment?: string;
 }
 
 export interface StorageOverview {
@@ -112,23 +128,27 @@ class StorageAdminService {
     if (!isConfigured()) return { ...empty, reason: 'not_configured' };
 
     try {
-      const [buckets, owners, registry, references] = await Promise.all([
+      const [buckets, owners, registry, references, byIdPrefix] = await Promise.all([
         listTopLevelPrefixes(),
         this.legacyOwners(),
         this.registryTotals(),
         this.references(),
+        this.tenantsByIdPrefix(),
       ]);
 
       const rows: PrefixRow[] = buckets.map(b => {
         const refs = references[b.prefix] ?? [];
+        const owned = this.traceOwner(b.prefix, owners, byIdPrefix);
         return {
           prefix: b.prefix,
           kind: this.classify(b.prefix),
           count: b.count,
           bytes: b.bytes,
           deletable: this.isDeletable(b.prefix, refs.length),
-          tenants: owners.get(b.prefix) ?? [],
+          tenants: owned.tenants,
           references: refs,
+          ownerTrace: owned.trace,
+          tenantIdFragment: owned.fragment,
         };
       });
 
@@ -141,7 +161,7 @@ class StorageAdminService {
         rows.push({
           prefix, kind: 'legacy', count: 0, bytes: 0,
           deletable: false, tenants, missingFromBucket: true,
-          references: references[prefix] ?? [],
+          references: references[prefix] ?? [], ownerTrace: 'linked',
         });
       }
 
@@ -225,6 +245,62 @@ class StorageAdminService {
         tags: { source: 'storage_admin', action: 'remove' }, extra: { prefix },
       });
       return { success: false, reason: 'delete_failed' };
+    }
+  }
+
+  /**
+   * Work out whose folder this is. A long opaque prefix is useless to an admin
+   * deciding whether to delete 4.9 MB, and storage_path alone does not answer
+   * it: folders outlive the tenant rows that named them.
+   */
+  private traceOwner(
+    prefix: string,
+    owners: Map<string, Array<{ id: string; name: string | null }>>,
+    byIdPrefix: Map<string, { id: string; name: string | null }>
+  ): { tenants: Array<{ id: string; name: string | null }>; trace: OwnerTrace; fragment?: string } {
+    const linked = owners.get(prefix);
+    if (linked?.length) return { tenants: linked, trace: 'linked' };
+
+    // Legacy folders are named tenant_<first 8 of uuid>_<epoch>.
+    const match = /^tenant_([0-9a-f]{8})_/.exec(prefix);
+    if (!match) return { tenants: [], trace: 'unknown' };
+
+    const fragment = match[1];
+    const hit = byIdPrefix.get(fragment);
+    if (hit) return { tenants: [hit], trace: 'id_prefix', fragment };
+
+    // Nothing matches: the tenant is gone and its files outlived it.
+    return { tenants: [], trace: 'orphaned', fragment };
+  }
+
+  /** first 8 characters of each tenant id -> that tenant. */
+  private async tenantsByIdPrefix(): Promise<Map<string, { id: string; name: string | null }>> {
+    const map = new Map<string, { id: string; name: string | null }>();
+    const supabase = this.client();
+    if (!supabase) return map;
+    const { data, error } = await supabase.from('t_tenants').select('id, name');
+    if (error || !data) return map;
+    for (const row of data as any[]) {
+      map.set(String(row.id).slice(0, 8), { id: row.id, name: row.name ?? null });
+    }
+    return map;
+  }
+
+  /**
+   * A short-lived link to look at one object before deciding its fate.
+   * Deliberately NOT restricted to the live namespaces: the whole point is to
+   * inspect legacy and orphaned files, which no other surface can open.
+   */
+  async viewUrl(objectPath: string): Promise<{ success: boolean; reason?: string; url?: string }> {
+    if (!isConfigured()) return { success: false, reason: 'not_configured' };
+    if (!objectPath || objectPath.includes('..')) return { success: false, reason: 'invalid_path' };
+    try {
+      return { success: true, url: await signReadUrl(objectPath) };
+    } catch (error) {
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'storage_admin', action: 'viewUrl' }, extra: { objectPath },
+      });
+      return { success: false, reason: 'sign_failed' };
     }
   }
 

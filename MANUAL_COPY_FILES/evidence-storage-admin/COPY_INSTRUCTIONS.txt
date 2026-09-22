@@ -25,6 +25,38 @@ their files is the registry's job (evidence_mark_deleted) so the sweep
 can reclaim it properly.
 
 SUBMODULES AFFECTED: contractnest-api, contractnest-ui
+
+WHERE TO FIND IT
+───────────────────────────────────────────────────────────────────
+Admin menu -> Implementation Toolkit -> Storage Admin
+(/settings/storage-admin). It was routed but unlinked in the first
+cut, so the only way in was to type the URL.
+
+WHOSE FOLDER IS IT (added after the first screenshot)
+───────────────────────────────────────────────────────────────────
+A bare prefix like tenant_542dc70a_1760178761504 tells nobody
+anything, so every row now names its tenant, traced three ways:
+
+  Tenant: <name>            a tenant's storage_path points here
+  Tenant: <name> · matched from the id in the folder name
+                            no storage_path, but legacy folders are
+                            named tenant_<first 8 of uuid>_<epoch>
+                            and that id matches a live tenant
+  Tenant no longer exists   the embedded id matches NO tenant. The
+                            workspace was deleted and its files
+                            outlived it.
+
+That last case is real: tenant_542dc70a_1760178761504 holds 4.9 MB
+for a tenant that is not in t_tenants at all. It is also the safest
+possible thing to delete, and the confirm dialog says so.
+
+VIEW BEFORE YOU DELETE
+───────────────────────────────────────────────────────────────────
+Every file under "View contents" now has a View button that mints a
+short-lived signed link (GET /api/admin/storage/view). Deliberately
+not restricted to the live namespaces: legacy and orphaned files have
+no other viewer in the product, and looking before deleting is the
+entire point of this screen.
 DATABASE: migration evidence-storage/007_prefix_references.sql
           ALREADY APPLIED LIVE 2026-09-22. Source-of-record copy only.
 
