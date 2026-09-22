@@ -18,12 +18,32 @@ the other half.
 
 SUBMODULES AFFECTED: contractnest-api, contractnest-edge (migration copy)
 
-⚠️ COPY ORDER — THIS BATCH MUST GO AFTER evidence-storage-broker
+⚠️ COPY THIS BATCH LAST
 ───────────────────────────────────────────────────────────────────
-Its src/index.ts is a SUPERSET of the broker batch's copy (mounts
-/api/evidence AND /api/admin/storage, and starts the sweep timer).
-Copy the broker batch first, or copy this one last; either way this
-file must be the one that survives.
+It carries SUPERSETS of four files that earlier evidence batches also
+stage, so copying it last is the only ordering rule:
+
+  src/index.ts                     ⊃ broker  (mounts /api/evidence AND
+                                    /api/admin/storage, starts the timer)
+  src/services/evidenceStorageService.ts  ⊃ broker, = migrate (batch D)
+  src/services/integrationService.ts      = migrate
+  src/services/tenantProfileService.ts    = migrate
+  src/utils/firebaseStorageAdmin.ts       = broker
+
+WHY THESE ARE HERE (a real break, 2026-09-22): the first version of
+this file told you to copy broker and then this batch. The broker's
+evidenceStorageService.ts is a 239-line copy that PREDATES
+saveIdentityAsset; re-copying broker clobbered batch D's 315-line
+version, and integrationService.ts — which calls saveIdentityAsset —
+stopped compiling:
+
+  src/services/integrationService.ts:690:50 - error TS2339:
+  Property 'saveIdentityAsset' does not exist on type
+  'EvidenceStorageService'.
+
+Carrying the supersets here means any copy order ends correct as long
+as this batch goes last. Both orders were assembled over pristine main
+and typechecked here.
 
 DATABASE — ALREADY DONE, DO NOT RE-RUN
 ───────────────────────────────────────────────────────────────────
@@ -50,7 +70,7 @@ runner:
   per-step pattern those functions already use — a storage failure
   can never break a reset.
 
-FILES (contractnest-api) — 3
+FILES (contractnest-api) — 3 new + 4 carried supersets
 ───────────────────────────────────────────────────────────────────
   src/services/storageCleanupService.ts                        NEW
       runSweep() and the timer. Hourly tick; due() decides whether a
@@ -117,6 +137,7 @@ git pull origin claude/nifty-noether-vrovnh
 STEP 2: Copy Files  (broker FIRST, then this batch)
 ───────────────────────────────────────────────────────────────────
 Copy-Item "MANUAL_COPY_FILES\evidence-storage-broker\contractnest-api\*"       -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-migrate\contractnest-api\*"      -Destination "contractnest-api\"  -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\evidence-storage-sweep-runner\contractnest-api\*" -Destination "contractnest-api\"  -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\evidence-storage-sweep-runner\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
@@ -156,7 +177,10 @@ VERIFIED HERE
   npx tsc --noEmit   2 errors = identical to this checkout's pristine
                      baseline (both are tsconfig deprecation notices
                      from this environment's TS version, not code).
-                     Zero new.
+                     Zero new. Checked TWICE over pristine main, in
+                     both copy orders (broker->migrate->sweep, and
+                     migrate->broker->sweep), since the ordering break
+                     above is exactly what this batch now prevents.
   Migration 006      probed whole in a rolled-back transaction:
                      claim carries is_live; an ACTIVE row is never
                      claimed; admin_reset_test_data retires ONLY the
