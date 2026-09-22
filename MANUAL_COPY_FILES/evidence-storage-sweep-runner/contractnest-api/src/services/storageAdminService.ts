@@ -56,6 +56,15 @@ export type PrefixKind = 'evidence' | 'identity' | 'legacy' | 'unknown';
  */
 export type OwnerTrace = 'linked' | 'id_prefix' | 'orphaned' | 'unknown';
 
+export interface TenantRef {
+  id: string;
+  name: string | null;
+  /** t_tenants.is_test — 7 of the 10 live tenants are test workspaces. */
+  isTest: boolean;
+  /** t_tenants.status. All rows read 'active' today; a DELETED tenant has no row at all. */
+  status: string | null;
+}
+
 export interface PrefixRow {
   prefix: string;
   kind: PrefixKind;
@@ -63,7 +72,7 @@ export interface PrefixRow {
   bytes: number;
   deletable: boolean;
   /** Tenants whose storage_path points here. More than one is a real hazard. */
-  tenants: Array<{ id: string; name: string | null }>;
+  tenants: TenantRef[];
   /** Set when a legacy folder is recorded on a tenant but absent from the bucket. */
   missingFromBucket?: boolean;
   /**
@@ -255,9 +264,9 @@ class StorageAdminService {
    */
   private traceOwner(
     prefix: string,
-    owners: Map<string, Array<{ id: string; name: string | null }>>,
-    byIdPrefix: Map<string, { id: string; name: string | null }>
-  ): { tenants: Array<{ id: string; name: string | null }>; trace: OwnerTrace; fragment?: string } {
+    owners: Map<string, TenantRef[]>,
+    byIdPrefix: Map<string, TenantRef>
+  ): { tenants: TenantRef[]; trace: OwnerTrace; fragment?: string } {
     const linked = owners.get(prefix);
     if (linked?.length) return { tenants: linked, trace: 'linked' };
 
@@ -269,19 +278,23 @@ class StorageAdminService {
     const hit = byIdPrefix.get(fragment);
     if (hit) return { tenants: [hit], trace: 'id_prefix', fragment };
 
-    // Nothing matches: the tenant is gone and its files outlived it.
+    // Nothing matches. Tenants are HARD deleted - there is no status='deleted'
+    // row to find - so an unmatched id means the workspace is gone entirely.
     return { tenants: [], trace: 'orphaned', fragment };
   }
 
   /** first 8 characters of each tenant id -> that tenant. */
-  private async tenantsByIdPrefix(): Promise<Map<string, { id: string; name: string | null }>> {
-    const map = new Map<string, { id: string; name: string | null }>();
+  private async tenantsByIdPrefix(): Promise<Map<string, TenantRef>> {
+    const map = new Map<string, TenantRef>();
     const supabase = this.client();
     if (!supabase) return map;
-    const { data, error } = await supabase.from('t_tenants').select('id, name');
+    const { data, error } = await supabase.from('t_tenants').select('id, name, is_test, status');
     if (error || !data) return map;
     for (const row of data as any[]) {
-      map.set(String(row.id).slice(0, 8), { id: row.id, name: row.name ?? null });
+      map.set(String(row.id).slice(0, 8), {
+        id: row.id, name: row.name ?? null,
+        isTest: row.is_test === true, status: row.status ?? null,
+      });
     }
     return map;
   }
@@ -305,18 +318,21 @@ class StorageAdminService {
   }
 
   /** prefix -> the tenants whose storage_path points at it. */
-  private async legacyOwners(): Promise<Map<string, Array<{ id: string; name: string | null }>>> {
-    const map = new Map<string, Array<{ id: string; name: string | null }>>();
+  private async legacyOwners(): Promise<Map<string, TenantRef[]>> {
+    const map = new Map<string, TenantRef[]>();
     const supabase = this.client();
     if (!supabase) return map;
     const { data, error } = await supabase
       .from('t_tenants')
-      .select('id, name, storage_path')
+      .select('id, name, is_test, status, storage_path')
       .not('storage_path', 'is', null);
     if (error || !data) return map;
     for (const row of data as any[]) {
       const list = map.get(row.storage_path) ?? [];
-      list.push({ id: row.id, name: row.name ?? null });
+      list.push({
+        id: row.id, name: row.name ?? null,
+        isTest: row.is_test === true, status: row.status ?? null,
+      });
       map.set(row.storage_path, list);
     }
     return map;

@@ -32,6 +32,17 @@ const KIND_LABEL: Record<string, { label: string; note: string }> = {
   unknown:  { label: 'Unaccounted for',  note: 'Nothing in the product writes here. Most likely left over.' },
 };
 
+/** A tenant, told apart at a glance: real workspaces vs test ones. */
+const TenantName: React.FC<{ tenant: { name: string | null; id: string; isTest: boolean }; ink: string; dim: string }> = ({ tenant, ink, dim }) => (
+  <span>
+    <strong style={{ color: ink }}>{tenant.name || tenant.id}</strong>
+    {tenant.isTest && (
+      <span className="ml-1 text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded align-middle"
+            style={{ backgroundColor: `${dim}22`, color: dim }}>test</span>
+    )}
+  </span>
+);
+
 const StorageAdminPage: React.FC = () => {
   const { colors, card } = useInvoiceTheme();
   const overview = useStorageOverview();
@@ -183,7 +194,15 @@ const StorageAdminPage: React.FC = () => {
                           {shared
                             ? `Shared by ${row.tenants.length} tenants — deleting removes all of their files: `
                             : 'Tenant: '}
-                          <strong style={{ color: ink }}>{row.tenants.map(t => t.name || t.id).join(', ')}</strong>
+                          {row.tenants.map((t, i) => (
+                            <React.Fragment key={t.id + i}>
+                              {i > 0 && ', '}
+                              <TenantName tenant={t} ink={ink} dim={dim} />
+                            </React.Fragment>
+                          ))}
+                          {row.tenants.every(t => t.isTest) && (
+                            <span style={{ color: dim }}> · test data only</span>
+                          )}
                           {row.ownerTrace === 'id_prefix' && (
                             <span style={{ color: dim }}> · matched from the id in the folder name</span>
                           )}
@@ -191,10 +210,11 @@ const StorageAdminPage: React.FC = () => {
                       ) : row.ownerTrace === 'orphaned' ? (
                         <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ backgroundColor: `${warn}12`, color: warn }}>
                           <Ghost className="w-3 h-3 inline mr-1 -mt-0.5" />
-                          <strong>Tenant no longer exists.</strong>{' '}
+                          <strong>Tenant already deleted from the system.</strong>{' '}
                           <span style={{ color: dim }}>
-                            No tenant has an id starting <code>{row.tenantIdFragment}</code> — this folder
-                            outlived the workspace that created it.
+                            No tenant has an id starting <code>{row.tenantIdFragment}</code>. Tenants are
+                            removed outright rather than marked deleted, so nothing in the database
+                            references these files — only the bucket still holds them.
                           </span>
                         </p>
                       ) : null}
@@ -321,21 +341,22 @@ const StorageAdminPage: React.FC = () => {
 
             {confirming.ownerTrace === 'orphaned' && (
               <p className="text-sm mb-2 p-2 rounded-lg" style={{ backgroundColor: `${warn}14`, color: warn }}>
-                The tenant that owned this folder no longer exists. Nothing in the
-                product points at these files.
+                The tenant that owned this folder was deleted from the system. Nothing
+                in the database references these files.
               </p>
             )}
 
             {confirming.tenants.length === 1 && (
               <p className="text-sm mb-2" style={{ color: ink }}>
-                Belongs to <strong>{confirming.tenants[0].name || confirming.tenants[0].id}</strong>.
+                Belongs to <TenantName tenant={confirming.tenants[0]} ink={ink} dim={dim} />
+                {confirming.tenants[0].isTest && <span style={{ color: dim }}> — a test workspace.</span>}
               </p>
             )}
 
             {confirming.tenants.length > 1 && (
               <p className="text-sm mb-2 p-2 rounded-lg" style={{ backgroundColor: `${warn}14`, color: warn }}>
                 This folder is shared by {confirming.tenants.length} tenants —{' '}
-                <strong>{confirming.tenants.map(t => t.name || t.id).join(', ')}</strong>.
+                <strong>{confirming.tenants.map(t => (t.name || t.id) + (t.isTest ? ' (test)' : '')).join(', ')}</strong>.
                 All of them lose these files.
               </p>
             )}

@@ -14,13 +14,21 @@ export type PrefixKind = 'evidence' | 'identity' | 'legacy' | 'unknown';
 /** How a folder was traced to a tenant. 'orphaned' = the tenant is gone. */
 export type OwnerTrace = 'linked' | 'id_prefix' | 'orphaned' | 'unknown';
 
+export interface TenantRef {
+  id: string;
+  name: string | null;
+  /** A test workspace. 7 of the 10 live tenants are. */
+  isTest: boolean;
+  status: string | null;
+}
+
 export interface PrefixRow {
   prefix: string;
   kind: PrefixKind;
   count: number;
   bytes: number;
   deletable: boolean;
-  tenants: Array<{ id: string; name: string | null }>;
+  tenants: TenantRef[];
   missingFromBucket?: boolean;
   /** Live rows still pointing into this prefix. Non-empty means not deletable. */
   references: Array<{ kind: string; label: string | null }>;
