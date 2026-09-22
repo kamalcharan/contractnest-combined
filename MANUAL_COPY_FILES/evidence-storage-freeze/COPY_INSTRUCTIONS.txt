@@ -1,0 +1,159 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-freeze               (Evidence Storage — F)
+Service evidence moves onto the broker
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+───────────────────────────────────────────────────────────────────
+The point of the whole redesign. Until now the storage meter read 0
+for everyone because nothing wrote contract evidence through the
+broker. Service execution still used the legacy per-tenant storage API
+and stored a durable public URL.
+
+Now: file → evidence broker (slot → PUT → confirm) →
+create_service_evidence carrying the registry id. The file lives under
+contracts/**, is METERED against the tenant's 40 MB quota, and is read
+back through a short-TTL signed URL instead of a durable public one.
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
+DATABASE: migration evidence-storage/008 ALREADY APPLIED LIVE
+          2026-09-22. Source-of-record copy only — it DROPs a
+          function, so a second run fails.
+
+⚠️ AN EDGE FUNCTION MUST BE REDEPLOYED
+───────────────────────────────────────────────────────────────────
+contractnest-edge/supabase/functions/service-execution/index.ts now
+forwards p_evidence_id. Until you deploy it, uploads still work but
+the registry link is never stored, so the file is orphaned from its
+service record (and the sweeper will eventually reclaim it as an
+unconfirmed orphan). Deploy AFTER copying:
+
+    supabase functions deploy service-execution
+
+WHY THIS TURNED OUT SMALL
+───────────────────────────────────────────────────────────────────
+Measured before writing anything:
+
+    t_service_evidence        0 rows
+    t_contract_attachments    0 rows
+
+No service evidence has EVER been captured in production. So this is a
+clean swap of an unused write path — no data migration, no URLs to
+preserve, no dual-read period. The EventAssetProgress UI wired to a
+non-existent endpoint is likewise unused rather than broken in flight.
+
+WHAT MIGRATION 008 DID
+───────────────────────────────────────────────────────────────────
+  t_service_evidence.evidence_id     -> t_contract_evidence(id)
+       The service row is still the SERVICE record (ticket, event,
+       block, proof kind); only the FILE moved. file_url is kept and
+       nullable so the five readers keep their shape.
+
+  create_service_evidence            gains p_evidence_id, and the
+       21-arg original is DROPPED rather than left beside it. A stale
+       overload has caught this codebase three times
+       (gs_checkin_guest, check_contact_duplicates,
+       jtd_escalate_payment_call) and that is not happening a fourth.
+
+  3 readers now emit evidence_id     get_service_ticket_detail,
+       get_service_evidence_list, get_service_ticket_report
+
+FILES (contractnest-ui) — 2
+───────────────────────────────────────────────────────────────────
+  src/components/contracts/TicketEvidencePanel.tsx
+      Upload goes through useUploadEvidence (compress → slot → PUT →
+      confirm). The slot request is the GATE, so a refusal happens
+      before any bytes move, and 'quota_exceeded' / 'mime_not_allowed'
+      are surfaced as something the user can act on rather than a
+      generic failure.
+      ALSO NEW: a "Captured Evidence" list. The panel was previously
+      upload-only — there was no way to see what had been attached.
+      Each chip mints its own signed URL on click.
+
+  src/hooks/queries/useServiceExecution.ts
+      CreateEvidencePayload gains evidence_id and label.
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/nifty-noether-vrovnh
+
+STEP 2: Copy Files
+───────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-freeze\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-freeze\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Copied - evidence-storage-freeze" -ForegroundColor Green
+
+STEP 3: Deploy the edge function
+───────────────────────────────────────────────────────────────────
+cd contractnest-edge
+supabase functions deploy service-execution
+cd ..
+
+STEP 4: Run
+───────────────────────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] Open a service ticket, add evidence. The upload succeeds
+- [ ] THE ONE THAT MATTERS: the storage figure on the home screen
+      Workspace Account card and on Business Model > Subscription
+      MOVES by the size of that file. This is the first time anything
+      has ever registered against the meter
+- [ ] The file appears under "Captured Evidence" and opens on click
+- [ ] The opened URL expires — paste it somewhere, wait ~6 minutes,
+      and confirm it no longer loads. That is the difference between
+      this and the old durable public URL
+- [ ] In Firebase the object is under contracts/<contract-id>/...,
+      NOT under a tenant_ folder
+- [ ] t_service_evidence now has a row whose evidence_id points at a
+      t_contract_evidence row
+- [ ] Storage admin: the contracts/ prefix now shows a real size
+
+NOT DONE IN THIS BATCH, DELIBERATELY
+───────────────────────────────────────────────────────────────────
+storage.rules is NOT deployed. The file's own comment used to say
+"do not deploy until batch F" — that was wrong and has been corrected
+in place. Two client-SDK writers remain (/settings/storage pages, the
+two old FileUploaders) and they are deleted in batch E, so the rules
+deploy belongs AFTER E, not here.
+
+Separately, before they are deployed anywhere, verify that
+tenant_logos/ and tenant_integration_assets/ still load — they hold
+stw's and vikuna's logos and BBB's live payment QR, and the rules'
+catch-all denies them. Those are ?alt=media&token= download URLs and
+a download token is its own grant, so they SHOULD be unaffected — but
+that is an expectation, not a verified fact, and an earlier version of
+the storage admin screen made exactly this assumption about exactly
+these two prefixes and would have offered to delete them.
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  Migration 008 probed whole in a rolled-back transaction on live
+  data: column added, exactly ONE writer left carrying p_evidence_id,
+  all three readers rewritten, then a real round trip — an evidence
+  row created, create_service_evidence storing its id on the service
+  row, and BOTH get_service_ticket_detail and get_service_evidence_list
+  returning it. Then applied, and re-verified against pg_proc.
+  UI   npx tsc --noEmit   1168 = pristine baseline. Zero new.
+       npx vite build     passes (53s)
+
+  NOT verified here: the upload itself. No Firebase service account in
+  this container, so the slot → PUT → confirm chain against the real
+  bucket is yours to confirm — which is exactly what the meter test
+  above proves.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════

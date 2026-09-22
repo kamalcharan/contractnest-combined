@@ -27,12 +27,25 @@ rules_version = '2';
 // Writes are denied everywhere. The API is the only writer, through the Admin
 // SDK, which bypasses rules entirely.
 //
-// ⚠️ DO NOT DEPLOY UNTIL BATCH F.
-// Three UI surfaces still upload through the legacy /api/storage path, which
-// uses the Firebase CLIENT SDK with signInAnonymously() and IS governed by
-// these rules: the service-evidence panel (batch F), the /settings/storage
-// pages and the two old FileUploaders (the cleanup batch). Deploying before
-// those are migrated would break them.
+// ⚠️ DO NOT DEPLOY UNTIL BATCH E (corrected 2026-09-22 — it used to say F).
+//
+// Batch F migrated the service-evidence panel off the legacy /api/storage
+// path, but TWO client-SDK writers remain and are governed by these rules:
+// the /settings/storage pages and the two old FileUploaders. They are deleted
+// in batch E, and deploying before that breaks them.
+//
+// ⚠️ ALSO VERIFY BEFORE DEPLOYING — the catch-all below denies
+// tenant_logos/ and tenant_integration_assets/, which are NOT retired: they
+// hold stw's and vikuna's live logos and BBB's live payment QR (see
+// storage_prefix_references(), migration evidence-storage/007).
+//
+// Those are referenced as ?alt=media&token=... DOWNLOAD URLs, and a download
+// token is its own grant — not governed by these rules — so they should keep
+// working. That is the expectation, NOT a verified fact. Load BBB's payment
+// QR URL in a signed-out browser AFTER deploying to a staging bucket, or
+// migrate those assets into tenants/** first. Do not take it on trust: an
+// earlier version of the admin screen made exactly this assumption about
+// these two prefixes and would have offered to delete them.
 //
 // Deploy with:  firebase deploy --only storage
 // Verify with:  a client-SDK write must FAIL; a client-SDK read of a
