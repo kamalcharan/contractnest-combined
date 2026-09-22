@@ -27,26 +27,25 @@ rules_version = '2';
 // Writes are denied everywhere. The API is the only writer, through the Admin
 // SDK, which bypasses rules entirely.
 //
-// ⚠️ DO NOT DEPLOY UNTIL BATCH E (corrected 2026-09-22 — it used to say F).
+// ⚠️ SAFE TO DEPLOY AS OF BATCH E (2026-09-22).
 //
-// Batch F migrated the service-evidence panel off the legacy /api/storage
-// path, but TWO client-SDK writers remain and are governed by these rules:
-// the /settings/storage pages and the two old FileUploaders. They are deleted
-// in batch E, and deploying before that breaks them.
+// Batch E removed the last client-SDK writers: the /settings/storage pages,
+// StorageSetupStep, components/storage/*, components/common/FileUploader and
+// useStorageManagement are all deleted, block images now go through the broker,
+// and the never-used block-video uploader is gone. `grep -rn "firebase/storage"
+// src/` in contractnest-ui returns NOTHING. Nothing in the product writes to
+// this bucket except the API's Admin SDK, which bypasses rules entirely.
 //
-// ⚠️ ALSO VERIFY BEFORE DEPLOYING — the catch-all below denies
-// tenant_logos/ and tenant_integration_assets/, which are NOT retired: they
-// hold stw's and vikuna's live logos and BBB's live payment QR (see
-// storage_prefix_references(), migration evidence-storage/007).
-//
-// Those are referenced as ?alt=media&token=... DOWNLOAD URLs, and a download
-// token is its own grant — not governed by these rules — so they should keep
-// working. That is the expectation, NOT a verified fact. Load BBB's payment
-// QR URL in a signed-out browser AFTER deploying to a staging bucket, or
-// migrate those assets into tenants/** first. Do not take it on trust: an
-// earlier version of the admin screen made exactly this assumption about
-// these two prefixes and would have offered to delete them.
-//
+// The two shared asset folders below are allowed READ explicitly rather than
+// left to the catch-all. They hold LIVE production assets - stw's and vikuna's
+// logos, and BBB's payment QR (see storage_prefix_references(), migration
+// evidence-storage/007). They are referenced as ?alt=media&token=... download
+// URLs, and a download token is its own grant that these rules do not govern,
+// so they SHOULD survive the catch-all untouched. That is an expectation, not
+// a verified fact, and BBB's QR has already been destroyed twice by unrelated
+// bugs - so it is not something to bet on for the sake of one tidy rule.
+// Delete these two matches once those assets move into tenants/**.
+
 // Deploy with:  firebase deploy --only storage
 // Verify with:  a client-SDK write must FAIL; a client-SDK read of a
 //               contracts/ object must FAIL; an API-minted signed URL must
@@ -66,8 +65,19 @@ service firebase.storage {
       allow write: if false;
     }
 
-    // Anything else — including the legacy tenant_<uuid>_<epoch>/,
-    // tenant_logos/ and tenant_integration_assets/ prefixes being retired.
+    // Live shared asset folders from the old model. Read-only, and TEMPORARY:
+    // remove once these move into tenants/**. See the note at the top.
+    match /tenant_logos/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /tenant_integration_assets/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Anything else — including the legacy tenant_<uuid>_<epoch>/ folders,
+    // which the storage admin screen deletes rather than serves.
     match /{allPaths=**} {
       allow read, write: if false;
     }

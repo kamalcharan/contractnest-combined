@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-cleanup              (Evidence Storage — E)
+The per-tenant storage model is gone
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api (one deletion)
+DATABASE: none.
+
+⚠️ THIS BATCH DELETES FILES. Copy the 8 files, then run the delete
+commands in STEP 3 — a copy alone will not remove them.
+
+WHAT WAS NOT DEAD (the finding that shaped this)
+───────────────────────────────────────────────────────────────────
+E was scoped as "delete dead code". Three surfaces turned out to be
+LIVE and still writing through the Firebase client SDK, which is what
+was actually blocking the storage.rules deploy:
+
+  catalog-studio/blocks/new.tsx + [id]/edit.tsx
+      Block image upload. MIGRATED to the broker
+      (useUploadIdentityAsset('block_icon')). The
+      "Storage is not configured, please set up storage in Settings"
+      guard is gone with it - there is no folder to provision.
+
+  BlockWizard MediaStep
+      Block VIDEO upload, via components/common/FileUploader.
+      REMOVED rather than migrated: the broker's MIME allowlist has no
+      video types, and t_tenant_files shows ZERO block_videos have
+      ever been uploaded. Building unmetered video support for a
+      feature nobody has used was the wrong trade. YouTube, Vimeo and
+      a direct URL all still work; only the "Upload" source type went.
+
+  VaniWorkingStep  ← the important one
+      Still called POST /api/storage/setup on EVERY new tenant, so
+      every signup was still being given a legacy per-tenant folder.
+      This is POA point 2, and it would have kept recreating exactly
+      the mess the storage admin screen exists to clean up.
+
+FILES CHANGED (8)
+───────────────────────────────────────────────────────────────────
+  App.tsx                          routes for 5 deleted pages removed
+  VaniWorkingStep.tsx              storage provisioning task removed
+  catalog-studio/blocks/new.tsx    → broker
+  catalog-studio/blocks/[id]/edit.tsx  → broker
+  BlockWizard/.../MediaStep.tsx    video uploader + source type removed
+  types/onboardingTypes.ts         'storage-setup' step removed
+  utils/constants/settingsMenus.ts Storage Space group removed
+  utils/storageFormat.ts           stale comment
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/nifty-noether-vrovnh
+
+STEP 2: Copy Files
+───────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-cleanup\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 3: DELETE the dead files (required — copying does not remove)
+───────────────────────────────────────────────────────────────────
+cd contractnest-ui
+Remove-Item -Recurse -Force src\pages\settings\storage
+Remove-Item -Recurse -Force src\components\storage
+Remove-Item -Force src\pages\onboarding\steps\StorageSetupStep.tsx
+Remove-Item -Force src\components\common\FileUploader.tsx
+Remove-Item -Force src\hooks\useStorageManagement.ts
+cd ..\contractnest-api
+Remove-Item -Force "src\routes\storage copy.ts"
+cd ..
+
+Write-Host "Cleanup done" -ForegroundColor Green
+
+STEP 4: Run
+───────────────────────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] Settings no longer shows a "Storage Space" card (the one that
+      crashed). Storage now lives under Implementation Toolkit
+- [ ] Catalog Studio: create a block WITH an image. It uploads, and
+      the image renders. Check Firebase: the object is under
+      tenants/<tenant-id>/block_icon/, NOT a tenant_ folder
+- [ ] Edit a block and change its image — same
+- [ ] Block Wizard media step: YouTube / Vimeo / URL all still work;
+      there is no Upload option
+- [ ] Onboard a NEW tenant: the working step no longer shows
+      "Setting up cloud storage", finishes without it, and
+      t_tenants.storage_path stays NULL for that tenant.
+      THIS IS THE ONE THAT MATTERS — it stops new legacy folders
+- [ ] /api/storage is now uncalled by the UI (the routes still exist
+      server-side; see below)
+
+DELIBERATELY LEFT ALONE
+───────────────────────────────────────────────────────────────────
+  /api/storage routes stay mounted. Nothing in the UI calls them any
+  more, but t_tenant_files still holds 8 real rows (all signia's
+  contact photos and block images) and those files are still in the
+  bucket. Deleting the routes is safe for the app; it is not my call
+  whether those 8 files are disposable. They remain viewable from
+  Storage Admin -> View contents -> View.
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  UI tsc: compared the error SET against pristine main, not the count
+  — ZERO new errors, 6 removed. (A count comparison would have hidden
+  a real TS2304 from a dangling route, because the deleted files
+  carried more errors than the change introduced. That is how it was
+  actually caught.)
+  npx vite build passes.
+  grep -rn "firebase/storage" contractnest-ui/src/ now returns
+  NOTHING — no client-SDK writer is left anywhere, which is what
+  unblocks the storage.rules deploy.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════
