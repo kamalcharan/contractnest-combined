@@ -11,7 +11,7 @@ import { QueryProvider } from './providers/QueryProvider'; // TanStack Query Pro
 
 import './styles/globals.css';
 import './styles/layout.css';
-// import { Toaster } from 'react-hot-toast'; // Replaced with VaNiToast
+import { Toaster } from 'react-hot-toast';
 import { VaNiToastProviderWithGlobal } from './components/common/toast'; // VaNiToast
 import { initSentry } from './utils/sentry';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -80,7 +80,6 @@ import WelcomeStep from './pages/onboarding/steps/WelcomeStep';
 import OnboardingIndexPage from './pages/onboarding/index';
 import OnboardingLayout from './components/onboarding/OnboardingLayout';
 import OnboardingPendingPage from './pages/onboarding/OnboardingPendingPage';
-import StorageSetupStep from './pages/onboarding/steps/StorageSetupStep';
 import VaniIntroStep from '@/pages/onboarding/steps/VaniIntroStep';
 import UserProfileStep from '@/pages/onboarding/steps/userProfileStep';
 import BusinessDetailsStep from '@/pages/onboarding/steps/BusinessDetailsStep';
@@ -238,10 +237,6 @@ import CloseAccountPage from './pages/settings/business-profile/close-account';
 import IntegrationsPage from './pages/settings/integrations';
 
 // Storage Management Pages
-import StorageSetupPage from './pages/settings/storage/storagesetup';
-import StorageCompletePage from './pages/settings/storage/storagecomplete';
-import StorageManagementPage from './pages/settings/storage/storagemanagement';
-import CategoryFilesPage from './pages/settings/storage/categoryfiles';
 
 // Business Model - Admin Pages
 import PricingPlansAdminPage from './pages/settings/businessmodel/admin/pricing-plans';
@@ -386,8 +381,20 @@ const AppContent: React.FC = () => {
       <EnvironmentSwitchModal />
       {/* Browser warning banner - shows only for authenticated users on unsupported browsers */}
       <BrowserWarningBanner />
-      {/* Replaced react-hot-toast Toaster with VaNiToastProviderWithGlobal */}
-      {/* <Toaster position="bottom-right" /> */}
+      {/*
+        BOTH toast systems are mounted, deliberately.
+
+        vaniToast is the standard and what new code should use. But 68 files and
+        347 call sites still use react-hot-toast, and with its <Toaster>
+        commented out every one of them rendered NOTHING — including the error
+        paths in onboarding, where a new tenant hitting a failure saw no message
+        at all.
+
+        Remounting it is the stop-gap: those 347 calls work again today. The
+        real fix is migrating them to vaniToast file by file as each is touched,
+        after which this line goes for good.
+      */}
+      <Toaster position="bottom-right" />
       <MiscPageWrapper>
         <Routes>
           {/* [batch3-checkin] Group Session check-in */}
@@ -517,7 +524,6 @@ const AppContent: React.FC = () => {
   <Route index element={<OnboardingIndexPage />} />
   {/* Legacy onboarding routes — kept for backwards compat */}
   <Route path="welcome" element={<WelcomeStep />} />
-  <Route path="storage-setup" element={<StorageSetupStep />} />
   <Route path="business-basic" element={<BusinessBasicStep />} />
   <Route path="business-branding" element={<BusinessBrandingStep />} />
   <Route path="served-industries" element={<ServedIndustriesStep />} />
@@ -927,11 +933,6 @@ const AppContent: React.FC = () => {
             <Route path="sequencing" element={<SequencingSettingsPage />} />
 
             {/* Storage Management Routes */}
-            <Route path="storage/storagesetup" element={<StorageSetupPage />} />
-            <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
-            <Route path="storage/storagemanagement" element={<StorageManagementPage />} />
-
-            <Route path="storage/categoryfiles/:categoryId" element={<CategoryFilesPage />} />
 
             {/* Integration Settings */}
             <Route path="integrations" element={<IntegrationsPage />} />

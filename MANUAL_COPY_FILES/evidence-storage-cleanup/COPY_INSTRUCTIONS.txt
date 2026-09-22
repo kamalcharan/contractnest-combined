@@ -3,6 +3,25 @@ BATCH: evidence-storage-cleanup              (Evidence Storage — E)
 The per-tenant storage model is gone
 ═══════════════════════════════════════════════════════════════════
 
+🔗 MERGE E AND F TOGETHER — THEY CANNOT BE SPLIT
+───────────────────────────────────────────────────────────────────
+STEP 3 below deletes src/hooks/useStorageManagement.ts. The pristine
+src/components/contracts/TicketEvidencePanel.tsx still imports it, and
+the only version of that panel which does NOT is the one shipped by
+batch F (evidence-storage-freeze), where it uses the broker instead.
+
+Proved here, not assumed: assembling every evidence batch EXCEPT F and
+running the UI typecheck produces exactly one new error —
+
+    TicketEvidencePanel.tsx  TS2307: Cannot find module
+    '@/hooks/useStorageManagement'
+
+Adding F clears it: zero new errors against pristine main, 6 removed,
+vite build passes.
+
+So E without F does not build. Merge both, or hold both.
+
+
 SUBMODULES AFFECTED: contractnest-ui, contractnest-api (one deletion)
 DATABASE: none.
 

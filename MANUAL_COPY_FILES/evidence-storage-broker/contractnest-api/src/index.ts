@@ -30,6 +30,8 @@ import systemRoutes from './routes/systemRoutes';
 import jtdRoutes from './routes/jtd';
 import collectionsRoutes from './routes/collectionsRoutes';
 import evidenceRoutes from './routes/evidenceRoutes';
+import storageAdminRoutes from './routes/storageAdminRoutes';
+import { startStorageCleanupTimer } from './services/storageCleanupService';
 import productsRoutes from './routes/productsRoutes';
 
 import resourcesRoutes from './routes/resourcesRoutes';
@@ -1262,6 +1264,12 @@ console.log('✅ JTD collections routes registered at /api/jtd/collections');
 app.use('/api/evidence', evidenceRoutes);
 console.log('✅ Evidence storage routes registered at /api/evidence');
 
+// Storage admin — platform admin only. The sweep runs on its own timer; these
+// let it be inspected and triggered on demand. The batch H folder browser will
+// hang off this same router.
+app.use('/api/admin/storage', storageAdminRoutes);
+console.log('✅ Storage admin routes registered at /api/admin/storage');
+
 // JTD Routes
 app.use('/api/jtd', jtdRoutes);
 console.log('✅ JTD routes registered at /api/jtd');
@@ -1658,6 +1666,16 @@ const startServer = async () => {
     // Start HTTP server
     const server = httpServer.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
+
+      // StorageCleanup. Hourly tick; storage_cleanup_due() decides whether a
+      // sweep actually happens, so this settles to ~daily and a restart storm
+      // cannot cause a run storm. Skips quietly when Firebase is unconfigured.
+      try {
+        startStorageCleanupTimer();
+        console.log('🧹 StorageCleanup sweep scheduled');
+      } catch (error) {
+        console.error('❌ Failed to schedule StorageCleanup sweep:', error);
+      }
       console.log(`📚 API Documentation available at http://localhost:${PORT}/api-docs`);
 
       console.log('📍 Registered business model routes:');

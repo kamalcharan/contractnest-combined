@@ -128,6 +128,14 @@ export interface UploadResult {
   file_name: string;
   size_bytes: number;
   usage?: StorageUsage | null;
+  /**
+   * Present ONLY for identity assets (scope='tenant'). A durable URL the caller
+   * stores in its own field — logo_url, a user's avatar, qr_image_url, a block's
+   * custom icon — exactly the shape those 85 call sites already hold.
+   * Contract evidence never carries one: it is signed per viewer, per request,
+   * so that revoking a party's access revokes files already delivered.
+   */
+  public_url?: string;
 }
 
 /**
@@ -203,6 +211,7 @@ export function useUploadEvidence(onProgress?: (p: UploadProgress) => void) {
         file_name: file.name,
         size_bytes: confirmed?.size_bytes ?? file.size,
         usage: confirmed?.usage ?? null,
+        public_url: confirmed?.public_url,
       };
     },
 
@@ -236,4 +245,25 @@ export function useDeleteEvidence(contractId?: string | null) {
     onError: (error: any) =>
       vaniToast.error(errorMessage(error, 'Could not remove that file'), { duration: 5000 }),
   });
+}
+
+/**
+ * One identity asset, one line — for the call sites that own a single image and
+ * a single URL field (logo, avatar, block icon, integration QR). Uploads, then
+ * hands back the durable public URL to store wherever that field already lives.
+ *
+ * Deliberately separate from <FileUpload>: these surfaces have their own
+ * long-standing layouts (a round avatar with a camera badge, a logo box with a
+ * preview) and replacing them wholesale is a redesign nobody asked for. They
+ * needed the storage path changed, not the control.
+ */
+export function useUploadIdentityAsset(assetKind: AssetKind) {
+  const upload = useUploadEvidence();
+  return {
+    ...upload,
+    uploadAsset: async (file: File): Promise<string | null> => {
+      const result = await upload.mutateAsync({ file, target: { scope: 'tenant', assetKind } });
+      return result.public_url ?? null;
+    },
+  };
 }

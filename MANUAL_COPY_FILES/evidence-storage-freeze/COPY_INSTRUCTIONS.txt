@@ -3,6 +3,14 @@ BATCH: evidence-storage-freeze               (Evidence Storage — F)
 Service evidence moves onto the broker
 ═══════════════════════════════════════════════════════════════════
 
+🔗 MERGE E AND F TOGETHER — THEY CANNOT BE SPLIT
+───────────────────────────────────────────────────────────────────
+Batch E (evidence-storage-cleanup) deletes src/hooks/useStorageManagement.ts.
+The pristine TicketEvidencePanel.tsx still imports it; this batch ships
+the only version that does not. E without F fails to typecheck
+(TS2307 on that import). Merge both, or hold both.
+
+
 WHAT THIS IS
 ───────────────────────────────────────────────────────────────────
 The point of the whole redesign. Until now the storage meter read 0

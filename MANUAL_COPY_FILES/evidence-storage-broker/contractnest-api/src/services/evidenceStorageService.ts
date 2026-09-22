@@ -12,7 +12,7 @@
 // actually there. An unconfirmed slot leaves an orphan the sweeper reclaims.
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { signUploadUrl, signReadUrl, statObject } from '../utils/firebaseStorageAdmin';
+import { signUploadUrl, signReadUrl, statObject, publicUrl, saveBuffer } from '../utils/firebaseStorageAdmin';
 import { captureException } from '../utils/sentry';
 
 export type EvidenceScope = 'contract' | 'tenant';
@@ -147,12 +147,26 @@ class EvidenceStorageService {
       return { success: false, reason: 'object_missing' };
     }
 
-    return this.rpc('evidence_confirm', {
+    const confirmed = await this.rpc('evidence_confirm', {
       p_evidence_id: evidenceId,
       p_tenant_id: tenantId,
       p_size_bytes: stat.sizeBytes,
       p_checksum: stat.md5 || null
     });
+    if (!confirmed.success) return confirmed;
+
+    // An identity asset gets a durable URL the caller stores in its own field
+    // (logo_url, avatar, qr_image_url, a block's custom icon). Contract
+    // evidence never does — it is signed per viewer, per request.
+    const isIdentityAsset = row.data.object_path.startsWith('tenants/');
+    return {
+      success: true,
+      data: {
+        ...confirmed.data,
+        object_path: row.data.object_path,
+        ...(isIdentityAsset ? { public_url: publicUrl(row.data.object_path) } : {})
+      }
+    };
   }
 
   /**
@@ -194,6 +208,68 @@ class EvidenceStorageService {
       });
       return { success: false, reason: 'sign_failed', detail: err?.message };
     }
+  }
+
+  /**
+   * An identity asset whose bytes are already on our server (multipart upload).
+   *
+   * Used by the tenant-logo and integration-QR endpoints, which keep their own
+   * routes and their own contracts — the QR one in particular also decodes the
+   * image to recover org_id/mcc for UPI merchant payments, and that logic is
+   * untouched. Only where the bytes land changed: Admin SDK instead of the
+   * client SDK with anonymous auth, and a registry row instead of nothing.
+   */
+  async saveIdentityAsset(
+    tenantId: string,
+    userId: string | null,
+    assetKind: AssetKind,
+    fileName: string,
+    mimeType: string,
+    buffer: Buffer,
+    isLive = true
+  ): Promise<ToolResult<{ evidence_id: string; public_url: string; object_path: string }>> {
+    const slot = await this.rpc('evidence_request_slot', {
+      p_tenant_id: tenantId,
+      p_user_id: userId,
+      p_scope: 'tenant',
+      p_contract_id: null,
+      p_event_id: null,
+      p_form_submission_id: null,
+      p_asset_kind: assetKind,
+      p_file_name: fileName,
+      p_mime_type: mimeType,
+      p_declared_size: buffer.length,
+      p_is_compressed: false,
+      p_original_size: null,
+      p_is_live: isLive
+    });
+    if (!slot.success) return slot as any;
+
+    const { evidence_id, object_path } = slot.data;
+
+    try {
+      await saveBuffer(object_path, buffer, mimeType, { tenantId, assetKind });
+    } catch (err: any) {
+      captureException(err instanceof Error ? err : new Error(String(err)), {
+        tags: { source: 'evidence_storage', action: 'saveIdentityAsset' }
+      });
+      // The pending row is left for the sweeper rather than deleted here: a
+      // failed write must not also cost us the record that we tried.
+      return { success: false, reason: 'upload_failed', detail: err?.message };
+    }
+
+    const confirmed = await this.rpc('evidence_confirm', {
+      p_evidence_id: evidence_id,
+      p_tenant_id: tenantId,
+      p_size_bytes: buffer.length,
+      p_checksum: null
+    });
+    if (!confirmed.success) return confirmed as any;
+
+    return {
+      success: true,
+      data: { evidence_id, object_path, public_url: publicUrl(object_path) }
+    };
   }
 
   /** Marks a row deleted. The bytes go when the sweeper runs — never inline. */

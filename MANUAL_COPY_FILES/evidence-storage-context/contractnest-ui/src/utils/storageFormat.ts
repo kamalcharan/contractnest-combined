@@ -3,9 +3,8 @@
 // Byte formatting and tone for evidence storage figures coming out of
 // get_tenant_context's usage.storage block (migration evidence-storage/005).
 //
-// Kept separate from the per-tenant storage components under
-// components/storage/, which belong to the legacy provisioned-folder model and
-// are on their way out.
+// (The per-tenant storage components that used to live under
+// components/storage/ were deleted with the provisioned-folder model.)
 
 import type { TenantContextStorage } from '@/hooks/queries/useTenantContext';
 

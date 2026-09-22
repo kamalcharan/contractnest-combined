@@ -39,9 +39,15 @@ const REFUSAL_STATUS: Record<string, number> = {
   // 413/422 — the request is well formed but cannot be honoured
   cap_reached: 413,
   mime_not_allowed: 415,
-  // 503
-  not_configured: 503,
-  sign_failed: 503,
+  // 500 — NEVER 503. This app's axios interceptor treats ANY 503 as
+  // "the platform is in maintenance": it writes maintenance_info into
+  // sessionStorage, and maintenanceService reads that cache first and returns
+  // it forever, with no expiry and no re-validation. One 503 from a single
+  // failed upload therefore locks the WHOLE UI behind the maintenance screen
+  // for the rest of the browser session — surviving env changes and server
+  // restarts, because nothing ever clears the key.
+  not_configured: 500,
+  sign_failed: 500,
 };
 
 const REFUSAL_MESSAGE: Record<string, string> = {
@@ -51,7 +57,9 @@ const REFUSAL_MESSAGE: Record<string, string> = {
   not_contract_creator: 'Only the contract owner can add evidence to it.',
   forbidden: 'You do not have access to this file.',
   object_missing: 'The upload did not complete. Please try again.',
-  not_configured: 'Evidence storage is not configured on this server.',
+  not_configured:
+    'Evidence storage is not configured on this server. The Firebase service-account '
+    + 'environment variables (FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are missing.',
 };
 
 function fail(res: Response, reason: string, detail?: any): void {
@@ -62,7 +70,6 @@ function fail(res: Response, reason: string, detail?: any): void {
     : status === 404 ? ERROR_CODES.NOT_FOUND
     : status === 401 ? ERROR_CODES.UNAUTHORIZED
     : status === 409 ? ERROR_CODES.CONFLICT
-    : status === 503 ? ERROR_CODES.SERVICE_UNAVAILABLE
     : status >= 500 ? ERROR_CODES.INTERNAL_ERROR
     : ERROR_CODES.BAD_REQUEST;
 
