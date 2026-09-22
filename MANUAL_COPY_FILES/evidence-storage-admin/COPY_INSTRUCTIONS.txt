@@ -1,0 +1,163 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-admin                (Evidence Storage — H)
+The admin screen: what is really in the bucket, and what may go
+═══════════════════════════════════════════════════════════════════
+
+WHAT THIS IS
+───────────────────────────────────────────────────────────────────
+The interface you asked for in POA point 3 — "show all folders that
+can be deleted, and act as an admin interface for future".
+
+Firebase Storage has no folders. A "folder" is just a shared path
+prefix, which is why the Firebase console is such an awkward place to
+judge what is safe to remove. This page lists every top-level prefix,
+says which model it belongs to, shows WHO depends on it, and lets the
+legacy ones go.
+
+  contracts/**   contract evidence   METERED, governed by the registry
+  tenants/**     identity assets     unmetered (logos, avatars, icons, QRs)
+  tenant_*       LEGACY per-tenant provisioned folders
+  anything else  unaccounted for
+
+Only the last two can be deleted here. contracts/ and tenants/ are
+refused by the SERVICE, not just hidden in the UI — retiring one of
+their files is the registry's job (evidence_mark_deleted) so the sweep
+can reclaim it properly.
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-ui
+DATABASE: none. No migration in this batch.
+
+⚠️ THE FINDING THAT SHAPED THIS SCREEN
+───────────────────────────────────────────────────────────────────
+Legacy folders are NOT one per tenant. Live data:
+
+  tenant_c0000000_demo          Trinity Tecnitions, Value Elevators,
+                                Freedom Services, Hygene Services   ← 4 TENANTS
+  tenant_dd194710_1783503297801 BBB
+  tenant_80e3b843_1786802755628 signia
+  tenant_70f8eb69_1752782698282 vikuna
+  tenant_2ba7d476_1773337307554 stw
+  tenant_1f0a8dd2_1781165519722 hubb
+  (vikunatechnologies has none)
+
+Deleting "that tenant's folder" in the Firebase console would have
+quietly taken four tenants' files. Every row therefore names its
+tenants, a shared folder is flagged amber in the list AND again in the
+confirm dialog, and the dialog will not enable until the prefix is
+typed out in full.
+
+⚠️ COPY THIS BATCH LAST
+───────────────────────────────────────────────────────────────────
+It carries SUPERSETS of files earlier evidence batches also stage:
+
+  contractnest-api/src/index.ts                  ⊃ broker, ⊃ sweep-runner
+  contractnest-api/src/utils/firebaseStorageAdmin.ts  ⊃ broker (adds listing)
+  contractnest-api/src/services/storageCleanupService.ts   = sweep-runner
+  contractnest-api/src/services/evidenceStorageService.ts  = migrate (batch D)
+  contractnest-api/src/services/integrationService.ts      = migrate
+  contractnest-api/src/services/tenantProfileService.ts    = migrate
+  contractnest-ui/src/utils/storageFormat.ts               = context batch
+  contractnest-ui/src/App.tsx                    ⊃ component batch (route)
+
+Copy it last and any order is correct.
+
+WHAT IT DOES
+───────────────────────────────────────────────────────────────────
+API
+  src/utils/firebaseStorageAdmin.ts        listObjects, listTopLevelPrefixes,
+                                           deletePrefix
+      listObjects walks EVERY page so count and bytes are true totals even
+      when only the first slice is returned — a delete button that
+      under-reported what it is about to remove would be worse than useless.
+      deletePrefix deletes object by object and counts, rather than the
+      one-line bucket.deleteFiles, because this backs a button whose job is
+      to say exactly what it did.
+
+  src/services/storageAdminService.ts      NEW. Classification, the
+      protected-namespace rule, and the tenant join. Deleting a prefix also
+      CLEARS storage_path on every tenant pointing at it — otherwise the old
+      pages keep referencing a folder that no longer exists, which is
+      exactly how that surface starts throwing.
+
+  src/routes/storageAdminRoutes.ts         GET /overview, GET /browse,
+      POST /prefix/delete (confirm must repeat the prefix), plus the
+      existing sweep endpoints.
+
+UI
+  src/pages/settings/storage-admin/index.tsx    the page, at
+      /settings/storage-admin
+  src/hooks/queries/useStorageAdminQueries.ts   queries + mutations
+  src/App.tsx                                   route
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/nifty-noether-vrovnh
+
+STEP 2: Copy Files  (this batch LAST)
+───────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-admin\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-admin\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+
+Write-Host "Copied - evidence-storage-admin" -ForegroundColor Green
+
+STEP 3: Run
+───────────────────────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+# then in another terminal
+cd contractnest-ui
+npm run dev
+
+Open /settings/storage-admin as a platform admin.
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] The page lists prefixes with object counts and sizes
+- [ ] tenant_c0000000_demo shows all FOUR tenants and an amber
+      "Shared by 4 tenants" warning — the single most important
+      thing on this screen
+- [ ] contracts/ and tenants/ show "protected" and offer NO delete
+- [ ] "View contents" lists real object paths under a prefix
+- [ ] Delete asks you to type the prefix; the button stays disabled
+      until it matches exactly
+- [ ] Deleting a legacy folder reports how many objects went AND how
+      many tenant references were cleared
+- [ ] After deleting a tenant's legacy folder, that tenant's
+      storage_path is NULL (this is also what stops the old
+      /settings/storage pages misbehaving)
+- [ ] "Run sweep now" works from this page too
+
+  SUGGESTED ORDER: delete one SINGLE-tenant folder first (hubb or stw
+  are the least consequential) and confirm the counts read true,
+  before going near the shared demo folder.
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  API  npx tsc --noEmit   2 = pristine baseline (both tsconfig
+       deprecation notices, not code). Checked on a CLEAN full
+       assembly: broker -> migrate -> sweep-runner -> admin.
+  UI   npx tsc --noEmit   1168 = pristine baseline. Zero new.
+       npx vite build     passes (52s)
+
+  NOT verified here: anything that touches the real bucket. This
+  container holds no Firebase service account, so the listing, the
+  browse and the delete are all yours to confirm — hence the
+  single-tenant-folder-first suggestion above.
+
+  Found while building: my own API typecheck initially ran against an
+  incomplete tree (storageCleanupService.ts had been cleaned by the
+  submodule restore). Re-verified on a clean full assembly; the
+  numbers above are from that run.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════
