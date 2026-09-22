@@ -20,6 +20,8 @@ export interface PrefixRow {
   deletable: boolean;
   tenants: Array<{ id: string; name: string | null }>;
   missingFromBucket?: boolean;
+  /** Live rows still pointing into this prefix. Non-empty means not deletable. */
+  references: Array<{ kind: string; label: string | null }>;
 }
 
 export interface StorageOverview {
@@ -120,6 +122,8 @@ export const useDeletePrefix = () => {
       vaniToast.error('Delete failed', {
         message: code === 'protected_prefix'
           ? 'That namespace belongs to the live model and cannot be deleted here.'
+          : code === 'prefix_in_use'
+          ? 'Something in the product still points at that folder. Refresh to see what.'
           : 'Could not delete that folder.',
       });
     },

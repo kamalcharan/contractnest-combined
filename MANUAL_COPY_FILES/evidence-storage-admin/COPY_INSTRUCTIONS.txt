@@ -25,7 +25,41 @@ their files is the registry's job (evidence_mark_deleted) so the sweep
 can reclaim it properly.
 
 SUBMODULES AFFECTED: contractnest-api, contractnest-ui
-DATABASE: none. No migration in this batch.
+DATABASE: migration evidence-storage/007_prefix_references.sql
+          ALREADY APPLIED LIVE 2026-09-22. Source-of-record copy only.
+
+⚠️ READ THIS FIRST — A BUG IN THE FIRST CUT OF THIS BATCH
+───────────────────────────────────────────────────────────────────
+The first version classified a prefix as a deletable legacy folder on
+SHAPE alone (/^tenant_/). Two SHARED asset folders match that shape
+and are very much alive:
+
+    tenant_logos                stw and vikuna tenant logos
+    tenant_integration_assets   BBB's LIVE PAYMENT QR
+
+So the screen would have offered a Delete button on BBB's production
+payment QR — the asset CLAUDE.md already records as having been wiped
+twice by an unrelated bug. Two per-tenant folders are also still
+referenced (a user avatar, six of signia's stored files).
+
+Four of six "legacy" prefixes were NOT safe to delete. Shape was wrong
+more often than it was right.
+
+FIXED: deletability is now decided by REFERENCES, not by name.
+Migration evidence-storage/007 adds storage_prefix_references(), which
+reports every prefix live data points into (tenant logos, payment QRs,
+user avatars, stored files, service evidence). A referenced prefix
+cannot be deleted, the screen says what is using it, and remove()
+re-reads the references at delete time rather than trusting a possibly
+minutes-old overview.
+
+Live state after the fix — only these have no references and are
+genuinely deletable:
+
+    tenant_dd194710_...  BBB      (legacy folder, nothing points at it)
+    tenant_2ba7d476_...  stw
+    tenant_1f0a8dd2_...  hubb
+    tenant_c0000000_demo          (shared by 4 tenants — see below)
 
 ⚠️ THE FINDING THAT SHAPED THIS SCREEN
 ───────────────────────────────────────────────────────────────────
@@ -123,6 +157,11 @@ Open /settings/storage-admin as a platform admin.
       "Shared by 4 tenants" warning — the single most important
       thing on this screen
 - [ ] contracts/ and tenants/ show "protected" and offer NO delete
+- [ ] tenant_integration_assets shows "Still in use — cannot be
+      deleted · payment QR (BBB)" and has NO delete button.
+      THIS IS THE MOST IMPORTANT ASSERTION ON THE PAGE
+- [ ] tenant_logos likewise shows tenant logo (stw), tenant logo (vikuna)
+- [ ] tenant_80e3b843_... (signia) shows 6 stored-file references
 - [ ] "View contents" lists real object paths under a prefix
 - [ ] Delete asks you to type the prefix; the button stays disabled
       until it matches exactly
@@ -143,7 +182,10 @@ VERIFIED HERE
        deprecation notices, not code). Checked on a CLEAN full
        assembly: broker -> migrate -> sweep-runner -> admin.
   UI   npx tsc --noEmit   1168 = pristine baseline. Zero new.
-       npx vite build     passes (52s)
+       npx vite build     passes (51s)
+  Migration 007 probed in a rolled-back transaction, asserting it
+  detects BOTH tenant_integration_assets and tenant_logos before being
+  applied.
 
   NOT verified here: anything that touches the real bucket. This
   container holds no Firebase service account, so the listing, the

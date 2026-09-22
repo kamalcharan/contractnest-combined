@@ -16,8 +16,18 @@
 //
 // ⚠️ LEGACY FOLDERS ARE NOT ALWAYS ONE PER TENANT. Four live tenants share
 // 'tenant_c0000000_demo'. Deleting a prefix therefore deletes every tenant
-// that points at it, which is why listPrefixes() returns the full tenant list
-// per prefix and the UI must show it before anyone presses delete.
+// that points at it, which is why every row carries the full tenant list and
+// the UI must show it before anyone presses delete.
+//
+// ⚠️ AND PREFIX SHAPE DOES NOT DECIDE DELETABILITY. Two shared asset folders
+// match /^tenant_/ but are live:
+//     tenant_logos               stw and vikuna tenant logos
+//     tenant_integration_assets  BBB's live payment QR
+// Two per-tenant folders are also still referenced (a user avatar, six stored
+// files) — four of six, so shape alone is wrong more often than it is right.
+// A prefix is deletable only when NOTHING in the database points into it, which
+// storage_prefix_references() (migration evidence-storage/007) answers. The
+// check is enforced in remove(), not merely reflected in the UI flag.
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -44,6 +54,11 @@ export interface PrefixRow {
   tenants: Array<{ id: string; name: string | null }>;
   /** Set when a legacy folder is recorded on a tenant but absent from the bucket. */
   missingFromBucket?: boolean;
+  /**
+   * Live rows still pointing into this prefix. Non-empty means NOT deletable —
+   * deleting would break a logo, an avatar, a payment QR or a stored file.
+   */
+  references: Array<{ kind: string; label: string | null }>;
 }
 
 export interface StorageOverview {
@@ -72,14 +87,16 @@ class StorageAdminService {
   }
 
   /**
-   * A prefix may be deleted only if it is legacy or unaccounted for. Checked
-   * here AND again in remove() — the UI's `deletable` flag is a hint, never
-   * the thing that enforces it.
+   * A prefix may be deleted only when it is outside the live namespaces AND
+   * nothing in the database points into it. Checked here for the UI flag and
+   * AGAIN in remove() against a freshly read reference map — the flag is a
+   * hint, never the thing that enforces it.
    */
-  private isDeletable(prefix: string): boolean {
+  private isDeletable(prefix: string, referenceCount: number): boolean {
     const top = prefix.includes('/') ? prefix.slice(0, prefix.indexOf('/')) : prefix;
     if (PROTECTED_PREFIXES.includes(top)) return false;
     if (top === '(root)') return false;
+    if (referenceCount > 0) return false;
     return top.length > 0;
   }
 
@@ -95,20 +112,25 @@ class StorageAdminService {
     if (!isConfigured()) return { ...empty, reason: 'not_configured' };
 
     try {
-      const [buckets, owners, registry] = await Promise.all([
+      const [buckets, owners, registry, references] = await Promise.all([
         listTopLevelPrefixes(),
         this.legacyOwners(),
         this.registryTotals(),
+        this.references(),
       ]);
 
-      const rows: PrefixRow[] = buckets.map(b => ({
-        prefix: b.prefix,
-        kind: this.classify(b.prefix),
-        count: b.count,
-        bytes: b.bytes,
-        deletable: this.isDeletable(b.prefix),
-        tenants: owners.get(b.prefix) ?? [],
-      }));
+      const rows: PrefixRow[] = buckets.map(b => {
+        const refs = references[b.prefix] ?? [];
+        return {
+          prefix: b.prefix,
+          kind: this.classify(b.prefix),
+          count: b.count,
+          bytes: b.bytes,
+          deletable: this.isDeletable(b.prefix, refs.length),
+          tenants: owners.get(b.prefix) ?? [],
+          references: refs,
+        };
+      });
 
       // A folder recorded on a tenant but absent from the bucket is worth
       // showing: it means the objects are already gone and only the
@@ -119,6 +141,7 @@ class StorageAdminService {
         rows.push({
           prefix, kind: 'legacy', count: 0, bytes: 0,
           deletable: false, tenants, missingFromBucket: true,
+          references: references[prefix] ?? [],
         });
       }
 
@@ -159,10 +182,19 @@ class StorageAdminService {
    * whatever the caller claims, and clears storage_path on any tenant that
    * pointed at it so the old model stops believing it has a folder.
    */
-  async remove(prefix: string): Promise<{ success: boolean; reason?: string; deleted?: number; failed?: number; bytes?: number; tenantsCleared?: number }> {
+  async remove(prefix: string): Promise<{ success: boolean; reason?: string; deleted?: number; failed?: number; bytes?: number; tenantsCleared?: number; references?: Array<{ kind: string; label: string | null }> }> {
     if (!isConfigured()) return { success: false, reason: 'not_configured' };
     if (!prefix || prefix.includes('..')) return { success: false, reason: 'invalid_prefix' };
-    if (!this.isDeletable(prefix)) return { success: false, reason: 'protected_prefix' };
+    if (!this.isDeletable(prefix, 0)) return { success: false, reason: 'protected_prefix' };
+
+    // Re-read references at delete time. The overview may be minutes old, and
+    // in that window someone can have uploaded a logo or a payment QR into
+    // this prefix. Never delete something the database is still pointing at.
+    const references = await this.references();
+    const stillUsed = references[prefix] ?? [];
+    if (stillUsed.length > 0) {
+      return { success: false, reason: 'prefix_in_use', references: stillUsed };
+    }
 
     try {
       const result = await deletePrefix(prefix.endsWith('/') ? prefix : `${prefix}/`);
@@ -212,6 +244,19 @@ class StorageAdminService {
       map.set(row.storage_path, list);
     }
     return map;
+  }
+
+  /**
+   * prefix -> the live rows pointing into it (migration evidence-storage/007).
+   * A failure here returns {} which would make everything look deletable, so
+   * it is treated as fatal by the caller rather than silently ignored.
+   */
+  private async references(): Promise<Record<string, Array<{ kind: string; label: string | null }>>> {
+    const supabase = this.client();
+    if (!supabase) throw new Error('no database client for reference check');
+    const { data, error } = await supabase.rpc('storage_prefix_references');
+    if (error) throw new Error(`reference check failed: ${error.message}`);
+    return (data ?? {}) as Record<string, Array<{ kind: string; label: string | null }>>;
   }
 
   private async registryTotals(): Promise<{ active: number; pending: number; deleted: number; active_bytes: number }> {

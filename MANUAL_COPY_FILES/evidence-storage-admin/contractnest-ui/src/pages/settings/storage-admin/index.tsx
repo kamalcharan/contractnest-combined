@@ -27,7 +27,7 @@ import {
 const KIND_LABEL: Record<string, { label: string; note: string }> = {
   evidence: { label: 'Contract evidence', note: 'The metered namespace. Retire individual files from the contract, not here.' },
   identity: { label: 'Identity assets', note: 'Logos, avatars, block icons, payment QRs. Not metered.' },
-  legacy:   { label: 'Legacy folder',    note: 'From the old per-tenant model. Safe to delete once nothing needs it.' },
+  legacy:   { label: 'Legacy folder',    note: 'From the old per-tenant model. Deletable only once nothing in the product points at it.' },
   unknown:  { label: 'Unaccounted for',  note: 'Nothing in the product writes here. Most likely left over.' },
 };
 
@@ -178,6 +178,18 @@ const StorageAdminPage: React.FC = () => {
                             ? `Shared by ${row.tenants.length} tenants — deleting removes all of their files: `
                             : 'Tenant: '}
                           <strong>{row.tenants.map(t => t.name || t.id).join(', ')}</strong>
+                        </p>
+                      )}
+
+                      {row.references.length > 0 && (
+                        <p className="text-xs mt-1.5 p-2 rounded-lg" style={{ backgroundColor: `${ok}12`, color: ink }}>
+                          <ShieldCheck className="w-3 h-3 inline mr-1 -mt-0.5" style={{ color: ok }} />
+                          Still in use — cannot be deleted. {row.references.length} live
+                          reference{row.references.length === 1 ? '' : 's'}:{' '}
+                          <span style={{ color: dim }}>
+                            {row.references.slice(0, 4).map(r => `${r.kind}${r.label ? ` (${r.label})` : ''}`).join(', ')}
+                            {row.references.length > 4 ? ` and ${row.references.length - 4} more` : ''}
+                          </span>
                         </p>
                       )}
 
