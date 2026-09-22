@@ -65,6 +65,40 @@ has-typed-anything flag: typing a change and undoing it does not
 leave a false warning, and saving or cancelling resets the baseline
 so the warning clears.
 
+4. services/api.ts + services/maintenanceService.ts
+   — one 503 no longer bricks the session
+───────────────────────────────────────────────────────────────────
+TWO separate faults that combined into a trap:
+
+  (a) ANY 503 from ANY endpoint declared platform-wide maintenance.
+      503 is a generic status — a crashed edge function, a gateway
+      hiccup, a rate limiter, one route reporting a missing config.
+      Maintenance is declared by the x-maintenance-mode header, which
+      the success path already honoured; the error path ignored it.
+
+  (b) The flag was cached FOREVER. checkMaintenanceStatus() returned
+      the stored value first and unconditionally. Nothing ever wrote
+      false, nothing removed it, and clearMaintenanceInfo() existed
+      but was called by NOTHING.
+
+Together: one unrelated 503 put the session behind the maintenance
+page permanently, surviving reload, and the only escape was
+sessionStorage.removeItem('maintenance_info') in the console. This is
+exactly what happened when /api/evidence/slot returned 503 for a
+missing Firebase config — the maintenance page persisted even after
+the env vars were removed.
+
+FIXED:
+  • A 503 without x-maintenance-mode is now an ordinary error, logged
+    with the endpoint that produced it, and nothing is cached.
+  • Any successful response clears the flag — proof the platform is
+    serving.
+  • Cached verdicts carry storedAt and expire after 60s; stale,
+    malformed, or pre-fix values are discarded so the API answers.
+  • An unreachable API or a malformed payload is NOT maintenance.
+    Showing the app and letting calls fail beats locking the user out
+    over a network blip.
+
 ⚠️ COPY ORDER — App.tsx and PersonalInfoSection.tsx are also carried
 by evidence-storage-cleanup and evidence-storage-migrate. All copies
 are byte-identical, so any order is fine.
@@ -96,6 +130,15 @@ npm run dev
 - [ ] Edit a name, change it back to the original, press Back → NO
       confirm (this is the part a naive dirty-flag gets wrong)
 - [ ] Save, then press Back → no confirm
+- [ ] MAINTENANCE TRAP: force any endpoint to 503 (stop the API
+      mid-session, or hit a route with a missing config). You should
+      get a normal error, NOT the maintenance page, and the console
+      should say "treated as an ordinary error, NOT maintenance"
+- [ ] If you still have a stuck session from before: it self-heals on
+      the first successful response now, or within 60s. No console
+      incantation needed
+- [ ] Real maintenance still works: a response carrying
+      x-maintenance-mode: true still shows the maintenance page
 
 VERIFIED HERE
 ───────────────────────────────────────────────────────────────────
