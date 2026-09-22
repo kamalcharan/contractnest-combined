@@ -509,6 +509,62 @@ Use these prefixes for clear commit history:
 
 ## 🔮 Future Review Items
 
+### DONE 2026-09-22 — EVIDENCE STORAGE REDESIGN: per-tenant folders are gone, evidence is brokered and metered (migrations `evidence-storage/001`–`008` LIVE; 13 batches staged, UNMERGED)
+Owner's spec (`ContractNest___Evidence_Storage_Redesign.pdf`): storage moves from per-tenant provisioned folders to contract-scoped shared storage. **Two namespaces** — `contracts/**` (contract evidence, METERED against `t_tenants.storage_quota_bytes`, default 40 MB) and `tenants/**` (identity assets: logo, avatar, block icon, payment QR — deliberately UNMETERED, "they are basic things"). Owner decisions: **"space is space"** (one quota across live and test; clearing test data frees it), **"nothing stays free till 40 mb"** (the cap governs, not the retention clock), the cost sits with the **creator** of the contract/RFQ, **compression only**, and StorageCleanup is a scheduled event.
+
+**The broker is the only door.** `evidence_request_slot` (membership via `contract_membership()`, mime allowlist, quota) → browser PUTs straight to Firebase on a 10-min signed URL → `evidence_confirm` reads the true size back from the bucket. Reads are 5-min signed URLs, never durable. An unconfirmed slot is an orphan the sweeper reclaims after 24h.
+
+| Migration | What |
+|---|---|
+| 001 | `t_contract_evidence` registry, `contract_membership()`, quota + retention columns, **RLS enabled on `t_contract_event_assets`** (was DISABLED with anon GRANT ALL — a live hole) |
+| 002 | the broker RPCs; `t_contract_access.expires_at` default 90 days |
+| 003 | identity assets supersede (a new avatar retires the old; `integration_qr`/`block_icon` excluded — many per tenant) |
+| 004 | StorageCleanup: claim/settle/record/due/mark_environment/mark_tenant_closed |
+| 005 | `get_tenant_context` reports storage from the registry — it was reading `t_tenant_context.usage_storage_mb`, a column **nothing has ever populated**, so any figure shown would have read 0 forever |
+| 006 | `claim()` carries `is_live`; **`admin_reset_test_data` and `reset_tenant_session_and_forms` now release storage** — every reset previously orphaned its objects forever, against "space is space" |
+| 007 | `storage_prefix_references()` — which prefixes LIVE data points into |
+| 008 | `t_service_evidence.evidence_id` → the registry; `create_service_evidence` gains `p_evidence_id` and **the 21-arg original is DROPPED** (stale overloads have caught this codebase 3× already) |
+
+**Batch F was a clean swap, not a migration**: `t_service_evidence` and `t_contract_attachments` both held **0 rows** — no service evidence has ever been captured in production. Nothing to migrate, no URLs to preserve.
+
+**⚠️ THE BUG I ALMOST SHIPPED — prefix SHAPE does not mean what it looks like.** The storage admin screen classified any prefix matching `/^tenant_/` as a deletable legacy folder. Two SHARED asset folders match that shape and are live: `tenant_logos` (stw + vikuna logos) and **`tenant_integration_assets` (BBB's live payment QR** — the asset this file already records as destroyed twice). Two per-tenant folders are also still referenced. **Four of six were unsafe.** Deletability is now decided by `storage_prefix_references()`, re-read at delete time, never by name. The same assumption is called out in `storage.rules`, which now allows read on those two prefixes EXPLICITLY rather than trusting that download tokens bypass rules.
+
+**Other live findings**: four tenants share `tenant_c0000000_demo`, so "delete that tenant's folder" would have taken four tenants' files; `tenant_542dc70a_1760178761504` (4.9 MB) belongs to a tenant that **no longer exists** — tenants are HARD deleted, `status` reads `active` on all 10 rows, so a deleted workspace leaves no row at all and the only trace is the id fragment in the folder name; `is_test` is populated and **7 of 10 tenants are test**.
+
+**Where things are**: Storage Admin at **Implementation Toolkit → Storage Admin** (`/settings/storage-admin`) — every prefix classified, its tenants named with a `test` chip, "Tenant already deleted from the system" where true, View-before-delete on every file, typed confirmation, and Run sweep. Quota shows on the home Workspace Account card and Business Model → Subscription. Upload Lab at `/settings/upload-lab`.
+
+**Still open**: `firebase deploy --only storage` (rules are safe and staged, NOT deployed); the 8 `t_tenant_files` rows (all signia's) — their UI is deleted but the rows and objects remain, viewable from Storage Admin; no way to recover a deleted tenant's NAME (a `t_deleted_tenants` stub was offered, not decided); **Drops NOT done** — the "empty tables" premise did not survive the data (`t_tenant_files` has 8 real rows, and most empty tables are live features nobody has used yet, exactly as `t_service_evidence` was before F).
+
+### ⚠️ ONBOARDING IS NOT CLEANED UP — 8 dead legacy steps are still routed (found 2026-09-22, NOT fixed)
+Owner: **"we have multiple onboarding — 'VaNi Onboarding' is the latest and we should focus that only."** Only the STORAGE step was removed (batch `evidence-storage-cleanup`, which also deleted `StorageSetupStep.tsx` and stopped `VaniWorkingStep` calling `POST /api/storage/setup` on every new tenant — that had been handing every signup a legacy folder, recreating the exact mess the admin screen exists to clean up).
+
+Checked against `t_onboarding_step_status` (live), three generations exist:
+
+| Generation | Steps | Tenants ever on them |
+|---|---|---|
+| **VaNi — the real one** | vani-intro, user-profile, business-details, persona-selection, engagement-model, theme-selection, industry-selection, resource-pick, vani-consent, vani-intelligence, vani-working, pricing-review, equipment-confirm, lov-setup, done | LIVE, all touched 15 Aug |
+| **"Legacy", still routed in `App.tsx`** | welcome, business-basic, business-branding, served-industries, business-preferences, sequence-numbers, master-data, complete | **ZERO. No row exists for any of them.** |
+| **Older ids, no routes** | team, business-profile, tour, data-setup, storage | 9 tenants, 2 Aug — data residue only |
+
+`App.tsx` labels the middle group *"Legacy onboarding routes — kept for backwards compat"* — backwards compat no tenant has ever needed. **The cleanup is 8 step files + their routes + imports + their entries in `OnboardingUtils.getStepDefinition` in `types/onboardingTypes.ts`.** Deletion-only, bounded, verifiable the same way batch E was.
+
+**Leave alone**: `lite/onboarding/*` (5 express screens that hand off into `vani-working`) is live and intentional. `lov-setup` has 2 tenants and its missing route — which used to 404 at the end of onboarding — was already fixed.
+
+### ⚠️ VERIFICATION LESSONS FROM THIS SESSION — read before trusting any check
+1. **`npx tsc --noEmit` in `contractnest-api` CHECKED NOTHING.** `moduleResolution: "node"` + `baseUrl` are deprecated in TS7, so tsc emitted TS5107/TS5101 and **aborted before compiling a single file**, reporting 2 errors and exiting 0. Three batches shipped with "API tsc = 2 = baseline" that meant nothing; the gap only surfaced when `ts-node` crashed the owner's dev server. **FIXED** — `"ignoreDeprecations": "6.0"` added. Run `npm install && npx tsc --noEmit` once to establish the real baseline; proper fix is `moduleResolution: "bundler"`/`"node16"` and dropping `baseUrl`.
+2. **Compare error SETS, never counts.** A cleanup that deletes files carrying errors can hide a new one behind a lower total. This caught two real `TS2304`s that counts hid:
+   `npx tsc --noEmit -p tsconfig.json 2>&1 | grep "error TS" | sed 's/([0-9]*,[0-9]*)//' | sort -u > after.txt` then `comm -13 before.txt after.txt` against a stashed baseline.
+3. **`vite build` does not typecheck** (esbuild strips types). It passing proves nothing about types.
+4. **Unmerged batches must carry byte-identical SUPERSETS of every shared file.** Four batches shipped four different `firebaseStorageAdmin.ts` and none was a superset, so whichever landed last decided which exports went missing — the owner hit `[2305, 2305]` from a copy command I gave. Now all copies are identical and six copy orders were verified. `MANUAL_COPY_FILES/check-imports.py` checks relative named imports against the exporting module **without needing node_modules** — it found that bug in seconds.
+
+### FIXED 2026-09-22 — one unrelated 503 locked a session behind the maintenance page, permanently
+Two faults that only bit together. (a) `services/api.ts` treated **ANY** 503 from **ANY** endpoint as a platform-wide maintenance declaration — 503 is generic (a crashed edge function, a gateway hiccup, a rate limiter, one route reporting a missing config); maintenance is declared by the `x-maintenance-mode` header, which the SUCCESS path honoured and the error path ignored. (b) `maintenanceService.checkMaintenanceStatus()` returned the cached value **first and unconditionally**, nothing ever wrote false or removed it, and `clearMaintenanceInfo()` existed but was **called by nothing**. Result: one 503 pinned the session behind the maintenance page, surviving reload, escapable only by `sessionStorage.removeItem('maintenance_info')` in the console — exactly what happened when `/api/evidence/slot` returned 503 for a missing Firebase config. Now: a 503 without the header is an ordinary error logged with its endpoint and cached nowhere; **any successful response clears the flag**; cached verdicts carry `storedAt` and expire after 60s; an unreachable API or malformed payload is not maintenance. **Any endpoint returning 503 is still a hazard worth avoiding** — the evidence controller deliberately maps `not_configured` to 500, not 503.
+
+### FIXED 2026-09-22 — 347 toast calls rendered nothing; profile edits were lost silently
+**react-hot-toast**: its `<Toaster>` was commented out when vaniToast replaced it, but **68 files and 347 call sites** still use it — every one rendered nothing, including onboarding error paths where a new tenant saw no message at all. Both systems are now mounted (vaniToast top-right, react-hot-toast bottom-right) as an **explicit stop-gap**; the real fix is migrating those 68 files as each is touched, and the line goes when the last one does. Two toast styles until then.
+**`onChangeDetected`**: `PersonalInfoSection` declared the prop and never called it, so the profile page's `hasUnsavedChanges` stayed false and its "You have unsaved changes" confirm on Back was dead — edits were discarded silently. Now reported by comparing against the loaded profile, so edit-then-undo does not warn and saving clears it.
+
+
 ### IN PROGRESS — VaNi enablement is a tenant-table truth; step 1 live (2026-09-16, batch `vani-tenant-flag`)
 Owner model: **automation runs only when VaNi is on; VaNi is part of subscriptions.** Before this there were three half-built VaNi switches, none read by any engine: `t_tenant_context.addon_vani_ai` (plan flag, false for all 25 tenants), the `product_code='vani'` row in `t_bm_tenant_subscription` written by the landing-page trial (zero rows ever), and `n_jtd_tenant_config.vani_enabled` (read only by an admin stats page; BBB false while receiving ~260 automated messages/30d). The API's `vaniEntitlementService` decides entitlement from env `VANI_ENTITLEMENT_MODE`, default `open` = everyone entitled — production is in `open` mode (BBB edited rules on 3 Sep with no subscription). The scanner, group-session cron, `fn_enqueue_*` and the jtd-worker never ask.
 
