@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: evidence-storage-fixes
+The three flagged items, fixed
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api
+DATABASE: none.
+
+1. contractnest-api/tsconfig.json — tsc now actually runs
+───────────────────────────────────────────────────────────────────
+Added "ignoreDeprecations": "6.0".
+
+WHAT WAS WRONG: moduleResolution "node" and baseUrl are deprecated in
+TS7, so tsc emitted TS5107/TS5101 and ABORTED BEFORE COMPILING ANY
+FILE. `npx tsc --noEmit` reported 2 errors and exited 0 having checked
+nothing. Type errors only surfaced when ts-node compiled at runtime
+and crashed the dev server — which is exactly how the [2305, 2305]
+crash reached you instead of me.
+
+⚠️ RUN IT ONCE AFTER COPYING:
+      cd contractnest-api
+      npm install
+      npx tsc --noEmit
+   This is the first honest typecheck the API has had. Expect
+   pre-existing errors that have been invisible; none are from this
+   work. The number it prints is your new baseline.
+   (I cannot give you that number — node_modules is empty in my
+   container, so what I measure is dominated by "Cannot find module
+   'express'".)
+
+   Proper fix later: moduleResolution "bundler" or "node16", drop
+   baseUrl for relative paths, remove this flag.
+
+2. contractnest-ui/src/App.tsx — 347 silent toasts speak again
+───────────────────────────────────────────────────────────────────
+react-hot-toast's <Toaster> was commented out when vaniToast replaced
+it, but 68 files and 347 call sites still use it — so every one of
+them rendered NOTHING. Worst hit: OnboardingLayout (22 calls),
+useGroupSessionsDashboard (18), BBBProfileOnboardingPage (13),
+AvatarSection (11). A new tenant hitting an onboarding error saw no
+message at all.
+
+BOTH systems are now mounted: vaniToast top-right (the standard),
+react-hot-toast bottom-right. That is a STOP-GAP, said so in the
+code. The real fix is migrating those 68 files to vaniToast as each
+is touched; the line goes when the last one does.
+
+  You will now see two visual toast styles until that migration is
+  done. That is the trade for not losing 347 error messages.
+
+3. PersonalInfoSection.tsx — unsaved-changes warning actually fires
+───────────────────────────────────────────────────────────────────
+The page passes onChangeDetected={setHasUnsavedChanges}. The prop was
+DECLARED and never called, so hasUnsavedChanges stayed false forever
+and this guard was dead:
+
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes...')) return;
+    }
+
+Edit your profile, press Back, lose the edit with no warning.
+
+Now reported from a comparison against the loaded profile, not a
+has-typed-anything flag: typing a change and undoing it does not
+leave a false warning, and saving or cancelling resets the baseline
+so the warning clears.
+
+⚠️ COPY ORDER — App.tsx and PersonalInfoSection.tsx are also carried
+by evidence-storage-cleanup and evidence-storage-migrate. All copies
+are byte-identical, so any order is fine.
+
+═══════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/nifty-noether-vrovnh
+
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-fixes\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\evidence-storage-fixes\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+cd contractnest-api
+npm install
+npx tsc --noEmit          # <- the real check, first time ever
+npm run dev
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+- [ ] npx tsc --noEmit in contractnest-api now lists real files, not
+      just the two tsconfig lines. Record the count as the baseline
+- [ ] Trigger any react-hot-toast path (e.g. an onboarding error) —
+      a toast appears bottom-right where nothing appeared before
+- [ ] vaniToast still works top-right (save something on the Ops board)
+- [ ] Profile → edit a name → press Back → the "unsaved changes"
+      confirm FIRES
+- [ ] Edit a name, change it back to the original, press Back → NO
+      confirm (this is the part a naive dirty-flag gets wrong)
+- [ ] Save, then press Back → no confirm
+
+VERIFIED HERE
+───────────────────────────────────────────────────────────────────
+  UI: error SET compared against pristine main — ZERO new, 2 removed.
+      npx vite build passes.
+      The set comparison caught a real TS2304 mid-way (the prop was
+      declared in the interface but never destructured from props);
+      a count comparison would have hidden it.
+  API: tsconfig change verified by behaviour — tsc went from
+      "2 errors, compiled nothing" to compiling every file. The
+      resulting count is meaningless here (no node_modules), which is
+      why running it is step 1 on your side.
+
+═══════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe]"
+═══════════════════════════════════════════════════════════════════

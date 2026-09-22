@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    // Silences TS5107/TS5101 for the deprecated moduleResolution+baseUrl above.
+    // WITHOUT THIS, tsc REPORTS THOSE TWO AND ABORTS BEFORE COMPILING ANY FILE:
+    // `npx tsc --noEmit` exited 0 having checked nothing, so type errors only
+    // surfaced when ts-node compiled at runtime and crashed the dev server.
+    // Proper fix later: move to "bundler"/"node16" and drop baseUrl.
+    "ignoreDeprecations": "6.0",
+    "resolveJsonModule": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "typeRoots": ["node_modules/@types"]
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.bak.ts",
+    "**/index_bak.ts",
+    "src/graphql/**/*",
+    "src/services/catalogService.ts",
+    "src/validators/serviceCatalogValidators.ts",
+    "src/middleware/serviceCatalogAuth.ts",
+    "src/utils/catalogHelpers.ts",
+    "src/validators/catalog.ts"
+  ]
+}
