@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════════════════════
+PERSPECTIVE TOGGLE: READINESS IS THE PERSONA, NOT A ROW COUNT
+Branch folder: perspective-persona-readiness (2026-09-23)
+Submodules affected: contractnest-ui ONLY (no API / edge / DB change)
+Supersedes the readiness half of revenue-side-activation and
+expense-side-activation (both already merged to main; this builds on
+the merged files, so copy order against them cannot break anything).
+═══════════════════════════════════════════════════════════════════
+
+WHY
+
+signia (persona 'both' since 15 Aug) switched to Expense, was told the
+side "isn't set up", completed the Expense activation, and was asked
+to complete it AGAIN on the next toggle — every time.
+
+The toggle decided "is this side set up" by counting rows: ≥1 catalog
+block for Revenue, ≥1 OWN registry asset (ownership_type='self') for
+Expense. Two things made that wrong:
+  • An Expense tenant is one who RECEIVES contracts. It can hold zero
+    assets of its own and still be an Expense tenant (the `buyer`
+    tenant behind CN-1010 is exactly that).
+  • The activation seeder writes own assets into the TEST environment
+    only (seed_onboarding_registry_assets hardcodes is_live=false, by
+    design — sample data). In Live mode the probe saw 0 → offered the
+    activation again, forever. signia's registry: 5 client assets
+    (live), 4 own assets (test), 0 own assets (live).
+
+Owner decision (2026-09-23): readiness follows PERSONA and nothing else.
+
+    persona   Revenue        Expense
+    seller    switch         offer activation
+    buyer     offer activ.   switch
+    both      switch         switch
+    unknown   switch         switch   (fail open — profile not loaded,
+                                       lite tiers with no profile)
+
+WHAT CHANGED
+
+1) sideReadiness.ts — rewritten. No API probes, no cache, no
+   environment dependence. isSideReady(side, persona) + a persona
+   normaliser. Pure and synchronous.
+
+2) AuthContext.tsx
+   • tenantPersona state, recorded on EVERY initializePerspective call
+     (not only the first), so an activation (persona → 'both') is seen
+     after the final reload.
+   • requestPerspectiveSwitch is synchronous: 'ready' or
+     'activation_needed' from persona. The 'checking' readiness state
+     and the stale-probe sequence ref are gone.
+   • initializePerspective takes a one-shot LANDING perspective from
+     sessionStorage first (see 5). Lite-tier rule untouched.
+
+3) TenantContext.tsx — initializePerspective now receives
+   profile.persona || profile.business_type_id. It used to run ONLY
+   when business_type_id was set; signia has persona 'both' and
+   business_type_id null, so the perspective was never initialised
+   and the persona never reached AuthContext.
+
+4) PerspectiveSwitchModal.tsx — 'checking' branch removed; the
+   activation copy says WHY ("Your workspace is set up as a service
+   provider, so the Expense side isn't switched on yet…") instead of
+   "there's no registry behind it".
+
+5) The activation walk itself (the "steps" the owner saw):
+   • OnboardingLayout.tsx — the step rail shows the ACTIVATED side's
+     journey (expense → buyer rail, revenue → seller rail). Persona is
+     already 'both' during the walk, and the 'both' rail promised
+     pricing / terms / first-contract steps an Expense activation
+     never visits.
+   • VaniWorkingStep.tsx — route state carries the activated leg as
+     `persona`, so equipment-confirm's Back returns to Building (not
+     Pricing review) and the done screen knows the walk taken.
+   • VaniDoneStep.tsx — new Screen 9D for an activation: "<Side> side
+     is on." + that side's summary + "Go to my <Side> side →" /
+     "Stay in <Other> for now". Previously a 'both' tenant got 9C
+     ("Fully set up") whose CTA was the SELLER rehearsal contract.
+     The CTA does a hard load to /ops/cockpit (caches; persona is now
+     'both') after writing the chosen side as the landing perspective.
+   • sideActivation.ts — setLandingPerspective / takeLandingPerspective
+     (sessionStorage 'cn_landing_perspective', read-and-clear). Without
+     it persona 'both' would always land on Revenue after the reload.
+
+Nothing else touched. Fresh signups, lite tiers, the 'ready' confirm
+dialog and the seeding legs behave exactly as before.
+
+FILES (mirror repo structure)
+
+contractnest-ui/src/utils/perspective/sideReadiness.ts      rewritten
+contractnest-ui/src/utils/perspective/sideActivation.ts     + landing helpers
+contractnest-ui/src/context/AuthContext.tsx                 persona readiness, landing
+contractnest-ui/src/contexts/TenantContext.tsx              persona → initializePerspective
+contractnest-ui/src/components/PerspectiveSwitchModal.tsx   copy, no 'checking'
+contractnest-ui/src/components/onboarding/OnboardingLayout.tsx  rail follows activation
+contractnest-ui/src/pages/onboarding/steps/VaniWorkingStep.tsx  persona = activated leg
+contractnest-ui/src/pages/onboarding/steps/VaniDoneStep.tsx     Screen 9D
+
+SUPERSET CHECK: every file here was taken from the submodule's current
+main (all earlier batches touching them are merged) and edited on top.
+
+PRODUCTION CHECKLIST
+  Transaction management: n/a (no writes)
+  Race conditions:        readiness is now synchronous — the stale-probe
+                          race the sequence ref guarded no longer exists
+  Error handling:         persona unknown → fail open, as before
+  Toasts:                 existing vaniToast on confirm, unchanged
+  Loaders:                n/a — no async step remains in the toggle
+
+═══════════════════════════════════════════════════════════════════
+PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\perspective-persona-readiness\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ Files copied" -ForegroundColor Green
+
+cd contractnest-ui && npm run dev
+# Hard refresh: Ctrl+F5
+
+TESTING CHECKLIST
+  [ ] signia@s.com (persona both), Live: Revenue → Expense switches
+      straight away (confirm dialog, no onboarding offer). Expense →
+      Revenue likewise. Same in Test.
+  [ ] A pure seller tenant: Revenue → Expense shows the activation
+      offer with the persona wording; "Not now" keeps Revenue.
+  [ ] Run that activation: rail reads Business → What you own →
+      Building → Your assets → Your lists → Workspace ready (no
+      Prices / Terms / First contract); Back on "Your assets" returns
+      to Building; done screen says "Expense side is on."
+  [ ] "Go to my Expense side" lands on /ops/cockpit in Expense; the
+      header toggle then switches both ways with no offer.
+      "Stay in Revenue for now" lands in Revenue.
+  [ ] Fresh signup (seller / buyer / both) is unchanged end to end.
+  [ ] A CNAK-lite tenant still lands on Expense; toggle unaffected.
+
+═══════════════════════════════════════════════════════════════════
+⏸ WAITING FOR CONFIRMATION — "Tested, working" → Phase 2 commands
+═══════════════════════════════════════════════════════════════════
