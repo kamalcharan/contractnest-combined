@@ -73,7 +73,13 @@ FILES
     src/pages/buy/index.tsx               MobileInput; sends phone '+91…' + country_code; inside the
                                           overlay → postMessage cn:open mode 'link' + a "Your
                                           request is in" card; copy follows payment options         SUPERSET
-    src/pages/leads/index.tsx             Add a lead uses MobileInput; both tabs use EmptyState     SUPERSET
+    src/pages/leads/index.tsx             Add a lead uses MobileInput; "Asked you" tab renamed RFQ
+                                          (own empty state = the Requests one); the Leads empty
+                                          state is the nudge — three states: Extend not bought
+                                          ("See how Extend works" → /extend, three touchpoint
+                                          tiles, no price) · Extend on but no storefront ("Create
+                                          a storefront") · storefront live ("Share your storefront"
+                                          copies the link); "Add a lead" always the second button SUPERSET
     src/pages/extend/index.tsx            no-storefronts EmptyState (New storefront / Catalog Studio) SUPERSET
     src/hooks/queries/useLeads.ts         capture input type +country_code                          SUPERSET
     src/pages/contracts/review/index.tsx  contract.source; storefront success copy ("<seller> will

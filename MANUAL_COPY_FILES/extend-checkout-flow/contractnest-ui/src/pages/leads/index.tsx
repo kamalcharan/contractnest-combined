@@ -7,7 +7,7 @@
 //   From your reach — storefront checkouts that stopped after the OTP, VaNi
 //                     captures, leads added by hand; stage new → contacted →
 //                     converted (a contract for the contact converts it) | lost
-//   Asked you       — RFQs other tenants invited us to; the verb is "respond"
+//   RFQ             — RFQs other tenants invited us to; the verb is "respond"
 // Actions: Follow up (note + stage contacted) · Send contract (wizard with the
 // buyer chosen) · Mark lost · Open contact · Respond with quote.
 
@@ -22,6 +22,8 @@ import { useCatTemplates } from '@/hooks/queries/useCatTemplates';
 import { useLeads, useSetLeadStage, useCaptureLead, LeadRow, LeadInterest, LeadStage, AskedRow } from '@/hooks/queries/useLeads';
 import MobileInput, { DEFAULT_MOBILE, MobileValue, mobileIsValid, mobileToE164 } from '@/components/common/MobileInput';
 import EmptyState from '@/components/common/EmptyState';
+import { useStorefronts } from '@/hooks/queries/useStorefronts';
+import { storefrontUrls } from '@/pages/storefront/api';
 
 type Tab = 'reach' | 'asked';
 
@@ -66,6 +68,14 @@ const LeadsPage: React.FC = () => {
   const { data, isLoading, isError, isFetching } = useLeads({ tab, stage, q: qLive });
   const setLeadStage = useSetLeadStage();
   const captureLead = useCaptureLead();
+  // The empty state sells the touchpoints (owner 2026-09-29: "push users to
+  // create leads or extend the customer touch points … a small nudge, no
+  // pricing, redirect to Extend"): what it says depends on what the tenant
+  // already has — nothing, Extend without a storefront, or a live storefront.
+  const { data: sfData } = useStorefronts();
+  const extendOn = !!(sfData?.channels?.website || sfData?.channels?.whatsapp);
+  const firstStorefront = sfData?.storefronts?.find((sf) => sf.is_active) || sfData?.storefronts?.[0];
+  const vaniOn = !!sfData?.vani_enabled;
   const { data: templatesResponse } = useCatTemplates({ is_active: 'all', limit: 200 } as any);
   const publishedTemplates = useMemo(() => {
     const list: any[] = (templatesResponse as any)?.data?.templates || [];
@@ -130,7 +140,7 @@ const LeadsPage: React.FC = () => {
       {/* tabs */}
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <button onClick={() => setTab('reach')} className={chipCls(tab === 'reach')}>From your reach{reach ? ` · ${reach.counts.all}` : ''}</button>
-        <button onClick={() => setTab('asked')} className={chipCls(tab === 'asked')}>Asked you{asked ? ` · ${asked.counts.all}` : ''}</button>
+        <button onClick={() => setTab('asked')} className={chipCls(tab === 'asked')}>RFQ{asked ? ` · ${asked.counts.all}` : ''}</button>
         <div className="flex-1" />
         <div className={`flex items-center gap-2 px-3 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-300'}`}>
           <Search className={`w-4 h-4 ${subtext}`} />
@@ -160,11 +170,44 @@ const LeadsPage: React.FC = () => {
             stage !== 'all' || qLive ? (
               <EmptyState icon={Search} title="Nothing matches" body="Try another name, mobile or package, or clear the stage filter." compact
                 secondary={{ label: 'Clear filters', onClick: () => { setStage('all'); setQ(''); setQLive(''); } }} />
+            ) : !extendOn ? (
+              // nothing bought: the nudge — where leads come from, then Extend
+              <div>
+                <EmptyState icon={Sparkles} title="Leads come from where your customers already are"
+                  body="A button on your website, a link or QR you share, and VaNi answering questions on your site all land here as leads — each with what the person wanted."
+                  action={{ label: <>See how Extend works <ExternalLink className="w-4 h-4" /></>, onClick: () => navigate('/extend') }}
+                  secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead by hand</>, onClick: () => setShowAdd(true) }} />
+                <div className="grid sm:grid-cols-3 gap-3 px-6 pb-8 -mt-6 max-w-3xl mx-auto">
+                  {[
+                    { icon: Globe, color: '#4f5b8f', title: 'On your website', body: 'A Buy button or a package card. One line to paste, no developer.' },
+                    { icon: ExternalLink, color: '#0f766e', title: 'A link or a QR', body: 'Share a package into any chat, mail or a printed sticker.' },
+                    { icon: Sparkles, color: '#ff6b2b', title: 'VaNi on your site', body: 'Answers questions from your packages and leaves you the number.' },
+                  ].map((w) => (
+                    <div key={w.title} className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-50/60'}`}>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white mb-2" style={{ background: w.color }}><w.icon className="w-4 h-4" /></div>
+                      <div className={`text-sm font-semibold mb-1 ${heading}`}>{w.title}</div>
+                      <p className={`text-xs leading-relaxed ${subtext}`}>{w.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : !firstStorefront ? (
+              // Extend is on, nothing published yet
+              <EmptyState icon={Sparkles} title="Your first storefront takes ten seconds"
+                body={<>Pick a published package on Extend and it becomes a button for your site, a link, a QR — every buyer who starts there lands here as a lead.{!vaniOn && <> VaNi can answer their questions and capture the number for you.</>}</>}
+                action={{ label: 'Create a storefront', onClick: () => navigate('/extend') }}
+                secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead</>, onClick: () => setShowAdd(true) }} />
             ) : (
-              <EmptyState icon={Sparkles} title="No leads yet"
-                body="Leads arrive from your storefronts (a checkout that stopped after the OTP), from VaNi on your site, or you add one here. Each is a contact tagged Lead, with what they wanted."
-                action={{ label: <><Plus className="w-4 h-4" /> Add a lead</>, onClick: () => setShowAdd(true) }}
-                secondary={{ label: 'Set up a storefront', onClick: () => navigate('/extend') }} />
+              // live storefront, no leads yet: make sharing the next tap
+              <EmptyState icon={Sparkles} title="No leads yet — your storefront is live"
+                body={<>Leads arrive when someone starts a checkout on <b>{firstStorefront.name}</b>, asks VaNi on your site, or you add one here. Share the link to get the first one.</>}
+                action={{ label: 'Share your storefront', onClick: async () => {
+                  const url = storefrontUrls(firstStorefront.storefront_key).page;
+                  try { await navigator.clipboard.writeText(url); addToast({ type: 'success', title: 'Link copied', message: 'Paste it into a chat or mail — or open Extend for the QR and the website snippet.' }); }
+                  catch { navigate('/extend'); }
+                } }}
+                secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead</>, onClick: () => setShowAdd(true) }}
+                hint={!vaniOn ? 'VaNi can answer questions on your site and capture the number for you — see Extend.' : undefined} />
             )
           ) : (
             <ul className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
@@ -268,7 +311,7 @@ const LeadsPage: React.FC = () => {
       </div>
 
       <p className={`text-[11px] mt-4 ${subtext}`}>
-        From your reach: a checkout that stopped after the mobile OTP, a VaNi conversation that left a number, or a lead you added. Asked you: a request for quote is a lead with a specification attached — the verb is respond.
+        From your reach: a checkout that stopped after the mobile OTP, a VaNi conversation that left a number, or a lead you added. RFQ: a request for quote another business sent you — a lead with a specification attached; respond from Requests.
       </p>
     </div>
   );
