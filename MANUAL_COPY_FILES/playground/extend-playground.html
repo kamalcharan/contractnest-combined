@@ -1,0 +1,587 @@
+<title>Extend Playground</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a stop rail across the top (the journey), one stage below it. Global switches
+   (Website / WhatsApp / VaNi) live in the rail and change every screen. */
+:root {
+  --paper: #f7f5f2;  --card: #ffffff;  --surface: #faf9f7;  --ink: #1a1816;  --soft: #8a847a;
+  --faint: #bab4a8;  --line: #f0ece6;  --edge: #e5e1db;    --vani: #ff6b2b;  --wash: #fff3ed;
+  --green: #16a34a;  --wa: #25d366;    --site: #4f5b8f;    --shadow: 0 1px 2px rgba(26,24,22,.04), 0 12px 32px rgba(26,24,22,.08);
+  --display: 'Outfit', system-ui, sans-serif;  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #171513; --card: #221f1c; --surface: #1c1a17; --ink: #f1ede7; --soft: #a39c90;
+  --faint: #6e685f; --line: #2c2823; --edge: #3a352f; --wash: #2b1f17; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #171513; --card: #221f1c; --surface: #1c1a17; --ink: #f1ede7; --soft: #a39c90;
+  --faint: #6e685f; --line: #2c2823; --edge: #3a352f; --wash: #2b1f17; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35); color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font-family: var(--display); font-size: 14px; line-height: 1.5; margin: 0 }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 18px 48px; padding-inline: 16px }
+h1, h2, h3 { margin: 0; text-wrap: balance; line-height: 1.15 }
+h1 { font-size: 26px; font-weight: 800; letter-spacing: -.02em }
+h2 { font-size: 19px; font-weight: 700 }
+h3 { font-size: 15px; font-weight: 700 }
+p { margin: 0 }
+.muted { color: var(--soft) }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint) }
+button { font: inherit; cursor: pointer }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--vani); outline-offset: 2px }
+input, select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--edge); border-radius: 8px; padding: 8px 10px; width: 100% }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+
+/* rail */
+.rail { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 18px }
+.rail .title { display: flex; flex-direction: column; gap: 2px; margin-right: auto }
+.switches { display: flex; gap: 8px; flex-wrap: wrap }
+.sw { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--edge); background: var(--card); font-weight: 600; font-size: 13px }
+.sw .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint) }
+.sw.on .dot { background: var(--green) }
+.sw.on { border-color: color-mix(in srgb, var(--green) 40%, var(--edge)) }
+.stops { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px }
+.stop { border: 1px solid var(--edge); background: var(--card); color: var(--soft); padding: 8px 12px; border-radius: 10px; font-weight: 600; font-size: 13px; display: flex; gap: 8px; align-items: center }
+.stop .n { font-family: var(--mono); font-size: 11px; color: var(--faint) }
+.stop.active { color: var(--ink); border-color: var(--vani); background: var(--wash) }
+.stop.active .n { color: var(--vani) }
+
+/* stage */
+.stage { display: none }
+.stage.active { display: block }
+.note { background: var(--wash); border: 1px solid color-mix(in srgb, var(--vani) 25%, var(--edge)); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px }
+.note strong { color: var(--vani) }
+.card { background: var(--card); border: 1px solid var(--edge); border-radius: 14px; box-shadow: var(--shadow) }
+.grid { display: grid; gap: 16px }
+.g2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
+.g3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) }
+.split { display: grid; gap: 18px; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr) }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr } }
+.btn { border: none; border-radius: 9px; padding: 10px 16px; font-weight: 700; background: var(--vani); color: #fff; display: inline-flex; align-items: center; gap: 8px }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--edge) }
+.btn.sm { padding: 7px 11px; font-size: 12.5px }
+.btn.wa { background: var(--wa) }
+.btn.site { background: var(--site) }
+.btn:disabled { opacity: .45; cursor: not-allowed }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--edge); background: var(--surface); color: var(--soft) }
+.chip.on { color: var(--green); border-color: color-mix(in srgb, var(--green) 35%, var(--edge)) }
+.chip.vani { color: var(--vani); border-color: color-mix(in srgb, var(--vani) 35%, var(--edge)); background: var(--wash) }
+.kv { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--soft) }
+.kv b { color: var(--ink); font-family: var(--mono); font-weight: 600 }
+.snippet { font-family: var(--mono); font-size: 12px; background: var(--surface); border: 1px solid var(--edge); border-radius: 10px; padding: 12px 14px; overflow-x: auto; white-space: pre; color: var(--ink) }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 10px; font-weight: 600; box-shadow: var(--shadow); opacity: 0; pointer-events: none; transition: opacity .2s }
+.toast.show { opacity: 1 }
+
+/* journey strip (stop 0) */
+.journey { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px }
+.jstep { padding: 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--edge); display: flex; flex-direction: column; gap: 6px }
+.jstep .eyebrow { color: var(--vani) }
+.jstep p { font-size: 13px; color: var(--soft) }
+
+/* extend home */
+.pitch { padding: 26px 28px; display: grid; gap: 22px; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); align-items: center }
+@media (max-width: 760px) { .pitch { grid-template-columns: 1fr } }
+.pitch h1 { font-size: 30px }
+.pitch .lead { font-size: 15px; color: var(--soft); max-width: 46ch; margin-top: 8px }
+.ways { display: grid; gap: 12px; margin-top: 16px }
+.way { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: start; padding: 14px; border-radius: 12px; border: 1px solid var(--edge); background: var(--card) }
+.way .ic { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; color: #fff }
+.way p { font-size: 12.5px; color: var(--soft) }
+.way .price { font-family: var(--mono); font-size: 12px; color: var(--soft); text-align: right; white-space: nowrap }
+.way.locked { opacity: .78 }
+.phone { width: 300px; max-width: 100%; margin: 0 auto; border: 10px solid #2a2622; border-radius: 34px; background: #0f0d0c; box-shadow: var(--shadow) }
+.screen { background: var(--paper); border-radius: 24px; min-height: 480px; overflow: hidden; display: flex; flex-direction: column }
+.rows { display: grid }
+.row { display: grid; grid-template-columns: 44px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 14px 18px; border-top: 1px solid var(--line) }
+.row:first-child { border-top: none }
+.row .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--wash); color: var(--vani); display: grid; place-items: center; font-weight: 800 }
+.row .name { font-weight: 700 }
+.row .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; align-items: center }
+.row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end }
+.ib { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--edge); background: var(--surface); color: var(--ink); display: grid; place-items: center; font-size: 12px; font-weight: 700 }
+.ib.wa { color: var(--wa) } .ib.site { color: var(--site) } .ib.vani { color: var(--vani) }
+.ib:disabled { color: var(--faint) }
+.counters { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; color: var(--soft) }
+.counters b { font-family: var(--mono); color: var(--ink); font-weight: 600 }
+
+/* configurator */
+.field { display: grid; gap: 6px; margin-bottom: 12px }
+.field label { font-size: 12px; font-weight: 600; color: var(--soft) }
+.seg { display: flex; gap: 6px; flex-wrap: wrap }
+.seg button { border: 1px solid var(--edge); background: var(--surface); color: var(--ink); padding: 7px 11px; border-radius: 8px; font-size: 12.5px; font-weight: 600 }
+.seg button.on { border-color: var(--vani); background: var(--wash); color: var(--vani) }
+.swatches { display: flex; gap: 8px }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent }
+.swatch.on { border-color: var(--ink) }
+.swatch.custom { background: conic-gradient(#f43f5e, #f59e0b, #22c55e, #06b6d4, #6366f1, #f43f5e); position: relative; overflow: hidden; cursor: pointer }
+.swatch.custom input { position: absolute; inset: -6px; width: 200%; height: 200%; opacity: 0; cursor: pointer }
+.swatch.custom.on::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--card) }
+.host { border-radius: 12px; border: 1px solid var(--edge); background: #fff; color: #222; overflow: hidden; min-height: 380px; display: flex; flex-direction: column }
+.host .bar { background: #eef0f3; padding: 8px 12px; font-family: var(--mono); font-size: 11px; color: #667; display: flex; gap: 8px; align-items: center }
+.host .bar i { width: 9px; height: 9px; border-radius: 50%; background: #d3d7de; display: inline-block }
+.host .site-body { padding: 22px; display: grid; gap: 14px; grid-template-columns: minmax(0,1fr) 220px }
+@media (max-width: 640px) { .host .site-body { grid-template-columns: 1fr } }
+.host h4 { margin: 0; font-family: Georgia, serif; font-size: 22px; color: #1b2a41 }
+.host .txt { height: 10px; border-radius: 5px; background: #e6e9ee; margin: 6px 0 }
+.host .txt.s { width: 60% }
+.widget-slot { display: flex; align-items: flex-start; justify-content: center; padding: 6px 0 }
+.pkcard { width: 100%; max-width: 260px; border-radius: 12px; border: 1px solid #e3e6eb; padding: 14px; background: #fff; box-shadow: 0 8px 24px rgba(20,30,50,.08); display: grid; gap: 6px; color: #1b2a41 }
+.pkcard .p-name { font-weight: 700; font-size: 14px }
+.pkcard .p-price { font-family: var(--mono); font-size: 13px; color: #445 }
+.pkcard ul { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: #556 }
+.pkcard .p-acts { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap }
+.wbtn { border: none; color: #fff; font-weight: 700; padding: 9px 14px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center }
+.wbtn.ghost { background: transparent; color: #1b2a41; border: 1.5px solid #cfd4dc }
+.bubble { position: absolute; right: 14px; bottom: 14px; width: 52px; height: 52px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 800; box-shadow: 0 8px 24px rgba(0,0,0,.25) }
+.host .site-body { position: relative }
+.vs-panel { background: #fff; border: 1px solid #e3e6eb; border-radius: 14px; box-shadow: 0 12px 32px rgba(20,30,50,.14); padding: 10px; display: grid; gap: 6px; color: #1b2a41 }
+.vs-panel .chat { background: #f6f7f9; border-radius: 10px; padding: 8px }
+.vs-head { display: flex; gap: 8px; align-items: center; padding: 2px 4px 6px }
+.vs-panel .msg.bot { background: #fff; border-color: #e3e6eb; color: #1b2a41 } .vs-panel .msg.me { background: #eef0ff; border-color: #cfd6ff; color: #1b2a41 }
+.vs-panel .msg .who { color: #99a } .vs-panel .quick button { background: #fff; color: #1b2a41; border-color: #cfd4dc }
+.vs-panel input { background: #fff; color: #1b2a41; border-color: #cfd4dc }
+details.dev { border: 1px solid var(--edge); border-radius: 10px; padding: 10px 14px; margin-top: 12px; background: var(--surface) }
+details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
+
+/* customer journey */
+.cust { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) }
+.public { padding: 18px 20px; display: grid; gap: 12px }
+.public .seller { display: flex; gap: 10px; align-items: center }
+.public .seller .logo { width: 34px; height: 34px; border-radius: 8px; background: var(--site); color: #fff; display: grid; place-items: center; font-weight: 800 }
+.lines { display: grid; gap: 6px; font-size: 13px }
+.lines div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed var(--line); padding: 5px 0 }
+.total { display: flex; justify-content: space-between; font-weight: 800; font-size: 16px }
+.chat { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow: auto; padding: 4px }
+.msg { max-width: 88%; padding: 9px 12px; border-radius: 12px; font-size: 13px; line-height: 1.45 }
+.msg.me { align-self: flex-end; background: var(--wash); border: 1px solid color-mix(in srgb, var(--vani) 25%, var(--edge)) }
+.msg.bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--edge) }
+.msg .who { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .06em }
+.msg .pkcard { max-width: none; margin-top: 6px }
+.chatin { display: flex; gap: 6px; margin-top: 8px }
+.chatin input { flex: 1 }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px }
+.quick button { border: 1px solid var(--edge); background: var(--card); color: var(--ink); border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 600 }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px }
+.steps span { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--edge); color: var(--soft) }
+.steps span.on { color: var(--vani); border-color: var(--vani); background: var(--wash) }
+
+/* VaNi on their site */
+function renderVs() { const el = document.getElementById('vs-chat'); if (!el) return;
+  el.innerHTML = S.vs.map(m => m.who === 'me' ? `<div class="msg me"><div class="who">Visitor</div>${m.t}</div>` : `<div class="msg bot"><div class="who">VaNi</div>${m.t}${m.card ? cardHTML(m.card) : ''}${m.form ? '<div class="field" style="margin:8px 0 0"><input placeholder="Your name"><input placeholder="Mobile" style="margin-top:6px"><button class="btn sm" style="margin-top:6px" onclick="vsLead()">Send</button></div>' : ''}</div>`).join('');
+  el.scrollTop = el.scrollHeight; }
+function vsAsk(q) { if (!q || !q.trim()) return; S.vs.push({ who: 'me', t: q });
+  const a = { 'Do you cover Secunderabad?': { t: 'Yes, whole of Hyderabad and Secunderabad, no travel charge. Which equipment are you looking after?' },
+    'What do you have for a 3 floor office?': { t: 'For a 3 floor office you would usually take the HVAC AMC, and the lift AMC if you have one. Here is the HVAC package; I can show the lift one too.', card: 'hvac' },
+    'Can someone call me?': { t: 'Of course. Leave your name and mobile and signia will call you back today.', form: true } };
+  S.vs.push({ who: 'vani', ...(a[q] || { t: 'I answer from signia\'s packages and FAQ. I don\'t have that one, so I will pass it to signia. Want to leave your number so they can reply?', form: true }) }); renderVs(); }
+function vsLead() { S.vs.push({ who: 'vani', t: 'Thanks, Ravi. signia has your number and this conversation. They will call you today. This page stays open if you want to explore the packages meanwhile.' }); renderVs(); toastMsg('Lead captured · notified signia'); }
+
+/* whatsapp */
+.wa-screen { background: #e7dfd3; border-radius: 24px; min-height: 480px; display: flex; flex-direction: column; overflow: hidden; color: #1a1816 }
+.wa-top { background: #075e54; color: #fff; padding: 12px 14px; font-weight: 700; display: flex; gap: 10px; align-items: center }
+.wa-top small { display: block; font-weight: 400; opacity: .85; font-size: 11px }
+.wa-body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px }
+.wmsg { max-width: 86%; background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 13px; box-shadow: 0 1px 1px rgba(0,0,0,.08) }
+.wmsg.out { align-self: flex-end; background: #dcf8c6 }
+.wmsg .t { font-size: 10px; color: #889; text-align: right; margin-top: 3px }
+.wbtns { display: grid; gap: 4px; margin-top: 8px; border-top: 1px solid #eee; padding-top: 6px }
+.wbtns div { text-align: center; color: #0a7cff; font-weight: 600; padding: 6px; border-radius: 6px; background: #f6f8fa; font-size: 13px }
+.wlist { border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; margin-top: 6px }
+.wlist div { padding: 7px 10px; border-top: 1px solid #eee; font-size: 12.5px }
+.wlist div:first-child { border-top: none; font-weight: 700; background: #f6f8fa }
+.wlist small { display: block; color: #778; font-family: var(--mono); font-size: 11px }
+.wa-in { background: #f0f0f0; padding: 8px; display: flex; gap: 6px }
+.wa-in div { flex: 1; background: #fff; border-radius: 999px; padding: 8px 12px; color: #999; font-size: 13px }
+
+/* leads */
+.lead { display: grid; grid-template-columns: 40px minmax(0,1fr) auto; gap: 12px; padding: 14px 18px; border-top: 1px solid var(--line); align-items: start }
+.lead:first-child { border-top: none }
+.lead .av { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: 1px solid var(--edge); display: grid; place-items: center; font-weight: 800; color: var(--soft) }
+.interest { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--edge); font-size: 12.5px; display: grid; gap: 3px }
+.tabs { display: flex; gap: 6px; padding: 12px 18px; border-bottom: 1px solid var(--line) }
+.tabs button { border: 1px solid var(--edge); background: var(--surface); color: var(--soft); border-radius: 999px; padding: 6px 12px; font-weight: 600; font-size: 12.5px }
+.tabs button.on { color: var(--vani); border-color: var(--vani); background: var(--wash) }
+.pane { padding: 14px 18px; display: grid; gap: 12px }
+.pane h3 { font-size: 14px }
+.off { opacity: .55 }
+.ghosted { border: 1.5px dashed var(--edge); border-radius: 12px; padding: 14px; color: var(--soft); font-size: 13px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap }
+</style>
+
+<div class="wrap">
+  <div class="rail">
+    <div class="title">
+      <span class="eyebrow">Extend · product-led UX playground</span>
+      <h1>Your packages, everywhere your customers are</h1>
+      <p class="muted">Click the stops. The three switches change every screen, the way entitlements will in the product. Figures are examples.</p>
+    </div>
+    <div class="switches" role="group" aria-label="Entitlements">
+      <button class="sw" id="sw-website" onclick="toggle('website')"><span class="dot"></span>Website</button>
+      <button class="sw" id="sw-whatsapp" onclick="toggle('whatsapp')"><span class="dot"></span>WhatsApp</button>
+      <button class="sw" id="sw-vani" onclick="toggle('vani')"><span class="dot"></span>VaNi</button>
+    </div>
+  </div>
+
+  <nav class="stops" aria-label="Journey">
+    <button class="stop" data-stop="0"><span class="n">0</span>The journey</button>
+    <button class="stop" data-stop="1"><span class="n">1</span>Extend page</button>
+    <button class="stop" data-stop="2"><span class="n">2</span>Storefront &amp; widget</button>
+    <button class="stop" data-stop="3"><span class="n">3</span>VaNi on their site</button>
+    <button class="stop" data-stop="4"><span class="n">4</span>What the customer sees</button>
+    <button class="stop" data-stop="5"><span class="n">5</span>WhatsApp</button>
+    <button class="stop" data-stop="6"><span class="n">6</span>What lands in your book</button>
+  </nav>
+
+  <!-- 0 · journey -->
+  <section class="stage" id="stage-0">
+    <div class="note"><strong>One idea runs through all of it.</strong> A package card with two buttons, Buy and Explore, is the unit. The widget, the package page, the VaNi chat and the WhatsApp message are four ways of showing the same card. Build it once.</div>
+    <div class="journey">
+      <div class="jstep"><span class="eyebrow">You</span><h3>Pick a published package</h3><p>Any signed-off template. Card style set once: colour, shape, button text.</p></div>
+      <div class="jstep"><span class="eyebrow">Where it appears</span><h3>Site, WhatsApp, link</h3><p>One line on their site. A share into a chat. A link in a bio or on a QR.</p></div>
+      <div class="jstep"><span class="eyebrow">Customer</span><h3>Explore, ask, buy</h3><p>Package page with lines, terms and FAQ. VaNi answers and captures the lead. Checkout with OTP.</p></div>
+      <div class="jstep"><span class="eyebrow">Your book</span><h3>Lead, then contract</h3><p>A lead the moment they identify. A contract in pending acceptance the moment they buy.</p></div>
+    </div>
+    <div class="card" style="margin-top:16px;padding:16px 20px">
+      <h3>Suggestion on Email</h3>
+      <p class="muted" style="margin-top:6px;max-width:70ch">Drop Email as a channel and an entitlement. Keep "Send by email" as a free action on every storefront that copies a mail-ready block with the card and the link. It is the same card, so it costs nothing, and nobody should pay for it. The switches above therefore show only Website and WhatsApp.</p>
+    </div>
+  </section>
+
+  <!-- 1 · extend page -->
+  <section class="stage" id="stage-1">
+    <div id="extend-off">
+      <div class="card pitch">
+        <div>
+          <span class="eyebrow">Extend</span>
+          <h1>Sell your packages where your customers already are</h1>
+          <p class="lead">Take any published package and put it on your website, in a WhatsApp chat, or behind a link. The customer reads it, asks VaNi a question, pays, and a contract lands in your book. You do nothing by hand.</p>
+          <div class="ways">
+            <div class="way"><div class="ic" style="background:var(--site)">W</div><div><h3>Website</h3><p>A button or a package card on your own site. One line to paste, no developer needed. Opens a checkout on your branding.</p></div><div class="price">₹700 / yr</div></div>
+            <div class="way"><div class="ic" style="background:var(--wa)">WA</div><div><h3>WhatsApp</h3><p>Share a package into any chat or group with Buy and Explore buttons. With VaNi on, she answers replies and captures leads.</p></div><div class="price">₹700 / yr</div></div>
+            <div class="way"><div class="ic" style="background:var(--vani)">V</div><div><h3>VaNi on both</h3><p>Answers questions from the package itself, offers the right package, and hands warm leads to you.</p></div><div class="price">with VaNi</div></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+            <button class="btn" onclick="toggle('website');">Turn on Website · ₹700/yr</button>
+            <button class="btn ghost" onclick="go(4)">See what your customer sees</button>
+          </div>
+        </div>
+        <div class="phone"><div class="screen" id="pitch-preview"></div></div>
+      </div>
+    </div>
+
+    <div id="extend-on" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div><span class="eyebrow">Extend</span><h2>Your storefronts</h2><p class="muted">One storefront per package or set of packages. Website, WhatsApp and the link are ways to share it.</p></div>
+        <button class="btn" onclick="newStorefront()">+ New storefront</button>
+      </div>
+      <div class="card rows" id="storefront-rows"></div>
+      <div id="new-sf" class="card" hidden style="margin-top:14px;padding:16px 18px;display:grid;gap:12px">
+        <h3>New storefront</h3>
+        <div class="field"><label>Packages to include</label>
+          <div class="seg" id="pkpick">
+            <button class="on" data-pk="hvac" onclick="pickPk(this)">1 year HVAC template · ₹24,000</button>
+            <button data-pk="lift" onclick="pickPk(this)">Quarterly lift AMC · ₹9,000 (example)</button>
+            <button data-pk="fire" onclick="pickPk(this)">Fire safety audit · ₹6,500 (example)</button>
+          </div>
+          <p class="muted" style="font-size:12px">Two or more packages make a catalog. The customer picks, then explores or buys.</p>
+        </div>
+        <div style="display:flex;gap:8px"><button class="btn" onclick="createSf()">Create storefront</button><button class="btn ghost" onclick="document.getElementById('new-sf').hidden=true">Cancel</button></div>
+      </div>
+      <div id="vani-row" style="margin-top:14px"></div>
+      <p class="muted" style="margin-top:14px;font-size:12.5px">Viewing is always free. A sale creates a contract in your book. Counters: <b>views</b> of the page, <b>chats</b> with VaNi, <b>leads</b> captured, <b>started</b> checkouts, <b>bought</b>.</p>
+    </div>
+  </section>
+
+  <!-- 2 · storefront & widget -->
+  <section class="stage" id="stage-2">
+    <div class="note"><strong>Configurator, not an SDK.</strong> Everything you set here becomes a data attribute on one script tag. The card, the package page and the checkout render inside our frame on our origin, so a third-party site cannot break them. Developers get two JS calls, not a component library.</div>
+    <div class="split">
+      <div class="card" style="padding:16px 18px">
+        <span class="eyebrow">Card style · applies everywhere</span>
+        <h3 style="margin:4px 0 12px">1 year HVAC template</h3>
+        <div class="field"><label>Show as</label><div class="seg" id="cfg-view">
+          <button data-v="button" class="on">Buy button</button><button data-v="card">Package card</button><button data-v="catalog">Catalog</button><button data-v="bubble">Ask VaNi bubble</button></div></div>
+        <div class="field"><label>Button text</label><div class="seg" id="cfg-label">
+          <button data-v="Buy now" class="on">Buy now</button><button data-v="Explore">Explore</button><button data-v="Get a quote">Get a quote</button></div></div>
+        <div class="field"><label>Colour · your brand colour first, five presets, or any colour</label><div class="swatches" id="cfg-color">
+          <button class="swatch on" data-v="#4f5b8f" style="background:#4f5b8f" aria-label="Brand blue" title="Your brand colour"></button>
+          <button class="swatch" data-v="#ff6b2b" style="background:#ff6b2b" aria-label="Orange"></button>
+          <button class="swatch" data-v="#16a34a" style="background:#16a34a" aria-label="Green"></button>
+          <button class="swatch" data-v="#0f766e" style="background:#0f766e" aria-label="Teal"></button>
+          <button class="swatch" data-v="#1a1816" style="background:#1a1816" aria-label="Ink"></button>
+          <label class="swatch custom" id="cfg-custom" title="Any colour"><input type="color" id="cfg-color-input" value="#4f5b8f" aria-label="Pick any colour"></label></div></div>
+        <div class="field"><label>Shape</label><div class="seg" id="cfg-shape">
+          <button data-v="pill" class="on">Pill</button><button data-v="rounded">Rounded</button><button data-v="square">Square</button></div></div>
+        <div class="field"><label>A click opens</label><div class="seg" id="cfg-open">
+          <button data-v="overlay" class="on">Overlay on their page</button><button data-v="tab">New tab</button></div></div>
+        <span class="eyebrow">Paste this once</span>
+        <div class="snippet" id="snippet"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="copyText(document.getElementById('snippet').textContent,'Snippet copied')">Copy snippet</button><button class="btn sm ghost" onclick="copyText('https://contractnest.com/p/sf-e6a8abb6e376f0fa154cafbc8189cc17','Link copied')">Copy link</button><button class="btn sm ghost" onclick="copyText('https://contractnest.com/p/sf-e6a8abb6e376f0fa154cafbc8189cc17','Mail block copied')">Send by email</button></div>
+        <details class="dev"><summary>For developers</summary>
+          <p class="muted" style="font-size:12.5px;margin:8px 0">Attach our checkout to your own button, or mount the card into an element you choose. Nothing else is exposed.</p>
+          <div class="snippet">ContractNest.open('sf-e6a8abb6e376f0fa154cafbc8189cc17')
+ContractNest.mount(el, { storefront: 'sf-e6a8…', view: 'card' })</div>
+        </details>
+      </div>
+      <div>
+        <span class="eyebrow">Live preview · your customer's site</span>
+        <div class="host" style="margin-top:6px">
+          <div class="bar"><i></i><i></i><i></i> coolairsolutions.in / amc</div>
+          <div class="site-body">
+            <div><h4>Annual maintenance for your HVAC</h4><div class="txt"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div><div class="txt s"></div></div>
+            <div class="widget-slot" id="widget-slot"></div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px;margin-top:8px">The preview and the real widget are the same code. Changing the style here changes it on their site, in VaNi's chat and on WhatsApp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · VaNi on their site -->
+  <section class="stage" id="stage-3">
+    <div id="vs-off" class="ghosted" hidden><span><b>VaNi is off for this tenant.</b> Their site can still show packages and a checkout. Turn VaNi on to put her on the site: she answers from the packages, captures leads, and hands warm ones to the team.</span><button class="btn sm" onclick="toggle('vani')">Open VaNi</button></div>
+    <div id="vs-on">
+      <div class="note"><strong>VaNi is tenant-level, not storefront-level.</strong> One script tag puts her on every page of their site. She knows every published package, the FAQ they write here, and their hours. A visitor gets answers, the right package card, and a way to leave their number. The tenant gets a lead.</div>
+      <div class="split">
+        <div class="card" style="padding:16px 18px">
+          <span class="eyebrow">Set up VaNi for your site</span>
+          <h3 style="margin:4px 0 12px">What she knows and does</h3>
+          <div class="field"><label>She can talk about</label><div class="seg" id="vs-pk">
+            <button class="on">1 year HVAC template</button><button class="on">Quarterly lift AMC</button><button>Fire safety audit</button></div>
+            <p class="muted" style="font-size:12px">Published packages only. Prices, lines and terms come from the template itself, so she is never out of date.</p></div>
+          <div class="field"><label>Your FAQ · she answers from this before anything else</label>
+            <div class="snippet" style="white-space:normal;font-family:var(--display);font-size:12.5px">Q: Do you cover Secunderabad? A: Yes, whole of Hyderabad and Secunderabad.<br>Q: Weekend visits? A: Saturdays, no extra charge.<br>Q: Gas beyond 1 kg? A: Billed at cost, invoice attached.</div></div>
+          <div class="field"><label>Greeting</label><input value="Hi, I'm VaNi for signia. Ask me about our maintenance packages."></div>
+          <div class="field"><label>When she can't answer</label><div class="seg" id="vs-handoff">
+            <button class="on">Take their number, notify me</button><button>Open WhatsApp to +91 98851 64233</button></div></div>
+          <div class="field"><label>Ask for name and mobile</label><div class="seg" id="vs-capture">
+            <button class="on">When they show interest</button><button>Before the first answer</button><button>Never</button></div></div>
+          <div class="field"><label>Allowed sites</label><input value="coolairsolutions.in, www.coolairsolutions.in"><p class="muted" style="font-size:12px">The bubble only loads on these domains. Nothing else needed: no API key, no developer.</p></div>
+          <span class="eyebrow">Paste this once, on every page</span>
+          <div class="snippet" id="vs-snippet">&lt;script src="https://contractnest.com/embed.js"
+  data-vani="vn-signia-7c21a0"
+  data-color="#4f5b8f" async&gt;&lt;/script&gt;</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="copyText(document.getElementById('vs-snippet').textContent,'Snippet copied')">Copy snippet</button><button class="btn sm ghost" onclick="go(5)">Same VaNi on WhatsApp</button></div>
+          <p class="muted" style="font-size:12px;margin-top:10px">Works next to a storefront widget on the same page. The key is the tenant's, not a storefront's, so she covers all of them.</p>
+        </div>
+        <div>
+          <span class="eyebrow">Live preview · their site with VaNi open</span>
+          <div class="host" style="margin-top:6px">
+            <div class="bar"><i></i><i></i><i></i> coolairsolutions.in / services</div>
+            <div class="site-body" style="grid-template-columns:minmax(0,1fr) 300px">
+              <div><h4>Cool Air Solutions</h4><div class="txt"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div></div>
+              <div class="vs-panel">
+                <div class="vs-head"><span style="width:26px;height:26px;border-radius:7px;background:var(--vani);color:#fff;display:grid;place-items:center;font-weight:800">V</span><div><b>VaNi</b> <span style="font-size:11px;color:#667">for signia · online</span></div></div>
+                <div class="chat" id="vs-chat" style="max-height:290px"></div>
+                <div class="quick" id="vs-quick"><button onclick="vsAsk('Do you cover Secunderabad?')">Do you cover Secunderabad?</button><button onclick="vsAsk('What do you have for a 3 floor office?')">What for a 3 floor office?</button><button onclick="vsAsk('Can someone call me?')">Can someone call me?</button></div>
+                <div class="chatin"><input id="vs-input" placeholder="Ask VaNi" onkeydown="if(event.key==='Enter'){vsAsk(this.value);this.value=''}"><button class="btn sm" onclick="const i=document.getElementById('vs-input');vsAsk(i.value);i.value=''">Send</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;padding:12px 16px;display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+            <div><span class="eyebrow">What VaNi did · this month</span><div class="counters" style="margin-top:4px"><span><b>31</b> conversations</span><span><b>24</b> answered from packages</span><span><b>6</b> leads captured</span><span><b>2</b> handed to you</span><span><b>1</b> bought</span></div></div>
+            <button class="btn sm ghost" onclick="go(6)">See the leads</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · customer -->
+  <section class="stage" id="stage-4">
+    <div class="steps"><span class="on" id="st-explore">Explore</span><span id="st-ask">Ask VaNi</span><span id="st-checkout">Checkout</span><span id="st-done">Contract</span></div>
+    <div class="cust">
+      <div class="card public">
+        <div class="seller"><div class="logo">S</div><div><b>signia</b><br><span class="muted" style="font-size:12px">Hyderabad · GST registered</span></div></div>
+        <div><span class="eyebrow">Package</span><h2>1 year HVAC template</h2><p class="muted">Four scheduled visits a year, filters and gas top-up included, breakdown response within 24 hours.</p></div>
+        <div class="lines">
+          <div><span>Preventive maintenance visit × 4</span><b class="mono">₹16,000</b></div>
+          <div><span>Filter replacement × 2</span><b class="mono">₹4,000</b></div>
+          <div><span>Gas top-up, up to 1 kg</span><b class="mono">₹4,000</b></div>
+        </div>
+        <div class="total"><span>1 year</span><span class="mono">₹24,000</span></div>
+        <p class="muted" style="font-size:12px">Terms: quarterly billing, 15 days credit, cancellation with 30 days notice. FAQ: written by signia on the Extend page.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="custStep('checkout')">Buy now</button><button class="btn ghost" id="askbtn" onclick="custStep('ask')">Ask VaNi</button></div>
+        <p class="muted" id="vani-off-note" style="font-size:12px" hidden>VaNi is off for this seller: the Ask button is not shown. Questions go to the seller's WhatsApp instead.</p>
+      </div>
+      <div class="card" style="padding:16px 18px" id="cust-right"></div>
+    </div>
+  </section>
+
+  <!-- 5 · whatsapp -->
+  <section class="stage" id="stage-5">
+    <div id="wa-off" class="ghosted" hidden><span>WhatsApp is off for this tenant. Sharing still works by hand, with a plain link. Turn WhatsApp on to send the card with buttons and let VaNi answer replies.</span><button class="btn wa sm" onclick="toggle('whatsapp')">Turn on WhatsApp · ₹700/yr</button></div>
+    <div class="split" id="wa-on">
+      <div class="card" style="padding:16px 18px">
+        <span class="eyebrow">Share on WhatsApp</span>
+        <h3 style="margin:4px 0 10px">1 year HVAC template</h3>
+        <div class="field"><label>Message</label><input id="wa-text" value="Here's our 1 year HVAC AMC. Four visits, filters and gas included."></div>
+        <div class="field"><label>Buttons on the message</label><p class="muted" style="font-size:12.5px">Buy now · Explore · Ask VaNi. Up to three, as WhatsApp allows. A catalog storefront sends a list instead, one row per package.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn wa" onclick="waSend()">Share to a chat</button><button class="btn ghost" onclick="waCatalog()">Preview as catalog</button></div>
+        <p class="muted" style="font-size:12px;margin-top:12px">From your own number through wa.me, no registration. From the ContractNest number, once the template is registered with MSG91.</p>
+        <div id="wa-vani-note" style="margin-top:14px"></div>
+      </div>
+      <div class="phone" style="width:320px"><div class="wa-screen" id="wa-screen"></div></div>
+    </div>
+  </section>
+
+  <!-- 6 · book -->
+  <section class="stage" id="stage-6">
+    <div class="note"><strong>Two things land, in order.</strong> A lead with an interest row the moment the customer identifies themselves, and a contract in pending acceptance the moment they buy. Requests you receive on the Revenue side sit in the same list.</div>
+    <div class="card">
+      <div class="tabs"><button class="on" onclick="leadTab(this,'push')">From your reach · 3</button><button onclick="leadTab(this,'req')">Asked you · 1</button></div>
+      <div id="leads-push">
+        <div class="lead"><div class="av">RK</div><div><b>Ravi Kumar</b> <span class="chip">lead</span> <span class="chip on">website</span><div class="muted" style="font-size:12.5px">+91 98xxx xx233 · identified at checkout, did not pay</div>
+          <div class="interest"><span><b>1 year HVAC template</b> · stage: engaged · last touch 2 h ago</span><span class="muted">Asked VaNi: "Does it cover gas refill?" and "Can I pay monthly?"</span></div></div>
+          <div class="acts" style="display:grid;gap:6px"><button class="btn sm">Follow up</button><button class="btn sm ghost">Send contract</button></div></div>
+        <div class="lead"><div class="av">MP</div><div><b>Meera Pillai</b> <span class="chip">lead</span> <span class="chip on">whatsapp</span><div class="muted" style="font-size:12.5px">+91 90xxx xx410 · replied to the share</div>
+          <div class="interest"><span><b>Quarterly lift AMC</b> · stage: new · last touch yesterday</span><span class="muted">Tapped Explore, no questions yet.</span></div></div>
+          <div class="acts" style="display:grid;gap:6px"><button class="btn sm">Follow up</button><button class="btn sm ghost">Send contract</button></div></div>
+        <div class="lead"><div class="av">AT</div><div><b>Arjun Traders</b> <span class="chip">client</span> <span class="chip on">website</span><div class="muted" style="font-size:12.5px">Bought · CN-1012 · pending acceptance · INV-10061</div>
+          <div class="interest"><span><b>1 year HVAC template</b> · converted · became a client on purchase</span><span class="muted">Interest rows stay as history: this one came in on the website widget.</span></div></div>
+          <div class="acts" style="display:grid;gap:6px"><button class="btn sm ghost">Open contract</button></div></div>
+      </div>
+      <div id="leads-req" hidden>
+        <div class="lead"><div class="av">VN</div><div><b>Vikuna Technologies</b> <span class="chip">lead</span> <span class="chip on">request</span><div class="muted" style="font-size:12.5px">Raised PRJ-1004 · deadline 6 Oct · 2 services</div>
+          <div class="interest"><span><b>Request for quote</b> · stage: quote due</span><span class="muted">An RFQ you receive is a lead with a specification attached. The verb is different.</span></div></div>
+          <div class="acts" style="display:grid;gap:6px"><button class="btn sm">Respond with quote</button></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const S = { website: true, whatsapp: true, vani: true, stop: 0,
+  cfg: { view: 'button', label: 'Buy now', color: '#4f5b8f', shape: 'pill', open: 'overlay' },
+  sfs: [ { id: 'sf-e6a8abb6e376f0fa154cafbc8189cc17', name: '1 year HVAC template', pks: ['hvac'], v: 214, c: 31, l: 6, s: 9, b: 2 } ],
+  pick: ['hvac'], cust: 'explore', chat: [], vs: [{ who: 'vani', t: "Hi, I'm VaNi for signia. Ask me about our maintenance packages." }] };
+const PK = { hvac: ['1 year HVAC template', 24000], lift: ['Quarterly lift AMC', 9000], fire: ['Fire safety audit', 6500] };
+const fmt = n => '₹' + n.toLocaleString('en-IN');
+const radius = () => ({ pill: '999px', rounded: '10px', square: '3px' })[S.cfg.shape];
+
+function go(n) { S.stop = n; document.querySelectorAll('.stop').forEach(b => b.classList.toggle('active', +b.dataset.stop === n));
+  document.querySelectorAll('.stage').forEach(s => s.classList.toggle('active', s.id === 'stage-' + n)); render(); }
+document.querySelectorAll('.stop').forEach(b => b.addEventListener('click', () => go(+b.dataset.stop)));
+function toggle(k) { S[k] = !S[k]; render(); }
+function toastMsg(t) { const el = document.getElementById('toast'); el.textContent = t; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1600); }
+function copyText(t, msg) { const done = () => toastMsg(msg);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done).catch(() => { fallbackCopy(t); done(); }); else { fallbackCopy(t); done(); } }
+function fallbackCopy(t) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+
+/* card renderer: the one component, used by widget, chat and package page */
+function cardHTML(pk, opts = {}) {
+  const [name, price] = PK[pk]; const c = S.cfg;
+  const btn = (txt, ghost) => `<button class="wbtn${ghost ? ' ghost' : ''}" style="border-radius:${radius()};${ghost ? '' : 'background:' + c.color}">${txt}</button>`;
+  return `<div class="pkcard"><div class="p-name">${name}</div><div class="p-price">${fmt(price)} / year</div>
+    <ul><li>4 maintenance visits</li><li>Filters and gas top-up</li><li>24 h breakdown response</li></ul>
+    <div class="p-acts">${btn(opts.primary || 'Buy now')}${btn('Explore', true)}${S.vani && opts.ask ? btn('Ask VaNi', true) : ''}</div></div>`;
+}
+
+function render() {
+  ['website', 'whatsapp', 'vani'].forEach(k => document.getElementById('sw-' + k).classList.toggle('on', S[k]));
+  // stop 1
+  document.getElementById('extend-off').hidden = S.website;
+  document.getElementById('extend-on').hidden = !S.website;
+  document.getElementById('pitch-preview').innerHTML = `<div style="padding:16px;display:grid;gap:10px"><div class="eyebrow" style="color:var(--vani)">What your customer sees</div>${cardHTML('hvac', { ask: true })}<p class="muted" style="font-size:12px">On their site, in a chat, or from a link. Same card.</p></div>`;
+  document.getElementById('storefront-rows').innerHTML = S.sfs.map(sf => `
+    <div class="row"><div class="ic">${sf.pks.length > 1 ? 'C' : 'P'}</div>
+      <div><div class="name">${sf.name}</div>
+        <div class="meta"><span class="chip on">Website</span>${S.whatsapp ? '<span class="chip on">WhatsApp</span>' : '<span class="chip">WhatsApp off</span>'}${S.vani ? '<span class="chip vani">VaNi answering</span>' : ''}${sf.pks.length > 1 ? `<span class="chip">catalog · ${sf.pks.length} packages</span>` : ''}</div>
+        <div class="counters"><span><b>${sf.v}</b> views</span><span><b>${sf.c}</b> chats</span><span><b>${sf.l}</b> leads</span><span><b>${sf.s}</b> started</span><span><b>${sf.b}</b> bought</span></div></div>
+      <div class="acts"><button class="ib" title="Copy link" onclick="copyText('https://contractnest.com/p/${sf.id}','Link copied')">🔗</button><button class="ib site" title="Widget for your site" onclick="go(2)">&lt;/&gt;</button><button class="ib wa" title="Share on WhatsApp" onclick="go(5)" ${S.whatsapp ? '' : 'disabled'}>WA</button><button class="ib" title="QR for print" onclick="toastMsg('QR downloaded')">QR</button><button class="ib" title="Send by email" onclick="copyText('https://contractnest.com/p/${sf.id}','Mail block copied')">✉</button><button class="ib" title="Pause">⏸</button></div></div>`).join('');
+  document.getElementById('vani-row').innerHTML = S.vani
+    ? `<div class="card" style="padding:14px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div><b style="color:var(--vani)">VaNi is answering</b> on your storefronts and WhatsApp replies. <span class="muted">31 questions this month, 6 leads captured, 2 handed to you.</span></div><button class="btn sm ghost" onclick="go(6)">See leads</button></div>`
+    : `<div class="ghosted"><span><b>VaNi would have answered 31 questions and captured 6 leads</b> on these storefronts this month. Right now questions go unanswered after hours.</span><button class="btn sm" onclick="toggle('vani')">Open VaNi</button></div>`;
+  // stop 2
+  const c = S.cfg;
+  const attrs = [`data-storefront="sf-e6a8abb6e376f0fa154cafbc8189cc17"`, `data-view="${c.view}"`, `data-label="${c.label}"`, `data-color="${c.color}"`, `data-shape="${c.shape}"`, c.open === 'tab' ? 'data-mode="link"' : null].filter(Boolean);
+  document.getElementById('snippet').textContent = `<script src="https://contractnest.com/embed.js"\n  ${attrs.join('\n  ')} async><\/script>`;
+  const slot = document.getElementById('widget-slot');
+  if (c.view === 'button') slot.innerHTML = `<button class="wbtn" style="background:${c.color};border-radius:${radius()};padding:12px 22px;font-size:14px">${c.label}</button>`;
+  else if (c.view === 'card') slot.innerHTML = cardHTML('hvac', { primary: c.label, ask: true });
+  else if (c.view === 'catalog') slot.innerHTML = `<div style="display:grid;gap:8px;width:100%">${cardHTML('hvac', { primary: c.label })}${cardHTML('lift', { primary: c.label })}</div>`;
+  else slot.innerHTML = S.vani ? `<div class="bubble" style="background:${c.color}">V</div><p style="font-size:12px;color:#667;max-width:200px">A floating VaNi bubble. Opens the chat with your packages loaded.</p>` : `<p style="font-size:12px;color:#667;max-width:220px">The bubble needs VaNi. Turn VaNi on in the rail to preview it.</p>`;
+  document.querySelectorAll('#cfg-view button').forEach(b => b.classList.toggle('on', b.dataset.v === c.view));
+  document.querySelectorAll('#cfg-label button').forEach(b => b.classList.toggle('on', b.dataset.v === c.label));
+  const preset = [...document.querySelectorAll('#cfg-color .swatch[data-v]')].some(b => b.dataset.v === c.color);
+  document.querySelectorAll('#cfg-color .swatch[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === c.color));
+  const cu = document.getElementById('cfg-custom'); cu.classList.toggle('on', !preset); if (!preset) cu.style.background = c.color; else cu.style.background = '';
+  document.getElementById('cfg-color-input').value = c.color;
+  document.querySelectorAll('#cfg-shape button').forEach(b => b.classList.toggle('on', b.dataset.v === c.shape));
+  document.querySelectorAll('#cfg-open button').forEach(b => b.classList.toggle('on', b.dataset.v === c.open));
+  // stop 3 · VaNi on their site
+  document.getElementById('vs-off').hidden = S.vani; document.getElementById('vs-on').hidden = !S.vani; renderVs();
+  // stop 4
+  document.getElementById('askbtn').hidden = !S.vani; document.getElementById('vani-off-note').hidden = S.vani;
+  renderCust();
+  // stop 4
+  document.getElementById('wa-off').hidden = S.whatsapp; document.getElementById('wa-on').hidden = !S.whatsapp;
+  document.getElementById('wa-vani-note').innerHTML = S.vani ? `<div class="note" style="margin:0"><strong>VaNi replies.</strong> A customer who taps Ask, or just types back, talks to VaNi on this number. She answers from the package, offers the right one, and captures the lead.</div>` : `<div class="ghosted"><span>Replies come to you, unanswered until you see them. <b>VaNi would answer them</b> and capture the lead.</span><button class="btn sm" onclick="toggle('vani')">Open VaNi</button></div>`;
+  if (!document.getElementById('wa-screen').innerHTML) waSend();
+}
+
+['view', 'label', 'shape', 'open'].forEach(k => document.querySelectorAll('#cfg-' + k + ' button').forEach(b => b.addEventListener('click', () => { S.cfg[k] = b.dataset.v; render(); })));
+document.querySelectorAll('#cfg-color .swatch[data-v]').forEach(b => b.addEventListener('click', () => { S.cfg.color = b.dataset.v; render(); }));
+document.getElementById('cfg-color-input').addEventListener('input', e => { S.cfg.color = e.target.value; render(); });
+
+function newStorefront() { document.getElementById('new-sf').hidden = false; }
+function pickPk(b) { b.classList.toggle('on'); S.pick = [...document.querySelectorAll('#pkpick button.on')].map(x => x.dataset.pk); }
+function createSf() { if (!S.pick.length) return toastMsg('Pick at least one package');
+  const name = S.pick.length > 1 ? 'Maintenance packages' : PK[S.pick[0]][0];
+  S.sfs.unshift({ id: 'sf-' + Math.random().toString(16).slice(2, 10), name, pks: [...S.pick], v: 0, c: 0, l: 0, s: 0, b: 0 });
+  document.getElementById('new-sf').hidden = true; toastMsg('Storefront is live. Link copied.'); render(); }
+
+/* customer journey */
+function custStep(s) { S.cust = s; if (s === 'ask' && !S.chat.length) S.chat = [{ who: 'vani', t: 'Hi, I am VaNi for signia. Ask me anything about this package.' }]; render(); }
+function renderCust() {
+  ['explore', 'ask', 'checkout', 'done'].forEach(k => document.getElementById('st-' + k).classList.toggle('on', k === S.cust));
+  const r = document.getElementById('cust-right');
+  if (S.cust === 'explore') r.innerHTML = `<span class="eyebrow">Package page</span><h3 style="margin:4px 0 8px">Why a page and not only a checkout</h3><p class="muted" style="font-size:13px">Explore lands here from the widget, from a WhatsApp button and from a link. It carries the lines, the terms, an FAQ the seller writes, and VaNi. Buy skips it and goes straight to checkout.</p><div style="margin-top:12px">${cardHTML('hvac', { ask: true })}</div><p class="muted" style="font-size:12px;margin-top:10px">The same card, rendered in the page.</p>`;
+  else if (S.cust === 'ask') r.innerHTML = `<span class="eyebrow">Ask VaNi</span><div class="chat" id="chatlog">${S.chat.map(m => m.who === 'me' ? `<div class="msg me"><div class="who">You</div>${m.t}</div>` : `<div class="msg bot"><div class="who">VaNi · signia</div>${m.t}${m.card ? cardHTML('hvac') : ''}</div>`).join('')}</div>
+    <div class="quick"><button onclick="ask('Does it cover gas refill?')">Does it cover gas refill?</button><button onclick="ask('Can I pay monthly?')">Can I pay monthly?</button><button onclick="ask('I have 3 units')">I have 3 units</button><button onclick="ask('Let me think about it')">Let me think about it</button></div>
+    <div class="chatin"><input id="chatinput" placeholder="Type a question" onkeydown="if(event.key==='Enter'){ask(this.value);this.value=''}"><button class="btn sm" onclick="const i=document.getElementById('chatinput');ask(i.value);i.value=''">Send</button></div>`;
+  else if (S.cust === 'checkout') r.innerHTML = `<span class="eyebrow">Checkout · on contractnest.com, inside the frame</span><h3 style="margin:4px 0 10px">Your details</h3>
+    <div class="field"><label>Name</label><input id="co-name" value="Ravi Kumar"></div><div class="field"><label>Mobile</label><input id="co-phone" value="+91 98851 64233"></div><div class="field"><label>Company, if this is for one</label><input id="co-co" placeholder="Optional"></div>
+    <div class="field"><label>OTP sent to your mobile</label><input id="co-otp" placeholder="6 digits"></div>
+    <p class="muted" style="font-size:12px">The OTP is what makes the lead real and lets us match an existing contact safely. Today the match is silent and unverified.</p>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="custStep('done')">Confirm and pay ${fmt(24000)}</button><button class="btn ghost" onclick="custStep('explore')">Back</button></div>`;
+  else r.innerHTML = `<span class="eyebrow">Done</span><h3 style="margin:4px 0 8px">Contract CN-1013 is in signia's book</h3><p class="muted" style="font-size:13px">Pending acceptance with a CNAK link, the same review and pay flow every contract uses. Ravi is now a client contact; his interest row is kept as history.</p><div class="kv" style="margin-top:12px"><span>contract <b>CN-1013</b></span><span>invoice <b>INV-10062</b></span><span>grant <b>CNAK-7C21A0</b></span></div><div style="margin-top:14px"><button class="btn ghost" onclick="go(6)">See it in your book</button></div>`;
+  const log = document.getElementById('chatlog'); if (log) log.scrollTop = log.scrollHeight;
+}
+function ask(q) { if (!q || !q.trim()) return; S.chat.push({ who: 'me', t: q });
+  const a = { 'Does it cover gas refill?': { t: 'Yes, up to 1 kg a year is included in the gas top-up line. Beyond that it is billed at cost. Want to take it?', card: true },
+    'Can I pay monthly?': { t: 'This package bills quarterly, ₹6,000 each. If monthly matters I can note it for signia to confirm before you buy.' },
+    'I have 3 units': { t: 'Then this one-unit package will not fit. signia has a 3-unit variant at ₹60,000 a year. I can show it, or ask signia to quote for exactly your setup.', card: true },
+    'Let me think about it': { t: 'Of course. Leave a mobile number and I will send you this page, and signia can follow up if you like.' } };
+  S.chat.push({ who: 'vani', ...(a[q] || { t: 'I can only answer from this package and signia\'s FAQ. For anything else I will pass it to signia and they will reply on WhatsApp.' }) }); render(); }
+
+/* VaNi on their site */
+function renderVs() { const el = document.getElementById('vs-chat'); if (!el) return;
+  el.innerHTML = S.vs.map(m => m.who === 'me' ? `<div class="msg me"><div class="who">Visitor</div>${m.t}</div>` : `<div class="msg bot"><div class="who">VaNi</div>${m.t}${m.card ? cardHTML(m.card) : ''}${m.form ? '<div class="field" style="margin:8px 0 0"><input placeholder="Your name"><input placeholder="Mobile" style="margin-top:6px"><button class="btn sm" style="margin-top:6px" onclick="vsLead()">Send</button></div>' : ''}</div>`).join('');
+  el.scrollTop = el.scrollHeight; }
+function vsAsk(q) { if (!q || !q.trim()) return; S.vs.push({ who: 'me', t: q });
+  const a = { 'Do you cover Secunderabad?': { t: 'Yes, whole of Hyderabad and Secunderabad, no travel charge. Which equipment are you looking after?' },
+    'What do you have for a 3 floor office?': { t: 'For a 3 floor office you would usually take the HVAC AMC, and the lift AMC if you have one. Here is the HVAC package; I can show the lift one too.', card: 'hvac' },
+    'Can someone call me?': { t: 'Of course. Leave your name and mobile and signia will call you back today.', form: true } };
+  S.vs.push({ who: 'vani', ...(a[q] || { t: 'I answer from signia\'s packages and FAQ. I don\'t have that one, so I will pass it to signia. Want to leave your number so they can reply?', form: true }) }); renderVs(); }
+function vsLead() { S.vs.push({ who: 'vani', t: 'Thanks, Ravi. signia has your number and this conversation. They will call you today. This page stays open if you want to explore the packages meanwhile.' }); renderVs(); toastMsg('Lead captured · notified signia'); }
+
+/* whatsapp */
+function waSend() { const t = document.getElementById('wa-text').value; document.getElementById('wa-screen').innerHTML = `
+  <div class="wa-top"><div style="width:32px;height:32px;border-radius:50%;background:#128c7e;display:grid;place-items:center">S</div><div>signia<small>ContractNest business account</small></div></div>
+  <div class="wa-body">
+    <div class="wmsg out">${t}<div style="margin-top:8px;font-weight:700">1 year HVAC template · ${fmt(24000)}/yr</div><div style="font-size:12px;color:#556">4 visits · filters and gas · 24 h response</div><div class="wbtns"><div>Buy now</div><div>Explore</div>${S.vani ? '<div>Ask VaNi</div>' : ''}</div><div class="t">10:42</div></div>
+    ${S.vani ? `<div class="wmsg">Does it cover gas refill?<div class="t">10:48</div></div><div class="wmsg out">Yes, up to 1 kg a year is included. Beyond that at cost. Want to take it?<div class="wbtns"><div>Buy now</div><div>Talk to signia</div></div><div class="t">10:48 · VaNi</div></div>` : `<div class="wmsg">Does it cover gas refill?<div class="t">10:48</div></div><div class="wmsg" style="background:#fff7e6;font-size:12px;color:#7a5a00">No reply yet. VaNi is off for this seller.</div>`}
+  </div><div class="wa-in"><div>Type a message</div></div>`; toastMsg('Preview updated'); }
+function waCatalog() { document.getElementById('wa-screen').innerHTML = `
+  <div class="wa-top"><div style="width:32px;height:32px;border-radius:50%;background:#128c7e;display:grid;place-items:center">S</div><div>signia<small>ContractNest business account</small></div></div>
+  <div class="wa-body"><div class="wmsg out">Here are our maintenance packages. Pick one to see details.<div class="wlist"><div>Maintenance packages</div><div>1 year HVAC template<small>${fmt(24000)} / yr · 4 visits</small></div><div>Quarterly lift AMC<small>${fmt(9000)} / qtr · monthly checks</small></div><div>Fire safety audit<small>${fmt(6500)} · one visit</small></div></div><div class="t">10:42</div></div>
+  <div class="wmsg">Quarterly lift AMC<div class="t">10:44</div></div>
+  <div class="wmsg out"><b>Quarterly lift AMC · ${fmt(9000)}/qtr</b><div style="font-size:12px;color:#556">Monthly checks, rope and brake inspection, AMC certificate.</div><div class="wbtns"><div>Buy now</div><div>Explore</div>${S.vani ? '<div>Ask VaNi</div>' : ''}</div><div class="t">10:44${S.vani ? ' · VaNi' : ''}</div></div></div>
+  <div class="wa-in"><div>Type a message</div></div>`; toastMsg('Catalog preview'); }
+
+/* leads */
+function leadTab(b, k) { document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b)); document.getElementById('leads-push').hidden = k !== 'push'; document.getElementById('leads-req').hidden = k !== 'req'; }
+
+go(0);
+</script>
