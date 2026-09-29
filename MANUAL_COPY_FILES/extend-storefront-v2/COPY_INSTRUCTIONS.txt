@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: extend-storefront-v2 — Extend rebuilt package-first (owner go: 2026-09-29,
+"keep whatsapp as mock -- there is more to come -- for the rest go ahead")
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT IT IS
+  A storefront = one or more PUBLISHED packages (template families) with a
+  card style and an FAQ. Website / WhatsApp are ways to share it, not rows.
+    · /extend            product-led page: pitch when no channel is on;
+                         storefront rows (chips, counters, actions), New
+                         storefront (multi-pick), configurator (Show as ·
+                         Button text · Colour: brand + 5 presets + any ·
+                         Shape · A click opens · snippet · live preview ·
+                         Copy link · Mail block · QR · For developers ·
+                         FAQ editor · rename · pause), VaNi row/counterfactual
+    · /p/:key            public package page (catalog when >1 package)
+    · /buy/:key          public checkout with OTP (SMS via MSG91), then the
+                         existing /contracts/review?cnak&secret flow
+    · /w/:key            the widget frame embed.js puts in its iframe
+    · public/embed.js v2 data-view / data-label / data-color / data-shape /
+                         data-mode; ContractNest.open() / .mount()
+  WhatsApp = share via wa.me only (mock; owner: more to come). VaNi chat on
+  the storefront and Leads are the next batches.
+
+MIGRATION — ALREADY APPLIED LIVE (2026-09-29). DO NOT RE-RUN.
+  contractnest-edge/supabase/migrations/business-model-v2/038_extend_storefront_v2.sql
+  Probed whole in one rolled-back transaction first (create · refusals ·
+  update · list · resolve via the merged key · OTP issue/verify/rate ·
+  purchase refusals · purchase → CN-1021 + review link · contact reuse).
+  Live effect: signia's two per-channel rows collapsed into one
+  (sf-f028…, the older; sf-e6a8… still resolves to it); vikuna's two rows
+  renamed. New table t_storefront_otp (RLS on, service role only).
+
+FILES
+  contractnest-api/src/
+    routes/extendRoutes.ts            authenticate + x-tenant-id; /storefronts GET/POST/PATCH (+legacy /touchpoints)
+    routes/storefrontPublicRoutes.ts  express-rate-limit; GET /:key[?preview=1], POST /:key/start, /:key/otp, /:key/otp/verify, /:key/purchase
+    controllers/extendController.ts   OTP send via smsService.sendOTP (MSG91); dev echo of the code when not production
+    services/extendService.ts         RPC wrappers (038)
+  contractnest-ui/
+    public/embed.js                              v2
+    src/App.tsx                                  routes /p /buy /w (public)
+    src/services/serviceURLs.ts                  EXTEND.STOREFRONTS / STOREFRONT(id)
+    src/hooks/queries/useStorefronts.ts          NEW
+    src/pages/storefront/api.ts                  NEW public client + types + helpers
+    src/pages/storefront/PackageCard.tsx         NEW — THE card (widget, page, preview)
+    src/pages/storefront/PackagePage.tsx         NEW /p/:key
+    src/pages/storefront/WidgetFrame.tsx         NEW /w/:key
+    src/pages/buy/index.tsx                      REWRITTEN — OTP checkout
+    src/pages/extend/index.tsx                   REWRITTEN
+
+ENV (API)
+  MSG91_AUTH_KEY, MSG91_SENDER_ID   (existing) — needed to send the OTP
+  MSG91_OTP_TEMPLATE_ID             (new, optional) — DLT OTP template; without
+                                    it MSG91 gets a plain "Your OTP is …" on route 2
+  STOREFRONT_OTP_DEV_ECHO=true      (optional) — echo the code in the response
+                                    even in production (testing only)
+  When NODE_ENV != production and the SMS cannot be sent, the response carries
+  dev_code and the checkout shows it in a yellow "Test mode" box.
+
+COPY (PowerShell, from contractnest-combined)
+  Copy-Item "MANUAL_COPY_FILES\extend-storefront-v2\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-storefront-v2\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-storefront-v2\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source-of-record only
+
+VERIFIED
+  API: tsc 0 errors.  UI: tsc 1161 = pristine main; vite build passes;
+  /p, /buy (through OTP verify), /w rendered headless against a mocked API
+  with zero page errors. embed.js parses.
+
+TEST
+  [ ] signia → /extend: one row "1  year HVAC template", counters, chips
+  [ ] Widget button → configurator: change colour/shape/label → preview
+      iframe follows; "Saved" appears; /p/:key buttons take the colour
+  [ ] Copy snippet → paste into a plain .html file → button/card appears,
+      click opens the checkout overlay (mobile width: new tab)
+  [ ] + New storefront with 2 packages → catalog on /p/:key
+  [ ] /buy/:key: name + mobile → Send code → (dev: yellow box with the code)
+      → Verify → Confirm → lands on /contracts/review; contact in Contacts
+      has a verified mobile; second buy with the same number reuses it
+  [ ] Pause → /p/:key says not available; Resume
+  [ ] QR downloads an SVG; Mail block copied; WhatsApp share opens wa.me
+  [ ] tenant with neither channel → the pitch page
