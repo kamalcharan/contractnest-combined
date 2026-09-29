@@ -113,6 +113,9 @@ input, select { font: inherit; color: var(--ink); background: var(--surface); bo
 .swatches { display: flex; gap: 8px }
 .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent }
 .swatch.on { border-color: var(--ink) }
+.swatch.custom { background: conic-gradient(#f43f5e, #f59e0b, #22c55e, #06b6d4, #6366f1, #f43f5e); position: relative; overflow: hidden; cursor: pointer }
+.swatch.custom input { position: absolute; inset: -6px; width: 200%; height: 200%; opacity: 0; cursor: pointer }
+.swatch.custom.on::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--card) }
 .host { border-radius: 12px; border: 1px solid var(--edge); background: #fff; color: #222; overflow: hidden; min-height: 380px; display: flex; flex-direction: column }
 .host .bar { background: #eef0f3; padding: 8px 12px; font-family: var(--mono); font-size: 11px; color: #667; display: flex; gap: 8px; align-items: center }
 .host .bar i { width: 9px; height: 9px; border-radius: 50%; background: #d3d7de; display: inline-block }
@@ -281,11 +284,13 @@ details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
           <button data-v="button" class="on">Buy button</button><button data-v="card">Package card</button><button data-v="catalog">Catalog</button><button data-v="bubble">Ask VaNi bubble</button></div></div>
         <div class="field"><label>Button text</label><div class="seg" id="cfg-label">
           <button data-v="Buy now" class="on">Buy now</button><button data-v="Explore">Explore</button><button data-v="Get a quote">Get a quote</button></div></div>
-        <div class="field"><label>Colour · defaults to your brand colour</label><div class="swatches" id="cfg-color">
-          <button class="swatch on" data-v="#4f5b8f" style="background:#4f5b8f" aria-label="Brand blue"></button>
+        <div class="field"><label>Colour · your brand colour first, five presets, or any colour</label><div class="swatches" id="cfg-color">
+          <button class="swatch on" data-v="#4f5b8f" style="background:#4f5b8f" aria-label="Brand blue" title="Your brand colour"></button>
           <button class="swatch" data-v="#ff6b2b" style="background:#ff6b2b" aria-label="Orange"></button>
           <button class="swatch" data-v="#16a34a" style="background:#16a34a" aria-label="Green"></button>
-          <button class="swatch" data-v="#1a1816" style="background:#1a1816" aria-label="Ink"></button></div></div>
+          <button class="swatch" data-v="#0f766e" style="background:#0f766e" aria-label="Teal"></button>
+          <button class="swatch" data-v="#1a1816" style="background:#1a1816" aria-label="Ink"></button>
+          <label class="swatch custom" id="cfg-custom" title="Any colour"><input type="color" id="cfg-color-input" value="#4f5b8f" aria-label="Pick any colour"></label></div></div>
         <div class="field"><label>Shape</label><div class="seg" id="cfg-shape">
           <button data-v="pill" class="on">Pill</button><button data-v="rounded">Rounded</button><button data-v="square">Square</button></div></div>
         <div class="field"><label>A click opens</label><div class="seg" id="cfg-open">
@@ -430,7 +435,10 @@ function render() {
   else slot.innerHTML = S.vani ? `<div class="bubble" style="background:${c.color}">V</div><p style="font-size:12px;color:#667;max-width:200px">A floating VaNi bubble. Opens the chat with your packages loaded.</p>` : `<p style="font-size:12px;color:#667;max-width:220px">The bubble needs VaNi. Turn VaNi on in the rail to preview it.</p>`;
   document.querySelectorAll('#cfg-view button').forEach(b => b.classList.toggle('on', b.dataset.v === c.view));
   document.querySelectorAll('#cfg-label button').forEach(b => b.classList.toggle('on', b.dataset.v === c.label));
-  document.querySelectorAll('#cfg-color .swatch').forEach(b => b.classList.toggle('on', b.dataset.v === c.color));
+  const preset = [...document.querySelectorAll('#cfg-color .swatch[data-v]')].some(b => b.dataset.v === c.color);
+  document.querySelectorAll('#cfg-color .swatch[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === c.color));
+  const cu = document.getElementById('cfg-custom'); cu.classList.toggle('on', !preset); if (!preset) cu.style.background = c.color; else cu.style.background = '';
+  document.getElementById('cfg-color-input').value = c.color;
   document.querySelectorAll('#cfg-shape button').forEach(b => b.classList.toggle('on', b.dataset.v === c.shape));
   document.querySelectorAll('#cfg-open button').forEach(b => b.classList.toggle('on', b.dataset.v === c.open));
   // stop 3
@@ -443,7 +451,8 @@ function render() {
 }
 
 ['view', 'label', 'shape', 'open'].forEach(k => document.querySelectorAll('#cfg-' + k + ' button').forEach(b => b.addEventListener('click', () => { S.cfg[k] = b.dataset.v; render(); })));
-document.querySelectorAll('#cfg-color .swatch').forEach(b => b.addEventListener('click', () => { S.cfg.color = b.dataset.v; render(); }));
+document.querySelectorAll('#cfg-color .swatch[data-v]').forEach(b => b.addEventListener('click', () => { S.cfg.color = b.dataset.v; render(); }));
+document.getElementById('cfg-color-input').addEventListener('input', e => { S.cfg.color = e.target.value; render(); });
 
 function newStorefront() { document.getElementById('new-sf').hidden = false; }
 function pickPk(b) { b.classList.toggle('on'); S.pick = [...document.querySelectorAll('#pkpick button.on')].map(x => x.dataset.pk); }
