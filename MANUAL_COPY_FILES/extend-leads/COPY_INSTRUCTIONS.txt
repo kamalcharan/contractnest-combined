@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: extend-leads — Leads: contacts tagged 'lead' + what they wanted
+(owner 2026-09-29: "Leads are Contacts with tag 'Lead' — in general or for a
+contract/template"; "RFQ is also a kind of lead — inside push / outside requests")
+COPY AFTER extend-storefront-v2 (this batch is a superset of its shared files).
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT IT IS
+  · classification 'lead' on t_contacts (chip "Lead" in Contacts, teal)
+  · t_contact_interests = the history: package, source (website widget / link /
+    VaNi / by hand), what they asked, stage new → contacted → converted | lost
+  · /leads (Revenue side, menu after Contacts):
+      From your reach  — one row per contact with its interests; stage chips;
+                         Follow up (note → contacted) · Send contract (wizard
+                         with the buyer chosen) · Lost · Open contact; Add a lead
+      Asked you        — RFQs other tenants invited THIS tenant to, matched by
+                         the invite's mobile/email against the tenant's business
+                         phone/WhatsApp/email and its users; Respond with quote
+  · conversion is automatic: any contract created for the contact (storefront
+    purchase, the wizard) converts the open interests and swaps lead → client
+  · the checkout names the buyer right after the OTP (POST /identify), so a
+    checkout that stops there still leaves a lead ("started, didn't buy")
+
+MIGRATION — ALREADY APPLIED LIVE (2026-09-29). DO NOT RE-RUN.
+  contractnest-edge/.../business-model-v2/039_leads_and_interests.sql
+  Probed whole in one rolled-back transaction first: capture → fold on repeat
+  → stage + note → reader counts/filters → identify (refused without OTP,
+  then accepted) → purchase converts both interests, classification = client
+  only → vikuna sees signia's two RFQs (PRJ-1001 quoted, PRJ-1002 awarded).
+
+FILES
+  contractnest-api/src/
+    routes/leadsRoutes.ts, controllers/leadsController.ts, services/leadsService.ts   NEW
+    routes/storefrontPublicRoutes.ts, controllers/extendController.ts, services/extendService.ts, routes/extendRoutes.ts
+                                                     supersets of extend-storefront-v2 (+ /:key/identify)
+    index.ts                                         + /api/leads registration
+  contractnest-ui/src/
+    hooks/queries/useLeads.ts, pages/leads/index.tsx NEW
+    App.tsx, services/serviceURLs.ts, pages/buy/index.tsx, pages/storefront/api.ts
+                                                     supersets of extend-storefront-v2
+    utils/constants/industryMenus.ts                 + Leads entry (revenueOnly)
+    utils/constants/contacts.ts                      + 'lead' classification, teal
+    pages/contracts/create/index.tsx                 ?contactId=&contactName= opens the wizard with the buyer chosen
+
+COPY (PowerShell, from contractnest-combined) — after extend-storefront-v2
+  Copy-Item "MANUAL_COPY_FILES\extend-leads\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-leads\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-leads\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source-of-record only
+
+VERIFIED
+  API tsc 0. UI tsc 1161 = pristine main on the assembled state (storefront +
+  leads); vite build passes.
+
+TEST
+  [ ] signia → Leads → Add a lead (name + mobile) → row with "added by you",
+      Contacts shows the Lead chip; add again with the same mobile → folded
+  [ ] Follow up → note saved, stage Contacted; Lost → chip
+  [ ] Send contract → wizard opens with the buyer chosen → finish → the lead
+      reads Converted with the contract number; Contacts chip is Client
+  [ ] /buy/:key → verify the OTP → stop → the name appears under From your
+      reach as "from your website · Started checkout"
+  [ ] vikuna (the number invited on PRJ-1001) → Asked you shows both RFQs,
+      Respond with quote opens /quote/…
