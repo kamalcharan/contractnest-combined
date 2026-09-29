@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cool Air Solutions — storefront test site</title>
+<!--
+  ContractNest Extend — TEST HOST SITE
+  ────────────────────────────────────
+  Plays the role of a customer's own website. Open this file in a browser
+  (double-click, or serve it: `npx serve MANUAL_COPY_FILES/playground`) with
+  the UI running at http://localhost:5173 and the API at :3000.
+
+  The control panel writes real <script src=…/embed.js data-…> tags into the
+  page, exactly what a customer would paste — nothing here talks to the API
+  directly. Every widget renders inside our iframe; a click opens the checkout
+  overlay on THIS page (mobile width: new tab).
+
+  Allowed sites: when you list domains on Extend → "VaNi on your site", add
+  the host this page runs on ("localhost", or "null" is not a host — serve it).
+-->
+<style>
+  :root { --paper:#f7f5f2; --ink:#1a1816; --soft:#8a847a; --line:#e5e1db; --site:#4f5b8f; --vani:#ff6b2b; --wash:#fff3ed; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color:var(--ink); background:#fff; }
+  /* ── control panel (not part of the "customer site") ── */
+  .panel { position:sticky; top:0; z-index:50; background:#1a1816; color:#e9e7e3; padding:12px 16px; display:grid; gap:10px; box-shadow:0 4px 18px rgba(0,0,0,.25); }
+  .panel .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .panel label { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:#bab4a8; display:grid; gap:3px; }
+  .panel input, .panel select { background:#2a2724; color:#fff; border:1px solid #3d3935; border-radius:8px; padding:7px 9px; font-size:13px; min-width:120px; }
+  .panel input.wide { min-width:340px; }
+  .panel button { background:var(--vani); color:#fff; border:0; border-radius:999px; padding:8px 16px; font-weight:700; cursor:pointer; font-size:13px; }
+  .panel button.ghost { background:transparent; border:1px solid #514c46; color:#e9e7e3; }
+  .panel .tag { font-size:11px; color:#bab4a8; }
+  .panel code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:11.5px; color:#ffb48f; background:#2a2724; padding:6px 8px; border-radius:6px; white-space:pre-wrap; word-break:break-all; display:block; }
+  .panel .status { font-size:12px; color:#9ee0b0; }
+  /* ── the "customer website" ── */
+  .site-nav { display:flex; justify-content:space-between; align-items:center; padding:16px 32px; border-bottom:1px solid var(--line); }
+  .brand { font-weight:800; font-size:18px; color:var(--site); }
+  .site-nav nav a { margin-left:18px; color:var(--soft); text-decoration:none; font-size:14px; }
+  .hero { padding:56px 32px; background:linear-gradient(135deg,#eef0f7,#fff); display:grid; gap:14px; max-width:860px; }
+  .hero h1 { margin:0; font-size:38px; letter-spacing:-.02em; line-height:1.1; }
+  .hero p { margin:0; color:var(--soft); font-size:17px; max-width:560px; }
+  .slot { display:grid; gap:6px; }
+  .slot .cap { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--vani); font-weight:700; }
+  main { display:grid; grid-template-columns: minmax(0,1fr) 380px; gap:32px; padding:40px 32px; max-width:1200px; }
+  @media (max-width:860px) { main { grid-template-columns: 1fr; } }
+  h2 { font-size:22px; margin:0 0 8px; }
+  .txt { height:10px; border-radius:6px; background:#eee9e2; margin:8px 0; }
+  .txt.s { width:60%; }
+  aside { display:grid; gap:24px; align-content:start; }
+  .catalog { padding:0 32px 48px; max-width:1200px; }
+  footer { border-top:1px solid var(--line); padding:24px 32px; color:var(--soft); font-size:12px; }
+  .dev { padding:24px 32px; background:var(--paper); border-top:1px solid var(--line); display:grid; gap:10px; }
+  .dev button { background:var(--site); color:#fff; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; font-size:13px; }
+  .dev .mnt { border:1px dashed var(--line); border-radius:10px; min-height:60px; padding:10px; max-width:440px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════ control panel ═══════ -->
+<div class="panel">
+  <div class="row">
+    <label>App origin <input id="origin" class="wide" value="http://localhost:5173"></label>
+    <label>Storefront key <input id="sf" class="wide" value="sf-f028b68b4a856b6a85f0c01e0b645484"></label>
+    <label>VaNi key (vn-… from Extend, or the storefront key) <input id="vn" class="wide" placeholder="leave empty to reuse the storefront key"></label>
+  </div>
+  <div class="row">
+    <label>Label <input id="label" value="Buy now" style="min-width:140px"></label>
+    <label>Colour <input id="color" type="color" value="#4f5b8f" style="min-width:60px;height:34px;padding:2px"></label>
+    <label>Shape <select id="shape"><option>pill</option><option>rounded</option><option>square</option></select></label>
+    <label>A click opens <select id="mode"><option value="overlay">overlay</option><option value="link">new tab</option></select></label>
+    <label>VaNi bubble <select id="bubble"><option value="1">on</option><option value="0">off</option></select></label>
+    <button onclick="render()">Render widgets</button>
+    <button class="ghost" onclick="location.reload()">Reset page</button>
+    <span class="status" id="status"></span>
+  </div>
+  <div class="row"><span class="tag">What a customer pastes (from the configurator):</span></div>
+  <code id="snippet"></code>
+</div>
+
+<!-- ═══════ the customer's website ═══════ -->
+<div class="site-nav">
+  <div class="brand">Cool Air Solutions</div>
+  <nav><a href="#">Services</a><a href="#">AMC plans</a><a href="#">Contact</a></nav>
+</div>
+
+<section class="hero">
+  <h1>Annual maintenance for your HVAC, done properly.</h1>
+  <p>Scheduled visits, filters and gas top-up included, breakdown response within 24 hours. Pick a plan and you are covered from tomorrow.</p>
+  <div class="slot"><div class="cap">Widget · data-view="button"</div><div id="slot-button"></div></div>
+</section>
+
+<main>
+  <article>
+    <h2>Why an AMC beats ad-hoc repairs</h2>
+    <div class="txt"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div><div class="txt s"></div>
+    <div class="txt"></div><div class="txt"></div><div class="txt s"></div>
+    <h2 style="margin-top:24px">What our customers say</h2>
+    <div class="txt"></div><div class="txt s"></div><div class="txt"></div>
+  </article>
+  <aside>
+    <div class="slot"><div class="cap">Widget · data-view="card"</div><div id="slot-card"></div></div>
+  </aside>
+</main>
+
+<section class="catalog">
+  <h2>All plans</h2>
+  <div class="slot"><div class="cap">Widget · data-view="catalog"</div><div id="slot-catalog"></div></div>
+</section>
+
+<section class="dev">
+  <div class="slot"><div class="cap">For developers · window.ContractNest</div></div>
+  <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+    <button onclick="ContractNest.open(v('sf'))">ContractNest.open(storefront)</button>
+    <button onclick="mountDev()">ContractNest.mount(el, {view:'card'})</button>
+    <button onclick="ContractNest.vani(v('vn') || v('sf'), {color: v('color')})">ContractNest.vani(key)</button>
+  </div>
+  <div class="mnt" id="mount-target"><span style="color:var(--soft);font-size:12px">mount target</span></div>
+</section>
+
+<footer>© Cool Air Solutions · this page is a ContractNest Extend test host — nothing here is real</footer>
+
+<script>
+  const v = (id) => document.getElementById(id).value.trim();
+  const attrs = () => ({ label: v('label'), color: v('color'), shape: v('shape'), mode: v('mode') });
+
+  function tag(view, key, isVani) {
+    const a = attrs();
+    const s = document.createElement('script');
+    s.src = v('origin').replace(/\/$/, '') + '/embed.js';
+    s.async = true;
+    if (isVani) { s.setAttribute('data-vani', key); s.setAttribute('data-color', a.color); }
+    else {
+      s.setAttribute('data-storefront', key);
+      s.setAttribute('data-view', view);
+      s.setAttribute('data-label', a.label);
+      s.setAttribute('data-color', a.color);
+      s.setAttribute('data-shape', a.shape);
+      if (a.mode === 'link') s.setAttribute('data-mode', 'link');
+    }
+    return s;
+  }
+  function snippetText() {
+    const a = attrs();
+    const lines = [`data-storefront="${v('sf')}"`, `data-view="card"`, `data-label="${a.label}"`, `data-color="${a.color}"`, `data-shape="${a.shape}"`];
+    if (a.mode === 'link') lines.push('data-mode="link"');
+    let out = `<script src="${v('origin')}/embed.js"\n  ${lines.join('\n  ')} async><\/script>`;
+    if (v('bubble') === '1') out += `\n\n<script src="${v('origin')}/embed.js"\n  data-vani="${v('vn') || v('sf')}"\n  data-color="${a.color}" async><\/script>`;
+    return out;
+  }
+  let rendered = false;
+  function render() {
+    if (rendered) { document.getElementById('status').textContent = 'Reload the page to render with new settings (embed.js mounts once per tag).'; return; }
+    rendered = true;
+    ['button', 'card', 'catalog'].forEach((view) => {
+      const slot = document.getElementById('slot-' + view);
+      slot.innerHTML = '';
+      slot.appendChild(tag(view, v('sf'), false));
+    });
+    if (v('bubble') === '1') document.body.appendChild(tag('bubble', v('vn') || v('sf'), true));
+    document.getElementById('status').textContent = 'Rendered · widgets are iframes from ' + v('origin');
+  }
+  function mountDev() {
+    const el = document.getElementById('mount-target'); el.innerHTML = '';
+    if (!window.ContractNest || !ContractNest.mount) { el.textContent = 'Render widgets first (loads embed.js).'; return; }
+    ContractNest.mount(el, { storefront: v('sf'), view: 'card', label: v('label'), color: v('color'), shape: v('shape'), mode: v('mode') });
+  }
+  ['origin','sf','vn','label','color','shape','mode','bubble'].forEach((id) => document.getElementById(id).addEventListener('input', () => { document.getElementById('snippet').textContent = snippetText(); }));
+  document.getElementById('snippet').textContent = snippetText();
+</script>
+</body>
+</html>
