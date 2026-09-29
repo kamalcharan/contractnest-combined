@@ -1,0 +1,124 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: extend-checkout-flow — the storefront purchase becomes a proper request:
+mobile as country + number (as Contacts capture it), acceptance follows the
+seller's payment options (Razorpay / UPI QR → pay; none → accept, "<seller>
+will connect with you"), the checkout breaks out of the widget overlay, the
+package page reads as the buyer-facing document, and Extend / Leads use the
+Requests-page empty state.
+Owner feedback 2026-09-29 (points 1, 2, 4, 5 of six; 3 = leads ARE contacts,
+clarified; 6 = headless API integration, OUT OF SCOPE by owner).
+COPY AFTER extend-storefront-v2 → extend-leads → extend-vani-site
+(superset of their shared files: buy/index.tsx, VaniChat.tsx, leads/index.tsx,
+storefront/api.ts, PackagePage.tsx, extend/index.tsx, embed.js, useLeads.ts,
+extendController.ts, leadsController.ts, vaniSiteController.ts).
+═══════════════════════════════════════════════════════════════════════════
+
+OWNER DECISIONS HONOURED
+  · "purchase — show online payment options if available, if not take
+     acceptance and say '<seller> will connect with you to close up your
+     request'"
+  · "show the price, it won't change — we have 'UPI / QR image' functionality,
+     we can invoke it, users will see QR and pay … it won't be direct
+     integration — Seller will check it offline and then connect back"
+  · "contact creation — mobile number capture is single control, in contacts
+     we capture as countrycode + contact number"
+  · "/requests has a good 'empty state' — use it properly for extend and leads"
+  · "explore package should be more professional"
+
+MIGRATIONS — ALREADY APPLIED LIVE (2026-09-29). DO NOT RE-RUN.
+  contractnest-edge/.../business-model-v2/041_storefront_checkout_flow.sql
+  (applied as 041 + 041b; the file holds both)
+    fn_tenant_payment_options(tenant, is_live) → {gateway, offline_upi, any}
+      = the API's payment-context rule as ONE SQL truth
+    fn_storefront_channel_phone(raw, iso) → {digits, value '+91…', country_code}
+    purchase_from_storefront: acceptance_method 'payment' when any option and
+      a price, else 'signoff' (was 'manual' — the review page called that
+      payment-gated while get_public_contract_payment_context refused it:
+      "does not require online payment" — the buyer was stuck); returns
+      acceptance_method + payment_options; contact channel rows carry
+      country_code + '+91…' value; a matched existing contact's mobile is
+      marked verified
+    lead_capture / storefront_identify / vani_site_capture: country_code
+    validate_contract_access: contract.source (metadata->>'source')
+    resolve_storefront: seller {address, GSTIN, email, phone, website, short
+      description} + payment options
+    back-fill: pending storefront contracts on 'manual' → the rule (CN-1023
+      on signia → 'signoff')
+  Probed whole in one rolled-back transaction on signia: helper phones
+  (+91 / bare 10-digit / US), options (signia none, vikuna Razorpay live),
+  back-fill, resolver, identify → channel '+919000000099' IN verified,
+  purchase → signoff + same contact reused + buyer_phone E.164, validate →
+  source, bare-number lead → +91 / IN.
+
+FILES
+  contractnest-api/src/
+    controllers/extendController.ts       identify / purchase accept country_code (2-letter ISO)   SUPERSET
+    controllers/leadsController.ts        capture accepts country_code                              SUPERSET
+    controllers/vaniSiteController.ts     lead accepts country_code                                 SUPERSET
+  contractnest-ui/
+    public/embed.js                       overlay frame registered (?fid=); cn:open honours mode
+                                          'link' and closes the overlay                             SUPERSET
+    src/components/common/MobileInput.tsx NEW — country select (IN first) + national number; helpers
+                                          mobileToE164 / mobileIsValid / mobileFromE164
+    src/components/common/EmptyState.tsx  NEW — the hub / Requests empty state as a component
+                                          (hub untouched)
+    src/pages/storefront/api.ts           seller + payment types, PurchaseResult.acceptance_method,
+                                          cycleLabel                                                SUPERSET
+    src/pages/storefront/PackagePage.tsx  REWRITTEN — letterhead (logo · address · GSTIN · contact),
+                                          package as a proposal (deliverables table, totals, GST
+                                          note), Terms (term · billing · payment · provider), How it
+                                          works (3 steps from the seller's options), Buy / Ask VaNi,
+                                          FAQ, sticky buy bar on phones                            SUPERSET
+    src/pages/storefront/VaniChat.tsx     lead form uses MobileInput                                SUPERSET
+    src/pages/buy/index.tsx               MobileInput; sends phone '+91…' + country_code; inside the
+                                          overlay → postMessage cn:open mode 'link' + a "Your
+                                          request is in" card; copy follows payment options         SUPERSET
+    src/pages/leads/index.tsx             Add a lead uses MobileInput; both tabs use EmptyState     SUPERSET
+    src/pages/extend/index.tsx            no-storefronts EmptyState (New storefront / Catalog Studio) SUPERSET
+    src/hooks/queries/useLeads.ts         capture input type +country_code                          SUPERSET
+    src/pages/contracts/review/index.tsx  contract.source; storefront success copy ("<seller> will
+                                          connect with you to close up your request" / "…will check
+                                          the payment…"); action-bar placeholder says the seller
+                                          will connect when no payment option exists; 'signoff'
+                                          label "Your acceptance"
+    src/components/contracts/review/PublicPaymentSection.tsx
+                                          onAvailability(canCollect); declared / UPI copy = the
+                                          seller checks it and connects back
+
+VERIFIED
+  API: npx tsc --noEmit = 0 (four batches assembled).
+  UI:  tsc = 1161 errors = pristine main (four batches assembled); vite build
+       passes; headless render against a mocked API: /p (desktop + 390px, no
+       horizontal scroll), /buy → OTP → purchase (identify + purchase bodies
+       carry phone '+919885164233' + country_code 'IN') → /contracts/review
+       shows Accept for a signoff contract → success "Signia … will connect
+       with you to close up your request"; /buy inside a ?fid= iframe posts
+       {type:'cn:open', mode:'link'} and shows the "request is in" card.
+       Zero page errors.
+
+─────────────────────────────────────────────
+COPY (PowerShell) — after the three Extend batches
+─────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\extend-checkout-flow\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\extend-checkout-flow\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+# edge: migration already live — file is the source of record only
+
+TEST
+  1. /p/<key> — letterhead, table, terms, how-it-works; phone width; Buy →
+  2. /buy/<key> — country + number; a 10-digit number verifies; "Use a
+     different number" resets
+  3. purchase on signia (no payment option) → review page shows Accept
+     Contract (no "Accepted on payment"); Accept → "Thank you — request
+     received … signia will connect with you to close up your request"
+  4. set up Offline UPI (or Razorpay) on a test tenant → purchase → review page
+     shows the QR / Pay online; "I've paid" + reference → "will check the
+     payment and connect with you"; confirm from /ops/finance → contract
+     active
+  5. the test site (MANUAL_COPY_FILES/playground/storefront-test-site.html):
+     Buy now → overlay → purchase → the review opens in a NEW TAB and the
+     overlay closes
+  6. /leads → Add a lead with country + number → Contacts shows the channel
+     as +91… with country IN; VaNi bubble lead form the same
+  7. /extend with no storefronts → the Requests-style empty state; /leads
+     empty → same
