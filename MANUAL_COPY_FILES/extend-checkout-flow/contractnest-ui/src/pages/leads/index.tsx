@@ -14,14 +14,14 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkles, Search, Plus, Loader2, Phone, Mail, Building2, User, ExternalLink, FileText, X, Check, MessageSquare, Globe,
+  Sparkles, Search, Plus, Loader2, Phone, Mail, Building2, User, ExternalLink, FileText, X, Check, MessageSquare, Globe, QrCode, ClipboardList, Users,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { useCatTemplates } from '@/hooks/queries/useCatTemplates';
 import { useLeads, useSetLeadStage, useCaptureLead, LeadRow, LeadInterest, LeadStage, AskedRow } from '@/hooks/queries/useLeads';
 import MobileInput, { DEFAULT_MOBILE, MobileValue, mobileIsValid, mobileToE164 } from '@/components/common/MobileInput';
-import EmptyState from '@/components/common/EmptyState';
+import HeroEmptyState from '@/components/common/HeroEmptyState';
 import { useStorefronts } from '@/hooks/queries/useStorefronts';
 import { storefrontUrls } from '@/pages/storefront/api';
 
@@ -98,6 +98,9 @@ const LeadsPage: React.FC = () => {
 
   const reach = data?.reach;
   const asked = data?.asked;
+  const heroShown = !isLoading && !isError && (
+    tab === 'reach' ? (!reach || reach.rows.length === 0) && stage === 'all' && !qLive
+                    : (!asked || asked.rows.length === 0));
 
   const act = async (interestId: string, next: LeadStage, note?: string, done?: string) => {
     try {
@@ -160,7 +163,8 @@ const LeadsPage: React.FC = () => {
         </div>
       )}
 
-      <div className={`rounded-2xl border ${card} ${isFetching ? 'opacity-80' : ''}`}>
+      {/* the hero empty states carry their own card (the Requests design) — no card around a card */}
+      <div className={`${heroShown ? '' : `rounded-2xl border ${card}`} ${isFetching ? 'opacity-80' : ''}`}>
         {isLoading ? (
           <div className="p-10 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
         ) : isError ? (
@@ -168,46 +172,81 @@ const LeadsPage: React.FC = () => {
         ) : tab === 'reach' ? (
           !reach || reach.rows.length === 0 ? (
             stage !== 'all' || qLive ? (
-              <EmptyState icon={Search} title="Nothing matches" body="Try another name, mobile or package, or clear the stage filter." compact
-                secondary={{ label: 'Clear filters', onClick: () => { setStage('all'); setQ(''); setQLive(''); } }} />
+              <div className="p-10 text-center">
+                <Search className={`w-8 h-8 mx-auto mb-3 ${subtext}`} />
+                <p className={`text-sm ${subtext}`}>No leads match this view. Try another name, mobile or package, or clear the filters.</p>
+                <button onClick={() => { setStage('all'); setQ(''); setQLive(''); }} className={`mt-3 ${ghostBtn}`}>Clear filters</button>
+              </div>
             ) : !extendOn ? (
-              // nothing bought: the nudge — where leads come from, then Extend
+              // nothing bought: the nudge — where leads come from, then Extend (no price here)
               <div>
-                <EmptyState icon={Sparkles} title="Leads come from where your customers already are"
-                  body="A button on your website, a link or QR you share, and VaNi answering questions on your site all land here as leads — each with what the person wanted."
-                  action={{ label: <>See how Extend works <ExternalLink className="w-4 h-4" /></>, onClick: () => navigate('/extend') }}
-                  secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead by hand</>, onClick: () => setShowAdd(true) }} />
-                <div className="grid sm:grid-cols-3 gap-3 px-6 pb-8 -mt-6 max-w-3xl mx-auto">
-                  {[
-                    { icon: Globe, color: '#4f5b8f', title: 'On your website', body: 'A Buy button or a package card. One line to paste, no developer.' },
-                    { icon: ExternalLink, color: '#0f766e', title: 'A link or a QR', body: 'Share a package into any chat, mail or a printed sticker.' },
-                    { icon: Sparkles, color: '#ff6b2b', title: 'VaNi on your site', body: 'Answers questions from your packages and leaves you the number.' },
-                  ].map((w) => (
-                    <div key={w.title} className={`rounded-2xl border p-4 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-50/60'}`}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white mb-2" style={{ background: w.color }}><w.icon className="w-4 h-4" /></div>
-                      <div className={`text-sm font-semibold mb-1 ${heading}`}>{w.title}</div>
-                      <p className={`text-xs leading-relaxed ${subtext}`}>{w.body}</p>
-                    </div>
-                  ))}
-                </div>
+                <HeroEmptyState
+                  eyebrow="WHERE YOUR CUSTOMERS ALREADY ARE."
+                  title="Every lead starts with" em="a touchpoint."
+                  lead="A Buy button on your website, a link or QR you share, and VaNi answering questions on your site — each one lands here as a lead, with what the person wanted. Extend puts your packages there in a few minutes."
+                  action={{ label: 'See how Extend works', onClick: () => navigate('/extend') }}
+                  reassurance="Nothing to set up first — Extend starts from a package you have already published."
+                  secondary={{ label: 'Add a lead by hand', onClick: () => setShowAdd(true) }}
+                  preview={{ title: 'A lead worth following up', subtitle: 'Who asked, what for, and where from.', rows: [
+                    { icon: Globe, title: 'On your website', detail: 'A Buy button or a package card, one line to paste' },
+                    { icon: QrCode, title: 'A link or a QR', detail: 'Share a package into any chat, mail or print' },
+                    { icon: Sparkles, title: 'VaNi on your site', detail: 'Answers from your packages, leaves you the number' },
+                  ], note: 'Illustrative preview · no sample leads are created' }}
+                  steps={[
+                    { title: 'Publish a package', body: 'Sign a template off in Catalog Studio — that is what a storefront sells.' },
+                    { title: 'Put it where they are', body: 'Website button, link, QR or VaNi — pick on Extend, paste, done.' },
+                    { title: 'Follow up here', body: 'Every buyer who starts lands here with their number; send the contract when ready.' },
+                  ]}
+                />
               </div>
             ) : !firstStorefront ? (
               // Extend is on, nothing published yet
-              <EmptyState icon={Sparkles} title="Your first storefront takes ten seconds"
-                body={<>Pick a published package on Extend and it becomes a button for your site, a link, a QR — every buyer who starts there lands here as a lead.{!vaniOn && <> VaNi can answer their questions and capture the number for you.</>}</>}
-                action={{ label: 'Create a storefront', onClick: () => navigate('/extend') }}
-                secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead</>, onClick: () => setShowAdd(true) }} />
+              <div>
+                <HeroEmptyState
+                  eyebrow="EXTEND IS ON. ONE STEP LEFT."
+                  title="Your first storefront takes" em="ten seconds."
+                  lead={`Pick a published package on Extend and it becomes a button for your site, a link and a QR. Every buyer who starts there lands here as a lead.${!vaniOn ? ' VaNi can answer their questions and capture the number for you.' : ''}`}
+                  action={{ label: 'Create a storefront', onClick: () => navigate('/extend') }}
+                  reassurance="No leads yet — nothing is live to send them."
+                  secondary={{ label: 'Add a lead by hand', onClick: () => setShowAdd(true) }}
+                  preview={{ title: 'A lead worth following up', subtitle: 'Who asked, what for, and where from.', rows: [
+                    { icon: Users, title: 'Who', detail: 'Name and a verified mobile' },
+                    { icon: ClipboardList, title: 'What for', detail: 'The package they looked at or asked about' },
+                    { icon: Check, title: 'Next', detail: 'Follow up, then send the contract' },
+                  ], note: 'Illustrative preview · no sample leads are created' }}
+                  steps={[
+                    { title: 'Create a storefront', body: 'Choose a package on Extend; the link and QR are ready at once.' },
+                    { title: 'Share it', body: 'Paste the button on your site, or send the link and QR.' },
+                    { title: 'Follow up here', body: 'Every buyer who starts lands here with their number.' },
+                  ]}
+                />
+              </div>
             ) : (
               // live storefront, no leads yet: make sharing the next tap
-              <EmptyState icon={Sparkles} title="No leads yet — your storefront is live"
-                body={<>Leads arrive when someone starts a checkout on <b>{firstStorefront.name}</b>, asks VaNi on your site, or you add one here. Share the link to get the first one.</>}
-                action={{ label: 'Share your storefront', onClick: async () => {
-                  const url = storefrontUrls(firstStorefront.storefront_key).page;
-                  try { await navigator.clipboard.writeText(url); addToast({ type: 'success', title: 'Link copied', message: 'Paste it into a chat or mail — or open Extend for the QR and the website snippet.' }); }
-                  catch { navigate('/extend'); }
-                } }}
-                secondary={{ label: <><Plus className="w-4 h-4" /> Add a lead</>, onClick: () => setShowAdd(true) }}
-                hint={!vaniOn ? 'VaNi can answer questions on your site and capture the number for you — see Extend.' : undefined} />
+              <div>
+                <HeroEmptyState
+                  eyebrow="YOUR STOREFRONT IS LIVE."
+                  title="The first lead is" em="one share away."
+                  lead={`Leads arrive when someone starts a checkout on ${firstStorefront.name}, asks VaNi on your site, or you add one here. Share the link to get the first one.`}
+                  action={{ label: 'Share your storefront', onClick: async () => {
+                    const url = storefrontUrls(firstStorefront.storefront_key).page;
+                    try { await navigator.clipboard.writeText(url); addToast({ type: 'success', title: 'Link copied', message: 'Paste it into a chat or mail — or open Extend for the QR and the website snippet.' }); }
+                    catch { navigate('/extend'); }
+                  } }}
+                  reassurance={vaniOn ? 'Nothing waiting in this view right now.' : 'VaNi can answer questions on your site and capture the number for you — see Extend.'}
+                  secondary={{ label: 'Add a lead by hand', onClick: () => setShowAdd(true) }}
+                  preview={{ title: 'A lead worth following up', subtitle: 'Who asked, what for, and where from.', rows: [
+                    { icon: Users, title: 'Who', detail: 'Name and a verified mobile' },
+                    { icon: ClipboardList, title: 'What for', detail: 'The package they looked at or asked about' },
+                    { icon: Check, title: 'Next', detail: 'Follow up, then send the contract' },
+                  ], note: 'Illustrative preview · no sample leads are created' }}
+                  steps={[
+                    { title: 'Share the link', body: 'Chat, mail, a QR on the counter, or the button on your site.' },
+                    { title: 'They start a checkout', body: 'Name and mobile verified by OTP — a lead even if they stop there.' },
+                    { title: 'Follow up here', body: 'Call, note, then send the contract from this page.' },
+                  ]}
+                />
+              </div>
             )
           ) : (
             <ul className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
@@ -275,8 +314,26 @@ const LeadsPage: React.FC = () => {
           )
         ) : (
           !asked || asked.rows.length === 0 ? (
-            <EmptyState icon={FileText} title="No requests waiting" compact
-              body="When a buyer invites your business number or email to a request for quote, it lands here. Nothing to respond to right now." />
+            <div>
+              <HeroEmptyState
+                eyebrow="A CLEAR BRIEF. YOUR NEXT OPPORTUNITY."
+                title="Your next opportunity starts with" em="a request."
+                lead="When a buyer invites your business number or email to quote, their request appears here. Understand what they need, prepare your response, and keep the conversation connected."
+                action={{ label: 'Open Requests', onClick: () => navigate('/requests') }}
+                reassurance="Nothing waiting in this view right now."
+                secondary={{ label: 'View your contracts', onClick: () => navigate('/contracts') }}
+                preview={{ title: 'A brief worth responding to', subtitle: 'The details you need, in one place.', rows: [
+                  { icon: ClipboardList, title: 'The scope', detail: 'What needs to be delivered' },
+                  { icon: Users, title: 'Your response', detail: 'Approach, availability & pricing' },
+                  { icon: Check, title: 'The next step', detail: 'Track the buyer’s decision' },
+                ], note: 'Illustrative preview · no sample requests are created' }}
+                steps={[
+                  { title: 'Review the brief', body: 'Understand the buyer’s scope and expectations.' },
+                  { title: 'Prepare your quote', body: 'Respond with your approach and pricing.' },
+                  { title: 'Follow the decision', body: 'Keep the request and your response connected.' },
+                ]}
+              />
+            </div>
           ) : (
             <ul className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {asked.rows.map((r) => (

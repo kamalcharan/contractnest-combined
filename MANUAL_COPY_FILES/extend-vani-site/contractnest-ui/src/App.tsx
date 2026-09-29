@@ -48,8 +48,8 @@ import ServiceReportPage from './pages/report/ServiceReportPage'; // [B3.6] publ
 import VisitSlotPage from './pages/visit-slot/VisitSlotPage'; // [ops-appointments-loop] public: customer confirms a visit slot (token link)
 import PackagePage from './pages/storefront/PackagePage'; // [extend-storefront-v2] public package page (/p/:key)
 import BuyPage from './pages/buy'; // [extend-storefront-v2] public OTP checkout (/buy/:key)
-import WidgetFrame from './pages/storefront/WidgetFrame';
-import VaniChatPage from './pages/storefront/VaniChatPage'; // [extend-vani-site] VaNi on the tenant's own site (bubble panel / Ask VaNi) // [extend-storefront-v2] what embed.js puts in its iframe (/w/:key)
+import WidgetFrame from './pages/storefront/WidgetFrame'; // [extend-storefront-v2] what embed.js puts in its iframe (/w/:key)
+import VaniChatPage from './pages/storefront/VaniChatPage'; // [extend-vani-site] VaNi on the tenant's own site (bubble panel / Ask VaNi)
 
 // Catalog Pages
 
@@ -222,6 +222,7 @@ import ContractsHubPage from './pages/contracts/hub';
 import ContractsExperiencePage from './pages/contracts/experience';
 import CreateContractExperiencePage from './pages/contracts/experience/create';
 import RfqBuilderPage from './pages/contracts/rfq/RfqBuilderPage';
+import RfpBuyerPage from './pages/contracts/rfp/experience/RfpBuyerPage';
 import ContractDetailPage from './pages/contracts/detail';
 import InvoiceViewPage from './pages/contracts/invoice';
 import ContractReviewPage from './pages/contracts/review';
@@ -742,7 +743,7 @@ const AppContent: React.FC = () => {
             <Route index element={<ExtendPage />} />
           </Route>
 
-          {/* Leads — From your reach (storefront / VaNi / manual) · Asked you (RFQs sent to us). Revenue side. */}
+          {/* Leads — From your reach (storefront / VaNi / manual) · RFQ (requests sent to us). Revenue side. */}
           <Route
             path="/leads"
             element={
@@ -903,6 +904,9 @@ const AppContent: React.FC = () => {
             }
           >
             <Route index element={<ContractsHubPage recordType="rfq" />} />
+            <Route path="rfp" element={<RfpBuyerPage list />} />
+            <Route path="rfp/new" element={<RfpBuyerPage />} />
+            <Route path="rfp/:id" element={<RfpBuyerPage />} />
           </Route>
 
           {/* Legacy support for old routes - redirect to new structure */}

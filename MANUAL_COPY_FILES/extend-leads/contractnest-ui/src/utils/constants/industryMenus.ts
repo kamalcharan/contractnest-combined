@@ -58,7 +58,7 @@ export const defaultMenuItems: MenuItem[] = [
   // (Services focus · Schedule · Ask customer · Confirm slot); /ops/appointments redirects there.
   // { id: 'ops-appointments', label: 'Appointments', icon: 'CalendarCheck', path: '/ops/appointments' },
   { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
-  // Leads — contacts tagged 'lead' + what they wanted (From your reach · Asked you). Revenue side.
+  // Leads — contacts tagged 'lead' + what they wanted (From your reach · RFQ). Revenue side.
   { id: 'leads', label: 'Leads', icon: 'UserPlus', path: '/leads', revenueOnly: true },
   { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
   { id: 'facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry' },
@@ -175,6 +175,7 @@ export const defaultMenuItems: MenuItem[] = [
     icon: 'Inbox',
     path: '/requests'
   },
+  // RFP drafts are part of Requests; keep the existing direct routes for bookmarks.
   // VaNi — the real agent surface: Overview (landing + trial) and Briefing.
   // Autonomy & Credits joins when built (agreed end-state: 3 items).
   {
