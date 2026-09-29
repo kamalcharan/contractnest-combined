@@ -134,6 +134,12 @@ input, select { font: inherit; color: var(--ink); background: var(--surface); bo
 .wbtn.ghost { background: transparent; color: #1b2a41; border: 1.5px solid #cfd4dc }
 .bubble { position: absolute; right: 14px; bottom: 14px; width: 52px; height: 52px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 800; box-shadow: 0 8px 24px rgba(0,0,0,.25) }
 .host .site-body { position: relative }
+.vs-panel { background: #fff; border: 1px solid #e3e6eb; border-radius: 14px; box-shadow: 0 12px 32px rgba(20,30,50,.14); padding: 10px; display: grid; gap: 6px; color: #1b2a41 }
+.vs-panel .chat { background: #f6f7f9; border-radius: 10px; padding: 8px }
+.vs-head { display: flex; gap: 8px; align-items: center; padding: 2px 4px 6px }
+.vs-panel .msg.bot { background: #fff; border-color: #e3e6eb; color: #1b2a41 } .vs-panel .msg.me { background: #eef0ff; border-color: #cfd6ff; color: #1b2a41 }
+.vs-panel .msg .who { color: #99a } .vs-panel .quick button { background: #fff; color: #1b2a41; border-color: #cfd4dc }
+.vs-panel input { background: #fff; color: #1b2a41; border-color: #cfd4dc }
 details.dev { border: 1px solid var(--edge); border-radius: 10px; padding: 10px 14px; margin-top: 12px; background: var(--surface) }
 details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
 
@@ -158,6 +164,17 @@ details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
 .steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px }
 .steps span { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--edge); color: var(--soft) }
 .steps span.on { color: var(--vani); border-color: var(--vani); background: var(--wash) }
+
+/* VaNi on their site */
+function renderVs() { const el = document.getElementById('vs-chat'); if (!el) return;
+  el.innerHTML = S.vs.map(m => m.who === 'me' ? `<div class="msg me"><div class="who">Visitor</div>${m.t}</div>` : `<div class="msg bot"><div class="who">VaNi</div>${m.t}${m.card ? cardHTML(m.card) : ''}${m.form ? '<div class="field" style="margin:8px 0 0"><input placeholder="Your name"><input placeholder="Mobile" style="margin-top:6px"><button class="btn sm" style="margin-top:6px" onclick="vsLead()">Send</button></div>' : ''}</div>`).join('');
+  el.scrollTop = el.scrollHeight; }
+function vsAsk(q) { if (!q || !q.trim()) return; S.vs.push({ who: 'me', t: q });
+  const a = { 'Do you cover Secunderabad?': { t: 'Yes, whole of Hyderabad and Secunderabad, no travel charge. Which equipment are you looking after?' },
+    'What do you have for a 3 floor office?': { t: 'For a 3 floor office you would usually take the HVAC AMC, and the lift AMC if you have one. Here is the HVAC package; I can show the lift one too.', card: 'hvac' },
+    'Can someone call me?': { t: 'Of course. Leave your name and mobile and signia will call you back today.', form: true } };
+  S.vs.push({ who: 'vani', ...(a[q] || { t: 'I answer from signia\'s packages and FAQ. I don\'t have that one, so I will pass it to signia. Want to leave your number so they can reply?', form: true }) }); renderVs(); }
+function vsLead() { S.vs.push({ who: 'vani', t: 'Thanks, Ravi. signia has your number and this conversation. They will call you today. This page stays open if you want to explore the packages meanwhile.' }); renderVs(); toastMsg('Lead captured · notified signia'); }
 
 /* whatsapp */
 .wa-screen { background: #e7dfd3; border-radius: 24px; min-height: 480px; display: flex; flex-direction: column; overflow: hidden; color: #1a1816 }
@@ -208,9 +225,10 @@ details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
     <button class="stop" data-stop="0"><span class="n">0</span>The journey</button>
     <button class="stop" data-stop="1"><span class="n">1</span>Extend page</button>
     <button class="stop" data-stop="2"><span class="n">2</span>Storefront &amp; widget</button>
-    <button class="stop" data-stop="3"><span class="n">3</span>What the customer sees</button>
-    <button class="stop" data-stop="4"><span class="n">4</span>WhatsApp</button>
-    <button class="stop" data-stop="5"><span class="n">5</span>What lands in your book</button>
+    <button class="stop" data-stop="3"><span class="n">3</span>VaNi on their site</button>
+    <button class="stop" data-stop="4"><span class="n">4</span>What the customer sees</button>
+    <button class="stop" data-stop="5"><span class="n">5</span>WhatsApp</button>
+    <button class="stop" data-stop="6"><span class="n">6</span>What lands in your book</button>
   </nav>
 
   <!-- 0 · journey -->
@@ -243,7 +261,7 @@ details.dev summary { cursor: pointer; font-weight: 600; font-size: 13px }
           </div>
           <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
             <button class="btn" onclick="toggle('website');">Turn on Website · ₹700/yr</button>
-            <button class="btn ghost" onclick="go(3)">See what your customer sees</button>
+            <button class="btn ghost" onclick="go(4)">See what your customer sees</button>
           </div>
         </div>
         <div class="phone"><div class="screen" id="pitch-preview"></div></div>
@@ -318,8 +336,58 @@ ContractNest.mount(el, { storefront: 'sf-e6a8…', view: 'card' })</div>
     </div>
   </section>
 
-  <!-- 3 · customer -->
+  <!-- 3 · VaNi on their site -->
   <section class="stage" id="stage-3">
+    <div id="vs-off" class="ghosted" hidden><span><b>VaNi is off for this tenant.</b> Their site can still show packages and a checkout. Turn VaNi on to put her on the site: she answers from the packages, captures leads, and hands warm ones to the team.</span><button class="btn sm" onclick="toggle('vani')">Open VaNi</button></div>
+    <div id="vs-on">
+      <div class="note"><strong>VaNi is tenant-level, not storefront-level.</strong> One script tag puts her on every page of their site. She knows every published package, the FAQ they write here, and their hours. A visitor gets answers, the right package card, and a way to leave their number. The tenant gets a lead.</div>
+      <div class="split">
+        <div class="card" style="padding:16px 18px">
+          <span class="eyebrow">Set up VaNi for your site</span>
+          <h3 style="margin:4px 0 12px">What she knows and does</h3>
+          <div class="field"><label>She can talk about</label><div class="seg" id="vs-pk">
+            <button class="on">1 year HVAC template</button><button class="on">Quarterly lift AMC</button><button>Fire safety audit</button></div>
+            <p class="muted" style="font-size:12px">Published packages only. Prices, lines and terms come from the template itself, so she is never out of date.</p></div>
+          <div class="field"><label>Your FAQ · she answers from this before anything else</label>
+            <div class="snippet" style="white-space:normal;font-family:var(--display);font-size:12.5px">Q: Do you cover Secunderabad? A: Yes, whole of Hyderabad and Secunderabad.<br>Q: Weekend visits? A: Saturdays, no extra charge.<br>Q: Gas beyond 1 kg? A: Billed at cost, invoice attached.</div></div>
+          <div class="field"><label>Greeting</label><input value="Hi, I'm VaNi for signia. Ask me about our maintenance packages."></div>
+          <div class="field"><label>When she can't answer</label><div class="seg" id="vs-handoff">
+            <button class="on">Take their number, notify me</button><button>Open WhatsApp to +91 98851 64233</button></div></div>
+          <div class="field"><label>Ask for name and mobile</label><div class="seg" id="vs-capture">
+            <button class="on">When they show interest</button><button>Before the first answer</button><button>Never</button></div></div>
+          <div class="field"><label>Allowed sites</label><input value="coolairsolutions.in, www.coolairsolutions.in"><p class="muted" style="font-size:12px">The bubble only loads on these domains. Nothing else needed: no API key, no developer.</p></div>
+          <span class="eyebrow">Paste this once, on every page</span>
+          <div class="snippet" id="vs-snippet">&lt;script src="https://contractnest.com/embed.js"
+  data-vani="vn-signia-7c21a0"
+  data-color="#4f5b8f" async&gt;&lt;/script&gt;</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" onclick="copyText(document.getElementById('vs-snippet').textContent,'Snippet copied')">Copy snippet</button><button class="btn sm ghost" onclick="go(5)">Same VaNi on WhatsApp</button></div>
+          <p class="muted" style="font-size:12px;margin-top:10px">Works next to a storefront widget on the same page. The key is the tenant's, not a storefront's, so she covers all of them.</p>
+        </div>
+        <div>
+          <span class="eyebrow">Live preview · their site with VaNi open</span>
+          <div class="host" style="margin-top:6px">
+            <div class="bar"><i></i><i></i><i></i> coolairsolutions.in / services</div>
+            <div class="site-body" style="grid-template-columns:minmax(0,1fr) 300px">
+              <div><h4>Cool Air Solutions</h4><div class="txt"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div><div class="txt s"></div><div class="txt"></div></div>
+              <div class="vs-panel">
+                <div class="vs-head"><span style="width:26px;height:26px;border-radius:7px;background:var(--vani);color:#fff;display:grid;place-items:center;font-weight:800">V</span><div><b>VaNi</b> <span style="font-size:11px;color:#667">for signia · online</span></div></div>
+                <div class="chat" id="vs-chat" style="max-height:290px"></div>
+                <div class="quick" id="vs-quick"><button onclick="vsAsk('Do you cover Secunderabad?')">Do you cover Secunderabad?</button><button onclick="vsAsk('What do you have for a 3 floor office?')">What for a 3 floor office?</button><button onclick="vsAsk('Can someone call me?')">Can someone call me?</button></div>
+                <div class="chatin"><input id="vs-input" placeholder="Ask VaNi" onkeydown="if(event.key==='Enter'){vsAsk(this.value);this.value=''}"><button class="btn sm" onclick="const i=document.getElementById('vs-input');vsAsk(i.value);i.value=''">Send</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px;padding:12px 16px;display:flex;gap:14px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+            <div><span class="eyebrow">What VaNi did · this month</span><div class="counters" style="margin-top:4px"><span><b>31</b> conversations</span><span><b>24</b> answered from packages</span><span><b>6</b> leads captured</span><span><b>2</b> handed to you</span><span><b>1</b> bought</span></div></div>
+            <button class="btn sm ghost" onclick="go(6)">See the leads</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · customer -->
+  <section class="stage" id="stage-4">
     <div class="steps"><span class="on" id="st-explore">Explore</span><span id="st-ask">Ask VaNi</span><span id="st-checkout">Checkout</span><span id="st-done">Contract</span></div>
     <div class="cust">
       <div class="card public">
@@ -339,8 +407,8 @@ ContractNest.mount(el, { storefront: 'sf-e6a8…', view: 'card' })</div>
     </div>
   </section>
 
-  <!-- 4 · whatsapp -->
-  <section class="stage" id="stage-4">
+  <!-- 5 · whatsapp -->
+  <section class="stage" id="stage-5">
     <div id="wa-off" class="ghosted" hidden><span>WhatsApp is off for this tenant. Sharing still works by hand, with a plain link. Turn WhatsApp on to send the card with buttons and let VaNi answer replies.</span><button class="btn wa sm" onclick="toggle('whatsapp')">Turn on WhatsApp · ₹700/yr</button></div>
     <div class="split" id="wa-on">
       <div class="card" style="padding:16px 18px">
@@ -356,8 +424,8 @@ ContractNest.mount(el, { storefront: 'sf-e6a8…', view: 'card' })</div>
     </div>
   </section>
 
-  <!-- 5 · book -->
-  <section class="stage" id="stage-5">
+  <!-- 6 · book -->
+  <section class="stage" id="stage-6">
     <div class="note"><strong>Two things land, in order.</strong> A lead with an interest row the moment the customer identifies themselves, and a contract in pending acceptance the moment they buy. Requests you receive on the Revenue side sit in the same list.</div>
     <div class="card">
       <div class="tabs"><button class="on" onclick="leadTab(this,'push')">From your reach · 3</button><button onclick="leadTab(this,'req')">Asked you · 1</button></div>
@@ -386,7 +454,7 @@ ContractNest.mount(el, { storefront: 'sf-e6a8…', view: 'card' })</div>
 const S = { website: true, whatsapp: true, vani: true, stop: 0,
   cfg: { view: 'button', label: 'Buy now', color: '#4f5b8f', shape: 'pill', open: 'overlay' },
   sfs: [ { id: 'sf-e6a8abb6e376f0fa154cafbc8189cc17', name: '1 year HVAC template', pks: ['hvac'], v: 214, c: 31, l: 6, s: 9, b: 2 } ],
-  pick: ['hvac'], cust: 'explore', chat: [] };
+  pick: ['hvac'], cust: 'explore', chat: [], vs: [{ who: 'vani', t: "Hi, I'm VaNi for signia. Ask me about our maintenance packages." }] };
 const PK = { hvac: ['1 year HVAC template', 24000], lift: ['Quarterly lift AMC', 9000], fire: ['Fire safety audit', 6500] };
 const fmt = n => '₹' + n.toLocaleString('en-IN');
 const radius = () => ({ pill: '999px', rounded: '10px', square: '3px' })[S.cfg.shape];
@@ -420,9 +488,9 @@ function render() {
       <div><div class="name">${sf.name}</div>
         <div class="meta"><span class="chip on">Website</span>${S.whatsapp ? '<span class="chip on">WhatsApp</span>' : '<span class="chip">WhatsApp off</span>'}${S.vani ? '<span class="chip vani">VaNi answering</span>' : ''}${sf.pks.length > 1 ? `<span class="chip">catalog · ${sf.pks.length} packages</span>` : ''}</div>
         <div class="counters"><span><b>${sf.v}</b> views</span><span><b>${sf.c}</b> chats</span><span><b>${sf.l}</b> leads</span><span><b>${sf.s}</b> started</span><span><b>${sf.b}</b> bought</span></div></div>
-      <div class="acts"><button class="ib" title="Copy link" onclick="copyText('https://contractnest.com/p/${sf.id}','Link copied')">🔗</button><button class="ib site" title="Widget for your site" onclick="go(2)">&lt;/&gt;</button><button class="ib wa" title="Share on WhatsApp" onclick="go(4)" ${S.whatsapp ? '' : 'disabled'}>WA</button><button class="ib" title="QR for print" onclick="toastMsg('QR downloaded')">QR</button><button class="ib" title="Send by email" onclick="copyText('https://contractnest.com/p/${sf.id}','Mail block copied')">✉</button><button class="ib" title="Pause">⏸</button></div></div>`).join('');
+      <div class="acts"><button class="ib" title="Copy link" onclick="copyText('https://contractnest.com/p/${sf.id}','Link copied')">🔗</button><button class="ib site" title="Widget for your site" onclick="go(2)">&lt;/&gt;</button><button class="ib wa" title="Share on WhatsApp" onclick="go(5)" ${S.whatsapp ? '' : 'disabled'}>WA</button><button class="ib" title="QR for print" onclick="toastMsg('QR downloaded')">QR</button><button class="ib" title="Send by email" onclick="copyText('https://contractnest.com/p/${sf.id}','Mail block copied')">✉</button><button class="ib" title="Pause">⏸</button></div></div>`).join('');
   document.getElementById('vani-row').innerHTML = S.vani
-    ? `<div class="card" style="padding:14px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div><b style="color:var(--vani)">VaNi is answering</b> on your storefronts and WhatsApp replies. <span class="muted">31 questions this month, 6 leads captured, 2 handed to you.</span></div><button class="btn sm ghost" onclick="go(5)">See leads</button></div>`
+    ? `<div class="card" style="padding:14px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between"><div><b style="color:var(--vani)">VaNi is answering</b> on your storefronts and WhatsApp replies. <span class="muted">31 questions this month, 6 leads captured, 2 handed to you.</span></div><button class="btn sm ghost" onclick="go(6)">See leads</button></div>`
     : `<div class="ghosted"><span><b>VaNi would have answered 31 questions and captured 6 leads</b> on these storefronts this month. Right now questions go unanswered after hours.</span><button class="btn sm" onclick="toggle('vani')">Open VaNi</button></div>`;
   // stop 2
   const c = S.cfg;
@@ -441,7 +509,9 @@ function render() {
   document.getElementById('cfg-color-input').value = c.color;
   document.querySelectorAll('#cfg-shape button').forEach(b => b.classList.toggle('on', b.dataset.v === c.shape));
   document.querySelectorAll('#cfg-open button').forEach(b => b.classList.toggle('on', b.dataset.v === c.open));
-  // stop 3
+  // stop 3 · VaNi on their site
+  document.getElementById('vs-off').hidden = S.vani; document.getElementById('vs-on').hidden = !S.vani; renderVs();
+  // stop 4
   document.getElementById('askbtn').hidden = !S.vani; document.getElementById('vani-off-note').hidden = S.vani;
   renderCust();
   // stop 4
@@ -475,7 +545,7 @@ function renderCust() {
     <div class="field"><label>OTP sent to your mobile</label><input id="co-otp" placeholder="6 digits"></div>
     <p class="muted" style="font-size:12px">The OTP is what makes the lead real and lets us match an existing contact safely. Today the match is silent and unverified.</p>
     <div style="display:flex;gap:8px;margin-top:8px"><button class="btn" onclick="custStep('done')">Confirm and pay ${fmt(24000)}</button><button class="btn ghost" onclick="custStep('explore')">Back</button></div>`;
-  else r.innerHTML = `<span class="eyebrow">Done</span><h3 style="margin:4px 0 8px">Contract CN-1013 is in signia's book</h3><p class="muted" style="font-size:13px">Pending acceptance with a CNAK link, the same review and pay flow every contract uses. Ravi is now a client contact; his interest row is kept as history.</p><div class="kv" style="margin-top:12px"><span>contract <b>CN-1013</b></span><span>invoice <b>INV-10062</b></span><span>grant <b>CNAK-7C21A0</b></span></div><div style="margin-top:14px"><button class="btn ghost" onclick="go(5)">See it in your book</button></div>`;
+  else r.innerHTML = `<span class="eyebrow">Done</span><h3 style="margin:4px 0 8px">Contract CN-1013 is in signia's book</h3><p class="muted" style="font-size:13px">Pending acceptance with a CNAK link, the same review and pay flow every contract uses. Ravi is now a client contact; his interest row is kept as history.</p><div class="kv" style="margin-top:12px"><span>contract <b>CN-1013</b></span><span>invoice <b>INV-10062</b></span><span>grant <b>CNAK-7C21A0</b></span></div><div style="margin-top:14px"><button class="btn ghost" onclick="go(6)">See it in your book</button></div>`;
   const log = document.getElementById('chatlog'); if (log) log.scrollTop = log.scrollHeight;
 }
 function ask(q) { if (!q || !q.trim()) return; S.chat.push({ who: 'me', t: q });
@@ -484,6 +554,17 @@ function ask(q) { if (!q || !q.trim()) return; S.chat.push({ who: 'me', t: q });
     'I have 3 units': { t: 'Then this one-unit package will not fit. signia has a 3-unit variant at ₹60,000 a year. I can show it, or ask signia to quote for exactly your setup.', card: true },
     'Let me think about it': { t: 'Of course. Leave a mobile number and I will send you this page, and signia can follow up if you like.' } };
   S.chat.push({ who: 'vani', ...(a[q] || { t: 'I can only answer from this package and signia\'s FAQ. For anything else I will pass it to signia and they will reply on WhatsApp.' }) }); render(); }
+
+/* VaNi on their site */
+function renderVs() { const el = document.getElementById('vs-chat'); if (!el) return;
+  el.innerHTML = S.vs.map(m => m.who === 'me' ? `<div class="msg me"><div class="who">Visitor</div>${m.t}</div>` : `<div class="msg bot"><div class="who">VaNi</div>${m.t}${m.card ? cardHTML(m.card) : ''}${m.form ? '<div class="field" style="margin:8px 0 0"><input placeholder="Your name"><input placeholder="Mobile" style="margin-top:6px"><button class="btn sm" style="margin-top:6px" onclick="vsLead()">Send</button></div>' : ''}</div>`).join('');
+  el.scrollTop = el.scrollHeight; }
+function vsAsk(q) { if (!q || !q.trim()) return; S.vs.push({ who: 'me', t: q });
+  const a = { 'Do you cover Secunderabad?': { t: 'Yes, whole of Hyderabad and Secunderabad, no travel charge. Which equipment are you looking after?' },
+    'What do you have for a 3 floor office?': { t: 'For a 3 floor office you would usually take the HVAC AMC, and the lift AMC if you have one. Here is the HVAC package; I can show the lift one too.', card: 'hvac' },
+    'Can someone call me?': { t: 'Of course. Leave your name and mobile and signia will call you back today.', form: true } };
+  S.vs.push({ who: 'vani', ...(a[q] || { t: 'I answer from signia\'s packages and FAQ. I don\'t have that one, so I will pass it to signia. Want to leave your number so they can reply?', form: true }) }); renderVs(); }
+function vsLead() { S.vs.push({ who: 'vani', t: 'Thanks, Ravi. signia has your number and this conversation. They will call you today. This page stays open if you want to explore the packages meanwhile.' }); renderVs(); toastMsg('Lead captured · notified signia'); }
 
 /* whatsapp */
 function waSend() { const t = document.getElementById('wa-text').value; document.getElementById('wa-screen').innerHTML = `
