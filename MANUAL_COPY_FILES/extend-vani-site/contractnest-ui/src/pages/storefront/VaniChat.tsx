@@ -48,10 +48,11 @@ const VaniChat: React.FC<VaniChatProps> = ({ siteKey, storefrontKey, pageUrl, co
 
   useEffect(() => {
     let on = true;
-    vaniSiteApi.resolve(siteKey, storefrontKey || null)
+    vaniSiteApi.resolve(siteKey, storefrontKey || null, pageUrl || null)
       .then((s) => { if (!on) return; setSite(s); setMsgs([{ role: 'assistant', text: s.greeting, askContact: s.capture_mode === 'first' }]); })
       .catch((e) => { if (on) setErr(errorText(e, 'VaNi is not available right now.')); });
     return () => { on = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteKey, storefrontKey]);
 
   useEffect(() => { const el = logRef.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs, busy]);

@@ -12,8 +12,15 @@ import vaniSiteService, { ChatTurn } from '../services/vaniSiteService';
 const KEY_RE = /^(vn-[0-9a-f]{20}|sf-[0-9a-f]{32})$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function hostOf(req: Request): string | null {
-  const src = (req.headers.origin as string) || (req.headers.referer as string) || '';
+/**
+ * The host to check against the tenant's allowed list is the CUSTOMER'S page.
+ * The chat runs in our iframe, so the request's own Origin/Referer is always
+ * our app; the iframe passes the host page's URL as `page_url` (chat body) or
+ * `?page=` (resolve). Without it, fall back to Origin/Referer (the package
+ * page's inline "Ask VaNi", where our own origin is the page).
+ */
+function hostOf(req: Request, pageUrl?: string | null): string | null {
+  const src = pageUrl || (req.headers.origin as string) || (req.headers.referer as string) || '';
   try { return src ? new URL(src).hostname : null; } catch { return null; }
 }
 function status(code?: string): number {
@@ -37,7 +44,8 @@ class VaniSiteController {
     const site = r.data;
     // the page needs to know why it should not render, without leaking the config
     const { tenant_id, allowed_domains, ...pub } = site as any;
-    res.json({ success: true, data: { ...pub, domain_ok: vaniSiteService.domainAllowed(site, hostOf(req)) } });
+    const page = typeof req.query.page === 'string' ? req.query.page.slice(0, 500) : null;
+    res.json({ success: true, data: { ...pub, domain_ok: vaniSiteService.domainAllowed(site, hostOf(req, page)) } });
   };
 
   /** POST /:key/chat {message, session_id?, storefront_key?, page_url?, history?[]} */
@@ -60,7 +68,7 @@ class VaniSiteController {
     if (!site.vani_enabled || !site.enabled) {
       res.status(403).json({ success: false, error: { code: 'VANI_OFF', message: 'VaNi is not switched on for this business yet' } }); return;
     }
-    if (!vaniSiteService.domainAllowed(site, hostOf(req))) {
+    if (!vaniSiteService.domainAllowed(site, hostOf(req, pageUrl))) {
       res.status(403).json({ success: false, error: { code: 'DOMAIN_NOT_ALLOWED', message: 'This site is not on the allowed list' } }); return;
     }
 

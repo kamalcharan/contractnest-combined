@@ -87,8 +87,11 @@ export const storefrontApi = {
 
 /** VaNi on the tenant's site (migration 040): key = vn-… (site) or sf-… (storefront). */
 export const vaniSiteApi = {
-  async resolve(key: string, storefrontKey: string | null): Promise<any> {
-    const res = await publicClient.get(`/api/vani-site/${encodeURIComponent(key)}${storefrontKey ? `?storefront=${encodeURIComponent(storefrontKey)}` : ''}`);
+  async resolve(key: string, storefrontKey: string | null, pageUrl?: string | null): Promise<any> {
+    const q = new URLSearchParams();
+    if (storefrontKey) q.set('storefront', storefrontKey);
+    if (pageUrl) q.set('page', pageUrl);
+    const res = await publicClient.get(`/api/vani-site/${encodeURIComponent(key)}${q.toString() ? `?${q}` : ''}`);
     return unwrap(res);
   },
   async chat(key: string, body: { message: string; session_id?: string | null; storefront_key?: string; page_url?: string; history?: Array<{ role: 'user' | 'assistant'; text: string }> }): Promise<any> {
