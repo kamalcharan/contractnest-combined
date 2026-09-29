@@ -35,7 +35,7 @@ import { useStorefronts, useCreateStorefront, useUpdateStorefront, Storefront } 
 import { useVaniSite, useUpdateVaniSite, VaniSitePatch } from '@/hooks/queries/useVaniSite';
 import { QrCode } from '@/utils/qrcodegen';
 import PackageCard from '@/pages/storefront/PackageCard';
-import EmptyState from '@/components/common/EmptyState';
+import HeroEmptyState from '@/components/common/HeroEmptyState';
 import {
   CardStyle, CardView, CardShape, CardOpen, StorefrontPackage, FaqRow,
   mergeCardStyle, storefrontUrls, fmtMoney, termLabel,
@@ -251,13 +251,32 @@ const ExtendPage: React.FC = () => {
         />
       )}
 
-      <div className={`rounded-2xl border ${card}`}>
+      <div className={storefronts.length === 0 ? '' : `rounded-2xl border ${card}`}>
         {storefronts.length === 0 ? (
-          <EmptyState icon={Package} title="No storefronts yet"
-            body="A storefront puts a published package on your website, behind a link or a QR, and in a WhatsApp share. Create one from a package — it takes ten seconds."
-            action={publishedTemplates.length > 0 ? { label: <><Plus className="w-4 h-4" /> New storefront</>, onClick: () => setShowNew(true) } : undefined}
-            secondary={publishedTemplates.length === 0 ? { label: 'Open Catalog Studio', onClick: () => navigate('/catalog-studio/templates-list') } : undefined}
-            hint={publishedTemplates.length === 0 ? 'Sign a template off in Catalog Studio → Templates first; only signed-off packages can be sold.' : undefined} />
+          <div>
+            <HeroEmptyState
+              eyebrow="ONE PACKAGE. EVERY TOUCHPOINT."
+              title="Your first storefront takes" em="ten seconds."
+              lead="A storefront puts a published package on your website, behind a link or a QR, and in a WhatsApp share. Buyers read it, ask VaNi, and a contract lands in your book."
+              action={publishedTemplates.length > 0
+                ? { label: 'New storefront', onClick: () => setShowNew(true) }
+                : { label: 'Open Catalog Studio', onClick: () => navigate('/catalog-studio/templates-list') }}
+              reassurance={publishedTemplates.length > 0
+                ? `${publishedTemplates.length} signed-off package${publishedTemplates.length === 1 ? '' : 's'} ready to sell.`
+                : 'Sign a template off in Catalog Studio → Templates first; only signed-off packages can be sold.'}
+              secondary={{ label: 'See your leads', onClick: () => navigate('/leads') }}
+              preview={{ icon: Package, title: 'Your package, out there', subtitle: 'One storefront, three ways in.', rows: [
+                { icon: Globe, title: 'Website', detail: 'A Buy button or a package card — one line to paste' },
+                { icon: QrIcon, title: 'Link & QR', detail: 'Share into any chat, mail or print' },
+                { icon: Sparkles, title: 'VaNi', detail: 'Answers questions from the package itself' },
+              ], note: 'Illustrative preview · no sample storefront is created' }}
+              steps={[
+                { title: 'Pick a package', body: 'Any signed-off template becomes a storefront.' },
+                { title: 'Style the button', body: 'Label, colour and shape — the preview is the real widget.' },
+                { title: 'Paste and share', body: 'Snippet for your site, link, QR, mail block.' },
+              ]}
+            />
+          </div>
         ) : (
           <ul className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
             {storefronts.map((sf) => {

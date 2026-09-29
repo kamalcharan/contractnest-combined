@@ -221,6 +221,7 @@ import ContractsHubPage from './pages/contracts/hub';
 import ContractsExperiencePage from './pages/contracts/experience';
 import CreateContractExperiencePage from './pages/contracts/experience/create';
 import RfqBuilderPage from './pages/contracts/rfq/RfqBuilderPage';
+import RfpBuyerPage from './pages/contracts/rfp/experience/RfpBuyerPage';
 import ContractDetailPage from './pages/contracts/detail';
 import InvoiceViewPage from './pages/contracts/invoice';
 import ContractReviewPage from './pages/contracts/review';
@@ -740,7 +741,7 @@ const AppContent: React.FC = () => {
             <Route index element={<ExtendPage />} />
           </Route>
 
-          {/* Leads — From your reach (storefront / VaNi / manual) · Asked you (RFQs sent to us). Revenue side. */}
+          {/* Leads — From your reach (storefront / VaNi / manual) · RFQ (requests sent to us). Revenue side. */}
           <Route
             path="/leads"
             element={
@@ -901,6 +902,9 @@ const AppContent: React.FC = () => {
             }
           >
             <Route index element={<ContractsHubPage recordType="rfq" />} />
+            <Route path="rfp" element={<RfpBuyerPage list />} />
+            <Route path="rfp/new" element={<RfpBuyerPage />} />
+            <Route path="rfp/:id" element={<RfpBuyerPage />} />
           </Route>
 
           {/* Legacy support for old routes - redirect to new structure */}

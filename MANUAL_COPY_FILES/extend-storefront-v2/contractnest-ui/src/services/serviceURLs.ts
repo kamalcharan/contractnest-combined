@@ -1401,6 +1401,12 @@ export const API_ENDPOINTS = {
     // Tenant form submissions
     SUBMISSIONS: {
       LIST: '/api/forms/submissions',
+        START_CHECK: (eventId: string) => `/api/forms/submissions/start-check?event_id=${encodeURIComponent(eventId)}`,
+        CONTEXT: (eventId: string, templateId: string, eventAssetId?: string) => {
+          const params = new URLSearchParams({event_id:eventId,template_id:templateId});
+          if (eventAssetId) params.set('event_asset_id',eventAssetId);
+          return `/api/forms/submissions/context?${params}`;
+        },
       GET: (id: string) => `/api/forms/submissions/${id}`,
       CREATE: '/api/forms/submissions',
       UPDATE: (id: string) => `/api/forms/submissions/${id}`,

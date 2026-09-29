@@ -60,8 +60,12 @@ FILES
                                           'link' and closes the overlay                             SUPERSET
     src/components/common/MobileInput.tsx NEW — country select (IN first) + national number; helpers
                                           mobileToE164 / mobileIsValid / mobileFromE164
-    src/components/common/EmptyState.tsx  NEW — the hub / Requests empty state as a component
-                                          (hub untouched)
+    src/components/common/HeroEmptyState.tsx
+                                          NEW — the Requests page's hero empty state (eyebrow ·
+                                          headline · lead · action · reassurance · illustration
+                                          card · three steps) as a component on the SAME
+                                          stylesheet (pages/contracts/hub/requests-empty-state.css,
+                                          on main since 27 Sep); hub untouched
     src/pages/storefront/api.ts           seller + payment types, PurchaseResult.acceptance_method,
                                           cycleLabel                                                SUPERSET
     src/pages/storefront/PackagePage.tsx  REWRITTEN — letterhead (logo · address · GSTIN · contact),
@@ -74,13 +78,15 @@ FILES
                                           overlay → postMessage cn:open mode 'link' + a "Your
                                           request is in" card; copy follows payment options         SUPERSET
     src/pages/leads/index.tsx             Add a lead uses MobileInput; "Asked you" tab renamed RFQ
-                                          (own empty state = the Requests one); the Leads empty
-                                          state is the nudge — three states: Extend not bought
-                                          ("See how Extend works" → /extend, three touchpoint
-                                          tiles, no price) · Extend on but no storefront ("Create
-                                          a storefront") · storefront live ("Share your storefront"
-                                          copies the link); "Add a lead" always the second button SUPERSET
-    src/pages/extend/index.tsx            no-storefronts EmptyState (New storefront / Catalog Studio) SUPERSET
+                                          with the Requests hero word for word; the Leads empty
+                                          state is the same hero as a nudge — three states: Extend
+                                          not bought ("See how Extend works" → /extend, no price) ·
+                                          Extend on but no storefront ("Create a storefront") ·
+                                          storefront live ("Share your storefront" copies the
+                                          link); "Add a lead by hand" is the underlined secondary;
+                                          a filtered-to-nothing list shows a small line, never the
+                                          hero                                                     SUPERSET
+    src/pages/extend/index.tsx            no-storefronts hero (New storefront / Open Catalog Studio) SUPERSET
     src/hooks/queries/useLeads.ts         capture input type +country_code                          SUPERSET
     src/pages/contracts/review/index.tsx  contract.source; storefront success copy ("<seller> will
                                           connect with you to close up your request" / "…will check
@@ -91,9 +97,21 @@ FILES
                                           onAvailability(canCollect); declared / UPI copy = the
                                           seller checks it and connects back
 
+REBASED ONTO main (2026-09-29, ui 25611e9 · api 3e09383)
+  The three earlier Extend batches were cut from a 22 Sep base; main moved
+  since (RFP buyer pages, VaNi composer relationship, form-submission URLs,
+  /api/rfq router). The shared files in ALL FOUR batches were regenerated
+  from current main + the batch's own delta, so copying them no longer
+  reverts anything: contractnest-ui App.tsx · services/serviceURLs.ts ·
+  utils/constants/industryMenus.ts · pages/contracts/create/index.tsx (the
+  lead's "Send contract" prefill now also sets vaniRelationship, which main
+  requires when a prefill is present); contractnest-api src/index.ts.
+  If your local main has moved again since 25611e9 / 3e09383, diff those
+  five files before copying.
+
 VERIFIED
-  API: npx tsc --noEmit = 0 (four batches assembled).
-  UI:  tsc = 1161 errors = pristine main (four batches assembled); vite build
+  API: npx tsc --noEmit = 0 (four batches assembled on main 3e09383).
+  UI:  tsc = 1161 errors = pristine main 25611e9 (four batches assembled); vite build
        passes; headless render against a mocked API: /p (desktop + 390px, no
        horizontal scroll), /buy → OTP → purchase (identify + purchase bodies
        carry phone '+919885164233' + country_code 'IN') → /contracts/review
