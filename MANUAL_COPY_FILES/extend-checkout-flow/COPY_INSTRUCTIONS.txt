@@ -88,6 +88,13 @@ FILES
                                           hero                                                     SUPERSET
     src/pages/extend/index.tsx            no-storefronts hero (New storefront / Open Catalog Studio) SUPERSET
     src/hooks/queries/useLeads.ts         capture input type +country_code                          SUPERSET
+    src/utils/constants/industryMenus.ts  main-menu SEQUENCE (owner 2026-09-29): Home · VaNi · Ops
+                                          Cockpit · Commitments Register · Timeboard · Group Sessions ·
+                                          Contracts · Leads · Requests (hide later) · Contacts · Money
+                                          In · Invoices / To Pay · Claim Contract · Equipment Registry ·
+                                          Facility Registry · Extend · Catalog Studio · Settings —
+                                          entries and ids unchanged, only the order (superset of the
+                                          extend-leads copy, rebased on main)                          SUPERSET
     src/pages/contracts/review/index.tsx  contract.source; storefront success copy ("<seller> will
                                           connect with you to close up your request" / "…will check
                                           the payment…"); action-bar placeholder says the seller
