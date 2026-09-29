@@ -1,0 +1,81 @@
+═══════════════════════════════════════════════════════════════════════════
+BATCH: extend-vani-site — VaNi on their site: tenant-level bubble, grounded
+chat, lead capture (owner 2026-09-29: "what is not there — ChatBot… VaNi — how
+it can be activated into other website"; playground stop 3)
+COPY AFTER extend-storefront-v2 and extend-leads (superset of their shared files).
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT IT IS
+  · one script tag  <script src=…/embed.js data-vani="vn-…" async>  puts a
+    floating VaNi bubble on every page of the tenant's own website; the panel
+    is /vani-chat/:key in an iframe. data-view="bubble" on a storefront tag
+    does the same scoped to that storefront. ContractNest.vani(key) for devs.
+  · "Ask VaNi" on the package page (/p/:key) and on the widget card when the
+    tenant's VaNi is on — the same VaniChat component.
+  · she answers ONLY from the published packages + the storefront FAQs:
+    FAQ first (token overlap, no model), then the VaNi LLM (vaniLLMClient,
+    structured JSON, grounded prompt), else a deterministic hand-off. Every
+    answer may carry one package card (Buy → checkout, Explore → page).
+  · a name + mobile in the chat → lead_capture kind 'vani' (migration 039):
+    shows on /leads as "asked VaNi" with the question; the tenant gets an
+    email through n_jtd (template lead_captured_email — provider id NULL
+    until registered, so it is skipped for now, like contract_accepted).
+  · Extend page → "VaNi on your site": greeting · when she can't answer
+    (take number / open WhatsApp) · ask for name+mobile (interest / first /
+    never) · allowed sites · snippet · live preview (the real chat) · month
+    and all-time counters. Ghosted counterfactual when VaNi is off.
+  · gated on vani_is_enabled(): chat and lead endpoints answer VANI_OFF (403);
+    the storefronts and checkout keep working without VaNi.
+
+MIGRATION — ALREADY APPLIED LIVE (2026-09-29). DO NOT RE-RUN.
+  contractnest-edge/.../business-model-v2/040_vani_on_their_site.sql
+  Probed whole in one rolled-back transaction on signia: config created with a
+  vn- key, update (domains normalised to hostnames, phone validated), resolve
+  by vn- and by sf- key, two logged turns on one session (storefront
+  chats_count +1), capture → new lead contact with the question joined,
+  notify skipped no_provider_template, counters and month figures.
+
+FILES
+  contractnest-api/src/
+    routes/vaniSitePublicRoutes.ts, controllers/vaniSiteController.ts, services/vaniSiteService.ts   NEW
+    routes/extendRoutes.ts                          + GET/PATCH /api/extend/vani-site
+    index.ts                                        + /api/vani-site registration
+    (storefront/leads files carried as supersets)
+  contractnest-ui/
+    public/embed.js                                 v2 + bubble
+    src/App.tsx                                     + /vani-chat/:key (public)
+    src/services/serviceURLs.ts                     + EXTEND.VANI_SITE
+    src/hooks/queries/useVaniSite.ts                NEW
+    src/pages/storefront/VaniChat.tsx               NEW — the chat (bubble panel, package page)
+    src/pages/storefront/VaniChatPage.tsx           NEW — /vani-chat/:key
+    src/pages/storefront/api.ts                     + vaniSiteApi, urls.chat
+    src/pages/storefront/PackagePage.tsx            + Ask VaNi
+    src/pages/storefront/WidgetFrame.tsx            + Ask VaNi on the card
+    src/pages/extend/index.tsx                      + VaNi on your site section
+
+ENV (API)
+  VANI_LLM_URL / VANI_LLM_API_KEY / VANI_LLM_MODEL (existing). Without them
+  VaNi still answers from the FAQ and the package facts deterministically.
+
+COPY (PowerShell, from contractnest-combined) — after the two batches above
+  Copy-Item "MANUAL_COPY_FILES\extend-vani-site\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-vani-site\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\extend-vani-site\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force   # source-of-record only
+
+VERIFIED
+  API tsc 0. UI tsc = pristine main on the assembled state (all three
+  batches); vite build passes; /vani-chat rendered headless against a mocked
+  API (greeting, quick questions, an answer with a package card, the lead
+  form) with zero page errors. embed.js parses.
+
+TEST
+  [ ] signia → Extend → "Put VaNi on your site" → save a greeting and a
+      domain → preview answers a FAQ question without the model; ask
+      something off-script → hand-off + name/mobile form → /leads shows the
+      row "asked VaNi" with the question
+  [ ] copy the snippet into a plain .html on localhost (add "localhost" to
+      allowed sites) → bubble bottom-right → opens the chat → a package
+      card's Buy opens the checkout overlay on the host page
+  [ ] /p/:key → Ask VaNi → same chat inline
+  [ ] tenant with VaNi off → the Extend section is the ghosted counterfactual;
+      /vani-chat/<key> says VaNi is not switched on
