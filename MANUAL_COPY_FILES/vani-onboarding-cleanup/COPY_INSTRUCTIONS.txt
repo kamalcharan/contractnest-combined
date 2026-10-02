@@ -44,6 +44,35 @@ contractnest-edge/supabase/functions/onboarding/index.ts
   new tenants (they finish ~10 steps before 'done', total 13).
 
 ----------------------------------------------------------------
+INDUSTRY FIX (2026-10-02) — crane got "Healthcare" instead of Facility Management
+----------------------------------------------------------------
+Cause: "What do you service?" derives your served industries from the
+templates you pick (the template's PRIMARY industry). The resources edge
+function reads v_resource_templates_by_industry, which has one row per
+template × linked industry, then de-duplicated by keeping the FIRST row —
+so for a template linked to several industries (e.g. a lift linked to both
+facility_management and healthcare) whichever row came first won, and the
+"primary" flag on it could be a non-primary link. The UI also stopped at
+8 pages, so some picks never resolved at all.
+
+contractnest-edge/supabase/functions/resources/index.ts
+  · stable tie-break ordering (id, linked_industry_id) after the score orders
+  · de-duplication keeps the is_primary row when a template appears twice
+  DEPLOYED LIVE as resources v64 (v63 was == repo HEAD before deploy; v64
+  verified == this file). Copying it only brings the repo in line.
+
+contractnest-ui/src/lite/onboarding/useGlobalTemplates.ts
+  · MAX_PAGES 8 → 20 so the whole catalogue (610 templates) resolves
+  (covered by the vani-onboarding-cleanup ui Copy-Item line)
+
+DATA (done live, one-off): crane elevators' t_tenant_served_industries row
+changed healthcare → facility_management. Checked every tenant: only crane
+was derived wrongly (hubb's list was set by hand in the old flow — untouched).
+
+TEST: [ ] fresh signup, pick lift / elevator templates on "What do you
+          service?" → Workspace ready lists Facility Management, not Healthcare
+
+----------------------------------------------------------------
 FILES
 ----------------------------------------------------------------
 contractnest-ui (changed)
