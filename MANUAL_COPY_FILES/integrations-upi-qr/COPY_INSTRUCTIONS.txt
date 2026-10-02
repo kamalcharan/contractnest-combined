@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════
+BATCH: integrations-upi-qr (2026-10-02)
+═══════════════════════════════════════════════════
+Item 4 of the session list: "uploading a QR on /settings/integrations →
+Offline UPI wiped upi_id / payee_name / org_id / mcc" (CLAUDE.md, RESOLVED
+2026-09-16 box, open point (c)) + owner ask: "if we generate QR it won't
+work — we need to upload the QR, so even during onboarding there should be
+an option to upload the QR image" (recommended, not required). Razorpay is
+untouched (owner: already right).
+
+Submodules: contractnest-ui, contractnest-api, contractnest-edge
+COPY ORDER: onboarding-team-payments → vani-onboarding-cleanup → THIS.
+  (IntegrationSetupModal, useIntegrations, settings/integrations/index,
+  PaymentSetupStep are supersets of onboarding-team-payments' copies.)
+
+─── WHAT WAS WRONG ──────────────────────────────────
+1. The edit form always opened BLANK: the list endpoint returns no saved
+   values for any provider. Uploading a QR on that blank form submitted the
+   QR alone. Deployed v66 merged it in, but blank fields could still
+   overwrite, and the repo copy of the function had no merge at all (the
+   Sep fix was deployed, never copied) — a redeploy from the repo brought
+   the wipe back.
+2. If the edge could not read the saved row, its catch saved WITHOUT the
+   public blob — a wipe on any transient error.
+3. The QR decode (org_id/mcc from the bank sticker) never reached the repo:
+   the Sep batch's copy lines omitted contractnest-api. And it would not
+   have worked on real uploads anyway — jsQR does NOT read a phone photo of
+   BBB's Karnataka Bank sticker raw; it does after contrast / rescale.
+4. "Remove QR" did nothing (blank values are dropped before saving).
+5. Onboarding never offered the QR ("Add your bank's QR later").
+
+─── FILES ───────────────────────────────────────────
+contractnest-edge/supabase/functions/integrations/index.ts
+  · = deployed v66 + changes. GET by type: config-only providers (Offline
+    UPI) return their saved PUBLIC values (UPI id, payee, QR — already shown
+    to customers) so the form opens filled; Razorpay etc. still get nothing.
+  · POST, config-only only: merge into the saved blob; blank/null = keep;
+    a key is removed ONLY when named in `clear_fields`; the encrypted copy
+    mirrors the merged blob; if the saved row can't be read the save is
+    REFUSED ("Nothing was changed") instead of overwriting.
+  ⚠ NOT DEPLOYED YET — live is still v66 (merge, but no prefill, no
+    clear_fields, the catch-wipe). Ask Claude to deploy, or
+    `supabase functions deploy integrations`. Until deployed: the UI still
+    works, the form just opens blank and Remove QR does nothing.
+
+contractnest-api/src/utils/upiQrDecode.ts (NEW)
+  · reads the uploaded QR: tries raw, then greyscale+contrast, half-scale,
+    posterize, 1.5× — first that decodes wins; caps photos at 1600 px.
+    Returns org_id/mcc (merchant; mc=0000 = personal → ignored), upi_id,
+    payee_name. Never throws; upload never blocked.
+  · Verified on BBB's real sticker photos (both stored QRs): orgid 159052,
+    mc 4722, 9849502193@kbl, "U S R TRAVELS" in ~0.5 s. Personal QR → id +
+    name only. Non-UPI QR, plain image, garbage bytes → nothing.
+contractnest-api/src/controllers/integrationController.ts
+  · upload-qr response adds whatever the decoder found.
+contractnest-api/src/services/integrationService.ts — comment only.
+contractnest-api/package.json + package-lock.json — jimp ^0.22.12,
+  jsqr ^1.4.0 (pure JS). Run npm install after copying.
+
+contractnest-ui/src/components/integrations/DynamicFormField.tsx
+  · exported DetectedQrFields; optional onDetectedFields on image fields;
+    toast "Bank QR uploaded — read as a merchant QR …" when merchant.
+contractnest-ui/src/components/integrations/IntegrationSetupModal.tsx
+  · QR reading merged into the form: merchant fields always; UPI id / payee
+    only into EMPTY fields; a different UPI id → warning toast, never
+    overwritten. A personal QR replacing a merchant one drops org_id/mcc.
+  · Remove QR → `clear_fields` (image fields only; a blanked TEXT field is
+    still "keep").
+contractnest-ui/src/hooks/useIntegrations.ts — clear_fields on Integration
+  and UpdateIntegrationParams.
+contractnest-ui/src/pages/settings/integrations/index.tsx — passes it on.
+contractnest-ui/src/pages/onboarding/steps/PaymentSetupStep.tsx
+  · UPI card: "Your bank's UPI QR (recommended)" — the SAME upload field as
+    Settings, optional. Reading fills an empty UPI id / payee, warns on a
+    different UPI id; saved with the UPI details to Live AND Test.
+  · UPI already on without a QR: the card offers the QR alone — saved to
+    this environment, and to the other only if it holds the same UPI id.
+  · The customer preview shows the uploaded QR.
+contractnest-ui/src/components/payments/CustomerPaymentPreview.tsx
+  · optional qrImageUrl (real image instead of the placeholder pattern).
+
+─── VERIFIED ────────────────────────────────────────
+UI tsc 1154 = today's main + the two onboarding batches (0 new errors);
+vite build passes. API tsc 0. Edge parses (esbuild). Decoder runs above.
+Not run against a live browser session (no login here).
+
+─── POWERSHELL COPY ─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\integrations-upi-qr\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\integrations-upi-qr\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\integrations-upi-qr\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+cd contractnest-api; npm install; npm run dev     # new dependencies
+cd ..\contractnest-ui; npm run dev                # Ctrl+F5
+
+─── TESTING CHECKLIST (after the edge deploy) ───────
+[ ] Settings → Integrations → UPI → edit: UPI id, payee, QR are FILLED
+[ ] Change only the payee, save → UPI id, QR, org_id/mcc all still saved
+[ ] Upload BBB's bank QR → "Bank QR uploaded — read as a merchant QR";
+    org_id 159052 / mcc 4722 saved with it
+[ ] Upload a personal UPI QR → "QR code uploaded"; a random photo still
+    uploads, no error
+[ ] QR for a different UPI id than the form's → warning toast, UPI id kept
+[ ] Remove QR → save → QR gone, everything else kept
+[ ] Live and Test stay separate (BBB: Live merchant, Test personal)
+[ ] Onboarding (fresh tenant) → UPI → upload the bank QR → UPI id / payee
+    fill themselves if empty; preview shows the QR; Continue → Live AND
+    Test both hold upi_id, payee, qr_image_url (+ org_id/mcc for merchant)
+[ ] Onboarding without a QR → Continue works as before
+[ ] Onboarding where UPI is already on without a QR (e.g. crane) → "Add
+    your bank's QR" → only the QR is added; UPI id untouched
+[ ] Razorpay save unchanged
+
+─── NOTE (data, not changed) ────────────────────────
+BBB's TEST UPI row holds the merchant sticker (9849502193@kbl) as its QR
+while its UPI id is the personal kamalcharan@okicici — a test customer
+scanning would pay the live merchant account. Replace or remove that QR in
+Test when convenient.
