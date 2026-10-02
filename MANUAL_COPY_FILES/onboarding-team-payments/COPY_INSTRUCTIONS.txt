@@ -1,0 +1,100 @@
+BATCH: onboarding-team-payments  (2026-10-02)
+================================================================
+VaNi onboarding: "Your lists" split into "Your team" (roles + optional invite)
+and "Your tags"; new "How you get paid" step; Settings → Integrations payments
+in plain language. Playground: MANUAL_COPY_FILES/playground/onboarding-team-payments-playground.html
+
+Base: contractnest-ui 9e076b1 · contractnest-api 26d96ea · contractnest-edge 73bd864 (= origin/main)
+Verified: UI tsc 1154 errors = pristine main (identical error set, none in touched files);
+vite build passes; API tsc 0. NOT rendered in a browser (no auth in the build env).
+
+----------------------------------------------------------------
+DATABASE — ALREADY APPLIED LIVE, do not re-run
+----------------------------------------------------------------
+contractnest-edge/supabase/migrations/integrations-messaging-visibility/005_payment_providers_plain_language.sql
+  · Stripe provider is_active=false (nothing can take a Stripe payment; no tenant had it)
+  · offline_upi: display name "UPI to your bank account" + generic description (key 'offline_upi' unchanged)
+  · razorpay: description + metadata.setup_steps / webhook_path / webhook_note (read by the setup modal)
+  Undo Stripe: UPDATE t_integration_providers SET is_active=true WHERE name='stripe';
+
+----------------------------------------------------------------
+EDGE — needs a deploy of the `tenants` function (owner)
+----------------------------------------------------------------
+contractnest-edge/supabase/functions/tenants/index.ts
+  Starter tag "Lead" → "Referral" for NEW tenants ("Lead" is a contact classification
+  the Leads page reads). Existing tenants keep their tags. Until deployed, new tenants
+  still get "Lead" — nothing breaks.
+
+----------------------------------------------------------------
+FLOW AFTER THIS BATCH
+----------------------------------------------------------------
+  seller  … prices → terms → HOW YOU GET PAID → YOUR TEAM → YOUR TAGS → done
+  both    … prices → terms → HOW YOU GET PAID → assets → YOUR TEAM → YOUR TAGS → done
+  buyer   … assets → YOUR TEAM → YOUR TAGS → done
+  Routes: /onboarding/payment-setup (new), /onboarding/team-setup (new),
+          /onboarding/lov-setup (same route, now Tags only)
+
+Payments are saved through the same path as Settings (useIntegrations → /api/integrations):
+  · UPI: same UPI id saved for Live AND Test
+  · Razorpay: live key → Live only; Test gets Razorpay only with a separate rzp_test_ key
+  · A method already set up is shown as such and NOT re-saved (keeps QR / merchant fields)
+
+----------------------------------------------------------------
+FILES
+----------------------------------------------------------------
+contractnest-ui (new)
+  src/hooks/useLovCategory.ts                       load/add one LOV list (extracted from LovSetupStep)
+  src/components/onboarding/VaniStepShell.tsx       shared frame: VaNi bubble, columns, footer, spinner
+  src/components/onboarding/LovCategoryCard.tsx     list card: what/why/where, chips, add, suggestions
+  src/components/onboarding/InviteTeamSection.tsx   optional invite (useInvitations + MobileInput)
+  src/pages/onboarding/steps/TeamSetupStep.tsx      "Your team"
+  src/pages/onboarding/steps/PaymentSetupStep.tsx   "How you get paid"
+  src/utils/payments/paymentOutcome.ts              what customers see (mirrors fn_tenant_payment_options)
+  src/components/payments/CustomerPaymentPreview.tsx phone preview (onboarding + settings)
+  src/components/integrations/PaymentsContextCard.tsx "How your customers pay you" card
+  src/components/integrations/IntegrationSetupGuide.tsx setup steps + webhook URL from provider metadata
+contractnest-ui (changed)
+  src/pages/onboarding/steps/LovSetupStep.tsx       now "Your tags" only
+  src/utils/constants/lovDefaults.ts                honest Roles copy, Referral, explain + suggestions
+  src/hooks/useIntegrations.ts                      saveIntegration/testConnection take optional {isLive, quiet}
+  src/App.tsx                                       routes payment-setup, team-setup
+  src/components/onboarding/journey.ts              rail: How you get paid / Your team / Your tags
+  src/components/onboarding/OnboardingLayout.tsx    new steps carry their own buttons
+  src/pages/onboarding/index.tsx                    resume map
+  src/utils/onboarding/completeVaniStep.ts          step ids
+  src/pages/onboarding/steps/TermsConditionsStep.tsx → payment-setup
+  src/pages/onboarding/steps/Screen8BEquipmentStep.tsx → team-setup (Back for "both" → payment-setup)
+  src/pages/onboarding/steps/ResourcePickStep.tsx   Skip → team-setup
+  src/lite/onboarding/ServiceableStep.tsx           nothing-to-build → team-setup
+  src/components/integrations/IntegrationSetupModal.tsx renders IntegrationSetupGuide
+  src/pages/settings/integrations/index.tsx         PaymentsContextCard above Payment Gateway
+contractnest-api (changed)
+  src/types/onboardingTypes.ts                      VANI_STEPS += payment-setup, team-setup (else step/complete 400s)
+
+----------------------------------------------------------------
+PHASE 1 — COPY (PowerShell)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+cd contractnest-api; npm run dev      # restart: step ids changed
+cd ..\contractnest-ui; npm run dev    # Ctrl+F5
+
+----------------------------------------------------------------
+TESTING CHECKLIST
+----------------------------------------------------------------
+[ ] Settings → Integrations: "How your customers pay you" card on top; Stripe gone;
+    UPI card reads "UPI to your bank account"; Razorpay "Set up" shows steps + webhook URL + Copy
+[ ] "See it as your customer does" toggles the phone preview; "Right now" matches what is on
+[ ] New seller tenant: terms → How you get paid. Tick UPI, bad id → inline error; good id → Continue
+    → Settings shows UPI connected in Live AND Test
+[ ] Razorpay: rzp_test_ in the live field → error; a real live key passes; wrong secret → message shown
+[ ] "I'll collect it myself" → preview shows Accept + "<you> will connect with you"
+[ ] Re-open payment-setup with UPI already on → "already set up", not re-saved (QR kept)
+[ ] Your team: suggestions add with one tap; type your own; invite by email and by mobile;
+    duplicate / bad input errors; sent invites appear in the right panel; Settings → Users lists them
+[ ] Your tags: chips, suggestions, filter preview; Continue → Workspace ready
+[ ] Rail shows How you get paid / Your team / Your tags in the right order (seller, both, buyer)
+[ ] Buyer path: assets → Your team → Your tags (no payment step)
+[ ] Back on "How you get paid" → Terms; Back on Your assets (both) → How you get paid
