@@ -1,0 +1,35 @@
+BATCH: payment-instalment-template (2026-10-02)
+================================================================
+Submodules: contractnest-edge (migration file only — source of record)
+
+WHAT
+  New message type `payment_instalment_due` — a WhatsApp reminder for ONE
+  instalment of a multi-payment invoice (BBB meeting fees, any instalment plan).
+  Separate from `payment_request` (full invoice sent) and `payment_due`
+  (scanner, whole-invoice balance, once per invoice).
+
+  MSG91 template: payment_instalment_due_v1 (positional, registered by owner
+  2026-10-02, AWAITING META APPROVAL)
+
+    Hi {{1}},
+    As per your {{2}} plan with {{3}}, your payment for {{4}} is {{5}}, due on {{6}}.
+    Please pay {{7}}.
+    Thank you!
+
+  {{1}} customer_name · {{2}} plan · {{3}} tenant_name · {{4}} period ·
+  {{5}} amount · {{6}} due_date · {{7}} pay_line
+
+DATABASE — APPLIED LIVE, do not re-run (idempotent if you do)
+  contractnest-edge/supabase/migrations/jtd-nucleus/025_payment_instalment_due_template.sql
+  · n_jtd_source_types: payment_instalment_due
+  · n_jtd_templates global seed row (new tenants get it via trg_tenants_seed_jtd_templates)
+  · copied to all 12 existing tenants (post-check RAISEs if any is missing)
+  Verified: 1 global + 12 tenant rows; jtd_render_message renders the BBB sample.
+
+NOTHING SENDS YET
+  No code produces this message type. The Nudge button / reminder ladder are
+  pointed at it in the next batch, after Meta approves the template.
+  WhatsApp only — no email twin registered.
+
+COPY (source of record only)
+  Copy-Item "MANUAL_COPY_FILES\payment-instalment-template\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
