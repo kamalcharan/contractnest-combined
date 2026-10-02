@@ -1,0 +1,583 @@
+<title>Team, Tags &amp; Payments Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: playground bar on top; below it a faithful mock of the VaNi onboarding shell (rail + step) and of Settings → Integrations.
+   Deliberately single-theme (light) — it mirrors the product's onboarding, which carries its own fixed palette. */
+:root{
+  color-scheme: light;
+  --vani:#ff6b2b; --vani-2:#ff8f5a; --vani-soft:#fff4ee; --vani-line:#ffd9c2;
+  --text:#1a1816; --dim:#6f695f; --muted:#a39d91; --line:#e5e1db;
+  --bg:#f7f5f2; --surface:#faf9f7; --white:#ffffff;
+  --ok:#15803d; --ok-soft:#ecfdf3; --warn:#a16207; --warn-soft:#fef9c3; --warn-line:#facc15;
+  --teal:#0f766e; --blue:#2563eb;
+  --f-body:'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:14px;line-height:1.5}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--vani);outline-offset:2px}
+input,select{font-family:inherit}
+h1,h2,h3{text-wrap:balance;margin:0}
+.mono{font-family:var(--f-mono)}
+
+/* ── Playground bar ───────────────────────────── */
+.pg{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:#1a1816;color:#f2efe9;padding:10px 16px}
+.pg-in{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.pg-title{font-weight:800;font-size:13px;letter-spacing:.02em}
+.pg-title small{color:#a39d91;font-weight:500;margin-left:6px}
+.seg{display:flex;flex-wrap:wrap;gap:4px;background:#2b2825;border-radius:10px;padding:3px}
+.seg button{border:0;background:transparent;color:#d6d1c7;font-size:12.5px;font-weight:600;padding:6px 10px;border-radius:8px}
+.seg button[aria-pressed="true"]{background:var(--vani);color:#fff}
+.pg label{font-size:12px;color:#a39d91;display:flex;align-items:center;gap:6px}
+.pg-notes{margin-left:auto}
+
+/* ── Notes (playground annotations) ───────────── */
+.note{background:var(--warn-soft);border:1px dashed var(--warn-line);color:#713f12;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.5}
+.note b{font-weight:700}
+body.hide-notes .note{display:none}
+
+/* ── Onboarding shell ─────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:22px 120px}
+.shell-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800}
+.vmark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--vani),var(--vani-2));color:#fff;display:grid;place-items:center;font-weight:900;font-size:13px;flex:none}
+.blurb{color:var(--dim);font-size:13px;font-weight:500}
+.rail{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.rail span{font-size:12px;font-weight:600;color:var(--muted);padding:5px 10px;border-radius:100px;border:1px solid var(--line);background:var(--white);display:flex;align-items:center;gap:6px}
+.rail span.done{color:var(--dim)}
+.rail span.done::before{content:"✓";color:var(--ok);font-weight:800}
+.rail span.cur{color:var(--vani);border-color:var(--vani-line);background:var(--vani-soft)}
+.rail span.new{position:relative}
+.rail span.new::after{content:"new";font-family:var(--f-mono);font-size:9.5px;color:#fff;background:var(--teal);border-radius:100px;padding:1px 6px}
+
+.step{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+@media (max-width:900px){.step{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.bubble{display:flex;gap:12px}
+.bubble .msg{background:var(--white);border:1px solid var(--line);border-radius:0 12px 12px 12px;padding:13px 16px;line-height:1.6;box-shadow:0 2px 8px rgba(0,0,0,.04);flex:1;min-width:0}
+.bubble h1{font-size:21px;font-weight:800;margin-bottom:4px}
+
+.card{background:var(--white);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.card-h{padding:14px 18px;background:var(--surface);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card-h h2{font-size:15px;font-weight:800}
+.card-h .sub{font-size:12.5px;color:var(--dim);font-weight:500}
+.count{font-family:var(--f-mono);font-size:10.5px;font-weight:600;padding:3px 10px;border-radius:100px;background:var(--vani-soft);color:var(--vani);border:1px solid var(--vani-line)}
+.card-b{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.why{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.why{grid-template-columns:minmax(0,1fr)}}
+.why div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--dim);line-height:1.5}
+.why b{display:block;color:var(--text);font-size:12px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+.lbl{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:100px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;color:var(--text)}
+.chip .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.chip small{font-size:10px;color:var(--muted);font-weight:500}
+.chip .x{border:0;background:none;color:var(--muted);padding:0 0 0 2px;font-size:14px;line-height:1}
+.chip.sugg{border-style:dashed;background:var(--white);color:var(--dim)}
+.chip.sugg:hover{border-color:var(--vani);color:var(--vani);background:var(--vani-soft)}
+.chip.add{border-style:dashed;background:transparent;color:var(--dim)}
+.addrow{display:flex;gap:8px;flex-wrap:wrap}
+.addrow input{flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px}
+.btn{border:0;border-radius:100px;padding:10px 22px;font-weight:700;font-size:13.5px}
+.btn-p{background:linear-gradient(135deg,var(--vani),var(--vani-2));color:#fff;box-shadow:0 3px 10px rgba(255,107,43,.28)}
+.btn-s{background:var(--white);border:1px solid var(--line);color:var(--dim)}
+.btn-sm{padding:7px 14px;font-size:12.5px}
+.link{background:none;border:0;color:var(--dim);font-size:13px;padding:0}
+.link:hover{text-decoration:underline}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap}
+
+/* "Where you'll see this" previews */
+.side{position:sticky;top:76px;display:flex;flex-direction:column;gap:12px}
+@media (max-width:900px){.side{position:static}}
+.side-t{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.prev{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.prev-cap{font-size:11.5px;color:var(--muted);font-weight:600}
+.crow{display:flex;gap:10px;align-items:flex-start}
+.avatar{width:32px;height:32px;border-radius:50%;background:#e8e3db;color:var(--dim);display:grid;place-items:center;font-weight:800;font-size:12px;flex:none}
+.cname{font-weight:700;font-size:13.5px}
+.cmeta{font-size:12px;color:var(--dim)}
+.tiny{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:100px;padding:2px 8px;border:1px solid var(--line);background:var(--surface)}
+.tiny.cls{background:#ccfbf1;border-color:#99f6e4;color:var(--teal)}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filters span{font-size:11.5px;border:1px solid var(--line);border-radius:100px;padding:3px 9px;color:var(--dim);background:var(--surface)}
+.filters span.on{background:var(--vani-soft);border-color:var(--vani-line);color:var(--vani);font-weight:600}
+.invite{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.invite .field{border:1px solid var(--line);border-radius:7px;padding:5px 9px;background:var(--surface);color:var(--dim)}
+.invite select{border:1px solid var(--vani-line);border-radius:7px;padding:5px 8px;background:var(--vani-soft);color:var(--text);font-weight:600;font-size:13px}
+.trow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
+.trow:first-of-type{border-top:0}
+
+/* ── Payments step ────────────────────────────── */
+.opts{display:flex;flex-direction:column;gap:12px}
+.opt{border:1.5px solid var(--line);border-radius:14px;background:var(--white);overflow:hidden;transition:border-color .15s}
+.opt[data-on="true"]{border-color:var(--vani);box-shadow:0 0 0 3px var(--vani-soft)}
+.opt-h{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;width:100%;text-align:left;background:none;border:0;color:inherit}
+.tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--muted);flex:none;display:grid;place-items:center;margin-top:2px;color:#fff;font-size:13px;font-weight:900}
+.opt[data-kind="self"] .tick{border-radius:50%}
+.opt[data-on="true"] .tick{background:var(--vani);border-color:var(--vani)}
+.opt-t{font-weight:800;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.opt-d{font-size:13px;color:var(--dim);margin-top:2px}
+.pill{font-family:var(--f-mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--dim);background:var(--surface)}
+.pill.g{color:var(--ok);background:var(--ok-soft);border-color:#bbf7d0}
+.opt-body{padding:0 16px 16px 52px;display:flex;flex-direction:column;gap:12px}
+@media (max-width:560px){.opt-body{padding-left:16px}}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:12.5px;font-weight:700}
+.f input{padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:var(--white);color:var(--text)}
+.f input.bad{border-color:#ef4444}
+.f .h{font-size:12px;color:var(--dim)}
+.f .e{font-size:12px;color:#dc2626}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.howto{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--dim)}
+.howto ol{margin:4px 0 0;padding-left:18px}
+.howto b{color:var(--text)}
+.envline{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--dim)}
+details.more summary{font-size:12.5px;color:var(--blue);cursor:pointer;font-weight:600}
+details.more[open] summary{margin-bottom:10px}
+
+/* phone preview of the customer's review page */
+.phone{border:9px solid #1a1816;border-radius:30px;background:var(--white);overflow:hidden;max-width:300px;width:100%;margin:0 auto;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.ph-top{background:var(--surface);border-bottom:1px solid var(--line);padding:10px 12px;font-size:11px;color:var(--muted);text-align:center}
+.ph{padding:12px;display:flex;flex-direction:column;gap:10px;font-size:12.5px}
+.ph-co{display:flex;gap:8px;align-items:center}
+.ph-logo{width:28px;height:28px;border-radius:7px;background:#0f172a;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:800}
+.ph-amt{display:flex;justify-content:space-between;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);padding:8px 0;font-weight:700}
+.ph-amt span:last-child{font-variant-numeric:tabular-nums}
+.ph-sec{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ph-sec h4{margin:0;font-size:12px;font-weight:800}
+.ph-btn{border:0;border-radius:9px;padding:9px;font-weight:700;font-size:12.5px;width:100%}
+.ph-btn.pay{background:#2563eb;color:#fff}
+.ph-btn.acc{background:var(--ok);color:#fff}
+.ph-btn.ghost{background:var(--white);border:1px solid var(--line);color:var(--text)}
+.qr{width:96px;height:96px;margin:0 auto;border-radius:8px;background:
+  repeating-conic-gradient(#1a1816 0% 25%, #fff 0% 50%) 0 0/16px 16px;border:6px solid #fff;outline:1px solid var(--line)}
+.ph-note{font-size:11.5px;color:var(--dim);text-align:center}
+.ph-or{font-size:11px;color:var(--muted);text-align:center}
+.ph-state{font-size:12px;font-weight:700;color:var(--text);text-align:center}
+
+/* ── Settings page ────────────────────────────── */
+.set{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.set-h{display:flex;gap:12px;align-items:center;background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px}
+.set-h .ic{width:42px;height:42px;border-radius:11px;background:var(--vani-soft);display:grid;place-items:center;font-size:20px;color:var(--vani);flex:none}
+.set-h h1{font-size:20px;font-weight:800}
+.set-h p{margin:0;color:var(--dim);font-size:13px}
+.ctx{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+@media (max-width:760px){.ctx{grid-template-columns:minmax(0,1fr)}}
+.ctx h2{font-size:16px;font-weight:800;margin-bottom:4px}
+.ctx p{margin:0;color:var(--dim);font-size:13px}
+.now{border-radius:12px;background:var(--surface);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:6px}
+.now .big{font-weight:800;font-size:14px}
+.states{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.states div{display:flex;gap:10px;font-size:12.5px;color:var(--dim);align-items:flex-start}
+.states b{color:var(--text)}
+.states .k{font-family:var(--f-mono);font-size:10px;padding:2px 7px;border-radius:100px;background:var(--surface);border:1px solid var(--line);flex:none;margin-top:2px}
+.provs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.provs{grid-template-columns:minmax(0,1fr)}}
+.prov{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.prov-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.prov-n{display:flex;gap:10px;align-items:center;font-weight:800;font-size:15px}
+.plogo{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;flex:none}
+.prov p{margin:0;font-size:13px;color:var(--dim)}
+.prov .cust{font-size:12.5px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--dim)}
+.prov .cust b{color:var(--text)}
+.prov-f{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto}
+.status{font-size:11.5px;font-weight:700;border-radius:100px;padding:3px 10px}
+.status.on{background:var(--ok-soft);color:var(--ok)}
+.status.off{background:var(--surface);color:var(--muted);border:1px solid var(--line)}
+.envtabs{display:flex;gap:4px;font-size:11.5px}
+.envtabs span{padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--dim)}
+.envtabs span.on{background:var(--ok-soft);border-color:#bbf7d0;color:var(--ok);font-weight:700}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(26,24,22,.45);display:grid;place-items:center;padding:16px;z-index:40}
+.modal{background:var(--white);border-radius:16px;max-width:620px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;background:var(--white)}
+.modal-h h3{font-size:17px;font-weight:800}
+.modal-b{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.modal-f{padding:14px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.copyline{display:flex;gap:8px;align-items:center}
+.copyline code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-family:var(--f-mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1a1816;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.skip-card{background:var(--white);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="pg">
+  <div class="pg-in">
+    <div class="pg-title">VaNi onboarding playground <small>mock, nothing saves</small></div>
+    <div class="seg" role="group" aria-label="Screen">
+      <button data-screen="lists" aria-pressed="true">1 · Team &amp; tags</button>
+      <button data-screen="pay" aria-pressed="false">2 · How you get paid</button>
+      <button data-screen="settings" aria-pressed="false">3 · Settings → Payments</button>
+    </div>
+    <label for="persona">Business
+      <select id="persona" style="border-radius:7px;padding:4px 6px;font-size:12.5px">
+        <option value="seller">Service company (seller)</option>
+        <option value="chapter">Chapter / group sessions</option>
+        <option value="both">Both sides</option>
+        <option value="buyer">Facility owner (buyer)</option>
+      </select>
+    </label>
+    <label class="pg-notes" for="notes"><input type="checkbox" id="notes" checked> Show review notes</label>
+  </div>
+</div>
+
+<div class="wrap" id="app"></div>
+
+<script>
+(() => {
+  // ── Example data (clearly examples) ─────────────────────────
+  const PERSONAS = {
+    seller:  { biz:'Sunrise Lift Services', who:'service company',
+               roleSugg:['Technician','Supervisor','Accounts','Sales'],
+               tagSugg:['AMC customer','Gated community','Commercial','Hyderabad East'],
+               contact:{n:'Ravi Kumar', m:'Sunrise Apartments · 2 lifts', i:'RK'},
+               invitee:'suresh@sunriselifts.in' },
+    chapter: { biz:'BBB Bhagyanagar', who:'chapter',
+               roleSugg:['President','Secretary','Treasurer','Membership chair'],
+               tagSugg:['Founding member','Visitor','Substitute','Doctors'],
+               contact:{n:'Dr. Srinivas M.', m:'Member · Saturday Network Meeting', i:'SM'},
+               invitee:'treasurer@bbbchapter.in' },
+    both:    { biz:'Signia Facility Co.', who:'business',
+               roleSugg:['Technician','Facility manager','Accounts','Supervisor'],
+               tagSugg:['AMC customer','Vendor','Priority','Hyderabad'],
+               contact:{n:'Anil Reddy', m:'Greenfield Towers · DG + lifts', i:'AR'},
+               invitee:'anil@signia.in' },
+    buyer:   { biz:'Greenfield Towers RWA', who:'facility owner',
+               roleSugg:['Facility manager','Accounts','Committee member','Security lead'],
+               tagSugg:['Lift vendor','Electrical','Housekeeping','Preferred'],
+               contact:{n:'Sunrise Lift Services', m:'Vendor · lift AMC', i:'SL'},
+               invitee:'fm@greenfieldtowers.in' },
+  };
+  const COLORS = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#64748B'];
+
+  const state = {
+    screen:'lists', persona:'seller',
+    roles:[{n:'Owner',c:'#32e275',fixed:true},{n:'Admin',c:'#40E0D0'},{n:'Member',c:'#3B82F6'}],
+    tags:[{n:'Referral',c:'#F59E0B',proposed:true},{n:'Guest',c:'#8B5CF6'},{n:'VIP',c:'#EC4899'}],
+    adding:null, addVal:'', addErr:'',
+    previewTags:['VIP'], previewRole:'Member',
+    pay:{ razorpay:false, upi:true, self:false },
+    rzp:{ key:'', secret:'', tkey:'', tsecret:'' },
+    upi:{ id:'', name:'' },
+    payErr:{},
+    set:{ razorpay:false, upi:true }, modal:null, toast:'',
+  };
+
+  const $ = (s, r=document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const P = () => PERSONAS[state.persona];
+  const isBuyer = () => state.persona === 'buyer';
+
+  function journey(){
+    const base = ['Your business','What you service','Building'];
+    if (isBuyer()) return [...base,'Your assets','Team & tags','Workspace ready'];
+    if (state.persona === 'both') return [...base,'Your prices','Your terms','How you get paid','Your assets','Team & tags','Workspace ready','First contract','Your plan'];
+    return [...base,'Your prices','Your terms','How you get paid','Team & tags','Workspace ready','First contract','Your plan'];
+  }
+  function rail(current){
+    const steps = journey(); const at = steps.indexOf(current);
+    return `<div class="rail" aria-label="Onboarding steps">${steps.map((s,i)=>
+      `<span class="${i<at?'done':''} ${i===at?'cur':''} ${s==='How you get paid'?'new':''}">${esc(s)}</span>`).join('')}</div>`;
+  }
+  function head(blurb){
+    return `<div class="shell-head"><div class="brand"><div class="vmark">V</div>${esc(P().biz)}</div><div class="blurb">${esc(blurb)}</div></div>`;
+  }
+
+  // ── Screen 1: Team & tags ───────────────────────────────────
+  function listCard(kind){
+    const isTags = kind==='tags';
+    const items = state[kind];
+    const sugg = (isTags?P().tagSugg:P().roleSugg).filter(s => !items.some(v=>v.n.toLowerCase()===s.toLowerCase()));
+    const why = isTags
+      ? [['What','A label you put on a contact. A contact can carry several.'],
+         ['Why','Find and filter people fast, and send to a group later.'],
+         ['Where','Contacts list filters, contact page, import.']]
+      : [['What','The title a teammate carries, e.g. Technician.'],
+         ['Why','You pick one when you invite someone to your workspace.'],
+         ['Where','Invite form and your team list in Settings → Users.']];
+    const adding = state.adding===kind;
+    return `
+    <section class="card" aria-labelledby="h-${kind}">
+      <div class="card-h">
+        <div><h2 id="h-${kind}">${isTags?'Tags for your contacts':'Roles for your team'}</h2>
+          <div class="sub">${isTags?'How you group the people you work with':'What your teammates are called'}</div></div>
+        <span class="count">${items.length} ready</span>
+      </div>
+      <div class="card-b">
+        <div class="why">${why.map(([b,t])=>`<div><b>${b}</b>${t}</div>`).join('')}</div>
+        <div class="lbl">Ready to use</div>
+        <div class="chips">
+          ${items.map((v,i)=>`<span class="chip"><span class="dot" style="background:${v.c}"></span>${esc(v.n)}${v.fixed?'<small>always there</small>':''}${!v.fixed?`<button class="x" aria-label="Remove ${esc(v.n)}" data-rm="${kind}:${i}">×</button>`:''}</span>`).join('')}
+          ${!adding?`<button class="chip add" data-add="${kind}">+ Type your own</button>`:''}
+        </div>
+        ${adding?`<div class="addrow"><input id="addval" maxlength="40" placeholder="${isTags?'e.g. Gold AMC':'e.g. Site engineer'}" value="${esc(state.addVal)}"><button class="btn btn-p btn-sm" data-addsave="${kind}">Add</button><button class="btn btn-s btn-sm" data-addcancel>Cancel</button></div>${state.addErr?`<div style="color:#dc2626;font-size:12px">${esc(state.addErr)}</div>`:''}`:''}
+        ${sugg.length?`<div class="lbl">Suggested for a ${esc(P().who)} · tap to add</div>
+          <div class="chips">${sugg.map(s=>`<button class="chip sugg" data-sugg="${kind}:${esc(s)}">+ ${esc(s)}</button>`).join('')}</div>`:''}
+        ${!isTags?`<div class="note"><b>Review note:</b> the old text said roles "control what your team members can do". Nothing in the app checks a role today, so the new text only promises what is true. Real permissions would be a separate piece of work.</div>`:
+        `<div class="note"><b>Review note:</b> "Referral" replaces the starter tag "Lead". "Lead" is now a built-in classification (the teal chip, the Leads page), and a hand-made "Lead" tag would not put anyone on /leads. New tenants only.</div>`}
+      </div>
+    </section>`;
+  }
+  function listsPreview(){
+    const p = P();
+    const tagOn = n => state.previewTags.includes(n);
+    const roleOpts = state.roles.filter(r=>!r.fixed).map(r=>`<option ${r.n===state.previewRole?'selected':''}>${esc(r.n)}</option>`).join('');
+    return `
+    <aside class="side" aria-label="Where you'll see this">
+      <div class="side-t">Where you'll see this</div>
+      <div class="prev">
+        <div class="prev-cap">Contacts · a contact with tags (tap a tag on the left list below)</div>
+        <div class="crow"><div class="avatar">${p.contact.i}</div>
+          <div style="min-width:0"><div class="cname">${esc(p.contact.n)}</div><div class="cmeta">${esc(p.contact.m)}</div>
+          <div class="chips" style="gap:5px;margin-top:6px">
+            <span class="tiny cls">${isBuyer()?'Vendor':'Client'}</span>
+            ${state.previewTags.map(n=>{const t=state.tags.find(x=>x.n===n);return t?`<span class="tiny"><span class="dot" style="width:7px;height:7px;border-radius:50%;background:${t.c}"></span>${esc(n)}</span>`:''}).join('')}
+          </div></div></div>
+        <div class="filters">${state.tags.map(t=>`<span role="button" tabindex="0" class="${tagOn(t.n)?'on':''}" data-ptag="${esc(t.n)}">${esc(t.n)}</span>`).join('')}</div>
+      </div>
+      <div class="prev">
+        <div class="prev-cap">Settings → Users · inviting a teammate</div>
+        <div class="invite"><span>Invite</span><span class="field">${esc(p.invitee)}</span><span>as</span>
+          <select id="prole" aria-label="Role">${roleOpts}</select></div>
+        <div>
+          <div class="trow"><span><b>You</b></span><span class="tiny">Owner</span></div>
+          <div class="trow"><span>${esc(p.invitee)}</span><span class="tiny">${esc(state.previewRole)} · invited</span></div>
+        </div>
+      </div>
+    </aside>`;
+  }
+  function screenLists(){
+    return `${head('Roles and tags — two short lists you pick from every day')}${rail('Team & tags')}
+    <div class="step">
+      <div class="col">
+        <div class="bubble"><div class="vmark" style="width:36px;height:36px">V</div>
+          <div class="msg"><h1>Two lists you'll use every day</h1>
+            <b>Tags</b> label the people you work with, so you can find them later. <b>Roles</b> are the titles your teammates carry when you invite them.
+            I've started both for you. Add what fits your ${esc(P().who)} now, or change them any time in <b>Settings → List of Values</b>.</div></div>
+        ${listCard('tags')}
+        ${listCard('roles')}
+        <div class="foot"><button class="link" data-go="next">Skip, I'll do this later</button><button class="btn btn-p" data-go="next">Continue →</button></div>
+      </div>
+      ${listsPreview()}
+    </div>`;
+  }
+
+  // ── Screen 2: How do you get paid ───────────────────────────
+  const upiOk = v => /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/.test(v.trim());
+  function payOpt(kind, title, desc, body, extra=''){
+    const on = state.pay[kind];
+    return `<div class="opt" data-kind="${kind}" data-on="${on}">
+      <button class="opt-h" data-pay="${kind}" aria-pressed="${on}">
+        <span class="tick">${on?'✓':''}</span>
+        <span style="min-width:0"><span class="opt-t">${title}${extra}</span><span class="opt-d" style="display:block">${desc}</span></span>
+      </button>
+      ${on && body?`<div class="opt-body">${body}</div>`:''}
+    </div>`;
+  }
+  function screenPay(){
+    if (isBuyer()) return `${head('')}${rail('Team & tags')}<div class="skip-card"><b style="color:var(--text)">A facility owner skips this step.</b><br>Buyers pay their vendors; they don't collect. Switch the business type in the bar above to see the step.</div>`;
+    const e = state.payErr;
+    const rzpBody = `
+      <div class="grid2">
+        <div class="f"><label for="rk">Key ID</label><input id="rk" placeholder="rzp_live_…" value="${esc(state.rzp.key)}" class="${e.rk?'bad':''}">${e.rk?`<span class="e">${e.rk}</span>`:''}</div>
+        <div class="f"><label for="rs">Key secret</label><input id="rs" type="password" placeholder="••••••••" value="${esc(state.rzp.secret)}" class="${e.rs?'bad':''}">${e.rs?`<span class="e">${e.rs}</span>`:''}</div>
+      </div>
+      <div class="howto"><b>Where to find these</b><ol><li>Log in to the Razorpay Dashboard.</li><li>Open <b>Account &amp; Settings → API Keys</b>.</li><li>Click <b>Generate key</b> and copy both values here.</li></ol></div>
+      <details class="more"><summary>Use a separate test key for practice contracts (optional)</summary>
+        <div class="grid2"><div class="f"><label for="tk">Test key ID</label><input id="tk" placeholder="rzp_test_…" value="${esc(state.rzp.tkey)}"></div>
+        <div class="f"><label for="ts">Test key secret</label><input id="ts" type="password" value="${esc(state.rzp.tsecret)}"></div></div>
+        <div class="h" style="font-size:12px;color:var(--dim);margin-top:6px">Without one, your practice contracts show Razorpay too, and a payment made on one would be real.</div>
+      </details>
+      <div class="note"><b>Review note:</b> Razorpay live and test keys differ (rzp_live_ / rzp_test_). If we copy one live key into Test too, a "rehearsal" contract can take real money. Proposal: live key here; Test gets the optional test key, or no Razorpay.</div>`;
+    const upiBody = `
+      <div class="grid2">
+        <div class="f"><label for="ui">UPI ID</label><input id="ui" placeholder="yourname@okhdfcbank" value="${esc(state.upi.id)}" class="${e.ui?'bad':''}">${e.ui?`<span class="e">${e.ui}</span>`:'<span class="h">The ID your bank or UPI app shows, with the @ part.</span>'}</div>
+        <div class="f"><label for="un">Name your customers see</label><input id="un" value="${esc(state.upi.name || P().biz)}"><span class="h">Shown in their UPI app when they pay.</span></div>
+      </div>
+      <div class="envline">✓ Saved for both your live and practice contracts.</div>
+      <div class="note"><b>Review note:</b> the bank QR upload stays in Settings for now; uploading a QR has wiped saved details twice and that bug is fixed separately (item 4).</div>`;
+    const selfBody = `<div class="howto">Customers accept the contract on their phone. You collect by bank transfer, cash or cheque, then record it in <b>Money In</b>. You can add online payments any time from Settings.</div>`;
+    return `${head('How your customers pay you — change it any time')}${rail('How you get paid')}
+    <div class="step">
+      <div class="col">
+        <div class="bubble"><div class="vmark" style="width:36px;height:36px">V</div>
+          <div class="msg"><h1>How do your customers pay you?</h1>
+          When a customer accepts a contract, I show them how to pay you right there. Pick what you use today. You can choose both online options.</div></div>
+        <div class="opts">
+          ${payOpt('upi','UPI to your bank account','Customers scan or pay your UPI ID, then tell you the reference. You confirm it in Money In. No fees.', upiBody, '<span class="pill g">most common</span>')}
+          ${payOpt('razorpay','Online with Razorpay','Cards, UPI and netbanking. Payments are matched to the invoice automatically. Razorpay charges its own fee.', rzpBody, '<span class="pill">needs a Razorpay account</span>')}
+          ${payOpt('self',"I'll collect it myself",'Bank transfer, cash or cheque. Customers just accept the contract.', selfBody)}
+        </div>
+        <div class="foot"><button class="link" data-go="next">Set this up later</button><button class="btn btn-p" data-paysave>Continue →</button></div>
+      </div>
+      <aside class="side" aria-label="What your customer sees"><div class="side-t">What your customer sees</div>${phone()}
+        <div class="note"><b>Review note:</b> this preview follows the same rule the review page uses (fn_tenant_payment_options): Razorpay on, or a UPI ID saved, means "pay"; neither means "accept, the seller will connect".</div>
+      </aside>
+    </div>`;
+  }
+  function phone(){
+    const r = state.pay.razorpay, u = state.pay.upi && !state.pay.self;
+    const rr = r && !state.pay.self;
+    const biz = P().biz;
+    let pay = '';
+    if (rr) pay += `<button class="ph-btn pay" tabindex="-1">Pay ₹18,000 online</button><div class="ph-note">Cards · UPI · Netbanking via Razorpay</div>`;
+    if (rr && u) pay += `<div class="ph-or">or pay by UPI</div>`;
+    if (u) pay += `<div class="qr" aria-hidden="true"></div><div class="ph-note"><span class="mono">${esc(state.upi.id||'yourname@okhdfcbank')}</span><br>${esc(state.upi.name||biz)}</div><button class="ph-btn ghost" tabindex="-1">I've paid — enter UPI reference</button>`;
+    const body = (rr||u)
+      ? `<div class="ph-sec"><h4>Pay to accept</h4>${pay}</div><div class="ph-note">The contract is accepted once ${esc(biz)} confirms your payment.</div>`
+      : `<button class="ph-btn acc" tabindex="-1">Accept contract</button><div class="ph-note">${esc(biz)} will connect with you to close up your request.</div>`;
+    return `<div class="phone"><div class="ph-top">contractnest.com/contract-review</div><div class="ph">
+      <div class="ph-co"><div class="ph-logo">${esc(biz.split(' ').map(w=>w[0]).join('').slice(0,2))}</div><div><b>${esc(biz)}</b><div style="font-size:11px;color:var(--dim)">Annual maintenance · CN-1024</div></div></div>
+      <div class="ph-amt"><span>Total for the year</span><span>₹18,000</span></div>
+      ${body}</div></div>`;
+  }
+
+  // ── Screen 3: Settings → Integrations → Payments ────────────
+  function custLine(){
+    const r=state.set.razorpay, u=state.set.upi;
+    if (r&&u) return ['Customers pay online or by UPI','Razorpay checkout, plus your UPI QR and an "I\'ve paid" button.'];
+    if (r) return ['Customers pay online','Razorpay checkout on every contract that needs payment.'];
+    if (u) return ['Customers pay by UPI','Your QR and UPI ID, plus an "I\'ve paid" button you confirm in Money In.'];
+    return ['Customers accept, you collect','No payment options yet. Customers accept the contract and you collect it yourself.'];
+  }
+  function screenSettings(){
+    const [big, small] = custLine();
+    return `<div class="set">
+      <div class="set-h"><div class="ic">⚡</div><div><h1>Integrations</h1><p>The services ContractNest uses to collect money and send messages for you.</p></div></div>
+      <div class="ctx">
+        <div><h2>How your customers pay you</h2>
+          <p>What you turn on here decides what a customer sees when they open a contract or an invoice from you.</p>
+          <div class="states">
+            <div><span class="k">UPI</span><span><b>UPI to your bank.</b> Free. Customers pay and tell you the reference; you confirm it in Money In.</span></div>
+            <div><span class="k">ONLINE</span><span><b>Razorpay.</b> Cards, UPI, netbanking. Matched to the invoice automatically. Razorpay's fee applies.</span></div>
+            <div><span class="k">NEITHER</span><span><b>You collect yourself.</b> Customers accept the contract; you record the payment when it arrives.</span></div>
+          </div></div>
+        <div class="now"><div class="lbl">Right now</div><div class="big">${big}</div><div style="font-size:12.5px;color:var(--dim)">${small}</div>
+          <button class="btn btn-s btn-sm" style="align-self:flex-start;margin-top:4px" data-screen-jump="pay">See it as your customer does</button></div>
+      </div>
+      <div class="provs">
+        ${provCard('upi','UPI to your bank account','#0f766e','UPI','Collect over UPI with no gateway and no fees. Customers scan your QR or pay your UPI ID.','Customers see your <b>QR + UPI ID</b> and an <b>I\'ve paid</b> button.')}
+        ${provCard('razorpay','Razorpay','#2563eb','R','Online payments by card, UPI and netbanking, matched to the invoice automatically.','Customers see a <b>Pay online</b> button that opens Razorpay checkout.')}
+      </div>
+      <div class="note"><b>Review note:</b> Stripe is hidden (provider row set inactive; nothing in the product can take a Stripe payment). The UPI card loses its check-in-only wording. Email, SMS and WhatsApp sections below this stay as they are.</div>
+    </div>
+    ${state.modal?modal():''}`;
+  }
+  function provCard(k,name,color,logo,desc,cust){
+    const on = state.set[k];
+    return `<div class="prov"><div class="prov-h"><div class="prov-n"><div class="plogo" style="background:${color}">${logo}</div>${name}</div>
+      <span class="status ${on?'on':'off'}">${on?'Connected':'Not set up'}</span></div>
+      <p>${desc}</p><div class="cust">${cust}</div>
+      <div class="prov-f">${on?`<div class="envtabs"><span class="on">Live ✓</span><span class="${k==='upi'?'on':''}">Test ${k==='upi'?'✓':'–'}</span></div>`:'<span></span>'}
+        <button class="btn ${on?'btn-s':'btn-p'} btn-sm" data-modal="${k}">${on?'Edit':'Set up'}</button></div></div>`;
+  }
+  function modal(){
+    const rz = state.modal==='razorpay';
+    const body = rz ? `
+      <p style="margin:0;color:var(--dim);font-size:13px">Connect your Razorpay account so customers can pay online. Money goes straight to your Razorpay account.</p>
+      <div class="howto"><b>Three steps in Razorpay</b><ol>
+        <li><b>Account &amp; Settings → API Keys → Generate key.</b> Paste the Key ID and secret below.</li>
+        <li><b>Account &amp; Settings → Webhooks → Add new webhook.</b> Paste the URL below, choose the <i>payment.captured</i> and <i>payment.failed</i> events, and set a secret.</li>
+        <li>Paste that webhook secret below so we can trust the messages.</li></ol></div>
+      <div class="grid2"><div class="f"><label for="m1">Key ID</label><input id="m1" placeholder="rzp_live_…"></div><div class="f"><label for="m2">Key secret</label><input id="m2" type="password"></div></div>
+      <div class="f"><label>Webhook URL</label><div class="copyline"><code id="wh">https://…supabase.co/functions/v1/payment-webhook/razorpay</code><button class="btn btn-s btn-sm" data-copy>Copy</button></div></div>
+      <div class="f"><label for="m3">Webhook secret</label><input id="m3" type="password"></div>
+      <div class="note"><b>Review note:</b> the webhook URL is shown nowhere today. I still have to confirm in code whether payments reconcile without it before making it required; the URL shown is shortened here.</div>`
+    : `
+      <p style="margin:0;color:var(--dim);font-size:13px">Customers pay your bank directly over UPI. You'll see each "I've paid" in Money In to confirm.</p>
+      <div class="grid2"><div class="f"><label for="m4">UPI ID</label><input id="m4" placeholder="yourname@okhdfcbank"></div><div class="f"><label for="m5">Name customers see</label><input id="m5" value="${esc(P().biz)}"></div></div>
+      <div class="f"><label>Your bank's UPI QR (optional)</label><div class="howto">Upload the QR sticker your bank gave you. If it's a merchant QR we read the extra details from it automatically.</div></div>`;
+    return `<div class="scrim" data-close><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mh">
+      <div class="modal-h"><h3 id="mh">${rz?'Set up Razorpay':'UPI to your bank account'}</h3><button class="link" data-close aria-label="Close" style="font-size:20px">×</button></div>
+      <div class="modal-b">${body}</div>
+      <div class="modal-f"><button class="btn btn-s btn-sm" data-close>Cancel</button><button class="btn btn-p btn-sm" data-msave="${state.modal}">Save for live and practice</button></div>
+    </div></div>`;
+  }
+
+  // ── Render + events ─────────────────────────────────────────
+  function render(){
+    const app = $('#app');
+    app.innerHTML = state.screen==='lists'?screenLists():state.screen==='pay'?screenPay():screenSettings();
+    if (state.toast) app.insertAdjacentHTML('beforeend', `<div class="toast" role="status">${esc(state.toast)}</div>`);
+    document.querySelectorAll('[data-screen]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.screen===state.screen));
+    const av = $('#addval'); if (av){ av.focus(); av.setSelectionRange(av.value.length, av.value.length); }
+  }
+  let toastT;
+  function toast(m){ state.toast=m; render(); clearTimeout(toastT); toastT=setTimeout(()=>{state.toast='';render();},2200); }
+  function go(screen){ state.screen=screen; state.modal=null; render(); window.scrollTo({top:0}); }
+  function addValue(kind, name){
+    const n = name.trim();
+    if (!n){ state.addErr='Type a name first.'; return render(); }
+    if (state[kind].some(v=>v.n.toLowerCase()===n.toLowerCase())){ state.addErr=`"${n}" is already there.`; return render(); }
+    state[kind].push({ n, c: COLORS[state[kind].length % COLORS.length] });
+    state.adding=null; state.addVal=''; state.addErr='';
+    if (kind==='roles') state.previewRole=n;
+    if (kind==='tags' && !state.previewTags.includes(n)) state.previewTags.push(n);
+    toast(`Added "${n}" to ${kind==='tags'?'Tags':'Roles'}`);
+  }
+
+  document.addEventListener('click', e => {
+    const t = e.target.closest('button,[data-ptag],[data-close]');
+    if (!t) return;
+    const d = t.dataset;
+    if (d.screen) return go(d.screen);
+    if (d.screenJump) return go(d.screenJump);
+    if (d.add){ state.adding=d.add; state.addVal=''; state.addErr=''; return render(); }
+    if ('addcancel' in d){ state.adding=null; return render(); }
+    if (d.addsave) return addValue(d.addsave, $('#addval').value);
+    if (d.sugg){ const [k,...r]=d.sugg.split(':'); return addValue(k, r.join(':')); }
+    if (d.rm){ const [k,i]=d.rm.split(':'); const v=state[k][+i]; state[k].splice(+i,1);
+      state.previewTags=state.previewTags.filter(x=>x!==v.n); if (state.previewRole===v.n) state.previewRole=(state.roles.find(r=>!r.fixed)||{n:''}).n; return toast(`Removed "${v.n}"`); }
+    if (d.ptag){ const n=d.ptag; state.previewTags = state.previewTags.includes(n)?state.previewTags.filter(x=>x!==n):[...state.previewTags,n]; return render(); }
+    if (d.go==='next') return toast(state.screen==='lists'?'Next: Workspace ready':'Next: '+(state.persona==='both'?'Your assets':'Team & tags'));
+    if (d.pay){
+      const k=d.pay;
+      if (k==='self'){ state.pay={razorpay:false,upi:false,self:!state.pay.self}; }
+      else { state.pay[k]=!state.pay[k]; if (state.pay[k]) state.pay.self=false; }
+      state.payErr={}; return render();
+    }
+    if ('paysave' in d){
+      const err={};
+      if (state.pay.upi && !upiOk(state.upi.id)) err.ui = state.upi.id ? 'That doesn\'t look like a UPI ID. It needs an @, e.g. sunrise@okhdfcbank.' : 'Enter your UPI ID, or untick this option.';
+      if (state.pay.razorpay && !/^rzp_live_\w{6,}$/.test(state.rzp.key.trim())) err.rk = 'Paste the live Key ID. It starts with rzp_live_.';
+      if (state.pay.razorpay && !state.rzp.secret.trim()) err.rs = 'Paste the key secret.';
+      state.payErr=err;
+      if (Object.keys(err).length) return render();
+      if (!state.pay.razorpay && !state.pay.upi && !state.pay.self) return toast('Pick one option, or choose "Set this up later".');
+      state.set.razorpay = state.pay.razorpay; state.set.upi = state.pay.upi;
+      return toast('Saved. '+custLine()[0]+'.');
+    }
+    if (d.modal){ state.modal=d.modal; return render(); }
+    if ('close' in d && (t.classList.contains('scrim')?e.target===t:true)){ state.modal=null; return render(); }
+    if (d.msave){ state.set[d.msave]=true; state.modal=null; return toast(d.msave==='razorpay'?'Razorpay connected for live':'UPI saved for live and practice'); }
+    if ('copy' in d){
+      const txt=$('#wh').textContent;
+      (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Webhook URL copied'),()=>{const r=document.createRange();r.selectNodeContents($('#wh'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('Selected — press Ctrl+C');});
+    }
+  });
+  document.addEventListener('input', e => {
+    const id=e.target.id, v=e.target.value;
+    if (id==='addval'){ state.addVal=v; state.addErr=''; return; }
+    if (id==='rk') state.rzp.key=v; if (id==='rs') state.rzp.secret=v;
+    if (id==='tk') state.rzp.tkey=v; if (id==='ts') state.rzp.tsecret=v;
+    if (id==='ui'){ state.upi.id=v; delete state.payErr.ui; }
+    if (id==='un') state.upi.name=v;
+    if (['ui','un'].includes(id)){ const ph=document.querySelector('.phone'); if (ph) ph.outerHTML=phone(); }
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id==='persona'){ state.persona=e.target.value; state.upi.name=''; return render(); }
+    if (e.target.id==='notes'){ document.body.classList.toggle('hide-notes', !e.target.checked); return; }
+    if (e.target.id==='prole'){ state.previewRole=e.target.value; return render(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.id==='addval' && e.key==='Enter') addValue(state.adding, e.target.value);
+    if (e.target.dataset && e.target.dataset.ptag && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); e.target.click(); }
+    if (e.key==='Escape' && state.modal){ state.modal=null; render(); }
+  });
+  render();
+})();
+</script>
