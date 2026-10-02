@@ -1,0 +1,114 @@
+// ============================================================================
+// VaNi Composer Routes — Phase 1.1
+// ============================================================================
+// Mounted at /api/vani-composer (see src/index.ts).
+// Pattern follows contractEventRoutes: authenticate → tenant guard →
+// entitlement gate → rate limit.
+//
+// Business rule: the Agent is a VaNi-subscription feature. /entitlement and
+// /health stay open to authenticated tenants (the UI needs them to decide
+// whether to show the entry point); the working endpoints are gated.
+// ============================================================================
+
+import { Router, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import vaniComposerController from '../controllers/vaniComposerController';
+import vaniEntitlementService from '../services/vaniEntitlementService';
+import { verifyComposerContext, ComposerContextError } from '../services/composerContext';
+
+const router = Router();
+
+router.use(authenticate);
+
+// Verify active membership BEFORE entitlement, profile or any service-role reads.
+router.use(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const infoOnly = ['/health', '/entitlement', '/feedback'].includes(req.path);
+    let expected = req.body?.context;
+    if (req.method === 'GET' && req.query.context) {
+      try { expected = JSON.parse(String(req.query.context)); }
+      catch { throw new ComposerContextError('INVALID_CONTEXT', 'Invalid context.', 400); }
+    }
+    const ctx = await verifyComposerContext({
+      // The existing auth/profile merge replaces id with t_user_profiles.id.
+      // user_id is the verified profile's FK to auth.users, which membership uses.
+      tenantId: req.headers['x-tenant-id'], userId: (req.user as any)?.user_id || req.user?.id,
+      userJWT: req.headers.authorization?.replace(/^Bearer\s+/i, '') || '',
+      environment: req.headers['x-environment'], expected, infoOnly,
+    });
+    (req as any).composerContext = ctx;
+    next();
+  } catch (error) {
+    const err = error instanceof ComposerContextError ? error
+      : new ComposerContextError('CONTEXT_UNAVAILABLE', 'Could not verify workspace access.', 503);
+    res.status(err.status).json({ success: false, error: { code: err.code, message: err.message } });
+  }
+});
+
+// Ungated info endpoints (UI decides visibility from these)
+router.get('/health', vaniComposerController.health);
+router.get('/entitlement', vaniComposerController.entitlement);
+
+// Deterministic composer steps a non-VaNi tenant may use in the TEST
+// environment: the onboarding "First contract" rehearsal (FirstContractStep)
+// shortlists the tenant's own services and assembles a test contract from
+// them. Neither step calls the LLM. Everything else — the LLM steps, and every
+// step in Live — stays VaNi-only. The environment is the one verifyComposerContext
+// checked above (header and request scope must agree), not the raw header.
+const OPEN_IN_TEST = new Set(['/shortlist', '/assemble']);
+
+// Entitlement gate — everything below is subscriber-only (except OPEN_IN_TEST)
+router.use(async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (OPEN_IN_TEST.has(req.path) && (req as any).composerContext?.environment === 'test') {
+    next();
+    return;
+  }
+  const tenantId = (req.headers['x-tenant-id'] as string) || '';
+  const entitled = await vaniEntitlementService.isEntitled(tenantId);
+  if (!entitled) {
+    res.status(403).json({
+      success: false,
+      error: {
+        code: 'VANI_NOT_ENTITLED',
+        message: 'VaNi is not enabled for this workspace. Subscribe to VaNi to use the agent.',
+      },
+    });
+    return;
+  }
+  next();
+});
+
+// Rate limits: the LLM steps are expensive (CPU inference); the deterministic
+// steps are cheap and a single canvas run hits three of them.
+const llmRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many VaNi requests — try again in a minute' } },
+});
+const fastRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many VaNi requests — try again in a minute' } },
+});
+
+// Per-step pipeline (VaNi Canvas)
+router.get('/context', fastRateLimit, vaniComposerController.context);
+router.post('/parse-intent', llmRateLimit, vaniComposerController.parseIntent);
+router.post('/validate-contacts', fastRateLimit, vaniComposerController.validateContacts);
+router.post('/resolve-buyer', fastRateLimit, vaniComposerController.resolveBuyer);
+// Smart suggestion chips — deterministic, cosmetic
+router.get('/suggestions', fastRateLimit, vaniComposerController.suggestions);
+// Template tier — deterministic, cheap; templates ARE the cache
+router.post('/match-template', fastRateLimit, vaniComposerController.matchTemplate);
+router.post('/assemble-from-template', fastRateLimit, vaniComposerController.assembleFromTemplate);
+router.post('/shortlist', fastRateLimit, vaniComposerController.shortlist);
+router.post('/select-blocks', llmRateLimit, vaniComposerController.selectBlocks);
+router.post('/assemble', fastRateLimit, vaniComposerController.assemble);
+router.post('/feedback', fastRateLimit, vaniComposerController.feedback);
+
+export default router;

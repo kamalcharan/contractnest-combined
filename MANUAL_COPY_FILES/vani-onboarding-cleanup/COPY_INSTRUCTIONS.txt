@@ -85,6 +85,12 @@ contractnest-ui (DELETED — see STEP 3)
   src/pages/onboarding/steps/userProfileStep.tsx
 contractnest-api (changed)
   src/types/onboardingTypes.ts              accepted step ids = the VaNi list only
+  src/routes/vaniComposerRoutes.ts          /shortlist and /assemble allowed WITHOUT VaNi in the
+                                            TEST environment only (the onboarding "First contract"
+                                            rehearsal hit 403 VANI_NOT_ENTITLED for every new tenant).
+                                            Both are deterministic (no LLM). LLM steps and all of Live
+                                            stay VaNi-only; the environment is the verified composer
+                                            context, not the raw header.
 contractnest-edge (changed)
   supabase/functions/onboarding/index.ts    see EDGE above
 
@@ -138,6 +144,8 @@ TESTING CHECKLIST
 [ ] "Getting Started" in the sidebar (onboarding unfinished) → resumes, no legacy Welcome page
 [ ] Old URLs (/onboarding/welcome, /onboarding/vani-intro, /onboarding/business-basic) → resume, no 404
 [ ] Header on every /onboarding/* screen: rail + Exit only (no extra Continue/Back/Skip)
-[ ] Workspace ready → First contract → Plan still works; Settings shows onboarding complete
+[ ] Workspace ready → First contract (tenant WITHOUT VaNi): services load, contract assembles
+    and sends in Test → Plan; Settings shows onboarding complete
+[ ] Same tenant in Live: VaNi composer still refuses (403) — upsell unchanged
 [ ] Perspective toggle "activate the other side" walk still works end to end
 [ ] Non-owner of an unfinished workspace still sees the "onboarding pending" page with the owner's name
