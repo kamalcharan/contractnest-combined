@@ -1,0 +1,142 @@
+BATCH: vani-onboarding-cleanup  (2026-10-02)
+================================================================
+VaNi onboarding only. Removes the legacy 11-step onboarding and the long-form
+VaNi chain, and fixes resume: a returning tenant now picks up at the first
+VaNi step they have not finished (was: always sent back to the first screen).
+
+DEPENDS ON batch onboarding-team-payments — copy that one FIRST, then this.
+Files here that also appear there are supersets (this copy wins).
+
+Verified on main 9e076b1 + onboarding-team-payments + this batch:
+  UI tsc 1140 errors (pristine main 1154; none new, 14 legacy ones gone with the
+  deleted files) · vite build passes · API tsc 0.
+  Resume rule tested directly (resumePathFor) on 10 cases incl. the live
+  "crane elevators" record → /onboarding/terms-conditions.
+NOT rendered in a browser (no login in the build environment).
+
+----------------------------------------------------------------
+ROOT CAUSES FIXED
+----------------------------------------------------------------
+1. /onboarding redirected on its first render, before the saved status
+   arrived; the hook's default (step 1 = legacy "welcome") read as "not
+   started" → /start. It now waits, with a loader.
+2. Even loaded, it mapped the numeric current_step counter onto the LEGACY
+   11-step list. It now resumes from completed_steps in VaNi order for the
+   tenant's persona (journey.ts resumePathFor), and passes the persona in
+   route state (Terms / Payments / Assets / Done read it).
+3. Steps that were never recorded:
+   · "Your terms" — the API rejected 'terms-conditions' (not in its list)
+   · skipping "Your assets" sent nothing
+   · First contract and Your plan both wrote 'done', overwriting Workspace
+     ready's data → now 'first-contract' and 'plan-selection'
+
+----------------------------------------------------------------
+EDGE — deploy the `onboarding` function (owner, or ask Claude)
+----------------------------------------------------------------
+contractnest-edge/supabase/functions/onboarding/index.ts
+  · VANI_STEPS = the VaNi list (registry for new tenants)
+  · completion ONLY on the 'done' step — the "completed count >= total_steps"
+    rule (could finish a tenant halfway) and the legacy
+    user-profile + business-profile rule are gone
+  · records it creates carry total_steps = VANI_STEPS.length (was 6)
+  Deployed v26 == repo HEAD (checked), so deploying this loses nothing.
+  Until deployed: everything works; the count rule stays live — harmless for
+  new tenants (they finish ~10 steps before 'done', total 13).
+
+----------------------------------------------------------------
+FILES
+----------------------------------------------------------------
+contractnest-ui (changed)
+  src/pages/onboarding/index.tsx            resume: wait for status → resumePathFor
+  src/components/onboarding/journey.ts      + resumePathFor (VaNi order per persona)
+  src/hooks/queries/useOnboarding.ts        lean: status, done steps, resume target
+  src/components/onboarding/OnboardingLayout.tsx  VaNi rail header only; legacy header,
+                                            Continue/Skip/Back and profile gathering removed
+  src/App.tsx                               18 retired routes + imports removed; catch-all
+                                            /onboarding/* → /onboarding (resumes); dead
+                                            pages/onboarding/business-profile import removed
+  src/types/onboardingTypes.ts              API response shapes only (+ owner)
+  src/services/onboarding.service.ts        legacy step mapping/helpers removed
+  src/utils/onboarding/completeVaniStep.ts  VaniStepId = the VaNi list
+  src/pages/onboarding/steps/Screen8BEquipmentStep.tsx  Skip is recorded
+  src/lite/onboarding/FirstContractStep.tsx 'first-contract'
+  src/lite/onboarding/PlanStep.tsx          'plan-selection'
+  src/utils/constants/industryMenus.ts      "Getting Started" → /onboarding (was legacy /onboarding/welcome)
+contractnest-ui (DELETED — see STEP 3)
+  src/contexts/OnboardingContext.tsx        (imported nowhere)
+  src/pages/onboarding/steps/BusinessBasicStep.tsx
+  src/pages/onboarding/steps/BusinessBrandingStep.tsx
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx
+  src/pages/onboarding/steps/BusinessPreferencesStep.tsx
+  src/pages/onboarding/steps/CompleteStep.tsx
+  src/pages/onboarding/steps/EngagementModelStep.tsx
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx
+  src/pages/onboarding/steps/MasterDataStep.tsx
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx
+  src/pages/onboarding/steps/ResourcePickStep.tsx
+  src/pages/onboarding/steps/SequenceNumbersStep.tsx
+  src/pages/onboarding/steps/ServedIndustriesStep.tsx
+  src/pages/onboarding/steps/ThemeSelectionStep.tsx
+  src/pages/onboarding/steps/VaniConsentStep.tsx
+  src/pages/onboarding/steps/VaniIntelligenceStep.tsx
+  src/pages/onboarding/steps/VaniIntroStep.tsx
+  src/pages/onboarding/steps/WelcomeStep.tsx
+  src/pages/onboarding/steps/userProfileStep.tsx
+contractnest-api (changed)
+  src/types/onboardingTypes.ts              accepted step ids = the VaNi list only
+contractnest-edge (changed)
+  supabase/functions/onboarding/index.ts    see EDGE above
+
+----------------------------------------------------------------
+PHASE 1 — COPY (PowerShell)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# STEP 1: previous batch first (skip if already copied)
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-team-payments\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# STEP 2: this batch
+Copy-Item "MANUAL_COPY_FILES\vani-onboarding-cleanup\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-onboarding-cleanup\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\vani-onboarding-cleanup\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# STEP 3: delete the retired files
+Remove-Item "contractnest-ui\src\contexts\OnboardingContext.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\BusinessBasicStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\BusinessBrandingStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\CompleteStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\EngagementModelStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\SequenceNumbersStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\ServedIndustriesStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\ThemeSelectionStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\VaniIntelligenceStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\VaniIntroStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\WelcomeStep.tsx" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\pages\onboarding\steps\userProfileStep.tsx" -ErrorAction SilentlyContinue
+Write-Host "✅ Copied and cleaned" -ForegroundColor Green
+
+cd contractnest-api; npm run dev      # restart: accepted step ids changed
+cd ..\contractnest-ui; npm run dev    # Ctrl+F5
+
+----------------------------------------------------------------
+TESTING CHECKLIST
+----------------------------------------------------------------
+[ ] Log in as crane elevators (mid-onboarding) → lands on "Your terms", not /start
+[ ] Finish Terms, exit (X), log in again → lands on "How you get paid"
+[ ] On Your assets press Skip, exit, log in → lands on "Your team" (not assets again)
+[ ] Fresh signup → /start as before
+[ ] "Getting Started" in the sidebar (onboarding unfinished) → resumes, no legacy Welcome page
+[ ] Old URLs (/onboarding/welcome, /onboarding/vani-intro, /onboarding/business-basic) → resume, no 404
+[ ] Header on every /onboarding/* screen: rail + Exit only (no extra Continue/Back/Skip)
+[ ] Workspace ready → First contract → Plan still works; Settings shows onboarding complete
+[ ] Perspective toggle "activate the other side" walk still works end to end
+[ ] Non-owner of an unfinished workspace still sees the "onboarding pending" page with the owner's name
