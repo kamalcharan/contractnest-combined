@@ -108,6 +108,17 @@ body.hide-notes .note{display:none}
 .invite select{border:1px solid var(--vani-line);border-radius:7px;padding:5px 8px;background:var(--vani-soft);color:var(--text);font-weight:600;font-size:13px}
 .trow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
 .trow:first-of-type{border-top:0}
+.inv{border-top:1px dashed var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.inv-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.inv-h b{font-size:14px}
+.inv-why{font-size:12.5px;color:var(--dim);margin:0}
+.inv-row{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;align-items:start}
+@media (max-width:560px){.inv-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.inv-row .btn{grid-column:1/-1}}
+.inv-row input,.inv-row select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--white);color:var(--text);width:100%}
+.inv-row input.bad{border-color:#ef4444}
+.inv-sent{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;background:var(--ok-soft);border:1px solid #bbf7d0;border-radius:9px;padding:8px 10px}
+.inv-sent span:first-child{min-width:0;overflow-wrap:anywhere}
+.inv-foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dim)}
 
 /* ── Payments step ────────────────────────────── */
 .opts{display:flex;flex-direction:column;gap:12px}
@@ -235,22 +246,26 @@ details.more[open] summary{margin-bottom:10px}
                roleSugg:['Technician','Supervisor','Accounts','Sales'],
                tagSugg:['AMC customer','Gated community','Commercial','Hyderabad East'],
                contact:{n:'Ravi Kumar', m:'Sunrise Apartments · 2 lifts', i:'RK'},
-               invitee:'suresh@sunriselifts.in' },
+               invitee:'suresh@sunriselifts.in',
+               inviteWhy:'Invite your technicians so you can assign visits to them on the Ops board and Timeboard.' },
     chapter: { biz:'BBB Bhagyanagar', who:'chapter',
                roleSugg:['President','Secretary','Treasurer','Membership chair'],
                tagSugg:['Founding member','Visitor','Substitute','Doctors'],
                contact:{n:'Dr. Srinivas M.', m:'Member · Saturday Network Meeting', i:'SM'},
-               invitee:'treasurer@bbbchapter.in' },
+               invitee:'treasurer@bbbchapter.in',
+               inviteWhy:'Invite your committee so they can run check-in and confirm payments with you.' },
     both:    { biz:'Signia Facility Co.', who:'business',
                roleSugg:['Technician','Facility manager','Accounts','Supervisor'],
                tagSugg:['AMC customer','Vendor','Priority','Hyderabad'],
                contact:{n:'Anil Reddy', m:'Greenfield Towers · DG + lifts', i:'AR'},
-               invitee:'anil@signia.in' },
+               invitee:'anil@signia.in',
+               inviteWhy:'Invite your technicians and your accounts person so work and payments are not all on you.' },
     buyer:   { biz:'Greenfield Towers RWA', who:'facility owner',
                roleSugg:['Facility manager','Accounts','Committee member','Security lead'],
                tagSugg:['Lift vendor','Electrical','Housekeeping','Preferred'],
                contact:{n:'Sunrise Lift Services', m:'Vendor · lift AMC', i:'SL'},
-               invitee:'fm@greenfieldtowers.in' },
+               invitee:'fm@greenfieldtowers.in',
+               inviteWhy:'Invite your facility manager so they can follow vendor visits and approve work.' },
   };
   const COLORS = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#64748B'];
 
@@ -260,6 +275,7 @@ details.more[open] summary{margin-bottom:10px}
     tags:[{n:'Referral',c:'#F59E0B',proposed:true},{n:'Guest',c:'#8B5CF6'},{n:'VIP',c:'#EC4899'}],
     adding:null, addVal:'', addErr:'',
     previewTags:['VIP'], previewRole:'Member',
+    invites:[{to:'',role:'',err:'',sent:false}],
     pay:{ razorpay:false, upi:true, self:false },
     rzp:{ key:'', secret:'', tkey:'', tsecret:'' },
     upi:{ id:'', name:'' },
@@ -317,10 +333,29 @@ details.more[open] summary{margin-bottom:10px}
         ${adding?`<div class="addrow"><input id="addval" maxlength="40" placeholder="${isTags?'e.g. Gold AMC':'e.g. Site engineer'}" value="${esc(state.addVal)}"><button class="btn btn-p btn-sm" data-addsave="${kind}">Add</button><button class="btn btn-s btn-sm" data-addcancel>Cancel</button></div>${state.addErr?`<div style="color:#dc2626;font-size:12px">${esc(state.addErr)}</div>`:''}`:''}
         ${sugg.length?`<div class="lbl">Suggested for a ${esc(P().who)} · tap to add</div>
           <div class="chips">${sugg.map(s=>`<button class="chip sugg" data-sugg="${kind}:${esc(s)}">+ ${esc(s)}</button>`).join('')}</div>`:''}
+        ${!isTags?inviteBlock():''}
         ${!isTags?`<div class="note"><b>Review note:</b> the old text said roles "control what your team members can do". Nothing in the app checks a role today, so the new text only promises what is true. Real permissions would be a separate piece of work.</div>`:
         `<div class="note"><b>Review note:</b> "Referral" replaces the starter tag "Lead". "Lead" is now a built-in classification (the teal chip, the Leads page), and a hand-made "Lead" tag would not put anyone on /leads. New tenants only.</div>`}
       </div>
     </section>`;
+  }
+  const contactOk = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim()) || /^(\+91[\s-]?)?[6-9]\d{9}$/.test(v.replace(/\s/g,''));
+  function inviteBlock(){
+    const roles = state.roles.filter(r=>!r.fixed);
+    const sent = state.invites.filter(i=>i.sent);
+    const open = state.invites.map((v,i)=>({...v,i})).filter(v=>!v.sent);
+    return `<div class="inv" aria-labelledby="inv-h">
+      <div class="inv-h"><b id="inv-h">Invite your team</b><span class="pill">optional</span></div>
+      <p class="inv-why">${esc(P().inviteWhy)}</p>
+      ${sent.map(v=>`<div class="inv-sent"><span>✓ Invite sent to <b>${esc(v.to)}</b> as ${esc(v.role)}</span><span class="tiny">pending</span></div>`).join('')}
+      ${open.map(v=>`<div class="inv-row">
+          <div><input id="inv-to-${v.i}" data-invto="${v.i}" placeholder="Email or mobile" value="${esc(v.to)}" class="${v.err?'bad':''}" aria-label="Email or mobile">${v.err?`<div style="color:#dc2626;font-size:12px;margin-top:4px">${esc(v.err)}</div>`:''}</div>
+          <select data-invrole="${v.i}" aria-label="Role">${roles.map(r=>`<option ${r.n===(v.role||roles[0].n)?'selected':''}>${esc(r.n)}</option>`).join('')}</select>
+          <button class="btn btn-p btn-sm" data-invsend="${v.i}">Send invite</button></div>`).join('')}
+      <div class="inv-foot"><button class="link" data-invmore style="color:var(--blue);font-weight:600">+ Invite another person</button>
+        <span>They can sign in once you finish setup. You can also invite later from Settings → Users.</span></div>
+      <div class="note"><b>Review note:</b> uses the existing invitation flow (same endpoint as Settings → Users). An invitee who accepts before the owner finishes onboarding sees the "onboarding pending" page, hence the line above.</div>
+    </div>`;
   }
   function listsPreview(){
     const p = P();
@@ -345,7 +380,9 @@ details.more[open] summary{margin-bottom:10px}
           <select id="prole" aria-label="Role">${roleOpts}</select></div>
         <div>
           <div class="trow"><span><b>You</b></span><span class="tiny">Owner</span></div>
-          <div class="trow"><span>${esc(p.invitee)}</span><span class="tiny">${esc(state.previewRole)} · invited</span></div>
+          ${state.invites.some(i=>i.sent)
+            ? state.invites.filter(i=>i.sent).map(i=>`<div class="trow"><span style="overflow-wrap:anywhere">${esc(i.to)}</span><span class="tiny">${esc(i.role)} · invited</span></div>`).join('')
+            : `<div class="trow"><span>${esc(p.invitee)}</span><span class="tiny">${esc(state.previewRole)} · invited</span></div>`}
         </div>
       </div>
     </aside>`;
@@ -357,7 +394,7 @@ details.more[open] summary{margin-bottom:10px}
         <div class="bubble"><div class="vmark" style="width:36px;height:36px">V</div>
           <div class="msg"><h1>Two lists you'll use every day</h1>
             <b>Tags</b> label the people you work with, so you can find them later. <b>Roles</b> are the titles your teammates carry when you invite them.
-            I've started both for you. Add what fits your ${esc(P().who)} now, or change them any time in <b>Settings → List of Values</b>.</div></div>
+            I've started both for you. Add what fits your ${esc(P().who)} now, invite your team if you like, or change any of it later in <b>Settings</b>.</div></div>
         ${listCard('tags')}
         ${listCard('roles')}
         <div class="foot"><button class="link" data-go="next">Skip, I'll do this later</button><button class="btn btn-p" data-go="next">Continue →</button></div>
@@ -551,6 +588,16 @@ details.more[open] summary{margin-bottom:10px}
       state.set.razorpay = state.pay.razorpay; state.set.upi = state.pay.upi;
       return toast('Saved. '+custLine()[0]+'.');
     }
+    if (d.invsend){
+      const v = state.invites[+d.invsend];
+      const roles = state.roles.filter(r=>!r.fixed);
+      if (!contactOk(v.to)){ v.err = v.to.trim() ? 'Enter a valid email, or a 10-digit mobile number.' : 'Enter their email or mobile first.'; return render(); }
+      const key = v.to.trim().toLowerCase();
+      if (state.invites.some(x=>x!==v && x.sent && x.to.trim().toLowerCase()===key)){ v.err='You have already invited this person.'; return render(); }
+      v.role = v.role || roles[0].n; v.sent = true; v.err='';
+      return toast(`Invite sent to ${v.to.trim()}`);
+    }
+    if ('invmore' in d){ state.invites.push({to:'',role:'',err:'',sent:false}); render(); const ins=document.querySelectorAll('[data-invto]'); if(ins.length) ins[ins.length-1].focus(); return; }
     if (d.modal){ state.modal=d.modal; return render(); }
     if ('close' in d && (t.classList.contains('scrim')?e.target===t:true)){ state.modal=null; return render(); }
     if (d.msave){ state.set[d.msave]=true; state.modal=null; return toast(d.msave==='razorpay'?'Razorpay connected for live':'UPI saved for live and practice'); }
@@ -562,6 +609,7 @@ details.more[open] summary{margin-bottom:10px}
   document.addEventListener('input', e => {
     const id=e.target.id, v=e.target.value;
     if (id==='addval'){ state.addVal=v; state.addErr=''; return; }
+    if (e.target.dataset.invto!==undefined){ const iv=state.invites[+e.target.dataset.invto]; iv.to=v; iv.err=''; return; }
     if (id==='rk') state.rzp.key=v; if (id==='rs') state.rzp.secret=v;
     if (id==='tk') state.rzp.tkey=v; if (id==='ts') state.rzp.tsecret=v;
     if (id==='ui'){ state.upi.id=v; delete state.payErr.ui; }
@@ -572,9 +620,11 @@ details.more[open] summary{margin-bottom:10px}
     if (e.target.id==='persona'){ state.persona=e.target.value; state.upi.name=''; return render(); }
     if (e.target.id==='notes'){ document.body.classList.toggle('hide-notes', !e.target.checked); return; }
     if (e.target.id==='prole'){ state.previewRole=e.target.value; return render(); }
+    if (e.target.dataset.invrole!==undefined){ state.invites[+e.target.dataset.invrole].role=e.target.value; return; }
   });
   document.addEventListener('keydown', e => {
     if (e.target.id==='addval' && e.key==='Enter') addValue(state.adding, e.target.value);
+    if (e.target.dataset && e.target.dataset.invto!==undefined && e.key==='Enter'){ const b=document.querySelector(`[data-invsend="${e.target.dataset.invto}"]`); if (b) b.click(); }
     if (e.target.dataset && e.target.dataset.ptag && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); e.target.click(); }
     if (e.key==='Escape' && state.modal){ state.modal=null; render(); }
   });
