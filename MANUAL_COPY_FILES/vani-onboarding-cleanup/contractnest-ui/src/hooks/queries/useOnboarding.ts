@@ -67,19 +67,27 @@ export const useOnboarding = (): UseOnboardingReturn => {
     fetchStatus();
   }, [fetchStatus]);
 
-  const onboarding = statusData?.onboarding || null;
-  const stepData = onboarding?.step_data || {};
+  // The status endpoint nests progress under `data` (see OnboardingStatusResponse).
+  // Reading it from the top level returned nothing, so every returning tenant
+  // looked brand new and was sent back to /start.
+  const progress = statusData?.data;
+  const stepData = progress?.step_data || statusData?.onboarding?.step_data || {};
   const doneSteps = useMemo(
-    () => Array.from(new Set([...(statusData?.completed_steps || []), ...(statusData?.skipped_steps || [])])),
-    [statusData]
+    () => Array.from(new Set([
+      ...(progress?.completed_steps || statusData?.completed_steps || []),
+      ...(progress?.skipped_steps || statusData?.skipped_steps || []),
+    ])),
+    [statusData, progress]
   );
   const resumeTarget = useMemo(() => resumePathFor(doneSteps, stepData), [doneSteps, stepData]);
+  const isOnboardingComplete =
+    progress?.is_complete ?? statusData?.onboarding?.is_completed ?? (statusData ? !statusData.needs_onboarding : false);
 
   return {
     isLoading,
     error,
     needsOnboarding: statusData?.needs_onboarding ?? false,
-    isOnboardingComplete: onboarding?.is_completed || false,
+    isOnboardingComplete,
     doneSteps,
     stepData,
     resumeTarget,

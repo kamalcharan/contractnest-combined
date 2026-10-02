@@ -43,16 +43,31 @@ export interface OnboardingStepStatus {
 }
 
 /**
- * Onboarding status response
+ * Onboarding status response — GET /api/onboarding/status, which passes the
+ * edge function's body through unchanged. The progress is NESTED under
+ * `data`; the top-level progress fields below are not sent today and are
+ * kept optional only for older callers. Read progress through `data`.
  */
-export interface OnboardingStatusResponse {
-  needs_onboarding: boolean;
-  onboarding: TenantOnboarding | null;
-  steps: OnboardingStepStatus[];
+export interface OnboardingStatusData {
+  is_complete: boolean;
+  onboarding_type: string;
   current_step: number;
   total_steps: number;
   completed_steps: string[];
   skipped_steps: string[];
+  step_data: Record<string, any>;
+}
+
+export interface OnboardingStatusResponse {
+  needs_onboarding: boolean;
+  onboarding_type?: string;
+  data?: OnboardingStatusData;
+  onboarding?: TenantOnboarding | null;
+  steps?: OnboardingStepStatus[];
+  current_step?: number;
+  total_steps?: number;
+  completed_steps?: string[];
+  skipped_steps?: string[];
   /** Tenant owner, for the "waiting on your owner" page non-owners see */
   owner?: { name: string; email: string } | null;
 }
