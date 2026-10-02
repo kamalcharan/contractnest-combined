@@ -85,7 +85,7 @@ contractnest-ui (DELETED — see STEP 3)
   src/pages/onboarding/steps/userProfileStep.tsx
 contractnest-api (changed)
   src/types/onboardingTypes.ts              accepted step ids = the VaNi list only
-  src/routes/vaniComposerRoutes.ts          /shortlist and /assemble allowed WITHOUT VaNi in the
+  src/routes/vaniComposerRoutes.ts          /context, /shortlist and /assemble allowed WITHOUT VaNi in the
                                             TEST environment only (the onboarding "First contract"
                                             rehearsal hit 403 VANI_NOT_ENTITLED for every new tenant).
                                             Both are deterministic (no LLM). LLM steps and all of Live
