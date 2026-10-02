@@ -168,8 +168,17 @@ const TAIL_STEPS: Record<'seller' | 'buyer' | 'both', Array<[string, string]>> =
 
 export interface ResumeTarget {
   path: string;
-  /** Route state for the target — the business type the later steps read */
-  state: { persona: 'seller' | 'buyer' | 'both' };
+  /**
+   * Route state for the target: the business type the later steps read, and
+   * what Building seeded (from its saved step data) for Workspace ready. The
+   * steps pass route state along, so this reaches the done screen too.
+   */
+  state: {
+    persona: 'seller' | 'buyer' | 'both';
+    catalogBlocksSeeded?: number;
+    facilityNodesSeeded?: number;
+    sampleContactsSeeded?: number;
+  };
 }
 
 /**
@@ -196,7 +205,13 @@ export function resumePathFor(
     normaliseJourneyPersona(stepData['persona-selection']?.persona) ||
     normaliseJourneyPersona(stepData['vani-working']?.persona) ||
     'seller';
-  const state = { persona };
+  const built = stepData['vani-working'] || {};
+  const state: ResumeTarget['state'] = {
+    persona,
+    catalogBlocksSeeded: Number(built.catalog_blocks_seeded) || 0,
+    facilityNodesSeeded: Number(built.registry_assets_seeded) || 0,
+    sampleContactsSeeded: Number(built.sample_contacts_seeded) || 0,
+  };
 
   if (done.size === 0) return { path: '/start', state };
   if (!done.has('persona-selection')) return { path: BUSINESS.path, state };

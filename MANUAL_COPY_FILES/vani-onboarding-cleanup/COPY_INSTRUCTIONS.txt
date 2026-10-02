@@ -61,6 +61,7 @@ contractnest-ui (changed)
   src/pages/onboarding/steps/Screen8BEquipmentStep.tsx  Skip is recorded
   src/lite/onboarding/FirstContractStep.tsx 'first-contract'
   src/lite/onboarding/PlanStep.tsx          'plan-selection'
+  src/pages/onboarding/steps/VaniDoneStep.tsx  merges route state with defaults (resumed sessions crashed on industryNames.join)
   src/utils/constants/industryMenus.ts      "Getting Started" → /onboarding (was legacy /onboarding/welcome)
 contractnest-ui (DELETED — see STEP 3)
   src/contexts/OnboardingContext.tsx        (imported nowhere)
