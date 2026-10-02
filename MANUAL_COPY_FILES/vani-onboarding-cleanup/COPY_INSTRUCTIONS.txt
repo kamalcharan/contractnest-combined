@@ -94,6 +94,9 @@ contractnest-api (changed)
                                             were pre-tax, so a taxed VaNi draft billed without GST and the
                                             review refused it ("saved total does not match its price, tax
                                             and term"). Subtotal / tax / grand total derived accordingly.
+                                            Also auto-includes the tenant's T&C text block (₹0, autoIncluded),
+                                            the same rule the contract wizard applies on open — every VaNi
+                                            draft failed review with "Mandatory Terms & Conditions are missing".
   src/routes/vaniComposerRoutes.ts          /context, /shortlist and /assemble allowed WITHOUT VaNi in the
                                             TEST environment only (the onboarding "First contract"
                                             rehearsal hit 403 VANI_NOT_ENTITLED for every new tenant).

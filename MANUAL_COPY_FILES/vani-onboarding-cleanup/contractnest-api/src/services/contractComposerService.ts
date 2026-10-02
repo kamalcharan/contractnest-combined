@@ -1417,6 +1417,42 @@ class ContractComposerService {
     const blockCurrency = selectedBlocks[0]?.currency || '';
     const currency = (defaultCurrency || '').trim().toUpperCase() || blockCurrency;
     if (!/^[A-Z]{3}$/.test(currency)) throw new ComposerContextError('CURRENCY_REQUIRED', 'Choose the agreement currency.');
+
+    // Mandatory Terms & Conditions — the same rule the contract wizard applies
+    // when it opens (ContractWizard/index.tsx): the tenant's singleton text
+    // block named "Terms & Conditions" (or the only text block) rides along
+    // at ₹0, flagged autoIncluded so the review recognises it
+    // (isAgreementTerms). The composer never added it, so every VaNi draft
+    // failed review with "Mandatory Terms & Conditions are missing".
+    if (ctx.workflow === 'contract' && !selectedBlocks.some((b) => b.categoryId === 'text')) {
+      const tnc = await this.findTenantTerms(ctx);
+      if (tnc) {
+        selectedBlocks.push({
+          id: tnc.id,
+          name: tnc.name,
+          description: tnc.description || '',
+          icon: tnc.icon || 'FileText',
+          quantity: 1,
+          cycle: 'prepaid',
+          unlimited: false,
+          price: 0,
+          currency,
+          totalPrice: 0,
+          categoryName: CATEGORY_DISPLAY_NAMES.text || 'Text',
+          categoryColor: '#8B5CF6',
+          categoryId: 'text',
+          isFlyBy: false,
+          taxRate: 0,
+          taxes: [],
+          config: {
+            showDescription: true,
+            content: (tnc.config?.content as string) || tnc.description || '',
+            autoIncluded: true,
+          },
+        });
+      }
+    }
+
     const mismatched = Array.from(new Set(
       selectedBlocks.map((b) => b.currency).filter((c) => c && c !== currency)
     ));
@@ -1793,6 +1829,21 @@ class ContractComposerService {
       totalCount: steps.length,
       needsYou,
     };
+  }
+
+  /** The tenant's T&C text block in this environment, or null (not authored yet). */
+  private async findTenantTerms(ctx: ComposerCallContext): Promise<any | null> {
+    try {
+      const blocks = await this.fetchTenantBlocks(ctx);
+      const text = blocks.filter((b) => (b.block_type_name || b.type || b.category) === 'text');
+      return (
+        text.find((b) => /terms\s*(&|and)\s*conditions|^t\s*&\s*c$/i.test(b.name || '')) ||
+        (text.length === 1 ? text[0] : null)
+      );
+    } catch (e: any) {
+      console.warn('⚠️ Composer: T&C lookup failed (review will ask for it):', e.message);
+      return null;
+    }
   }
 
   private async fetchTenantBlocks(ctx: ComposerCallContext): Promise<any[]> {
