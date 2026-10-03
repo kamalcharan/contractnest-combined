@@ -289,6 +289,17 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
 
+    // Direct reads of t_tenant_integrations. `supabase` above forwards the
+    // user's JWT, and that table's RLS (tenant_id = get_current_tenant_id(),
+    // a claim our JWTs do not carry) returns ZERO rows with no error — which
+    // is why the save "merge" never found the saved values and a QR-only save
+    // wiped the UPI id. This client uses the service role; every query on it
+    // is filtered to the request's tenant explicitly, the same trust model as
+    // the tenant-scoped RPCs used throughout this function.
+    const serviceDb = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
     // Parse URL
     const url = new URL(req.url);
     const isLive = url.searchParams.get('isLive') === 'true';
@@ -392,7 +403,7 @@ serve(async (req) => {
           .map((r) => r.master_integration_id);
         if (configOnlyIds.length > 0) {
           try {
-            const { data: saved } = await supabase
+            const { data: saved } = await serviceDb
               .from('t_tenant_integrations')
               .select('master_integration_id, credentials')
               .eq('tenant_id', tenantId)
@@ -461,7 +472,7 @@ serve(async (req) => {
       }
       if (prov?.metadata?.config_only) {
         const targetIsLive = requestData.is_live ?? isLive;
-        const { data: existingRow, error: existingErr } = await supabase
+        const { data: existingRow, error: existingErr } = await serviceDb
           .from('t_tenant_integrations')
           .select('credentials')
           .eq('tenant_id', tenantId)

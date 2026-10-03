@@ -115,3 +115,13 @@ BBB's TEST UPI row holds the merchant sticker (9849502193@kbl) as its QR
 while its UPI id is the personal kamalcharan@okicici — a test customer
 scanning would pay the live merchant account. Replace or remove that QR in
 Test when convenient.
+
+─── FIX 2026-10-03 (v68) — the merge never saw the saved values ─────
+After v67 the form still opened blank. Cause: the edge function read
+t_tenant_integrations with the USER's JWT; the table's RLS is
+tenant_id = get_current_tenant_id(), a JWT claim our tokens do not carry,
+so the read returned 0 rows with no error. That also means the v66 save
+"merge" never merged anything — the real cause of the Sep wipes. Both
+reads (list prefill, save merge) now use a service-role client filtered
+to the request's tenant (same trust model as the function's tenant-scoped
+RPCs). Rollback copy: scratchpad integrations_v67_deployed.ts.
