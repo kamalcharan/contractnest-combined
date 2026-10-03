@@ -186,9 +186,15 @@ api.interceptors.request.use(
       }
 
       // Add environment header
-      // An explicit per-request environment wins (e.g. onboarding writes the
-      // T&C into Live AND Test); otherwise the current one.
-      const currentEnvironment = config.headers['x-environment'] || getCurrentEnvironment();
+      // The stored environment ALWAYS wins over any x-environment header a
+      // caller or api.defaults carries (several hooks send one from React
+      // state that can lag storage — e.g. onboarding's First contract flips
+      // storage to Test mid-session). The one exception is a request that
+      // passes the axios option `envOverride: 'live' | 'test'` on purpose
+      // (onboarding writes the T&C into Live AND Test). It is a config
+      // option, not a header, so it never leaves the browser.
+      const override = (config as any).envOverride;
+      const currentEnvironment = override === 'live' || override === 'test' ? override : getCurrentEnvironment();
       config.headers['x-environment'] = currentEnvironment;
 
       // Debug log environment header

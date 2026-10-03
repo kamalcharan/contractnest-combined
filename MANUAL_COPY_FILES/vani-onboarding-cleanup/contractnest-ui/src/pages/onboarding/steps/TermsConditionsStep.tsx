@@ -76,9 +76,10 @@ const BOILERPLATE = `
 async function mirrorTermsToOtherEnvironment(content: string) {
   const current = localStorage.getItem('is_live_environment') === 'false' ? 'test' : 'live';
   const other = current === 'live' ? 'test' : 'live';
-  const headers = { 'x-environment': other };
+  // envOverride: api.ts otherwise forces the stored (current) environment.
+  const env = { envOverride: other } as Record<string, unknown>;
   try {
-    const resp = await api.get('/api/catalog-studio/blocks', { params: { limit: 500 }, headers });
+    const resp = await api.get('/api/catalog-studio/blocks', { params: { limit: 500 }, ...env });
     const raw = resp.data?.data?.blocks || resp.data?.blocks || [];
     const blocks = catBlocksToBlocks(raw);
     const tnc =
@@ -88,11 +89,11 @@ async function mirrorTermsToOtherEnvironment(content: string) {
     if (tnc) {
       await api.patch(`/api/catalog-studio/blocks/${tnc.id}`,
         blockToUpdateData({ name: tnc.name || TNC_NAME, categoryId: BLOCK_TYPE_TEXT, icon: tnc.icon || 'FileText', description: content, meta }),
-        { headers: { ...headers, 'idempotency-key': generateIdempotencyKey() } });
+        { ...env, headers: { 'idempotency-key': generateIdempotencyKey() } });
     } else {
       await api.post('/api/catalog-studio/blocks',
         blockToCreateData({ name: TNC_NAME, categoryId: BLOCK_TYPE_TEXT, icon: 'FileText', description: content, meta }),
-        { headers: { ...headers, 'idempotency-key': generateIdempotencyKey() } });
+        { ...env, headers: { 'idempotency-key': generateIdempotencyKey() } });
     }
   } catch (err) {
     console.warn(`[onboarding] T&C saved, but copying it to ${other} failed:`, err);

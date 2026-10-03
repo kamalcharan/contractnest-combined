@@ -73,6 +73,31 @@ TEST: [ ] fresh signup, pick lift / elevator templates on "What do you
           service?" → Workspace ready lists Facility Management, not Healthcare
 
 ----------------------------------------------------------------
+FIX (2026-10-03) — First contract: "No contacts yet" + "status code 409"
+----------------------------------------------------------------
+Owner, new tenant valuenotes: the rehearsal showed no clients and failed
+with 409, although the tenant has 3 sample clients in Test.
+Cause: this batch's earlier api.ts change let a request's OWN x-environment
+header win over the stored environment (added for the T&C copy). But
+useContacts sends x-environment from AuthContext state, which still says
+Live after onboarding flips storage to Test — so the contact list read Live
+(no clients), and the composer got header Live vs body Test → CONTEXT_CHANGED
+(409). Before this batch the interceptor always forced the stored
+environment, which First contract relies on.
+Fix:
+  src/services/api.ts — stored environment always wins again; the only
+    exception is the axios OPTION envOverride: 'live' | 'test' (a config
+    option, not a header, so it never leaves the browser / no CORS change).
+  src/pages/onboarding/steps/TermsConditionsStep.tsx — the T&C copy to the
+    other environment passes envOverride instead of an x-environment header.
+Verified: axios 1.11 keeps the option into the interceptor (stray "live"
+header → "test"; envOverride "live" → "live"); UI tsc 1154 with all three
+batches (no new errors); vite build passes.
+TEST: [ ] new tenant → First contract lists the sample clients, services
+          load, contract assembles
+      [ ] finish Terms → Catalog Studio shows the T&C in BOTH Live and Test
+
+----------------------------------------------------------------
 FILES
 ----------------------------------------------------------------
 contractnest-ui (changed)
