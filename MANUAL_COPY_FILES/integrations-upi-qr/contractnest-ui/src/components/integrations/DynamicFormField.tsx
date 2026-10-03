@@ -1,6 +1,6 @@
 // src/components/integrations/DynamicFormField.tsx
 import React from 'react';
-import { Eye, EyeOff, Upload, Loader2, X, ImageIcon } from 'lucide-react';
+import { Eye, EyeOff, Upload, Loader2, X, ImageIcon, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { captureException } from '@/utils/sentry';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -98,6 +98,45 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
     }
   };
   
+  // Download the stored image (e.g. the bank UPI QR) to the device.
+  // The image lives on Firebase Storage — another origin — so a plain
+  // <a download> is ignored by browsers. Fetch it as a blob and save that;
+  // if the storage bucket refuses the cross-origin read, open the image in a
+  // new tab instead so it can still be saved or printed from there.
+  const [downloading, setDownloading] = React.useState(false);
+  const handleDownload = async (url: string) => {
+    if (!url || downloading) return;
+    setDownloading(true);
+    try {
+      const resp = await fetch(url, { mode: 'cors' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+      const base = field.name === 'qr_image_url' ? 'upi-qr' : field.name.replace(/_url$/, '').replace(/_/g, '-');
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${base}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      const opened = window.open(url, '_blank', 'noopener');
+      if (opened) {
+        vaniToast.info('Opened the QR in a new tab', { message: 'Save or print it from there.' });
+      } else {
+        captureException(error, {
+          tags: { component: 'DynamicFormField', action: 'handleDownload' },
+          extra: { field_name: field.name }
+        });
+        vaniToast.error('Could not download the QR', { message: 'Allow pop-ups for this site, or right-click the image and save it.' });
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   // Handle QR/image file selection → upload → store the returned URL
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -189,6 +228,20 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
                 >
                   {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                   Replace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownload(formattedValue)}
+                  disabled={uploading || downloading}
+                  className={cn(
+                    "px-3 py-1.5 text-sm rounded-md border transition-colors flex items-center gap-1.5",
+                    (uploading || downloading) && "opacity-60 cursor-not-allowed"
+                  )}
+                  style={{ borderColor: `${colors.utility.secondaryText}40`, color: colors.utility.primaryText }}
+                  title="Download"
+                >
+                  {downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  Download
                 </button>
                 <button
                   type="button"

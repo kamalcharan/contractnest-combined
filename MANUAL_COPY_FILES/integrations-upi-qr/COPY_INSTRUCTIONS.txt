@@ -126,3 +126,17 @@ reads (list prefill, save merge) now use a service-role client filtered
 to the request's tenant (same trust model as the function's tenant-scoped
 RPCs). Rollback copy: scratchpad integrations_v67_deployed.ts.
 DEPLOYED as integrations v68 (verify_jwt true, fetched back == staged file). UPI rows of BBB/crane/valuenotes unchanged after.
+
+─── ADDED 2026-10-03 — Download the QR ──────────────────────────────
+Owner: "QR download from integrations — currently we have only upload".
+contractnest-ui/src/components/integrations/DynamicFormField.tsx (UI only)
+  · image fields with a value show "Download" between Replace and Remove
+    (Settings → Integrations and onboarding "How you get paid" both use it).
+  · fetches the image as a blob and saves upi-qr.<jpg|png>; if the storage
+    read is refused it opens the image in a new tab (toast says so); spinner
+    on the button while it works. No API / edge / DB change.
+  · Firebase Storage answers with access-control-allow-origin for both
+    https://contractnest.com and http://localhost:5173 (checked), so the
+    direct save path is the one that runs.
+  Verified: UI tsc 1154 with the three batches (no new errors), vite build.
+  TEST: [ ] Settings → UPI → Download → file upi-qr.jpg saved, opens as the QR
