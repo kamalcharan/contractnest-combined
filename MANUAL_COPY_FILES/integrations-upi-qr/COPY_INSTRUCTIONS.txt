@@ -38,10 +38,10 @@ contractnest-edge/supabase/functions/integrations/index.ts
     a key is removed ONLY when named in `clear_fields`; the encrypted copy
     mirrors the merged blob; if the saved row can't be read the save is
     REFUSED ("Nothing was changed") instead of overwriting.
-  ⚠ NOT DEPLOYED YET — live is still v66 (merge, but no prefill, no
-    clear_fields, the catch-wipe). Ask Claude to deploy, or
-    `supabase functions deploy integrations`. Until deployed: the UI still
-    works, the form just opens blank and Remove QR does nothing.
+  ✓ DEPLOYED LIVE 2026-10-03 as integrations v67 (verify_jwt true). v66
+    was confirmed identical to checkin-upi-merchant-qr's copy beforehand
+    (that file = the rollback); v67 fetched back == this file (diff empty).
+    Saved UPI rows of BBB / crane / valuenotes checked unchanged after.
 
 contractnest-api/src/utils/upiQrDecode.ts (NEW)
   · reads the uploaded QR: tries raw, then greyscale+contrast, half-scale,
