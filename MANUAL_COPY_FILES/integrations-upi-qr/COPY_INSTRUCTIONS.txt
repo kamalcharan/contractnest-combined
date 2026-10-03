@@ -125,3 +125,4 @@ so the read returned 0 rows with no error. That also means the v66 save
 reads (list prefill, save merge) now use a service-role client filtered
 to the request's tenant (same trust model as the function's tenant-scoped
 RPCs). Rollback copy: scratchpad integrations_v67_deployed.ts.
+DEPLOYED as integrations v68 (verify_jwt true, fetched back == staged file). UPI rows of BBB/crane/valuenotes unchanged after.
