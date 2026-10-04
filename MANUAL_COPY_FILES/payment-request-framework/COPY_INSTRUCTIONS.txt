@@ -1,0 +1,108 @@
+═══════════════════════════════════════════════════
+BATCH: payment-request-framework (2026-10-04) — POA steps 3–4
+═══════════════════════════════════════════════════
+Owner, testing tax@t.com on contractnest.com: "Pay" opened a modal, Online →
+WhatsApp Link failed "Request failed with status code 400". Decisions: the
+existing contract-review link is the buyer's pay page; the request goes to
+the BUYER; check-in moves onto the shared UPI card in the BBB step.
+
+Submodules: contractnest-ui, contractnest-api, contractnest-edge (migrations only)
+COPY ORDER: onboarding-team-payments → vani-onboarding-cleanup →
+            integrations-upi-qr → catalog-tax-currency → THIS
+  (serviceURLs.ts ⊃ catalog-tax-currency; DynamicFormField.tsx and
+   CustomerPaymentPreview.tsx ⊃ integrations-upi-qr.)
+
+─── WHAT WAS WRONG ──────────────────────────────────
+1. The 400 was right: Online = a Razorpay link, and tax@t.com has Razorpay only
+   in TEST while CN-1001 is LIVE. The modal offered it anyway (it trusted a
+   loose "any payment integration" check) and showed axios' generic text
+   instead of the server's message.
+2. No way to ask the buyer to pay by UPI: the pay page only served contracts
+   awaiting "accept on payment"; an ACTIVE contract's invoice had no page.
+3. The live pay page's UPI lookup was BROKEN (get_public_offline_upi_config:
+   "operator does not exist: text = uuid") — no buyer has ever seen the UPI
+   card there — and it ignored Live/Test.
+4. Three different readers of the tenant's UPI details; fn_tenant_payment_options
+   ignored the environment for UPI; invoice "send" checked Razorpay without the
+   environment (a Live invoice saw a Test gateway → link failed silently →
+   "Please contact us for payment details").
+
+─── DATABASE (APPLIED LIVE — files are source of record) ──
+business-model-v2/042  fn_tenant_offline_upi(tenant, is_live) = THE reader
+     {configured, upi_id, payee_name, qr_image_url, has_qr, org_id, mcc,
+      is_merchant}. gs_checkin_payment_config, get_public_offline_upi_config
+     (now the CONTRACT's environment), get_tenant_payment_config and
+     fn_tenant_payment_options all delegate to it (same keys + the missing
+     ones). get_public_contract_payment_context: mode 'acceptance' (unchanged
+     path) or 'balance_due' (accepted/active contract with an open invoice),
+     returns is_live / invoice_number / due_date; NOTHING_DUE / NOT_PAYABLE codes.
+     Probed: BBB check-in unchanged (+ its QR), CN-1001 → ₹44,550 balance_due.
+business-model-v2/043  fn_invoice_pay_access(tenant, invoice) → the contract's
+     active buyer grant (cnak + secret) so the request links to the pay page.
+
+─── API ─────────────────────────────────────────────
+controllers/invoiceController.ts — POST /api/invoices/:id/send now links the
+  buyer's PAY PAGE: <PUBLIC_APP_URL>/contract-review?cnak=…&secret=… (UPI ID +
+  QR ride along; QR is the WhatsApp header). No grant → old behaviour, with
+  the gateway checked in the INVOICE's environment.
+  ⚠ Set PUBLIC_APP_URL (e.g. https://www.contractnest.com) in the API env —
+    otherwise the link uses the request's Origin (localhost when testing locally).
+services/invoiceService.ts — getInvoicePayAccess.
+services/publicPaymentService.ts — checkGatewayConfigured(tenant, isLive);
+  paymentOptions(tenant, isLive).
+controllers/contractController.ts — pay-page context checks the gateway in
+  the contract's environment.
+controllers/paymentGatewayController.ts + routes/paymentGatewayRoutes.ts —
+  NEW GET /api/payments/options → {gateway, offline_upi, any, environment}.
+
+─── UI ──────────────────────────────────────────────
+utils/payments/upi.ts (NEW) — buildUpiIntent, copyText, saveImageFromUrl,
+  isLikelyMobile: the one set of UPI helpers.
+components/payments/OfflineUpiPay.tsx (NEW) — THE UPI card: offline note ·
+  Option 1 UPI ID + Copy · Option 2 bank QR + Save QR · "Open UPI app" only for
+  a personal VPA on a phone · transaction ID → "I've paid".
+components/contracts/review/PublicPaymentSection.tsx — uses it; balance-due
+  wording; server error codes kept; quietWhenNothingDue.
+pages/contracts/review/index.tsx — an already-accepted link shows the balance
+  due and the pay box (nothing when nothing is due).
+components/payments/CustomerPaymentPreview.tsx — UPI part is the real card
+  (preview mode). components/integrations/DynamicFormField.tsx — QR download
+  through saveImageFromUrl.
+components/contracts/RecordPaymentDialog.tsx — Record received · Request
+  payment (to the buyer, WhatsApp / email → /api/invoices/:id/send) · Collect
+  online (only when Razorpay is set up in this environment, from
+  /api/payments/options); server error messages shown; "request sent" screen.
+ContractWizard/experience/useDeliveryData.ts + DeliveryPage.tsx — "After the
+  acceptance payment" needs a UPI ID or Razorpay in this environment; says
+  which is set up.
+services/serviceURLs.ts — PAYMENTS.OPTIONS.
+
+─── VERIFIED ────────────────────────────────────────
+API tsc 0. UI tsc 1153 (assembled with the four earlier batches; 0 new). vite
+build passes. 042 probed in a rolled-back transaction, then applied; 043
+returns CN-1001's grant. Not run in a browser (no login here).
+
+─── POWERSHELL COPY ─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\payment-request-framework\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-request-framework\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\payment-request-framework\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# contractnest-api/.env : PUBLIC_APP_URL=https://www.contractnest.com
+cd contractnest-api; npm run dev
+cd ..\contractnest-ui; npm run dev     # Ctrl+F5
+
+─── TESTING CHECKLIST (tax@t.com, CN-1001, Live) ───
+[ ] Contract → Pay: "Record received · Request payment"; no "Collect online"
+    (Razorpay is Test-only) and a line saying why
+[ ] Request payment → WhatsApp → Send request → "Payment request sent" screen;
+    the WhatsApp arrives with ₹44,550 and a contract-review link (+ QR if uploaded)
+[ ] Open the link on a phone → "Already accepted" + the pay box: UPI ID + Copy,
+    (QR + Save QR when uploaded), "Open UPI app" (personal UPI ID)
+[ ] Pay ₹1… or enter a test transaction ID → "Thank you — payment reference
+    submitted" → seller sees it in Finance → payment declarations → Confirm
+    → invoice balance drops
+[ ] Switch to Test → Pay shows "Collect online" too (Razorpay test)
+[ ] Wizard: "After the acceptance payment" on a tenant with nothing set up →
+    blocked with the reason
+[ ] A contract with nothing due → its link shows no pay box
+[ ] BBB check-in page unchanged (payment config keys same, now with QR)
