@@ -1,0 +1,4 @@
+BATCH: catalog-tax-currency — IN PROGRESS (not ready to copy)
+Migration catalog-studio/008 drafted and probed in a rolled-back transaction;
+NOT applied. Awaiting owner confirmation before applying and building the rest
+(seeding, onboarding tax screen, business currency, pricing review, VaNi Seeding page).
