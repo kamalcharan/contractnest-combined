@@ -1,4 +1,130 @@
-BATCH: catalog-tax-currency — IN PROGRESS (not ready to copy)
-Migration catalog-studio/008 drafted and probed in a rolled-back transaction;
-NOT applied. Awaiting owner confirmation before applying and building the rest
-(seeding, onboarding tax screen, business currency, pricing review, VaNi Seeding page).
+═══════════════════════════════════════════════════
+BATCH: catalog-tax-currency (2026-10-04)
+═══════════════════════════════════════════════════
+Owner's 8 points before onboarding-payments testing: seeding ignored tax
+(/settings/tax-settings); billing therefore had no tax; VaNi Seeding ignored
+tax; are all variants inserted; signia "only HVAC"; every KT currency seeded;
+variant switch did nothing; "preview" banner had no preview.
+
+Owner decisions: tax master (t_tax_settings / t_tax_rates) is NOT changed —
+which taxes a new item carries is chosen WHERE it is seeded; separate onboarding
+Tax screen (not folded into "Your business"); no prefilled rates — the user
+creates them; currency lives on the Business Profile (default INR); other
+currencies are added per item in Catalog Studio; clean-up for test tenants only.
+
+Submodules: contractnest-ui, contractnest-api, contractnest-edge
+COPY ORDER: onboarding-team-payments → vani-onboarding-cleanup →
+            integrations-upi-qr → THIS.
+  (App.tsx, journey.ts, ServiceableStep.tsx, contractComposerService.ts are
+   supersets of those batches' copies.)
+
+─── WHAT WAS WRONG ──────────────────────────────────
+1. Seeding put a flat tax_rate on blocks (an invented 18% when nothing was set
+   up) and EMPTY tax lines on the price records. The contract wizard reads the
+   price records → every seeded block billed 0% tax. VaNi's composer read the
+   flat 18% → the same block priced differently by the two.
+2. Every KT currency was copied (signia: INR + EUR on 62 blocks, + USD).
+3. Onboarding pricing review saved only base_price, one environment; the
+   wizard reads the price line → the reviewed price never reached a contract.
+4. VaNi Seeding: KT-ready items showed nothing until a hidden popup (8 rows);
+   the variant switch couldn't change anything (all services carry all sizes,
+   prices ignored the size); and the page — like pricing review — loaded only
+   the first 100 blocks (the API caps a page at 100), so a second seeded
+   equipment would vanish. signia shows only HVAC because HVAC is the only
+   equipment it seeded — not a bug.
+5. Variants: yes, all active variants are seeded — as prices INSIDE one
+   service block (one service per job, each size its own price). Kept.
+
+─── DATABASE (ALL APPLIED LIVE — files are source of record) ──
+catalog-studio/008  t_tenant_profiles.default_currency (DEFAULT 'INR');
+     fn_tenant_currency; set_tenant_currency; fn_resolve_catalog_tax(tenant,
+     rate_ids) → {display_mode, inclusion, taxes[{id,name,rate}], total, source,
+     currency}: no_tax → none; ids → those rates; NULL → tax master default;
+     nothing set up → none (never invented). Member guard (fn_catalog_tenant_guard).
+catalog-studio/009  catalog_review_set_prices(tenant, [{block_id, amount}]) —
+     one transaction, row locks, sets base_price + the price line, mirrors to
+     the other environment's twin only while it still holds the old price.
+catalog-studio/010  catalog_apply_taxes(tenant, rate_ids) — re-stamps SEEDED
+     blocks only (never custom blocks, never contracts). One-off run:
+       signia      → CGST 9 + SGST 9 = 18% (its two active rates), INR only
+       crane       → no rates exist yet → no tax, INR only
+       valuenotes  → no rates exist yet → no tax, INR only
+     ⚠ For crane: create its rates in /settings/tax-settings, then ask me to
+       re-run catalog_apply_taxes for it (or re-seed through onboarding).
+
+─── EDGE (DEPLOYED LIVE) ────────────────────────────
+contractnest-edge/supabase/functions/cat-blocks/index.ts → v24 (was v23 ==
+  repo head apart from CRLF). Bulk seed trusts a block's tax_rate + stamped
+  records when the API sends them; blocks without tax_rate (the API still in
+  production) keep the old lookup, so nothing changes until this API ships.
+
+─── API ─────────────────────────────────────────────
+services/catalogPricingService.ts (NEW) — THE one place: resolveCatalogTax,
+  applyCatalogPricing (business-currency record only; foreign-only KT price
+  → 0 + kt_currency_missing, never relabelled; tax lines + inclusion; tax_rate).
+services/ktCatBlockMapperService.ts — primary currency = business currency;
+  buildCatalogBlocks(); sync uses the same lookup (old fetchTaxDefaults removed).
+services/seedTenantTemplatesService.ts — onboarding seed, single-equipment seed
+  and service-only blocks all go through it; taxRateIds input; a tax lookup
+  failure fails the catalog legs loudly.
+services/catBlocksService.ts — bulkSeed through it (default rate).
+routes/seedRoutes.ts — taxRateIds on templates / seed-equipment / sync;
+  seed-preview ?tax_rate_ids= returns tax + per-variant prices; NEW
+  POST /tenant/pricing-review.
+routes/catalogDefaultsRoutes.ts (NEW) + index.ts — /api/catalog-defaults
+  (GET currency + tax preview; PUT /currency, written as the caller).
+services/contractComposerService.ts — reads the block's price line (amount,
+  named taxes, inclusion) like the wizard; inclusive prices not re-taxed;
+  taxBreakdown filled (CGST/SGST split).
+
+─── UI ──────────────────────────────────────────────
+lite/onboarding/TaxSetupStep.tsx (NEW) — /start/tax for seller/both:
+  business currency · how you charge tax (excl / incl / none) · your taxes
+  (create rates, tick which apply to your services). Uses the existing tax
+  hooks (same data as /settings/tax-settings). Choice → utils/onboarding/
+  taxChoice.ts → VaniWorkingStep sends taxRateIds to the seed.
+App.tsx (route), journey.ts ("Your taxes" step; resume returns providers to
+  it before building), BusinessPersonaStep (→ /start/tax, buyers skip),
+  ServiceableStep (Back → /start/tax), serviceURLs (SEEDS.*, CATALOG_DEFAULTS).
+pages/onboarding/steps/Screen8APricingStep.tsx — loads every page of blocks;
+  Confirm → /pricing-review (price line, both envs); shows the tax applied;
+  any currency formats.
+pages/settings/business-profile/BusinessCurrencyCard.tsx (NEW) + index.tsx.
+pages/catalog-studio/equipment.tsx + components/catalog-studio/
+  SeedPreviewPanel.tsx (NEW) — KT-ready equipment shows the full preview
+  inline (tax picker from your rates, default pre-picked; size selector with
+  per-size prices; every item); Load sends the same taxes. Rows show their tax
+  lines; the variant switch shows that size's price. Popup removed.
+utils/catalog-studio/fetchAllCatBlocks.ts (NEW) — pages past the 100 cap.
+
+─── VERIFIED ────────────────────────────────────────
+API tsc 0. UI tsc 1154 = main + the three earlier batches (0 new). vite build
+passes. 008/009/010 each probed in a rolled-back transaction before applying
+(member vs outsider, chosen/default/none, twin mirroring, bad items refused,
+signia prices unchanged by the re-stamp). Live after: signia 136 seeded blocks
+INR-only with CGST+SGST lines; crane/valuenotes 82 each INR-only, no tax.
+Not run in a browser (no login here).
+
+─── POWERSHELL COPY ─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\catalog-tax-currency\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\catalog-tax-currency\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\catalog-tax-currency\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+cd contractnest-api; npm run dev
+cd ..\contractnest-ui; npm run dev     # Ctrl+F5
+
+─── TESTING CHECKLIST ───────────────────────────────
+[ ] crane: /settings/tax-settings → add CGST 9, SGST 9 (or new tenant below)
+[ ] New tenant, "I provide services" → "Your taxes" screen appears after
+    "Your business"; buyer skips it
+[ ] Add CGST 9 + SGST 9 → both ticked; hint "18% … added"; Continue
+[ ] Build → pricing review shows "Tax: CGST 9% + SGST 9% = 18% added"
+[ ] Edit a price → Confirm → same price in Live AND Test (Catalog Studio)
+[ ] First contract / wizard with a seeded block → tax 18% split CGST/SGST;
+    VaNi composer draft → same total
+[ ] "I don't charge tax" → seeded blocks carry no tax
+[ ] Business Profile → Business Currency card → change + save
+[ ] VaNi Seeding: KT-ready equipment → preview inline, tax chips, size
+    selector changes prices, Load → items appear with their tax line
+[ ] Seeded equipment: variant select changes the price column
+[ ] signia: HVAC rows read "CGST 9% + SGST 9%", INR only
