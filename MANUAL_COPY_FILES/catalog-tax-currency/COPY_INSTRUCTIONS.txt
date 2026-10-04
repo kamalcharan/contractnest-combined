@@ -128,3 +128,14 @@ cd ..\contractnest-ui; npm run dev     # Ctrl+F5
     selector changes prices, Load → items appear with their tax line
 [ ] Seeded equipment: variant select changes the price column
 [ ] signia: HVAC rows read "CGST 9% + SGST 9%", INR only
+
+─── FIX 2026-10-04 (after the tax@t.com test) ─────────────────────
+contractnest-api/src/services/ktCatBlockMapperService.ts
+  · "Sync with Knowledge Tree" with no tax pick now KEEPS the taxes the
+    equipment's seeded blocks already carry (was: the tax master's default
+    rate → would have swapped CGST+SGST for CGST alone on repriced blocks).
+    A carried rate since deleted in Tax settings falls back to the default.
+  Context: tax@t.com seeded ATM before its knowledge tree had prices → 26
+  blocks at 0 (live + test). Once the KT was priced: VaNi Seeding → ATM
+  Machine → "⟳ Sync with Knowledge Tree" fills the prices, taxes kept.
+  Verified: API tsc 0.

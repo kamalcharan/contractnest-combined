@@ -309,8 +309,34 @@ export class KtCatBlockMapperService {
   ): Promise<{ added: number; repriced: number }> {
     const sb = this.clientFor(authToken);
 
-    // Same currency + taxes as an original seed (catalogPricingService).
-    const tax = await resolveCatalogTax(tenantId, taxRateIds, authToken);
+    // Same currency + taxes as an original seed (catalogPricingService). With no
+    // explicit pick, the taxes this equipment's seeded blocks already carry are
+    // kept — a sync must not swap the tenant's CGST+SGST for the default rate.
+    let effectiveIds = taxRateIds;
+    if (effectiveIds === undefined || effectiveIds === null) {
+      const { data: carried } = await sb
+        .from('m_cat_blocks')
+        .select('config')
+        .eq('tenant_id', tenantId)
+        .eq('resource_template_id', resourceTemplateId)
+        .eq('is_seed', true)
+        .limit(1);
+      const rec = (carried?.[0] as any)?.config?.pricingRecords?.[0];
+      if (rec && Array.isArray(rec.taxes)) {
+        effectiveIds = rec.taxes.map((t: any) => t?.id).filter(Boolean);
+      }
+    }
+    let tax: CatalogTax;
+    try {
+      tax = await resolveCatalogTax(tenantId, effectiveIds, authToken);
+    } catch (err: any) {
+      // A carried rate was since deleted in Tax settings → the tax master's default.
+      if (effectiveIds !== taxRateIds && err?.code === 'UNKNOWN_TAX_RATE') {
+        tax = await resolveCatalogTax(tenantId, undefined, authToken);
+      } else {
+        throw err;
+      }
+    }
     const { blocks: freshBlocks } = await this.buildCatalogBlocks(resourceTemplateId, tax, authToken);
     if (freshBlocks.length === 0) return { added: 0, repriced: 0 };
     const freshByName = new Map(freshBlocks.map((b) => [b.name, b]));
