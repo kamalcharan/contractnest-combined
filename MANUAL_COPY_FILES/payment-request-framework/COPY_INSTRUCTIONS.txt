@@ -106,3 +106,21 @@ cd ..\contractnest-ui; npm run dev     # Ctrl+F5
     blocked with the reason
 [ ] A contract with nothing due → its link shows no pay box
 [ ] BBB check-in page unchanged (payment config keys same, now with QR)
+
+─── FIX 2026-10-05 — Integrations on/off switch never worked ──────
+Owner: switching WhatsApp on in /settings/integrations → "Failed to update
+integration status". The three layers used three different addresses:
+  UI   PUT  /api/integrations/{id}/status
+  API  PUT  /api/integrations/status/{id}            → 404
+  API → edge PATCH /functions/v1/integrations/toggle-status
+  edge PUT  /integrations/status/{id}
+contractnest-api/src/routes/integrationRoutes.ts — also listens on the UI's
+  path (old path kept). Copy of main + this line.
+contractnest-api/src/services/integrationService.ts — calls the edge's
+  PUT /status/{id}. Superset of integrations-upi-qr's copy.
+No UI / edge / DB change: toggle_integration_status already flips both the
+integration row and the worker's channel switch (n_jtd_tenant_config).
+Data: tax@t.com WhatsApp + email turned ON (Live + Test) via that function.
+Verified: API tsc 0 on the five batches assembled.
+Test: /settings/integrations → switch ContractNest SMS on and off → toast
+"Integration activated/deactivated"; CN-1001 → Request payment → WhatsApp.
