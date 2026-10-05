@@ -174,3 +174,34 @@ Verified: UI tsc 1153 (= before, 0 new), vite build passes; API tsc 0.
 Test: buyer declares on the pay page → seller contract → Overview: first
 Needs Attention item "Payment declared — confirm it" → Review & confirm →
 Financials, card at top → Money received — confirm → balance drops, item gone.
+
+─── 2026-10-05 — payments actually pass: Razorpay from the pay page + pay-to-accept sends the request ──
+1. Pay page "Pay online" failed "edge function request failed": the public
+   create-order/verify sent `Authorization: Bearer ` (no user) and Supabase's
+   gateway answered 401 before payment-gateway ran (it trusts the HMAC, not
+   the caller). services/paymentGatewayService.ts sends the project's public
+   key (SUPABASE_KEY) when there is no user token. Never worked before.
+2. controllers/contractController.ts — public create-order / verify use the
+   CONTRACT's environment (a Test contract pays through Razorpay Test keys);
+   was hard-coded 'live'.
+3. Pay-to-accept contracts never told the buyer anything (the wizard only
+   notified sign-off). Now:
+   · services/invoiceService.ts getContractAcceptanceInvoice — acceptance
+     method + the open invoice.
+   · controllers/invoiceController.ts — sendInvoice's body became
+     requestPayment(req, invoiceId, channel), THE payment request; the
+     route behaves exactly as before.
+   · contractController.sendNotification — acceptance 'payment' with an open
+     invoice → requestPayment on WhatsApp AND email (whichever the tenant
+     and buyer allow); anything else → the sign-off, unchanged.
+   · UI ContractWizard/index.tsx — notifies for 'payment' too;
+     hooks/queries/useContractQueries.ts — toast says "Payment request has
+     been sent" for those. (Both copies of main + these lines.)
+Verified: API tsc 0; UI tsc 1153 (= before); vite build passes.
+Test (localhost, Test environment, crane):
+  a) New pay-to-accept contract for yourself → WhatsApp "Pay now" arrives.
+  b) Pay now → Pay online → Razorpay test card 4111 1111 1111 1111 / any
+     future date / any CVV (or success@razorpay for UPI) → invoice paid,
+     contract Active, receipt recorded.
+  c) UPI path: pay to the UPI ID shown, enter the transaction ID → confirm
+     from the contract's Financials card.

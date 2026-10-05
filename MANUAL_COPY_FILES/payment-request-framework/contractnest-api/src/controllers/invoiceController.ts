@@ -142,7 +142,6 @@ class InvoiceController {
   sendInvoice = async (req: AuthRequest, res: Response): Promise<void> => {
     const tenantId = this.tenantId(req);
     const invoiceId = req.params.id;
-    const isLive = this.isLive(req);
     const channel = (req.body?.channel || 'email') as 'email' | 'whatsapp';
 
     if (!tenantId || !invoiceId) {
@@ -153,6 +152,28 @@ class InvoiceController {
       sendError(res, ERROR_CODES.VALIDATION_ERROR, 'channel must be email or whatsapp', 400);
       return;
     }
+
+    const outcome = await this.requestPayment(req, invoiceId, channel);
+    if (!outcome.ok) {
+      sendError(res, outcome.status === 400 ? ERROR_CODES.VALIDATION_ERROR : ERROR_CODES.INTERNAL_ERROR,
+        outcome.message, outcome.status, outcome.details ? { details: outcome.details } : undefined);
+      return;
+    }
+    sendSuccess(res, outcome.data);
+  };
+
+  /**
+   * THE payment request: links the buyer's pay page (or a gateway / UPI link
+   * when there is none) and queues the WhatsApp or email. Used by "Request
+   * payment" and by sending a pay-to-accept contract.
+   */
+  requestPayment = async (
+    req: AuthRequest,
+    invoiceId: string,
+    channel: 'email' | 'whatsapp',
+  ): Promise<{ ok: true; data: any } | { ok: false; status: number; message: string; details?: any }> => {
+    const tenantId = this.tenantId(req);
+    const isLive = this.isLive(req);
 
     let paymentLink: string | null = null;
     let qrUrl: string | null = null;
@@ -232,18 +253,18 @@ class InvoiceController {
     });
 
     if (!result.success) {
-      sendError(res, ERROR_CODES.INTERNAL_ERROR, result.error?.message || 'Failed to send invoice', 500);
-      return;
+      return { ok: false, status: 500, message: result.error?.message || 'Failed to send invoice' };
     }
     // The RPC reports every refusal as {ok:false, reason, message} so the user
     // is told WHY nothing was sent — a silent no-op reads as success.
     if (result.data && result.data.ok === false) {
-      sendError(res, ERROR_CODES.VALIDATION_ERROR,
-        result.data.message || result.data.reason || 'Invoice could not be sent', 400,
-        { details: { reason: result.data.reason, rule_key: result.data.rule_key } });
-      return;
+      return {
+        ok: false, status: 400,
+        message: result.data.message || result.data.reason || 'Invoice could not be sent',
+        details: { reason: result.data.reason, rule_key: result.data.rule_key },
+      };
     }
-    sendSuccess(res, { ...result.data, payment_link: paymentLink, qr_url: qrUrl });
+    return { ok: true, data: { ...result.data, payment_link: paymentLink, qr_url: qrUrl } };
   };
 
   /** Public app address for buyer links. Never the request's origin or
