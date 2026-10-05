@@ -246,10 +246,11 @@ class InvoiceController {
     sendSuccess(res, { ...result.data, payment_link: paymentLink, qr_url: qrUrl });
   };
 
-  /** Public app origin for buyer links (same precedence as collectionsController). */
-  private appBaseUrl(req: AuthRequest): string {
-    const origin = (req.headers.origin as string) || '';
-    return (process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || origin || 'https://www.contractnest.com').replace(/\/+$/, '');
+  /** Public app address for buyer links. Never the request's origin or
+   *  FRONTEND_URL (both are localhost in local dev): a request sent while
+   *  testing must still give the buyer a link that opens on their phone. */
+  private appBaseUrl(_req: AuthRequest): string {
+    return (process.env.PUBLIC_APP_URL || 'https://www.contractnest.com').replace(/\/+$/, '');
   }
 
   /** Same shape paymentGatewayController.extractContext builds. */

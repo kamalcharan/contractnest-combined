@@ -147,3 +147,30 @@ the request was sent from localhost; the email's Pay now still uses the full
 link (PUBLIC_APP_URL / origin).
 Test: CN with an open invoice → Pay → Request payment → WhatsApp shows a
 "Pay now" button; Email arrives in the new layout.
+
+─── 2026-10-05 — declared payments on the contract page ──────────
+Owner: a declared payment shows in Commitments for confirmation — show it on
+the contract's Financials tab and in Needs Attention too.
+UI (no API/DB change — the declarations list already carries contract_id):
+  components/operations/finance/PaymentDeclarationsCard.tsx — optional
+    contractId filter; anchor id "payment-declarations"; copy says "payment
+    page" / "records the payment against the invoice".
+  hooks/queries/usePaymentDeclarations.ts — optional {enabled}; confirm also
+    refreshes contract events (Needs Attention).
+  hooks/useNeedsAttention.ts — seller side: a pending declaration on this
+    contract is the FIRST step ("Payment declared — confirm it", name,
+    amount, UPI ref), in any contract state. Action "Review & confirm".
+  components/contracts/NeedsAttentionPanel.tsx, SellerOverview.tsx — pass
+    the action through.
+  pages/contracts/detail/index.tsx — Financials tab shows the card above
+    Collect Payment (seller only); Needs Attention's button opens Financials
+    and scrolls to it; "Collect Payment" copy no longer says "via Razorpay".
+    (Copy of main + these lines.)
+API: controllers/invoiceController.ts — the pay link is PUBLIC_APP_URL or
+  https://www.contractnest.com, never the request origin or FRONTEND_URL
+  (FRONTEND_URL=http://localhost:5173 in local .env is where the localhost
+  link in the 5 Oct WhatsApp came from). PUBLIC_APP_URL is now optional.
+Verified: UI tsc 1153 (= before, 0 new), vite build passes; API tsc 0.
+Test: buyer declares on the pay page → seller contract → Overview: first
+Needs Attention item "Payment declared — confirm it" → Review & confirm →
+Financials, card at top → Money received — confirm → balance drops, item gone.
