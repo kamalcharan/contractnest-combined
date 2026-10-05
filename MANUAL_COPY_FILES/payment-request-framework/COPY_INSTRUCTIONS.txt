@@ -124,3 +124,26 @@ Data: tax@t.com WhatsApp + email turned ON (Live + Test) via that function.
 Verified: API tsc 0 on the five batches assembled.
 Test: /settings/integrations → switch ContractNest SMS on and off → toast
 "Integration activated/deactivated"; CN-1001 → Request payment → WhatsApp.
+
+─── 2026-10-05 — approved MSG91 templates wired (ALL LIVE) ─────────
+Owner registered + Meta/MSG91 approved: payment_request_email_v3 (HTML in
+msg91-templates/) and payment_request_button_v1 (WhatsApp, "Pay now" button
+→ https://www.contractnest.com/contract-review{{1}}).
+business-model-v2/044 (APPLIED LIVE — do not re-run):
+  · email: global seed row + all 8 tenant rows → payment_request_email_v3
+  · fn_enqueue_invoice_notification: when the link is the private pay page,
+    adds pay_link_suffix ("?cnak=…&secret=…") and
+    metadata.whatsapp_template_override = payment_request_button_v1 (no QR
+    header — the button template has none). Razorpay links / no pay page
+    keep payment_request_v2 (text + link + optional QR) unchanged.
+contractnest-edge/supabase/functions/jtd-worker (DEPLOYED v38): built on the
+  DEPLOYED v37 (repo copy is behind it), + override wins over the source
+  type's template, + a positional branch for payment_request_button_v1.
+  Copy this folder over the repo's jtd-worker so the repo matches live.
+Probed (rolled back): pay-page request → vars carry pay_link_suffix;
+Razorpay link → unchanged vars.
+Note: the button always opens www.contractnest.com, so it works even when
+the request was sent from localhost; the email's Pay now still uses the full
+link (PUBLIC_APP_URL / origin).
+Test: CN with an open invoice → Pay → Request payment → WhatsApp shows a
+"Pay now" button; Email arrives in the new layout.
