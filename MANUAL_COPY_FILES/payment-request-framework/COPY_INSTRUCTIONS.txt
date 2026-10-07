@@ -205,3 +205,16 @@ Test (localhost, Test environment, crane):
      contract Active, receipt recorded.
   c) UPI path: pay to the UPI ID shown, enter the transaction ID → confirm
      from the contract's Financials card.
+
+─── 2026-10-07 — Save QR on phones + crane's UPI ID ──────────────
+· utils/payments/upi.ts saveImageFromUrl — on a phone, hands the QR to the
+  share sheet (Save image / send to GPay, which reads the QR from it); a
+  download link does nothing inside WhatsApp's in-app browser, which is why
+  the tap did nothing. Desktop unchanged. OfflineUpiPay shows the matching
+  hint. Verified: UI tsc 1153 (= before).
+· DATA (live): crane's Offline UPI (Live + Test) held kamalcharan@okicici,
+  which GPay does not recognise; the uploaded QR decodes to
+  upi://pay?pa=kamalcharan@okaxis&pn=Kamal%20Charan — both rows corrected to
+  kamalcharan@okaxis / Kamal Charan.
+  Follow-up (not built): when an uploaded QR's UPI ID differs from the typed
+  one, warn instead of silently keeping the typed one.

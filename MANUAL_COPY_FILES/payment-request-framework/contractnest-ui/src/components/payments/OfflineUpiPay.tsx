@@ -85,6 +85,7 @@ const OfflineUpiPay: React.FC<OfflineUpiPayProps> = ({
     setSaving(false);
     setSaveNote(
       r === 'saved' ? 'Saved — open your UPI app, choose "scan from gallery" and pick this image.'
+      : r === 'shared' ? 'Choose "Save image", or send it to your UPI app — it reads the QR from the image.'
       : r === 'opened' ? 'Opened the QR in a new tab — save it from there.'
       : 'Could not save the QR. Press and hold the image to save it.'
     );

@@ -69,13 +69,32 @@ export async function copyText(value: string): Promise<boolean> {
  * if the bucket refuses the read, open it in a new tab to save from there.
  * → 'saved' | 'opened' | 'failed'
  */
-export async function saveImageFromUrl(url: string, baseName = 'upi-qr'): Promise<'saved' | 'opened' | 'failed'> {
+export async function saveImageFromUrl(url: string, baseName = 'upi-qr'): Promise<'saved' | 'shared' | 'opened' | 'failed'> {
   if (!url) return 'failed';
   try {
     const resp = await fetch(url, { mode: 'cors' });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const blob = await resp.blob();
     const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+
+    // Phones: a download link does nothing inside WhatsApp's (or any app's)
+    // in-app browser, so hand the image to the share sheet instead — the
+    // buyer can "Save image" or send it straight to GPay / PhonePe, which
+    // read the QR from it.
+    const nav: any = typeof navigator !== 'undefined' ? navigator : null;
+    if (isLikelyMobile() && nav?.share && nav?.canShare) {
+      const file = new File([blob], `${baseName}.${ext}`, { type: blob.type || 'image/jpeg' });
+      if (nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({ files: [file], title: 'UPI QR' });
+          return 'shared';
+        } catch (e: any) {
+          // The buyer closed the sheet — not a failure, nothing to fall back to.
+          if (e?.name === 'AbortError') return 'shared';
+        }
+      }
+    }
+
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = objectUrl;
