@@ -144,8 +144,8 @@ Operational dashboard: inbound processing, provider failures, message delivery, 
 2. **Unit: 1 credit per outbound message** for now. Category pricing (marketing / utility / authentication / service window) can come later through `credit_grant_rates`; do not build it now.
 3. **WhatsApp storefront plan: ₹700 / year includes 150 WhatsApp credits** (pricing to be reviewed later). It is a plan add-on that unlocks customer chat for the tenant's storefronts; further credits come from the existing top-up packs.
 4. **At zero credits:**
-   - **Team member:** one final reply is sent without charge — "Your workspace is out of WhatsApp credits. Ask your admin to top up." — and nothing else is sent until credits arrive.
-   - **Customer in a chat:** the same rule — one closing message without charge ("signia can't reply on WhatsApp right now. Please call or use <link>.") and no further assistant replies. *(Taken as the same rule as team members; owner to confirm.)*
+   - **Team member:** one final reply is sent without charge — "Your workspace is out of WhatsApp credits. Ask your admin to top up." — and nothing else is sent until credits arrive. *(Owner confirmed 2026-10-08.)*
+   - **Customer (outsider) in a chat:** one closing message without charge that reads as a temporary issue, never as "out of credits" — e.g. "We can't reply here right now. Please connect directly on +91 98xxx xxxxx." — carrying the **tenant owner's number**, then no further assistant replies. *(Owner decision 2026-10-08.)* The number comes from the Business Profile phone; if that is empty, the tenant owner's verified WhatsApp phone; if neither exists, the message omits the number and gives the storefront link instead.
    - Notifications keep today's behaviour: parked, sent automatically after a top-up.
 5. **Low-credit alert at 20 %** of the last grant (reuse `flag_credits_low`): shown in the app and sent once to the tenant's admins.
 6. **`/home` shows WhatsApp usage:** credits left, used this month split into **notifications · team assistant · customer chat**, the low-credit warning, and a **Top up** action. The Usage settings page shows the same split with history.
