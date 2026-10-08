@@ -1,0 +1,34 @@
+BATCH: integrations-own-whatsapp  (POA W2, 2026-10-08)
+=========================================================
+Settings → Integrations → WhatsApp now shows:
+  · ContractNest WhatsApp (Built-in)  — unchanged, still what sends every message
+  · Own WhatsApp number               — NEW generic card: Provider (MSG91 / Gupshup /
+                                         Meta Cloud API / Twilio / Other), Business number,
+                                         Display name, API URL, API key (encrypted),
+                                         Account/app ID, Webhook secret (encrypted)
+  · Meta WhatsApp and Gupshup cards   — hidden (is_active=false; rows kept; 0 tenants used them)
+
+ALREADY LIVE — do not re-run:
+  · DB  migration integrations-messaging-visibility/006_own_whatsapp_provider.sql (applied)
+  · Edge function `integrations` v69 (deployed) — adds a format-only check for
+    own_whatsapp (provider chosen, number with +country code, key ≥ 8 chars,
+    https API URL). It never calls the provider. Without it Save was blocked
+    ("Test connection not implemented").
+
+No UI or API change (the form is schema-driven).
+
+Honest limits (by design for now):
+  · Saved details are NOT used yet: messages still go from the ContractNest number;
+    inbound routing by own number is W6.
+  · Editing later: the encrypted blob is replaced on save, so re-enter the API key
+    whenever you change any detail (the field's help text says so).
+
+COPY (repo record only — both pieces are already live):
+  Copy-Item "MANUAL_COPY_FILES\integrations-own-whatsapp\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+CROSS-CHECK (signia, Live):
+  [ ] /settings/integrations → WhatsApp shows Built-in (Connected) + Own WhatsApp number; no Meta/Gupshup
+  [ ] Open Own WhatsApp number → 7 fields, 3 setup steps
+  [ ] Save with a number without "+" → "Enter the business number with country code…"
+  [ ] Save with valid dummy details → saved; Built-in still on; a test WhatsApp still arrives from the ContractNest number
+  [ ] (optional) delete the dummy row afterwards
