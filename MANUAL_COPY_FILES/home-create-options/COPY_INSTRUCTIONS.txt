@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════
+BATCH: home-create-options (2026-10-08) — UI only
+═══════════════════════════════════════════════════
+Owner: Home's "Create a service agreement" opened the OLD contract wizard
+pop-up; Contracts has a "New contract" menu that opens the NEW create flow.
+Decision: option A — Home shows the same choices inline.
+
+Files (contractnest-ui/src):
+  pages/contracts/experience/createOptions.ts (NEW) — THE list of ways to
+    start a contract: Client · Partner (revenue) / Vendor (expense) · Start
+    from a template, each with its /contracts/experience/create link.
+  pages/contracts/experience/index.tsx — "New contract" menu renders from
+    that list (same items, same order); ?vani=1 opens Draft with VaNi when
+    the tenant has VaNi. (Copy of main + these lines.)
+  pages/experience/StartChooser.tsx — the Create card opens a panel under the
+    cards (like "Record an existing agreement" already does) with the same
+    choices, plus "Draft with VaNi" for VaNi tenants.
+  pages/experience/index.tsx — Create no longer opens the old wizard;
+    "Record an existing agreement" → "Enter agreed terms" is unchanged (still
+    the wizard). Checks VaNi entitlement for the panel.
+  pages/experience/experience.css — styles for the option buttons.
+Verified: tsc 1154 = main (0 new); vite build passes. Not run in a browser.
+
+Copy:
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\home-create-options\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  cd contractnest-ui; npm run dev   (Ctrl+F5)
+
+Test:
+  [ ] Home (Revenue) → Create a service agreement → panel: Client contract,
+      Partner contract, Start from a template (+ Draft with VaNi if VaNi on)
+  [ ] Each opens the new create page (same as Contracts → New contract)
+  [ ] Draft with VaNi → Contracts page with the VaNi composer open
+  [ ] Home (Expense) → panel: Vendor contract, Start from a template
+  [ ] Opening Create closes the Record panel and vice versa; Back to choices
+  [ ] Contracts → New contract menu unchanged
