@@ -79,6 +79,16 @@ input.f{width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--fiel
 .sheet .st{font-size:17px;font-weight:800}
 .tick{width:46px;height:46px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;font-size:24px;font-weight:800}
 .today-badge{font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--err);background:var(--err-soft);padding:4px 8px;border-radius:6px;justify-self:start}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tile{background:var(--page);border:1px solid var(--line);border-radius:12px;padding:9px 10px;min-width:0}
+.tile .tk{font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--sub)}
+.tile .tv{font-size:16px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+.hist{width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--page);color:var(--ink);font:700 12.5px var(--display);cursor:pointer}
+.months{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.mo{flex:none;min-width:58px;text-align:center;border-radius:10px;padding:7px 6px;font-size:10px;font-weight:800}
+.mo b{display:block;font-size:12px;margin-top:2px;font-variant-numeric:tabular-nums}
+.mo.paid{color:#2E7D32;background:#2E7D3218;border:1px solid #2E7D3255}
+.mo.due{color:#F57C00;background:#F57C0018;border:1px solid #F57C0055}
 details summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--sub)}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
 </style>
@@ -123,7 +133,7 @@ details summary{cursor:pointer;font-weight:700;font-size:12.5px;color:var(--sub)
 
 <script>
 const S={design:'proposed',vpa:'merchant',showVpa:'show',first:'desk',order:'payFirst',member:'due',
-  step:'pay',sheet:null,copied:null,ref:'',saved:false,paidSkipped:false,leftForApp:false};
+  hist:false,step:'pay',sheet:null,copied:null,ref:'',saved:false,paidSkipped:false,leftForApp:false};
 const CFG={merchant:{id:'9849502193@kbl',name:'U S R Travels',hint:'Live BBB. GPay refuses an app link to this ID but pays the same QR when scanned.'},
   personal:{id:'kamalcharan@okicici',name:'charan kamal',hint:'BBB Test. GPay accepts the app link for a personal ID (it caps one payment at ₹1,000).'}};
 const DUE={label:'October 2026 · Monthly',date:'1 Oct 2026',amt:2250};
@@ -144,6 +154,18 @@ const member=()=>`<div class="card"><div class="who">Yashwanth Reddy</div><div c
 const dueCard=()=>`<div class="due"><div class="k">CURRENT</div><div class="row"><div><div style="font-weight:800;font-size:15px">${DUE.label}</div><div class="small">Due ${DUE.date}</div></div><div class="amt">${money(DUE.amt)}</div></div></div>`;
 const already=()=>S.member==='paidToday'?`<div class="alert warn"><b>You already recorded this today</b><br>${money(DUE.amt)} for October 2026 was recorded at 7:52 AM (ref 4098 1132 2231), waiting for the chair. You don't need to pay again. Speak to the chair if something looks wrong.</div>`:'';
 
+
+// Sample figures: monthly plan, Apr–Sep paid, Oct open. On the live page these come from the member's invoices.
+const YEAR={total:27000,paid:13500,balance:13500,months:['APR','MAY','JUN','JUL','AUG','SEP','OCT']};
+function duesSummary(){const today=S.design==='today';
+  const tiles=today
+    ?`<div class="tiles" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="tile"><div class="tk">TOTAL PAID</div><div class="tv" style="color:var(--ok)">${money(YEAR.paid)}</div></div><div class="tile"><div class="tk">BALANCE</div><div class="tv" style="color:var(--accent-ink)">${money(YEAR.balance)}</div></div></div>`
+    :`<div class="tiles"><div class="tile"><div class="tk">THIS YEAR</div><div class="tv">${money(YEAR.total)}</div></div><div class="tile"><div class="tk">PAID</div><div class="tv" style="color:var(--ok)">${money(YEAR.paid)}</div></div><div class="tile"><div class="tk">BALANCE</div><div class="tv" style="color:var(--accent-ink)">${money(YEAR.balance)}</div></div></div>
+     <div class="small">Apr 2026 – Mar 2027 · ${money(DUE.amt)} a month</div>`;
+  const paidN=YEAR.months.length-1;
+  return `<div style="font-weight:800">Your dues</div>${tiles}
+    <button class="hist" data-act="hist"><span>Payment history <span style="font-weight:500;color:var(--sub)">· ${paidN} of ${YEAR.months.length} paid</span></span><span>${S.hist?'▲':'▼'}</span></button>
+    ${S.hist?`<div class="months">${YEAR.months.map((m,i)=>`<div class="mo ${i<paidN?'paid':'due'}">${m}<b>${money(DUE.amt)}</b></div>`).join('')}</div>`:''}`;}
 function vpaRow(){const c=CFG[S.vpa];return `<div class="vpa"><code>${c.id}</code><button class="chip ${S.copied==='vpa'?'on':''}" data-act="copyVpa">${S.copied==='vpa'?'Copied':'Copy'}</button></div><div class="small">Payee: ${c.name}</div>`;}
 function qrBlock(){return `<div class="qr"><canvas width="116" height="116" data-qr></canvas><div class="small">Save it, then in GPay / PhonePe choose <b>Scan QR → gallery</b> and pick the image.<br><button class="chip" style="margin-top:8px" data-act="saveQr">${S.saved?'Saved ✓':'Save QR'}</button></div></div>${S.saved?'<div class="small">Saved to your photos. Open your UPI app and scan it from the gallery.</div>':''}`;}
 const amountLine=()=>`<div class="row" style="align-items:flex-end"><div><div class="lbl" style="margin:0">Amount to pay</div><div class="big">${money(DUE.amt)}</div></div><button class="chip ${S.copied==='amt'?'on':''}" data-act="copyAmt">${S.copied==='amt'?'Copied':'Copy amount'}</button></div>`;
@@ -164,7 +186,7 @@ function payCard(){
   const after=S.order==='checkFirst';
   return `<div class="card" style="display:grid;gap:12px">
     ${after?`<div class="alert ok"><b>You're checked in.</b> One due is open. Pay now or later, it won't affect your attendance.</div>`:''}
-    ${dueCard()}${already()}
+    ${duesSummary()}${dueCard()}${already()}
     <div class="lbl" style="margin:4px 0 -4px">Pay by UPI</div>
     <div class="small">Goes straight to the chapter from your UPI app. Then enter the UPI reference here so the chair can confirm it.</div>
     ${S.vpa==='merchant'?amountLine()+waysMerchant():waysPersonal()}
@@ -172,7 +194,7 @@ function payCard(){
   </div>
   <button class="btn link" data-act="skip">${after?'Pay later · finish':'Skip for now · continue to check-in'} →</button>`;}
 
-function payToday(){const c=CFG[S.vpa];return `<div class="today-badge">Today's page</div><div class="card" style="display:grid;gap:12px">${dueCard()}${already()}
+function payToday(){const c=CFG[S.vpa];return `<div class="today-badge">Today's page</div><div class="card" style="display:grid;gap:12px">${duesSummary()}${dueCard()}${already()}
   <div style="font-weight:700;font-size:12.5px">Pay ${money(DUE.amt)} via your UPI app</div>
   <div class="vpa" style="border-style:solid"><div style="flex:1;min-width:0"><div class="small">UPI ID</div><code style="font-size:14px">${c.id}</code><div class="small">${c.name}</div></div><button class="chip">Copy</button></div>
   <details><summary>App link failed, or already paid?</summary><p class="small">First check your UPI app's history to avoid paying twice. If no payment succeeded, copy the UPI ID above, or use the organiser's bank-issued QR…</p></details>
@@ -226,6 +248,7 @@ function act(a){
   if(a==='copyVpa')return copy(CFG[S.vpa].id,'vpa');
   if(a==='copyAmt')return copy(String(DUE.amt),'amt');
   if(a==='saveQr'){S.saved=true;}
+  if(a==='hist')S.hist=!S.hist;
   if(a==='openApp'){S.sheet='leave';}
   if(a==='goApp'){S.leftForApp=true;S.sheet=(S.vpa==='merchant')?'appFail':null;if(S.vpa==='personal')S.step='ref';}
   if(a==='close')S.sheet=null;
