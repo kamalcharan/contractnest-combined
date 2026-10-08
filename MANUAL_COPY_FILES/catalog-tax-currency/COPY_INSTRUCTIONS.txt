@@ -139,3 +139,16 @@ contractnest-api/src/services/ktCatBlockMapperService.ts
   blocks at 0 (live + test). Once the KT was priced: VaNi Seeding → ATM
   Machine → "⟳ Sync with Knowledge Tree" fills the prices, taxes kept.
   Verified: API tsc 0.
+
+─── FIX 2026-10-08 — Test environment read Live catalogue ─────────
+Owner: in Test, contract wizard → Elevator / Lift → "Catalogue workspace or
+environment does not match", no service blocks. The data was fine (crane has
+the same 41 Lift blocks in Live and Test). Cause:
+contractnest-api/src/services/catBlocksService.ts forwarded tenant + admin
+to the cat-blocks edge function but NOT x-environment, and the edge treats a
+missing environment as LIVE — so every Catalog Studio / wizard request made
+in Test read Live blocks (and a block created from Test was written to
+Live). The wizard's strict check is what surfaced it. Now forwards
+x-environment (catTemplatesService already did). Verified: API tsc 0.
+Test: switch to Test → contract wizard → Elevator / Lift → services list;
+Catalog Studio in Test shows the Test copies.
