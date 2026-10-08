@@ -1,0 +1,439 @@
+<title>WhatsApp Workspace Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: journeys rail · team member's phone · outsider's phone, with a "behind the scenes" log under the phones.
+   The page follows the viewer's theme; the phones are deliberately WhatsApp-light in both. */
+:root{
+  --bg:#F3F4F1; --panel:#FFFFFF; --ink:#16201C; --sub:#5F6B66; --line:#DFE3DF; --accent:#0B7A5E; --accent-soft:#E2F2EC;
+  --t-msg:#6B7280; --t-btn:#2563EB; --t-list:#7C3AED; --t-flow:#0B7A5E; --t-link:#B45309; --t-tpl:#BE185D;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  /* WhatsApp surface (fixed) */
+  --wa-head:#008069; --wa-wall:#EFEAE2; --wa-in:#FFFFFF; --wa-out:#D9FDD3; --wa-ink:#111B21; --wa-sub:#667781; --wa-link:#027EB5; --wa-btn:#00A884;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121715;--panel:#1A211E;--ink:#E6ECE9;--sub:#97A5A0;--line:#2B3531;--accent:#3CC79B;--accent-soft:#16302A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121715;--panel:#1A211E;--ink:#E6ECE9;--sub:#97A5A0;--line:#2B3531;--accent:#3CC79B;--accent-soft:#16302A;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body)}
+.page{max-width:1240px;margin:0 auto;padding-block:22px;padding-inline:16px;display:grid;gap:16px}
+h1{margin:0;font-size:22px;letter-spacing:-.01em;text-wrap:balance}
+.lede{margin:4px 0 0;color:var(--sub);font-size:13.5px;line-height:1.55;max-width:820px}
+.grid{display:grid;grid-template-columns:minmax(0,270px) minmax(0,360px) minmax(0,360px);gap:18px;align-items:start}
+@media (max-width:1060px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rail{grid-column:1/-1}}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}}
+.rail{display:grid;gap:12px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.box h2{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
+.jr{display:grid;gap:6px}
+.jr button{display:grid;grid-template-columns:22px 1fr;gap:8px;text-align:left;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--ink);font:500 13px var(--body);cursor:pointer;align-items:start}
+.jr button:hover{border-color:var(--accent)}
+.jr button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.jr .n{font:600 11px var(--mono);color:var(--accent);padding-top:1px}
+.jr small{display:block;color:var(--sub);font-weight:400;font-size:11.5px;margin-top:2px;line-height:1.4}
+.legend{display:grid;gap:6px;font-size:12px;color:var(--sub)}
+.legend div{display:flex;gap:8px;align-items:flex-start;line-height:1.4}
+.tag{display:inline-block;font:600 9.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px;color:#fff;white-space:nowrap}
+.tag.msg{background:var(--t-msg)}.tag.btn{background:var(--t-btn)}.tag.list{background:var(--t-list)}.tag.flow{background:var(--t-flow)}.tag.link{background:var(--t-link)}.tag.tpl{background:var(--t-tpl)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);margin-top:8px}
+.reset{margin-top:8px;width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);font:600 12.5px var(--body);cursor:pointer}
+.col{display:grid;gap:8px;min-width:0}
+.who{font-size:12.5px;color:var(--sub)}.who b{color:var(--ink)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* phone */
+.phone{background:#0F1412;border-radius:30px;padding:9px;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.screen{position:relative;height:680px;border-radius:22px;overflow:hidden;background:var(--wa-wall);display:flex;flex-direction:column;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--wa-ink)}
+.wa-head{background:var(--wa-head);color:#fff;display:flex;align-items:center;gap:10px;padding:12px 12px}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;background:#E7F5EF;color:#007a63;flex:none}
+.wa-head .nm{font-weight:600;font-size:14.5px;line-height:1.2}.wa-head .st{font-size:11.5px;opacity:.85}
+.chat{flex:1;overflow-y:auto;padding:10px 10px 6px;display:flex;flex-direction:column;gap:6px;
+  background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:14px 14px}
+.row{display:flex;flex-direction:column;max-width:86%}
+.row.in{align-self:flex-start}.row.out{align-self:flex-end;align-items:flex-end}
+.row .tag{margin:0 0 3px 2px;align-self:flex-start}.row.out .tag{align-self:flex-end}
+.hide-tags .row .tag{display:none}
+.b{background:var(--wa-in);border-radius:8px;padding:7px 9px 5px;font-size:13.5px;line-height:1.38;box-shadow:0 1px .5px rgba(0,0,0,.13);white-space:pre-line;min-width:0;overflow-wrap:anywhere}
+.out .b{background:var(--wa-out)}
+.b .meta{display:block;text-align:right;font-size:10.5px;color:var(--wa-sub);margin-top:2px}
+.b .fw{font-size:11.5px;color:var(--wa-sub);font-style:italic;display:block;margin-bottom:2px}
+.b .hd{font-weight:700;display:block;margin-bottom:2px}
+.b .ft{display:block;color:var(--wa-sub);font-size:12px;margin-top:3px}
+.card{border-radius:6px;overflow:hidden;background:#F0F2F5;margin:2px 0 4px}
+.card .ci{height:64px;background:linear-gradient(135deg,#0B7A5E,#36A383);color:#fff;font-weight:700;display:flex;align-items:flex-end;padding:8px;font-size:13px}
+.card .cb{padding:6px 8px;font-size:12px;color:var(--wa-sub)}.card .cb b{color:var(--wa-ink);display:block;font-size:12.5px}
+.acts{display:grid;gap:1px;margin-top:2px;background:transparent;width:100%}
+.acts button{background:var(--wa-in);border:none;color:var(--wa-link);font:500 13.5px system-ui,-apple-system,"Segoe UI",sans-serif;padding:9px;border-radius:8px;cursor:pointer;box-shadow:0 1px .5px rgba(0,0,0,.13)}
+.acts button:hover{background:#F5F6F6}
+.acts button[disabled]{color:#A9B4B9;cursor:default}
+.acts button .ic{margin-right:6px}
+.sys{align-self:center;background:#FFF5C4;color:#54656F;font-size:11.5px;padding:4px 9px;border-radius:7px;text-align:center;max-width:90%}
+.composer{display:flex;gap:6px;padding:6px 8px 8px;background:#F0F2F5;align-items:center}
+.composer input{flex:1;min-width:0;border:none;border-radius:18px;padding:9px 12px;font:14px system-ui,-apple-system,sans-serif;background:#fff;color:var(--wa-ink)}
+.composer button{width:38px;height:38px;border-radius:50%;border:none;background:var(--wa-btn);color:#fff;font-size:16px;cursor:pointer}
+/* sheets inside the phone */
+.overlay{position:absolute;inset:0;background:rgba(11,20,26,.4);display:flex;align-items:flex-end;z-index:5}
+.sheet{background:#fff;width:100%;border-radius:14px 14px 0 0;max-height:82%;display:flex;flex-direction:column;animation:up .2s ease-out}
+.sheet.full{max-height:100%;height:100%;border-radius:0}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+@keyframes up{from{transform:translateY(24px);opacity:.6}}
+.sh-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #E9EDEF;font-weight:600;font-size:15px}
+.sh-head .x{background:none;border:none;font-size:20px;cursor:pointer;color:#54656F;line-height:1}
+.sh-head .sub{font-weight:400;font-size:11.5px;color:var(--wa-sub)}
+.sh-body{overflow-y:auto;padding:4px 0 8px;flex:1}
+.sec{font-size:12px;color:#008069;font-weight:600;padding:12px 16px 4px;text-transform:uppercase;letter-spacing:.03em}
+.opt{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 16px;cursor:pointer;border:none;background:none;width:100%;text-align:left;font:14px system-ui,-apple-system,sans-serif;color:var(--wa-ink)}
+.opt:hover{background:#F5F6F6}.opt small{display:block;color:var(--wa-sub);font-size:12px;margin-top:1px}
+.radio{width:18px;height:18px;border-radius:50%;border:2px solid #8696A0;flex:none}
+.opt.sel .radio{border-color:#00A884;box-shadow:inset 0 0 0 3px #fff;background:#00A884}
+.sh-foot{padding:10px 14px 14px;border-top:1px solid #E9EDEF}
+.sh-foot button{width:100%;padding:11px;border:none;border-radius:20px;background:#00A884;color:#fff;font:600 14.5px system-ui,-apple-system,sans-serif;cursor:pointer}
+.sh-foot button[disabled]{background:#B6C4C9;cursor:default}
+/* flow form */
+.flow-top{background:#fff;border-bottom:1px solid #E9EDEF}
+.steps{display:flex;gap:4px;padding:0 14px 10px}.steps i{flex:1;height:3px;border-radius:2px;background:#E9EDEF}.steps i.on{background:#00A884}
+.fbody{padding:14px 16px;display:grid;gap:12px;align-content:start}
+.fbody h3{margin:0;font-size:17px}
+.fbody p{margin:0;color:var(--wa-sub);font-size:13px;line-height:1.45}
+.fl label{display:block;font-size:12px;color:var(--wa-sub);margin-bottom:4px}
+.fl input,.fl select,.fl textarea{width:100%;border:1px solid #D1D7DB;border-radius:8px;padding:10px;font:14px system-ui,-apple-system,sans-serif;color:var(--wa-ink);background:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid #D1D7DB;background:#fff;border-radius:16px;padding:6px 10px;font:13px system-ui,-apple-system,sans-serif;cursor:pointer;color:var(--wa-ink)}
+.chips button.on{border-color:#00A884;background:#E7FCE3}
+.rev{border:1px solid #E9EDEF;border-radius:10px;overflow:hidden}
+.rev div{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font-size:13.5px;border-bottom:1px solid #F0F2F5}
+.rev div:last-child{border-bottom:none}.rev span{color:var(--wa-sub)}.rev b{text-align:right}
+.warn{background:#FFF4E5;color:#8A4B08;border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.45}
+/* in-app browser */
+.br-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F0F2F5;border-bottom:1px solid #E1E5E7;font-size:12px;color:#54656F}
+.br-bar .url{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#fff;border-radius:14px;padding:5px 10px;font-family:var(--mono);font-size:11px}
+.web{padding:14px 16px;display:grid;gap:12px;font-size:13.5px;color:#1F2937}
+.web .brand{display:flex;gap:10px;align-items:center}.web .logo{width:34px;height:34px;border-radius:8px;background:#0B7A5E;color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.web h3{margin:0;font-size:16px}.web .muted{color:#6B7280;font-size:12.5px}
+.web .price{font-size:24px;font-weight:700}
+.web .btn{border:none;border-radius:10px;padding:11px;background:#0B7A5E;color:#fff;font:600 14px system-ui,-apple-system,sans-serif;cursor:pointer;width:100%}
+.web .btn.alt{background:#fff;color:#0B7A5E;border:1.5px solid #0B7A5E}
+.web .chk{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #E5E7EB;border-radius:8px}
+.web .note{background:#ECFDF5;color:#065F46;border-radius:8px;padding:9px 11px;font-size:12.5px}
+/* log */
+.log{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.log h2{margin:0 0 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
+.log ol{margin:0;padding-left:20px;display:grid;gap:4px;font:12px/1.5 var(--mono);color:var(--ink);max-height:220px;overflow-y:auto}
+.log li span{color:var(--sub)}
+.log .empty{color:var(--sub);font-size:12.5px}
+</style>
+
+<div class="page">
+  <header>
+    <h1>WhatsApp workspace — how it would feel</h1>
+    <p class="lede">Left phone: a signia team member chatting with the business number. Right phone: an outsider (a customer, not necessarily a ContractNest user). Pick a journey or type <b>hi</b>. Each bubble is tagged with the WhatsApp surface it uses, so you can see where it is plain chat, a tappable list, a native form (Flow), an approved template, or a secure link that opens a ContractNest page inside WhatsApp. Sample data only.</p>
+  </header>
+
+  <div class="grid" id="grid">
+    <aside class="rail">
+      <div class="box">
+        <h2>Journeys</h2>
+        <div class="jr" id="jr">
+          <button data-j="share"><span class="n">A</span><span>Share a package<small>Outsider buys it themselves, like the web storefront</small></span></button>
+          <button data-j="create"><span class="n">B</span><span>Create a contract<small>From a template, in a WhatsApp Flow form</small></span></button>
+          <button data-j="contract"><span class="n">C</span><span>View a contract<small>Summary, services, dues</small></span></button>
+          <button data-j="services"><span class="n">D</span><span>Today's services<small>Start, fill checklist (Smart Form link), done</small></span></button>
+          <button data-j="appts"><span class="n">E</span><span>Appointments<small>Confirm, or reschedule in a Flow</small></span></button>
+        </div>
+      </div>
+      <div class="box">
+        <h2>What each tag means</h2>
+        <div class="legend">
+          <div><span class="tag msg">Message</span><span>Plain text bubble</span></div>
+          <div><span class="tag btn">Buttons</span><span>Up to 3 tap buttons under a message</span></div>
+          <div><span class="tag list">List</span><span>"Choose" sheet, up to 10 rows</span></div>
+          <div><span class="tag flow">Flow</span><span>Native full-screen form inside WhatsApp</span></div>
+          <div><span class="tag tpl">Template</span><span>Pre-approved message the business may send first</span></div>
+          <div><span class="tag link">Secure link</span><span>Short-lived ContractNest page opened inside WhatsApp</span></div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="tagsOn" checked> Show tags on bubbles</label>
+        <button class="reset" id="reset">Clear both chats</button>
+      </div>
+    </aside>
+
+    <section class="col">
+      <div class="who"><b>Kamal</b> · signia team member · verified +91 98851 64233</div>
+      <div class="phone"><div class="screen" id="A">
+        <div class="wa-head"><div class="av">CN</div><div><div class="nm">signia · ContractNest</div><div class="st">Business account</div></div></div>
+        <div class="chat" id="chatA"></div>
+        <form class="composer" id="formA"><input id="inA" placeholder="Message" autocomplete="off"><button aria-label="Send">➤</button></form>
+      </div></div>
+    </section>
+
+    <section class="col">
+      <div class="who"><b>Ravi Kumar</b> · customer (outsider) · may not use ContractNest</div>
+      <div class="phone"><div class="screen" id="B">
+        <div class="wa-head" id="headB"><div class="av" style="background:#FDE7EF;color:#BE185D">RK</div><div><div class="nm">Ravi's WhatsApp</div><div class="st">Chats</div></div></div>
+        <div class="chat" id="chatB"></div>
+        <div class="composer"><input placeholder="Ravi only receives in this demo" disabled></div>
+      </div></div>
+    </section>
+  </div>
+
+  <div class="log"><h2>Behind the scenes (what ContractNest checks and does)</h2><ol id="log"></ol><div class="empty" id="logEmpty">Nothing yet. Each step adds a line here.</div></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const chatA=$('#chatA'), chatB=$('#chatB');
+const time=()=>{const d=new Date();return d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let seq=1031, tkt=10021, bChatStarted=false;
+
+/* ---------- sample data ---------- */
+const PACKAGES=[
+  {id:'p1',name:'Lift AMC — Annual',price:'₹48,000 / year',sub:'12 visits · breakdown cover',link:'contractnest.com/p/sf-lift-amc'},
+  {id:'p2',name:'Lift Breakdown Visit',price:'₹2,500 / visit',sub:'One-time call-out',link:'contractnest.com/p/sf-lift-visit'},
+  {id:'p3',name:'DG Set Quarterly Service',price:'₹18,000 / year',sub:'4 visits · oil + filter',link:'contractnest.com/p/sf-dg-qtr'},
+];
+const CONTRACTS=[
+  {id:'CN-1012',buyer:'Sunrise Apartments',pkg:'Lift AMC — Annual',status:'Active',value:'₹48,000',next:'Fri 10 Oct · visit 3 of 12',due:'₹12,000 overdue (Q2)'},
+  {id:'CN-1015',buyer:'Green Valley Villas',pkg:'DG Set Quarterly Service',status:'Active',value:'₹18,000',next:'Today · visit 1 of 4',due:'Nothing due'},
+  {id:'CN-1009',buyer:'Lotus Towers',pkg:'Lift AMC — Annual',status:'Waiting for acceptance',value:'₹48,000',next:'Starts on acceptance',due:'—'},
+];
+const SERVICES=[
+  {id:'s1',contract:'CN-1012',buyer:'Sunrise Apartments',what:'Lift AMC · visit 3 of 12',when:'Today 11:00',tech:'Ravi (technician)'},
+  {id:'s2',contract:'CN-1015',buyer:'Green Valley Villas',what:'DG Set · visit 1 of 4',when:'Today 15:00',tech:'Unassigned'},
+];
+const APPTS=[
+  {id:'a1',buyer:'Sunrise Apartments',what:'Lift AMC visit 3',when:'Fri 10 Oct, 11:00',state:'Confirmed'},
+  {id:'a2',buyer:'Green Valley Villas',what:'DG Set visit 1',when:'Sat 11 Oct, 10:00',state:'Waiting for customer'},
+  {id:'a3',buyer:'Lotus Towers',what:'Lift survey',when:'Customer suggested Mon 13 Oct, 16:00',state:'Needs your OK'},
+];
+
+/* ---------- chat rendering ---------- */
+function add(chat, side, tag, html, actions){
+  const row=document.createElement('div'); row.className='row '+side;
+  const tags={msg:'Message',btn:'Buttons',list:'List',flow:'Flow',link:'Secure link',tpl:'Template'};
+  row.innerHTML=`<span class="tag ${tag}">${tags[tag]}</span><div class="b">${html}<span class="meta">${time()}${side==='out'?' ✓✓':''}</span></div>`;
+  if(actions&&actions.length){
+    const acts=document.createElement('div'); acts.className='acts';
+    actions.forEach(a=>{const b=document.createElement('button');b.type='button';b.innerHTML=(a.ic?`<span class="ic">${a.ic}</span>`:'')+esc(a.label);
+      b.onclick=()=>{ if(a.once){acts.querySelectorAll('button').forEach(x=>x.disabled=true);} a.fn(); }; acts.appendChild(b);});
+    row.appendChild(acts);
+  }
+  chat.appendChild(row); chat.scrollTop=chat.scrollHeight; return row;
+}
+const sys=(chat,t)=>{const d=document.createElement('div');d.className='sys';d.textContent=t;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;};
+const me=(t,tag='msg')=>add(chatA,'out',tag,esc(t));
+const bot=(tag,html,actions)=>setTimeout(()=>add(chatA,'in',tag,html,actions),380);
+function log(t){ $('#logEmpty').hidden=true; const li=document.createElement('li'); li.innerHTML=t; $('#log').appendChild(li); li.scrollIntoView({block:'nearest'}); }
+const IDN='<span>verified phone ✓ · workspace on ✓ · member on ✓ · Live forced</span>';
+
+/* ---------- overlays inside phone A / B ---------- */
+function overlay(screenId, sheetHtml, full){
+  const scr=document.getElementById(screenId);
+  const ov=document.createElement('div'); ov.className='overlay';
+  ov.innerHTML=`<div class="sheet ${full?'full':''}">${sheetHtml}</div>`;
+  scr.appendChild(ov); const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  return {el:ov, close};
+}
+
+/* WhatsApp list message: "Choose" sheet */
+function listSheet(title, sections, onPick){
+  let html=`<div class="sh-head"><button class="x" aria-label="Close">×</button><div>${esc(title)}</div></div><div class="sh-body">`;
+  sections.forEach(s=>{ html+=`<div class="sec">${esc(s.title)}</div>`; s.rows.forEach(r=>{ html+=`<button class="opt" data-id="${r.id}"><span>${esc(r.title)}<small>${esc(r.sub||'')}</small></span><span class="radio"></span></button>`; }); });
+  html+=`</div><div class="sh-foot"><button disabled>Send</button></div>`;
+  const o=overlay('A',html); let picked=null;
+  o.el.querySelector('.x').onclick=o.close;
+  o.el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ o.el.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); picked=b.dataset.id; o.el.querySelector('.sh-foot button').disabled=false; });
+  o.el.querySelector('.sh-foot button').onclick=()=>{ if(!picked) return; const row=sections.flatMap(s=>s.rows).find(r=>r.id===picked); o.close(); onPick(row); };
+}
+
+/* in-app browser */
+function browser(screenId, url, bodyHtml, wire){
+  const html=`<div class="br-bar"><button class="x" aria-label="Close" style="background:none;border:none;font-size:18px;cursor:pointer;color:#54656F">×</button><span class="url">🔒 ${esc(url)}</span></div><div class="sh-body"><div class="web">${bodyHtml}</div></div>`;
+  const o=overlay(screenId, html, true); o.el.querySelector('.x').onclick=o.close; if(wire) wire(o); return o;
+}
+
+/* ---------- main menu ---------- */
+function menu(){
+  bot('list',`<span class="hd">Hi Kamal 👋</span>What would you like to do in <b>signia</b>?`,[{label:'Open menu',ic:'☰',fn:()=>listSheet('signia — menu',[
+    {title:'Sell',rows:[{id:'share',title:'Share a package',sub:'Send a buy link to anyone'},{id:'create',title:'Create a contract',sub:'From a package template'}]},
+    {title:'Work',rows:[{id:'contract',title:'View a contract',sub:'Status, services, dues'},{id:'services',title:"Today's services",sub:'Start · checklist · done'},{id:'appts',title:'Appointments',sub:'Confirm or reschedule'}]}
+  ], r=>{ me(r.title,'list'); run(r.id,true); })}]);
+}
+
+/* ---------- A: share a package ---------- */
+function shareFlow(){
+  log(`"Share a package" from +91 98851 64233 ${IDN}`);
+  bot('list','Which package do you want to share?',[{label:'Choose package',ic:'☰',fn:()=>listSheet('Your packages',[{title:'Published packages',rows:PACKAGES.map(p=>({id:p.id,title:p.name,sub:p.price}))}],r=>{
+    const p=PACKAGES.find(x=>x.id===r.id); me(p.name,'list'); log(`read storefront packages for signia (Live) → <b>${esc(p.name)}</b> · link ${esc(p.link)}`);
+    bot('btn',`<div class="card"><div class="ci">${esc(p.name)}</div><div class="cb"><b>${esc(p.price)}</b>${esc(p.sub)} · signia</div></div>Forward this to your customer. They can view the package, verify their mobile and buy. No login needed.\n<span class="ft">${esc(p.link)}</span>`,
+      [{label:'Forward to a contact',ic:'↪',once:true,fn:()=>forwardTo(p)},{label:'Copy link',ic:'⧉',fn:()=>sys(chatA,'Link copied')}]);
+  })}]);
+}
+function forwardTo(p){
+  sys(chatA,'Forwarded to Ravi Kumar');
+  log(`forwarded by Kamal from his own WhatsApp. ContractNest sends nothing here, so no template or opt-in is needed`);
+  openB();
+  add(chatB,'in','msg',`<span class="fw">↪ Forwarded</span><div class="card"><div class="ci">${esc(p.name)}</div><div class="cb"><b>${esc(p.price)}</b>${esc(p.sub)} · signia</div></div><span class="ft">${esc(p.link)}</span>`,
+    [{label:'Open link',ic:'🔗',fn:()=>buyPage(p)}]);
+}
+function openB(){ if(bChatStarted) return; bChatStarted=true; $('#headB').innerHTML='<div class="av">KS</div><div><div class="nm">Kamal (signia)</div><div class="st">and signia · ContractNest</div></div>'; }
+function buyPage(p){
+  browser('B', p.link, `<div class="brand"><div class="logo">SG</div><div><h3>signia</h3><div class="muted">Hyderabad · GSTIN 36ABCDE1234F1Z5</div></div></div>
+    <div><div class="muted">Package</div><h3>${esc(p.name)}</h3><div class="muted">${esc(p.sub)}</div></div><div class="price">${esc(p.price)}</div>
+    <div class="fl"><label>Your mobile</label><input value="+91 90000 00099" aria-label="Mobile"></div>
+    <button class="btn" id="otp">Verify mobile and buy</button><div id="after"></div>`, o=>{
+      o.el.querySelector('#otp').onclick=()=>{
+        log(`<b>Ravi</b> on the existing storefront page: OTP verified → <b>purchase_from_storefront</b> → contract CN-${seq} + Ravi as a contact (lead) → review link`);
+        o.el.querySelector('#after').innerHTML=`<div class="note">Request sent. signia will connect with you. You can review and pay below.</div><button class="btn alt" style="margin-top:8px">Review CN-${seq} and pay</button>`;
+        o.el.querySelector('#otp').disabled=true;
+        setTimeout(()=>{ add(chatA,'in','tpl',`<span class="hd">New request</span>Ravi Kumar asked for <b>${esc(p.name)}</b> from your shared link.\nContract <b>CN-${seq}</b> is waiting for his acceptance.`,[{label:'View contract',ic:'📄',fn:()=>contractCard({id:'CN-'+seq,buyer:'Ravi Kumar',pkg:p.name,status:'Waiting for acceptance',value:p.price,next:'Starts on acceptance',due:'—'})}]); seq++; log('notified the team member about the new lead (approved template, because it is business-initiated)'); },900);
+      };
+    });
+}
+
+/* ---------- B: create contract (Flow) ---------- */
+function createFlow(){
+  log(`"Create a contract" ${IDN}`);
+  log(`send Flow "create_contract v1" with signia's 3 published packages included in the message (no live data endpoint needed)`);
+  bot('flow',`<span class="hd">Create a contract</span>Pick a package, enter the customer and a start date. You'll review before anything is sent.`,[{label:'Open form',ic:'📝',fn:openCreateFlow}]);
+}
+function flowShell(title, steps, cur, inner, footLabel){
+  return `<div class="flow-top"><div class="sh-head"><button class="x" aria-label="Close">×</button><div>${esc(title)}<div class="sub">signia · ContractNest</div></div></div><div class="steps">${Array.from({length:steps},(_,i)=>`<i class="${i<=cur?'on':''}"></i>`).join('')}</div></div><div class="sh-body"><div class="fbody">${inner}</div></div><div class="sh-foot"><button id="next">${esc(footLabel)}</button></div>`;
+}
+function openCreateFlow(){
+  const st={pkg:null,name:'Ravi Kumar',mobile:'+91 90000 00099',start:'Today'};
+  const o=overlay('A','',true); const sheet=o.el.querySelector('.sheet');
+  const screens=[
+    ()=>[`<h3>Which package?</h3><p>Only your published packages are listed.</p>`+PACKAGES.map(p=>`<button class="opt ${st.pkg===p.id?'sel':''}" data-p="${p.id}" style="padding:10px 0"><span>${esc(p.name)}<small>${esc(p.price)} · ${esc(p.sub)}</small></span><span class="radio"></span></button>`).join(''),'Continue'],
+    ()=>[`<h3>Who is it for?</h3><p>Their mobile receives the contract to review and accept.</p><div class="fl"><label for="fn">Customer name</label><input id="fn" value="${esc(st.name)}"></div><div class="fl"><label for="fm">Mobile (with country code)</label><input id="fm" value="${esc(st.mobile)}"></div><div class="fl"><label for="fe">Email (optional)</label><input id="fe" placeholder="name@example.com"></div>`,'Continue'],
+    ()=>[`<h3>When does it start?</h3><div class="chips">${['Today','1st of next month','Pick a date'].map(c=>`<button class="${st.start===c?'on':''}" data-c="${c}">${c}</button>`).join('')}</div><div class="fl"><label for="fd">Start date</label><input id="fd" type="date" value="2026-10-08"></div>`,'Review'],
+    ()=>{const p=PACKAGES.find(x=>x.id===st.pkg); return [`<h3>Review</h3><div class="rev"><div><span>Package</span><b>${esc(p.name)}</b></div><div><span>Listed price</span><b>${esc(p.price)}</b></div><div><span>Customer</span><b>${esc(st.name)}</b></div><div><span>Mobile</span><b>${esc(st.mobile)}</b></div><div><span>Starts</span><b>${esc(st.start)}</b></div><div><span>How they pay</span><b>UPI / online, on acceptance</b></div></div><p>On Confirm, ContractNest creates the contract and sends ${esc(st.name.split(' ')[0])} the approved "review your contract" WhatsApp. The exact amount with tax comes back in the confirmation.</p>`,'Confirm and send']}
+  ];
+  let cur=0;
+  const render=()=>{ const [inner,foot]=screens[cur](); sheet.innerHTML=flowShell('Create a contract',4,cur,inner,foot);
+    sheet.querySelector('.x').onclick=()=>{o.close(); sys(chatA,'Form closed, nothing was created');};
+    sheet.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{st.pkg=b.dataset.p; render();});
+    sheet.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{st.start=b.dataset.c; render();});
+    const nx=sheet.querySelector('#next'); if(cur===0&&!st.pkg) nx.disabled=true;
+    nx.onclick=()=>{ if(cur===1){st.name=sheet.querySelector('#fn').value||st.name; st.mobile=sheet.querySelector('#fm').value||st.mobile;}
+      if(cur<3){cur++;render();} else { o.close(); submitCreate(st); } };
+  };
+  render();
+}
+function submitCreate(st){
+  const p=PACKAGES.find(x=>x.id===st.pkg);
+  me(`📝 Form submitted · Create a contract\n${p.name} · ${st.name}`,'flow');
+  log(`completed form arrives → re-check member, switches, Live, package still published → idempotency key <span>flow-msg-id</span>`);
+  log(`<b>create contract from template</b> (same path as storefront purchase) → CN-${seq} · ₹48,000 + GST ₹8,640 = ₹56,640 → existing <b>contract review</b> WhatsApp + email to customer`);
+  const id='CN-'+seq; seq++;
+  bot('btn',`✅ <b>${id}</b> created and sent to <b>${esc(st.name)}</b> for review.\n${esc(p.name)} · ₹48,000 + GST ₹8,640 = <b>₹56,640</b>\nYou'll get a message when he accepts or pays.`,[{label:'View contract',ic:'📄',fn:()=>contractCard({id,buyer:st.name,pkg:p.name,status:'Waiting for acceptance',value:'₹56,640',next:'Starts on acceptance',due:'—'})},{label:'Create another',ic:'＋',fn:()=>{me('Create another','btn');createFlow();}}]);
+  setTimeout(()=>{ openB(); add(chatB,'in','tpl',`<span class="hd">signia has sent you a contract</span>Hi ${esc(st.name.split(' ')[0])}, signia has sent you <b>${esc(p.name)}</b> (${id}) for ₹56,640. Please review and accept.`,[{label:'Review contract',ic:'📄',fn:()=>reviewPage(id,p)}]); },900);
+}
+function reviewPage(id,p){
+  browser('B','contractnest.com/contract-review?cnak=…',`<div class="brand"><div class="logo">SG</div><div><h3>signia</h3><div class="muted">Contract ${id}</div></div></div>
+    <div class="rev" style="border:1px solid #E5E7EB;border-radius:10px"><div><span>Package</span><b>${esc(p.name)}</b></div><div><span>Total</span><b>₹56,640</b></div><div><span>Start</span><b>8 Oct 2026</b></div></div>
+    <button class="btn" id="acc">Accept and pay by UPI</button><div id="after"></div><div class="muted">The existing contract review page; nothing new for the customer.</div>`, o=>{
+      o.el.querySelector('#acc').onclick=()=>{ o.el.querySelector('#after').innerHTML='<div class="note">Accepted. Payment reference sent to signia for confirmation.</div>'; o.el.querySelector('#acc').disabled=true;
+        log(`customer accepted ${id} on the existing review page → contract active · payment declared`);
+        setTimeout(()=>add(chatA,'in','tpl',`🟢 <b>${esc('Ravi Kumar')}</b> accepted <b>${id}</b> and declared a UPI payment of ₹56,640.`,[{label:'Confirm payment',ic:'✓',once:true,fn:()=>{me('Confirm payment','btn'); log('confirm declaration (existing payment confirm) → receipt'); bot('msg','Payment confirmed. Receipt RCP-10116 sent to Ravi.');}}]),700);
+      };
+    });
+}
+
+/* ---------- C: contract view ---------- */
+function contractFlow(){
+  log(`"View a contract" ${IDN} · read contracts list (revenue, Live, filtered to what Kamal may see)`);
+  bot('list','Which contract?',[{label:'Choose contract',ic:'☰',fn:()=>listSheet('Contracts',[{title:'Active',rows:CONTRACTS.filter(c=>c.status==='Active').map(c=>({id:c.id,title:`${c.id} · ${c.buyer}`,sub:c.pkg}))},{title:'Waiting',rows:CONTRACTS.filter(c=>c.status!=='Active').map(c=>({id:c.id,title:`${c.id} · ${c.buyer}`,sub:c.status}))}],r=>{ const c=CONTRACTS.find(x=>x.id===r.id); me(r.title,'list'); contractCard(c); })}]);
+}
+function contractCard(c){
+  log(`read contract ${esc(c.id)} → permission checked for this record`);
+  bot('btn',`<span class="hd">${esc(c.id)} · ${esc(c.buyer)}</span>${esc(c.pkg)}\nStatus: <b>${esc(c.status)}</b> · Value ${esc(c.value)}\nNext: ${esc(c.next)}\nDues: ${esc(c.due)}`,[
+    {label:'Services',ic:'🛠',fn:()=>{me('Services','btn'); bot('msg',`<b>${esc(c.id)} services</b>\n✓ Visit 1 · 10 Aug · done\n✓ Visit 2 · 10 Sep · done\n• Visit 3 · Fri 10 Oct 11:00 · confirmed\n• Visit 4 · 10 Nov · not scheduled`);}},
+    {label:'Payments',ic:'₹',fn:()=>{me('Payments','btn'); bot('btn',`<b>${esc(c.id)} payments</b>\nPaid ₹24,000 of ${esc(c.value)}\n${esc(c.due)}`,[{label:'Send reminder to customer',ic:'🔔',once:true,fn:()=>{me('Send reminder','btn'); log('nudge payment (existing collections tool) → approved reminder template to customer'); bot('msg','Reminder sent to Sunrise Apartments on WhatsApp.');}}]);}},
+    {label:'Open full contract',ic:'🔗',fn:()=>{me('Open full contract','btn'); secureContract(c);}}
+  ]);
+}
+function secureContract(c){
+  log(`issue secure link · one record (${esc(c.id)}) · 30 min · tied to Kamal's verified phone`);
+  bot('link',`Opens ${esc(c.id)} in ContractNest. Valid 30 minutes, only for this contract.\n<span class="ft">contractnest.com/w/<i>one-time-token</i></span>`,[{label:'Open',ic:'🔗',fn:()=>browser('A','contractnest.com/w/…',`<div class="brand"><div class="logo">CN</div><div><h3>${esc(c.id)} · ${esc(c.buyer)}</h3><div class="muted">The existing contract page, phone layout</div></div></div><div class="rev" style="border:1px solid #E5E7EB;border-radius:10px"><div><span>Status</span><b>${esc(c.status)}</b></div><div><span>Value</span><b>${esc(c.value)}</b></div><div><span>Next</span><b>${esc(c.next)}</b></div></div><div class="muted">Tabs: Overview · Services · Financials · Documents · Audit</div>`)}]);
+}
+
+/* ---------- D: today's services ---------- */
+function servicesFlow(){
+  log(`"Today's services" ${IDN} · read Ops board, services lane, today, Live`);
+  bot('list',`You have <b>${SERVICES.length} services</b> today.`,[{label:'See services',ic:'☰',fn:()=>listSheet("Today's services",[{title:'Thu 8 Oct',rows:SERVICES.map(s=>({id:s.id,title:`${s.when.replace('Today ','')} · ${s.buyer}`,sub:`${s.what} · ${s.tech}`}))}],r=>{ const s=SERVICES.find(x=>x.id===r.id); me(r.title,'list'); serviceCard(s); })}]);
+}
+function serviceCard(s){
+  bot('btn',`<span class="hd">${esc(s.buyer)} · ${esc(s.contract)}</span>${esc(s.what)}\n${esc(s.when)} · ${esc(s.tech)}`,[
+    {label:'Start service',ic:'▶',once:true,fn:()=>{me('Start service','btn'); log(`<b>start visit</b> (existing Ops tool) → ticket TKT-${tkt} · in progress · board and contract page update`); const t=tkt++;
+      bot('btn',`▶ Started · TKT-${t}\nWhen you finish, fill the checklist. The visit closes when it is submitted.`,[{label:'Fill checklist',ic:'🔗',fn:()=>{me('Fill checklist','btn'); smartForm(s,t);}},{label:'Mark done without checklist',ic:'✓',once:true,fn:()=>{me('Mark done','btn'); bot('msg','This service requires its checklist before it can be marked done. Tap Fill checklist.');}}]);}},
+    {label:'Assign / reschedule',ic:'🗓',fn:()=>{me('Assign / reschedule','btn'); bot('flow','Pick a new slot or technician.',[{label:'Open form',ic:'📝',fn:()=>rescheduleFlow({buyer:s.buyer,what:s.what})}]);}},
+    {label:'Open contract',ic:'📄',fn:()=>{me('Open contract','btn'); contractCard(CONTRACTS.find(c=>c.id===s.contract));}}
+  ]);
+}
+function smartForm(s,t){
+  log(`issue secure link → the tenant's own Smart Form for this visit (not a WhatsApp Flow: forms are tenant-built and versioned)`);
+  bot('link',`Checklist for ${esc(s.buyer)} · ${esc(s.what)}\nOpens your Smart Form. Valid 30 minutes.\n<span class="ft">contractnest.com/w/<i>one-time-token</i></span>`,[{label:'Open checklist',ic:'🔗',fn:()=>browser('A','contractnest.com/w/…',`<div class="brand"><div class="logo">SG</div><div><h3>Lift AMC visit checklist</h3><div class="muted">${esc(s.buyer)} · TKT-${t} · v3</div></div></div>
+    <label class="chk"><input type="checkbox" checked> Door interlocks tested</label><label class="chk"><input type="checkbox" checked> Brake and rope inspected</label><label class="chk"><input type="checkbox"> Emergency alarm tested</label>
+    <div class="fl"><label>Motor current (A)</label><input value="18.4"></div><div class="fl"><label>Photos</label><input type="file" aria-label="Photos"></div><div class="fl"><label>Customer sign-off name</label><input value="Mr Rao (secretary)"></div>
+    <button class="btn" id="sub">Submit checklist</button><div id="after"></div>`, o=>{ o.el.querySelector('#sub').onclick=()=>{ o.el.querySelector('#after').innerHTML='<div class="note">Submitted. You can close this page.</div>'; o.el.querySelector('#sub').disabled=true;
+      log(`form submitted → visit proven → <b>complete visit</b> · TKT-${t} closed · customer gets the existing "service completed" WhatsApp`);
+      setTimeout(()=>{ o.close(); add(chatA,'in','msg',`✅ Checklist received. <b>${esc(s.what)}</b> for ${esc(s.buyer)} is done.\nNext visit: 10 Nov (not scheduled).`); },700); }; })}]);
+}
+
+/* ---------- E: appointments ---------- */
+function apptFlow(){
+  log(`"Appointments" ${IDN} · read appointment items (Live)`);
+  bot('list',`<b>3 appointments</b> this week · 1 needs your OK`,[{label:'See appointments',ic:'☰',fn:()=>listSheet('Appointments',[{title:'Needs your OK',rows:APPTS.filter(a=>a.state==='Needs your OK').map(a=>({id:a.id,title:a.buyer,sub:a.when}))},{title:'This week',rows:APPTS.filter(a=>a.state!=='Needs your OK').map(a=>({id:a.id,title:`${a.buyer} · ${a.state}`,sub:a.when}))}],r=>{ const a=APPTS.find(x=>x.id===r.id); me(r.title,'list'); apptCard(a); })}]);
+}
+function apptCard(a){
+  const acts=a.state==='Needs your OK'
+    ? [{label:'Confirm this time',ic:'✓',once:true,fn:()=>{me('Confirm this time','btn'); log('confirm slot (existing tool) → clash check: none → customer gets the existing "visit scheduled" WhatsApp'); bot('msg',`Confirmed: ${esc(a.buyer)} · Mon 13 Oct, 16:00. They have been told.`);}},
+       {label:'Suggest another time',ic:'🗓',fn:()=>{me('Suggest another time','btn'); bot('flow','Pick a new slot.',[{label:'Open form',ic:'📝',fn:()=>rescheduleFlow(a)}]);}}]
+    : [{label:'Reschedule',ic:'🗓',fn:()=>{me('Reschedule','btn'); bot('flow','Pick a new slot.',[{label:'Open form',ic:'📝',fn:()=>rescheduleFlow(a)}]);}},{label:'Ask customer again',ic:'↻',once:true,fn:()=>{me('Ask customer again','btn'); log('ask visit slot (existing tool) → approved template with slot link'); bot('msg',`Asked ${esc(a.buyer)} again. You'll see their answer here.`);}}];
+  bot('btn',`<span class="hd">${esc(a.buyer)}</span>${esc(a.what)}\n${esc(a.when)}\nStatus: <b>${esc(a.state)}</b>`,acts);
+}
+function rescheduleFlow(a){
+  const st={day:'Mon 13 Oct',time:'10:00',tech:'Ravi'}; const o=overlay('A','',true); const sheet=o.el.querySelector('.sheet'); let cur=0;
+  const screens=[
+    ()=>[`<h3>New slot · ${esc(a.buyer)}</h3><p>${esc(a.what)}</p><div class="fl"><label>Day</label><div class="chips">${['Sat 11 Oct','Mon 13 Oct','Tue 14 Oct'].map(d=>`<button data-d="${d}" class="${st.day===d?'on':''}">${d}</button>`).join('')}</div></div><div class="fl"><label>Time</label><div class="chips">${['10:00','12:00','15:00','17:00'].map(t=>`<button data-t="${t}" class="${st.time===t?'on':''}">${t}</button>`).join('')}</div></div><div class="fl"><label for="tech">Technician</label><select id="tech">${['Ravi','Suresh','Unassigned'].map(x=>`<option ${st.tech===x?'selected':''}>${x}</option>`).join('')}</select></div>`,'Review'],
+    ()=>[`<h3>Review</h3><div class="rev"><div><span>Customer</span><b>${esc(a.buyer)}</b></div><div><span>Slot</span><b>${esc(st.day)}, ${esc(st.time)}</b></div><div><span>Technician</span><b>${esc(st.tech)}</b></div><div><span>Customer is asked</span><b>Yes, by WhatsApp</b></div></div>${st.day==='Sat 11 Oct'?'<div class="warn">⚠ Ravi already has a service at this time. You can still propose it.</div>':''}<p>The customer gets a link to accept or suggest another time. Nothing is confirmed until they accept.</p>`,'Propose slot']
+  ];
+  const render=()=>{ const [inner,foot]=screens[cur](); sheet.innerHTML=flowShell('Reschedule',2,cur,inner,foot);
+    sheet.querySelector('.x').onclick=()=>{o.close(); sys(chatA,'Form closed, nothing changed');};
+    sheet.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{st.day=b.dataset.d;render();});
+    sheet.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{st.time=b.dataset.t;render();});
+    const tech=sheet.querySelector('#tech'); if(tech) tech.onchange=()=>st.tech=tech.value;
+    sheet.querySelector('#next').onclick=()=>{ if(cur===0){cur=1;render();} else { o.close();
+      me(`📝 Form submitted · Reschedule\n${a.buyer} · ${st.day}, ${st.time}`,'flow');
+      log(`completed form → re-check member/Live → <b>schedule visit</b> (proposed, existing tool) → clash check ${st.day==='Sat 11 Oct'?'warns: overlap':'clean'} → <b>ask visit slot</b> → customer template with slot link`);
+      bot('msg',`Proposed <b>${esc(st.day)}, ${esc(st.time)}</b> with ${esc(st.tech)} to ${esc(a.buyer)}. They'll get a link to accept.`);
+      setTimeout(()=>{ openB(); add(chatB,'in','tpl',`<span class="hd">Visit time from signia</span>signia proposes <b>${esc(st.day)}, ${esc(st.time)}</b> for ${esc(a.what)}. Does this work for you?`,[{label:'Accept',ic:'✓',once:true,fn:()=>{ add(chatB,'out','btn','Accept'); log('customer accepted on the existing slot link → appointment confirmed → visit moved'); setTimeout(()=>add(chatA,'in','tpl',`🟢 ${esc(a.buyer)} accepted ${esc(st.day)}, ${esc(st.time)}.`),600);}},{label:'Suggest another time',ic:'🗓',fn:()=>{}}]); },900);
+    } };
+  };
+  render();
+}
+
+/* ---------- router ---------- */
+const J={share:shareFlow,create:createFlow,contract:contractFlow,services:servicesFlow,appts:apptFlow};
+function run(id, fromMenu){
+  document.querySelectorAll('#jr button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.j===id));
+  if(!fromMenu) me({share:'Share a package',create:'Create a contract',contract:'Show my contracts',services:"Today's services",appts:'Appointments'}[id]);
+  J[id]();
+}
+document.querySelectorAll('#jr button').forEach(b=>b.onclick=()=>run(b.dataset.j));
+$('#formA').addEventListener('submit',e=>{ e.preventDefault(); const v=$('#inA').value.trim(); if(!v) return; $('#inA').value=''; me(v);
+  const t=v.toLowerCase();
+  if(/^(hi|hello|menu|hey)\b/.test(t)){ log(`message from +91 98851 64233 ${IDN}`); menu(); }
+  else if(t.includes('share')) shareFlow(); else if(t.includes('create')) createFlow(); else if(t.includes('contract')) contractFlow();
+  else if(t.includes('service')||t.includes('today')) servicesFlow(); else if(t.includes('appoint')||t.includes('slot')) apptFlow();
+  else bot('btn',"I can help with packages, contracts, services and appointments.",[{label:'Open menu',ic:'☰',fn:()=>{me('Menu','btn');menu();}}]);
+});
+$('#tagsOn').onchange=e=>document.getElementById('grid').classList.toggle('hide-tags',!e.target.checked);
+function boot(){ chatA.innerHTML=''; chatB.innerHTML=''; $('#log').innerHTML=''; $('#logEmpty').hidden=false; bChatStarted=false;
+  $('#headB').innerHTML='<div class="av" style="background:#FDE7EF;color:#BE185D">RK</div><div><div class="nm">Ravi\'s WhatsApp</div><div class="st">Chats</div></div>';
+  document.querySelectorAll('#jr button').forEach(b=>b.setAttribute('aria-pressed','false'));
+  sys(chatA,'Messages are end-to-end encrypted. signia uses ContractNest on this business account.');
+  add(chatA,'out','msg','hi'); setTimeout(menu,0);
+  sys(chatB,'Ravi receives forwarded links and messages from signia here.');
+}
+$('#reset').onclick=boot; boot();
+</script>
