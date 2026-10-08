@@ -218,3 +218,17 @@ Test (localhost, Test environment, crane):
   kamalcharan@okaxis / Kamal Charan.
   Follow-up (not built): when an uploaded QR's UPI ID differs from the typed
   one, warn instead of silently keeping the typed one.
+
+─── 2026-10-08 — Razorpay from the pay page: payment record not saved ──
+After fresh Razorpay Test keys, CN-1005 (crane, Test, ₹5,000) paid in the
+Razorpay popup but the page said "cnak, secret_code, request_id and
+gateway_payment_id are required". The pay page has no signed-in user, so
+payment-gateway sends created_by = '' and create_payment_request's
+('')::UUID failed inside its catch-all → no payment-request row → no
+request_id → verify refused. Razorpay order order_TlIF05rzNjsVtX was paid in
+TEST but is not recorded (test money; no action needed).
+business-model-v2/045 (APPLIED LIVE): empty created_by = no user. Probed in a
+rolled-back transaction (empty created_by → success). verify_gateway_payment
+does not pass a user, so nothing else needed.
+Also: vikuna's and tax's Razorpay TEST rows are the June-2025 copy whose keys
+Razorpay rejects ("Authentication failed"); crane now has fresh Test keys.

@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════
+BATCH: session-timeout (2026-10-08) — UI only
+═══════════════════════════════════════════════════
+Owner: after paying on the review page, "Sign up" landed in an old session
+(vendor v, days old). Root cause: sign-up silently turned "remember me" ON
+(login kept in localStorage forever), and the 15-minute logout was a
+setTimeout inside each tab — paused by sleeping laptops / background tabs,
+restarted by any click, focus or reload — so it fired on some pages and not
+others. Owner decisions: no remember-me; 15 min of INACTIVITY logs out;
+coming back after 15 min = logged out; a different user logging in clears
+the previous session; same browser = same session in every tab; no lock
+screen — just log off.
+
+Files (contractnest-ui/src):
+  utils/auth/sessionActivity.ts (NEW) — ONE wall-clock inactivity rule:
+    last-activity time in localStorage shared by all tabs; stale after 15 min.
+  context/AuthContext.tsx —
+    · login always in localStorage (all tabs share it); remember-me removed
+      (old logins parked in sessionStorage are moved over once)
+    · every check compares the clock with the last activity: on app load /
+      reload (a stored login idle > 15 min is cleared before use), every 30 s,
+      when the tab becomes visible, and before any click/key/scroll/focus
+      counts as activity — sleep, background tabs, reloads, many tabs all
+      behave the same; one tab's activity keeps all tabs alive; logging out
+      (or expiring) in one tab logs out every tab
+    · lock screen retired (never shown; stale lock state cleared)
+    · login / sign-up first clear whoever was signed in before (tokens,
+      tenant, user, and Live/Test back to Live)
+    · logout(redirectTo?) — default /login
+  pages/auth/LoginPage.tsx — Google sign-in no longer flags remember-me off.
+  pages/auth/GoogleCallbackPage.tsx — clears the previous user, stores in
+    localStorage, starts the inactivity clock.
+  pages/contracts/review/index.tsx — success screen: if this browser is
+    signed in, says "signed in as <email · workspace>"; Log in / Sign up sign
+    that account out first. (Superset of payment-request-framework's copy —
+    copy THIS batch after it.)
+Verified: tsc 1153 with all staged UI batches = same as without (0 new);
+vite build passes. Not run in a browser.
+⚠ After deploying, everyone currently logged in is logged out ONCE (their
+  stored login has no activity time yet) — expected.
+
+Copy (after payment-request-framework and home-create-options):
+  Copy-Item "MANUAL_COPY_FILES\session-timeout\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Test:
+  [ ] Reload after copying → asked to log in once (expected)
+  [ ] Log in, open a second tab → already logged in there
+  [ ] Leave both idle 15+ min (or sleep the laptop) → next click/return lands
+      on /login in BOTH tabs
+  [ ] Work in tab B for 20 min while tab A idles → A is still logged in
+  [ ] Log out in one tab → the other goes to /login
+  [ ] Logged in as user A, log in as user B → B's workspace, Live mode,
+      nothing of A's
+  [ ] Pay page success screen while signed in → "This browser is signed in
+      as …"; Sign up → signs out, opens Sign up
