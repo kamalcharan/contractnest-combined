@@ -1,0 +1,13 @@
+BATCH: whatsapp-access-authkey (2026-10-08) — edge only, ALREADY DEPLOYED (whatsapp-access v6)
+Root cause of "Edge Function returned a non-2xx" on Verify and link: 503 "MSG91 server
+verification is not configured" — the function read secret MSG91_AUTHKEY while every other
+MSG91 caller (jtd-worker, sms, invites) reads MSG91_AUTH_KEY, which is the one that is set.
+Change (contractnest-edge/supabase/functions/whatsapp-access/index.ts):
+  · reads MSG91_AUTH_KEY
+  · also accepts the verified number when MSG91 returns it as the plain `message` string
+Copy into the repo so main matches what is deployed:
+  Copy-Item "MANUAL_COPY_FILES\whatsapp-access-authkey\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Test: /settings/users → request a fresh code → enter it → Verify and link →
+  "Your WhatsApp phone is verified and linked."
+Not changed: the panel still shows a generic "non-2xx" for any server error (supabase.functions.invoke
+does not surface the function's own message) — separate small UI fix if wanted.
