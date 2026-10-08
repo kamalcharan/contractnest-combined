@@ -5,7 +5,7 @@ import api from '../services/api';
 import { API_ENDPOINTS } from '../services/serviceURLs';
 import { vaniToast } from '../components/common/toast';
 import { setUserContext } from '../utils/sentry';
-import { sessionService } from '../services/sessionService';
+import { sessionService, clearLegacySessionKeys } from '../services/sessionService';
 import { isSideReady, normaliseSidePersona } from '../utils/perspective/sideReadiness';
 import type { SidePersona } from '../utils/perspective/sideReadiness';
 import { setPendingSideActivation, takeLandingPerspective } from '../utils/perspective/sideActivation';
@@ -373,6 +373,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         store.removeItem(STORAGE_KEYS.ONBOARDING_COMPLETE);
       });
       clearActivity();
+      clearLegacySessionKeys();
 
       delete api.defaults.headers.common['Authorization'];
       delete api.defaults.headers.common['x-tenant-id'];
@@ -1178,31 +1179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Login response - user is admin:', userData.is_admin);
       console.log('Login response - tenant count:', data.tenants?.length);
 
-      const activeSessionKey = `active_session_${data.user.id}`;
-      localStorage.removeItem(activeSessionKey);
-      sessionStorage.removeItem('session_conflict');
-
-      const sessionId = sessionService.initializeSession();
-
-      setTimeout(() => {
-        localStorage.setItem(activeSessionKey, sessionId);
-
-        if (window.BroadcastChannel) {
-          const channel = new BroadcastChannel('session_conflict');
-          channel.postMessage({
-            userId: data.user.id,
-            sessionId,
-            action: 'login'
-          });
-          channel.close();
-        }
-
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: activeSessionKey,
-          newValue: sessionId,
-          url: window.location.href
-        }));
-      }, 500);
+      sessionService.initializeSession();
 
       setTenants(data.tenants || []);
 
@@ -1325,25 +1302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_KEYS.USER_ID, data.user.id);
       setRegistrationStatus('complete');
 
-      const activeSessionKey = `active_session_${data.user.id}`;
-      localStorage.removeItem(activeSessionKey);
-      sessionStorage.removeItem('session_conflict');
-
-      const sessionId = sessionService.initializeSession();
-
-      setTimeout(() => {
-        localStorage.setItem(activeSessionKey, sessionId);
-
-        if (window.BroadcastChannel) {
-          const channel = new BroadcastChannel('session_conflict');
-          channel.postMessage({
-            userId: data.user.id,
-            sessionId,
-            action: 'login'
-          });
-          channel.close();
-        }
-      }, 500);
+      sessionService.initializeSession();
 
       if (data.tenant) {
         setTenants([data.tenant]);
@@ -1433,10 +1392,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       storage.setUserId(user.id);
       setRegistrationStatus(user.registration_status || 'complete');
 
-      const sessionId = sessionService.initializeSession();
-
-      const activeSessionKey = `active_session_${user.id}`;
-      localStorage.setItem(activeSessionKey, sessionId);
+      sessionService.initializeSession();
 
       setTenants(tenants || []);
       setHasGoogleAuth(true);
@@ -1550,18 +1506,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userId = user?.id;
 
     if (userId) {
-      localStorage.removeItem(`active_session_${userId}`);
-      sessionStorage.removeItem('session_conflict');
-
       if (window.BroadcastChannel) {
-        const channel = new BroadcastChannel('session_conflict');
-        channel.postMessage({
-          userId,
-          action: 'logout',
-          clearAll: true
-        });
-        channel.close();
-
         const lockChannel = new BroadcastChannel('lock_screen');
         lockChannel.postMessage({ action: 'logout' });
         lockChannel.close();

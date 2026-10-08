@@ -34,6 +34,21 @@ Files (contractnest-ui/src):
     signed in, says "signed in as <email · workspace>"; Log in / Sign up sign
     that account out first. (Superset of payment-request-framework's copy —
     copy THIS batch after it.)
+  hooks/useSessionConflict.ts — "Active Session Detected" check RETIRED
+    (2026-10-08, owner: "go ahead and remove"). It compared a per-tab id in
+    sessionStorage with one "active" id per user in localStorage, so any
+    second tab (or a tab still running old code, or old keys left behind by
+    a logged-out user) looked like a rival login. With one shared login per
+    browser there is nothing to conflict. The hook now always says "no
+    conflict", so the popup and the misc conflict page never show; their
+    files and App.tsx are untouched.
+  services/sessionService.ts — keeps the per-tab id (an API header) but no
+    longer claims the user; clearing removes every leftover
+    active_session_* / session_timestamp_* / session_conflict_* key.
+    AuthContext: login / sign-up / Google no longer claim the session or
+    broadcast it; logout no longer broadcasts a conflict; every clear of
+    the login (logout, 15-min expiry, stale login found on load, a
+    different user logging in) also wipes those leftover keys.
 Verified: tsc 1153 with all staged UI batches = same as without (0 new);
 vite build passes. Not run in a browser.
 ⚠ After deploying, everyone currently logged in is logged out ONCE (their
@@ -43,6 +58,8 @@ Copy (after payment-request-framework and home-create-options):
   Copy-Item "MANUAL_COPY_FILES\session-timeout\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
 Test:
+  [ ] CLOSE EVERY ContractNest tab once after copying (old-code tabs would
+      keep writing the old keys until closed), then open a fresh tab
   [ ] Reload after copying → asked to log in once (expected)
   [ ] Log in, open a second tab → already logged in there
   [ ] Leave both idle 15+ min (or sleep the laptop) → next click/return lands
@@ -53,3 +70,5 @@ Test:
       nothing of A's
   [ ] Pay page success screen while signed in → "This browser is signed in
       as …"; Sign up → signs out, opens Sign up
+  [ ] Your repro: log in as signia, log out, log in as crane, open 2-3 tabs
+      → no "Active Session Detected" popup anywhere
