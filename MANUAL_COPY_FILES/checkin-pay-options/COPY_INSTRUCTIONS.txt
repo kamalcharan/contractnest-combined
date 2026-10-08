@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════
+BATCH: checkin-pay-options (2026-10-08) — UI + API + DB
+═══════════════════════════════════════════════════
+Built on current main (ui a5a2e78 · api 552c285 · edge aff2930), i.e. after
+payment-request-framework was merged. Independent of home-create-options and
+session-timeout (no shared files) — copy order with those does not matter.
+
+Owner decisions: pay first, then check in (as today); desk QR first; show
+"Pay to UPI ID" (not hidden); generic for every tenant — online payment
+appears whenever the tenant has a payment gateway in that environment.
+
+WHAT IS REUSED (nothing parallel was built)
+  · Razorpay: the existing payment-gateway edge function, PaymentGatewayService,
+    create_payment_request, verify_gateway_payment, the payment webhook, and
+    the existing useRazorpayCheckout hook (one optional `verify` option added
+    so a no-login page can verify through its own route).
+  · Instalment settlement: the existing record_invoice_payment_with_allocations
+    (what the chair's confirm already uses). Same invoice rule as the chair's
+    confirm (gs_confirm_declaration).
+  · UPI: the shared OfflineUpiPay card + utils/payments/upi.ts (same card as
+    the contract pay page). Added an optional `layout="in_person"`; the pay
+    page and onboarding preview are unchanged.
+  · Duplicate checks, "already recorded today", "Did you pay?" gate, come-back
+    nudge, leave-for-UPI-app sheet: unchanged, now wired to the shared card.
+
+NEW, AND WHY IT IS NEEDED
+  The existing public pay routes are keyed to a contract review link
+  (CNAK + secret). Check-in only has the meeting QR token, so two token-
+  scoped routes bind the same gateway flow to the token:
+    POST /api/checkin/:token/pay/order   { member_id, billing_event_id }
+    POST /api/checkin/:token/pay/verify  { request_id, gateway_* }
+  The tenant always comes from the token on the server, never the client.
+
+DB — migration business-model-v2/046_checkin_online_payment.sql
+  ⚠ ALREADY APPLIED LIVE (2026-10-08). Do NOT re-run. Source of record only.
+  · gs_checkin_payment_config + `online`
+  · gs_checkin_gateway_order / _attach / _request (token-gated)
+  · fn_payment_request_allocations — a request's instalment, only while it
+    still has room (locks the instalment; a second payment for the same
+    instalment is recorded on the invoice without an allocation, never lost)
+  · verify_gateway_payment + process_payment_webhook now record through
+    record_invoice_payment_with_allocations. Requests without an allocation
+    (every contract pay-page payment) get [] and behave exactly as before.
+  Probed in a rolled-back transaction on a BBB Test member (CN-1026, ₹4,500):
+    order ok · bad-debt instalment refused · other member refused · attach ok ·
+    verify → receipt RCP, instalment 4500/4500 paid, invoice 36,000 → 31,500 ·
+    second order for same instalment → no allocation · order after paid →
+    already_paid.
+
+FILES
+  contractnest-api/src/controllers/sessionCheckinController.ts  payOrder, payVerify
+  contractnest-api/src/routes/sessionCheckinPublicRoutes.ts       2 routes
+  contractnest-api/src/services/sessionCheckinService.ts          3 RPC calls
+  contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx        pay block → shared card
+                                                                  + Pay online + Total tile
+  contractnest-ui/src/pages/checkin/useSessionCheckin.ts          payOrder/payVerify, config type
+  contractnest-ui/src/hooks/useRazorpayCheckout.ts                optional verify + description
+  contractnest-ui/src/components/payments/OfflineUpiPay.tsx       layout="in_person", onBeforeOpenApp
+  contractnest-ui/src/utils/payments/upi.ts                       share-sheet Save QR (from
+                                                                  payment-request-framework; main
+                                                                  had the older copy)
+  contractnest-edge/.../046_checkin_online_payment.sql            (applied)
+
+VERIFIED
+  API tsc 0. UI tsc 1139 = clean main (0 new). vite build passes.
+  Not run in a browser.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/optimistic-newton-vzfl6j
+Copy-Item "MANUAL_COPY_FILES\checkin-pay-options\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-pay-options\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-pay-options\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# API + UI dev servers, then open the check-in link of a BBB token.
+
+═══════════════════════════════════════════════════
+TEST
+═══════════════════════════════════════════════════
+BBB Live (merchant UPI, no gateway):
+  [ ] Dues card: Total · Total paid · Balance tiles
+  [ ] No "Open UPI app" button. Amount large + Copy amount
+  [ ] 1 Scan the QR at the desk (highlighted) · 2 QR on screen + Save QR · 3 UPI ID + Copy
+  [ ] ₹1: Save QR → GPay scan from gallery → pays
+  [ ] ₹1: Pay to UPI ID → pays (or refused — tell me, I hide it for merchant IDs)
+  [ ] Enter reference → Confirm payment → check-in step → done: "recorded as pending"
+  [ ] Same reference again → "already recorded" alert; continue records attendance only
+  [ ] Skip → check in without paying
+BBB Test (personal UPI):
+  [ ] "Open UPI app" shows → "Pay, then come back" sheet → app opens
+  [ ] Come back without a reference → Skip → "Did you complete the payment?"
+Online (any tenant with Razorpay TEST in that environment, e.g. add Razorpay
+Test to BBB Test, or crane if it runs group sessions):
+  [ ] "Pay online · ₹X" button on top, "OR PAY BY UPI…" below
+  [ ] Razorpay test payment → "₹X paid online · Receipt RCP-…" → check in → done
+  [ ] Dues card afterwards shows that instalment paid; chair has nothing to confirm
+  [ ] Money In / invoice shows the receipt
