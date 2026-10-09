@@ -1,0 +1,18 @@
+BATCH: instalment-reminder  (POA payments step 5, 2026-10-09)
+ALREADY LIVE — do not re-run (it is idempotent anyway):
+  contractnest-edge/supabase/migrations/jtd-nucleus/027_instalment_reminder.sql
+    · jtd_instalment_message_vars(job, payment_link, upi_id) — the ONE builder
+      (name · plan · business name · period · amount owed · due date · pay line)
+    · jtd_nudge_payment — WhatsApp variables now come from the builder (email unchanged)
+    · payment_nudge_whatsapp templates (global + 8 tenant copies) → payment_instalment_due_v1
+    · scanner STEP 5: no whole-invoice "payment due" email for an invoice with >1 instalment
+No API / UI / worker change: the API already passes the tenant's UPI id to the nudge,
+and the worker sends any template in its declared variable order.
+Preview of BBB's October list: BBB_OCTOBER_PREVIEW.md (46 · Rs 1,85,750). Nothing was sent.
+COPY (repo record only):
+  Copy-Item "MANUAL_COPY_FILES\instalment-reminder\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+TEST
+  [ ] Ops board (BBB) → a member's October card → WhatsApp → your own test member first:
+      the message reads like the preview (not "has sent you an invoice")
+  [ ] signia card → WhatsApp → "As per your CN-xxxx plan … (instalment n of m) … Please pay as agreed with us."
+  [ ] Keep BBB's "Payment reminders" automation OFF until you approve the list
