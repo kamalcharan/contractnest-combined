@@ -1,0 +1,9 @@
+BATCH: zero-due-settled  (2026-10-09)
+A ₹0 (or empty-amount) payment line is settled: it becomes `paid` automatically.
+ALREADY LIVE (owner ran it in the Supabase SQL editor) — do not re-run (it is idempotent anyway):
+  contractnest-edge/supabase/migrations/jtd-nucleus/026_zero_due_settled.sql
+Verified after: 0 open ₹0 events / jobs; 649 / 836 open lines with an amount unchanged;
+total settled unchanged; CN-1001 INV-10002 (₹1,600) still unpaid.
+COPY (repo record only):
+  Copy-Item "MANUAL_COPY_FILES\zero-due-settled\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+No API / UI change.
