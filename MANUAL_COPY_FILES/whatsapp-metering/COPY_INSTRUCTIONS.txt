@@ -1,0 +1,52 @@
+BATCH: whatsapp-metering  (POA W3, spec §10, 2026-10-08/09)
+=============================================================
+Every outbound WhatsApp CHAT message (team assistant, customer chat) now has
+one metered path; notifications keep theirs (n_jtd → jtd-worker). Home shows
+credits left + this month's split.
+
+ALREADY LIVE — do not re-run:
+  DB migration contractnest-edge/supabase/migrations/20261008170000_whatsapp_metering.sql
+    · t_whatsapp_messages (in/out log; service role only)
+    · wa_meter_reserve / wa_meter_charge / wa_meter_release, wa_message_log_in
+    · fn_wa_tenant_contact_number, fn_wa_metered, get_whatsapp_usage
+  Probed in a rolled-back transaction before applying (signia): charge 353→352,
+  double charge refused, failed send releases, ONE free closing per conversation
+  at zero credits (outsider gets the owner number, +storefront link fallback),
+  top-up resets it, Test env + exempt tenants never charged, inbound de-duplicated.
+
+NEW FILES / CHANGES
+  contractnest-edge
+    supabase/functions/_shared/whatsapp/meteredSender.ts   (no caller yet — W4 router)
+    supabase/migrations/20261008170000_whatsapp_metering.sql (record; live)
+  contractnest-api
+    src/services/whatsappUsageService.ts       (membership check, then get_whatsapp_usage)
+    src/controllers/whatsappUsageController.ts
+    src/routes/tenantContextRoutes.ts           (+ GET /api/tenant-context/whatsapp-usage)
+  contractnest-ui
+    src/hooks/queries/useWhatsappUsage.ts
+    src/services/serviceURLs.ts                 (+ TENANT_CONTEXT.WHATSAPP_USAGE)
+    src/pages/experience/TenantAccountNotice.tsx (Home → Plan & credits card)
+
+Decisions taken (owner said "start" on the proposal):
+  · Low = under 20 % of the most recent PURCHASE (top-up pack / add-on); per-contract
+    plan grants ignored; no purchase yet → 10.
+  · ₹700 / 150-credit add-on deferred to W5 (when customer chat exists).
+  · Usage settings page (still mock) untouched.
+  · The 6 active tenants without a credit record stay unmetered (owner's call).
+  · The 20 % alert is shown on Home only; sending it to admins needs a template (later).
+
+Verified: API tsc 0 · UI tsc 1139 = main · vite build passes · sender unit-checked
+(sent / failed→release / closing / blocked).
+
+COPY
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\whatsapp-metering\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\whatsapp-metering\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\whatsapp-metering\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Restart API (npm run dev) and UI; hard refresh.
+
+TEST
+  [ ] Home (/experience) as signia → Plan & credits: "353 available" + "This month: 0 used · 0 notifications · 0 team assistant · 0 customer chat"
+  [ ] Home as BBB → 214 available, 53 notifications this month
+  [ ] Home as vikuna (exempt) → plain balance, no month line
+  [ ] GET /api/tenant-context/whatsapp-usage with another tenant's x-tenant-id → 403
